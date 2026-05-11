@@ -59,6 +59,7 @@ import type {
 import { Icon } from './Icon';
 import {
   buildBoardCommentAttachments,
+  commentsToAttachments,
   liveSnapshotForComment,
   overlayBoundsFromSnapshot,
   selectionKindLabel,
@@ -1571,6 +1572,117 @@ function BoardComposerPopover({
   );
 }
 
+function formatCommentTime(ts: number): string {
+  const diff = Date.now() - ts;
+  if (diff < 60_000) return 'just now';
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks}w ago`;
+  return new Date(ts).toLocaleDateString();
+}
+
+function commentDisplayLabel(comment: PreviewComment): string {
+  if (comment.elementId.startsWith('pin-')) return 'Pin';
+  return comment.label || comment.elementId;
+}
+
+function commentAvatarInitial(comment: PreviewComment): string {
+  const seed = comment.label || comment.elementId || '?';
+  return seed.charAt(0).toUpperCase();
+}
+
+function CommentSidePanel({
+  comments,
+  selectedIds,
+  onToggleSelect,
+  onClearSelection,
+  onReply,
+  onSendSelected,
+  sending,
+  t,
+}: {
+  comments: PreviewComment[];
+  selectedIds: Set<string>;
+  onToggleSelect: (commentId: string) => void;
+  onClearSelection: () => void;
+  onReply: (comment: PreviewComment) => void;
+  onSendSelected: () => void | Promise<void>;
+  sending: boolean;
+  t: TranslateFn;
+}) {
+  const sorted = [...comments].sort((a, b) => b.createdAt - a.createdAt);
+  const selectedCount = selectedIds.size;
+  return (
+    <aside className="comment-side-panel" data-testid="comment-side-panel" aria-label={t('chat.tabComments')}>
+      <div className="comment-side-list">
+        {sorted.length === 0 ? (
+          <div className="comment-side-empty">
+            {t('chat.comments.emptySaved')}
+          </div>
+        ) : sorted.map((comment) => {
+          const selected = selectedIds.has(comment.id);
+          return (
+            <div
+              key={comment.id}
+              className={`comment-side-item${selected ? ' selected' : ''}`}
+              data-testid="comment-side-item"
+            >
+              <div className="comment-side-item-head">
+                <span className="comment-side-author">
+                  <span className="comment-side-avatar" aria-hidden>
+                    {commentAvatarInitial(comment)}
+                  </span>
+                  <strong>{commentDisplayLabel(comment)}</strong>
+                </span>
+                <span className="comment-side-time">{formatCommentTime(comment.createdAt)}</span>
+                <button
+                  type="button"
+                  className={`comment-side-check${selected ? ' checked' : ''}`}
+                  aria-label={selected ? 'Deselect' : 'Select'}
+                  aria-pressed={selected}
+                  onClick={() => onToggleSelect(comment.id)}
+                >
+                  {selected ? <Icon name="check" size={11} /> : null}
+                </button>
+              </div>
+              <div className="comment-side-body">{comment.note}</div>
+              <button
+                type="button"
+                className="comment-side-reply"
+                onClick={() => onReply(comment)}
+              >
+                Reply
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      {selectedCount > 0 ? (
+        <div className="comment-side-selectbar" data-testid="comment-side-selectbar">
+          <span className="comment-side-selectcount">{selectedCount} selected</span>
+          <button type="button" className="ghost" onClick={onClearSelection}>
+            Clear
+          </button>
+          <button
+            type="button"
+            className="primary"
+            data-testid="comment-side-send-claude"
+            disabled={sending}
+            onClick={() => void onSendSelected()}
+          >
+            {sending ? 'Sending…' : 'Send to Claude'}
+          </button>
+        </div>
+      ) : null}
+    </aside>
+  );
+}
+
 // Maps a CSS computed value (e.g. "rgb(40, 50, 60)" or "16px") to a form
 // input value. Browsers return colors as rgb()/rgba(); HTML <input type=color>
 // only accepts "#rrggbb". Lengths come back as "12px" or "0px"; we strip
@@ -3063,6 +3175,7 @@ function HtmlViewer({
   const [inspectError, setInspectError] = useState<string | null>(null);
   const [queuedBoardNotes, setQueuedBoardNotes] = useState<string[]>([]);
   const [sendingBoardBatch, setSendingBoardBatch] = useState(false);
+  const [selectedSideCommentIds, setSelectedSideCommentIds] = useState<Set<string>>(() => new Set());
   const [strokePoints, setStrokePoints] = useState<StrokePoint[]>([]);
   const previewStateKey = `${projectId}:${file.name}`;
   const previewScale = zoom / 100;
@@ -4825,6 +4938,46 @@ function HtmlViewer({
                   if (!onRemovePreviewComment) return;
                   await onRemovePreviewComment(commentId);
                   clearBoardComposer();
+                }}
+                sending={sendingBoardBatch || streaming}
+                t={t}
+              />
+            ) : null}
+            {boardMode ? (
+              <CommentSidePanel
+                comments={previewComments.filter((comment) => comment.filePath === file.name)}
+                selectedIds={selectedSideCommentIds}
+                onToggleSelect={(commentId) => {
+                  setSelectedSideCommentIds((current) => {
+                    const next = new Set(current);
+                    if (next.has(commentId)) next.delete(commentId);
+                    else next.add(commentId);
+                    return next;
+                  });
+                }}
+                onClearSelection={() => setSelectedSideCommentIds(new Set())}
+                onReply={(comment) => {
+                  const snapshot = liveSnapshotForComment(comment, liveCommentTargets);
+                  if (snapshot) {
+                    setActiveCommentTarget(snapshot);
+                    setHoveredCommentTarget(snapshot);
+                    setCommentDraft('');
+                    setQueuedBoardNotes([]);
+                  }
+                }}
+                onSendSelected={async () => {
+                  if (!onSendBoardCommentAttachments) return;
+                  const selected = previewComments.filter(
+                    (comment) => selectedSideCommentIds.has(comment.id) && comment.filePath === file.name,
+                  );
+                  if (selected.length === 0) return;
+                  setSendingBoardBatch(true);
+                  try {
+                    await onSendBoardCommentAttachments(commentsToAttachments(selected));
+                    setSelectedSideCommentIds(new Set());
+                  } finally {
+                    setSendingBoardBatch(false);
+                  }
                 }}
                 sending={sendingBoardBatch || streaming}
                 t={t}
