@@ -212,6 +212,10 @@ export function DesignsTab({
 		} catch {}
 	}, [view]);
 
+	useEffect(() => {
+		if (view === "kanban" && selectMode) exitSelectMode();
+	}, [selectMode, view]);
+
 	const filtered = useMemo(() => {
 		const q = filter.trim().toLowerCase();
 		let list: DesignListItem[] = projects
@@ -381,7 +385,7 @@ export function DesignsTab({
 							onChange={(e) => setFilter(e.target.value)}
 						/>
 					</div>
-					{selectMode ? (
+					{view === "grid" && selectMode ? (
 						<div className="designs-select-bar" role="group">
 							<span className="designs-select-count">
 								{t("designs.selectedCount", { n: selected.size })}
@@ -402,7 +406,7 @@ export function DesignsTab({
 								{t("designs.cancelSelect")}
 							</button>
 						</div>
-					) : (
+					) : view === "grid" ? (
 						<button
 							type="button"
 							className="designs-select-toggle"
@@ -411,7 +415,7 @@ export function DesignsTab({
 							<Icon name="check" size={13} />
 							<span>{t("designs.selectMode")}</span>
 						</button>
-					)}
+					) : null}
 					<div
 						className="subtab-pill"
 						role="group"
