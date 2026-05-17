@@ -303,7 +303,7 @@ function printRootHelp() {
   od tools live-artifacts <create|list|update|refresh> [options]
       Manage live artifacts through daemon wrapper commands.
 
-  od tools connectors <list|execute> [options]
+  od tools connectors <list|execute|github-design-context> [options]
       Discover and execute configured connectors.
 
   od mcp live-artifacts
