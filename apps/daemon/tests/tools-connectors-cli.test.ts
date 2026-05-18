@@ -124,6 +124,34 @@ Read README.md, DESIGN.md, colors_and_type.css, the preview cards, preserved ass
 Load colors_and_type.css, inspect preview/, reuse ui_kits/app/, and preserve compact app-like layouts grounded in the captured evidence instead of inventing a marketing page.
 `;
 
+const AUDIT_UI_KIT_README = `# Cherry Studio UI Kit
+
+This UI kit contains source-backed recreations of the Cherry Studio desktop AI chat workspace. Use it as the applied interface reference when composing future prototypes or review surfaces.
+
+## Structure
+
+- \`index.html\` - Complete applied chat workspace demo that loads token CSS and component modules.
+- \`components/\` - Reusable React components:
+  - \`App.jsx\` - Composes the whole product-like surface.
+  - \`Sidebar.jsx\` - Left navigation/sidebar shell.
+  - \`AssistantsList.jsx\` - Assistant or thread list rail.
+  - \`ChatArea.jsx\` - Main conversation workspace.
+  - \`InputBar.jsx\` - Message composer surface.
+  - \`MessageBubble.jsx\` - Message and feedback card pattern.
+
+## Usage
+
+Open \`index.html\` to review the composed interface. Copy component JSX files into new prototypes, import \`../../colors_and_type.css\`, and compose the role components rather than rebuilding a generic static mock.
+
+## Design Notes
+
+Keep the layout compact and app-like: persistent sidebar, assistant rail, scrollable chat area, and composer. Colors, typography, spacing, radius, and states come from \`colors_and_type.css\`.
+
+## Source
+
+Based on the captured Cherry Studio source evidence and preserved package assets.
+`;
+
 const REFERENCE_AUDIT_SKILL = `---
 name: cherry-studio-design
 description: Use this skill to generate well-branded interfaces and assets for Cherry Studio prototypes and production-adjacent UI.
@@ -626,7 +654,7 @@ describe('connectors tool CLI', () => {
       await writeFile(path.join(tmpDir, 'preview', fileName), auditHtml(fileName));
     }
     await writeFile(path.join(tmpDir, 'ui_kits/app/index.html'), auditUiKitIndex());
-    await writeFile(path.join(tmpDir, 'ui_kits/app/README.md'), '# UI kit\n');
+    await writeFile(path.join(tmpDir, 'ui_kits/app/README.md'), AUDIT_UI_KIT_README);
     await mkdir(path.join(tmpDir, 'ui_kits/app/components'), { recursive: true });
     for (const componentName of AUDIT_COMPONENT_FILES) {
       await writeFile(
@@ -852,6 +880,51 @@ describe('connectors tool CLI', () => {
         code: 'readme_missing_product_overview',
         path: 'README.md',
         message: expect.stringContaining('Product Overview'),
+      }),
+    ]));
+
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('warns when the applied UI-kit README lacks a reuse guide', async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'od-package-audit-uikit-readme-'));
+    process.chdir(tmpDir);
+    await mkdir(path.join(tmpDir, 'preview'), { recursive: true });
+    await mkdir(path.join(tmpDir, 'ui_kits/app/components'), { recursive: true });
+    await writeFile(path.join(tmpDir, 'DESIGN.md'), AUDIT_DESIGN_MD);
+    await writeFile(path.join(tmpDir, 'README.md'), AUDIT_README);
+    await writeFile(path.join(tmpDir, 'SKILL.md'), AUDIT_SKILL);
+    await writeFile(path.join(tmpDir, 'colors_and_type.css'), AUDIT_TOKENS_CSS);
+    for (const fileName of [
+      'colors-primary.html',
+      'colors-theme-light.html',
+      'typography-specimens.html',
+      'spacing-tokens.html',
+      'components-buttons.html',
+      'brand-assets.html',
+    ]) {
+      await writeFile(path.join(tmpDir, 'preview', fileName), auditHtml(fileName));
+    }
+    await writeFile(path.join(tmpDir, 'ui_kits/app/index.html'), auditUiKitIndex());
+    await writeFile(
+      path.join(tmpDir, 'ui_kits/app/README.md'),
+      '# UI kit\n\nThis package was migrated from an earlier workspace. Use index.html as the applied interface example.\n',
+    );
+    for (const componentName of AUDIT_COMPONENT_FILES) {
+      await writeFile(
+        path.join(tmpDir, 'ui_kits/app/components', componentName),
+        auditUiKitComponent(componentName),
+      );
+    }
+
+    const result = await runConnectorsToolCli(['design-system-package-audit', '--path', tmpDir]);
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(stdoutOutput.join('')).warnings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'ui_kit_readme_missing_reuse_guide',
+        path: 'ui_kits/app/README.md',
+        message: expect.stringContaining('usage workflow'),
       }),
     ]));
 

@@ -293,6 +293,12 @@ describe('DesignSystemCreationFlow', () => {
     expect(mocks.patchProject).toHaveBeenCalledWith(
       project.id,
       expect.objectContaining({
+        pendingPrompt: expect.stringContaining('ui_kits/app/README.md` should document the kit structure'),
+      }),
+    );
+    expect(mocks.patchProject).toHaveBeenCalledWith(
+      project.id,
+      expect.objectContaining({
         pendingPrompt: expect.stringContaining('preview/brand-assets.html` must visibly load the preserved files'),
       }),
     );
@@ -378,6 +384,11 @@ describe('DesignSystemCreationFlow', () => {
       project.id,
       'context/source-context.md',
       expect.stringContaining('app shell component must compose those roles'),
+    );
+    expect(mocks.writeProjectTextFile).toHaveBeenCalledWith(
+      project.id,
+      'context/source-context.md',
+      expect.stringContaining('ui_kits/app/README.md` should explain structure'),
     );
     expect(mocks.writeProjectTextFile).toHaveBeenCalledWith(
       project.id,

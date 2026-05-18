@@ -1583,6 +1583,16 @@ async function auditDesignSystemPackage(
   await requireContent('ui_kits/app/index.html', 900, 'thin_ui_kit', 'ui_kits/app/index.html is too thin; include an applied interface example with real layout, components, and states.', validateHtmlDocument);
   if (!fileSet.has('ui_kits/app/README.md')) {
     addIssue('warning', 'missing_ui_kit_readme', 'Add ui_kits/app/README.md so future projects know how to reuse the applied UI kit.', 'ui_kits/app/README.md');
+  } else {
+    const uiKitReadmeText = await readAuditText(projectPath, 'ui_kits/app/README.md');
+    if (uiKitReadmeText !== undefined && !uiKitReadmeHasReuseGuide(uiKitReadmeText)) {
+      addIssue(
+        'warning',
+        'ui_kit_readme_missing_reuse_guide',
+        'ui_kits/app/README.md should document the applied kit structure, component files, usage workflow, design notes, and source basis so future agents can reuse it like a Claude Design package.',
+        'ui_kits/app/README.md',
+      );
+    }
   }
   await Promise.all(previewFiles.map((filePath) =>
     requireContent(filePath, 900, 'thin_preview_card', `${filePath} is too thin to be a reviewable focused preview card.`, validateHtmlDocument),
@@ -1899,6 +1909,22 @@ function readmeHasProductOverview(text: string): boolean {
   return body.length >= 180
     && /\b(product|app|application|workspace|client|platform|tool|service)\b/iu.test(body)
     && /\b(supports?|provides?|features?|includes?|built|designed|helps?|enables?|offers?)\b/iu.test(body);
+}
+
+function uiKitReadmeHasReuseGuide(text: string): boolean {
+  if (text.trim().length < 350) return false;
+  const hasStructure = /##\s+(Structure|Files|Components)\b/iu.test(text)
+    && /\bindex\.html\b/iu.test(text)
+    && /\bcomponents\//iu.test(text);
+  const hasUsage = /##\s+(Usage|How to use|Reuse)\b/iu.test(text)
+    && /\b(copy|compose|import|use|build|create)\b/iu.test(text);
+  const hasDesignOrSourceNotes = /##\s+(Design Notes|Design|Layout|Source)\b/iu.test(text)
+    && /\b(source|based on|layout|colors?|typography|tokens?)\b/iu.test(text);
+  const componentMentions = new Set(
+    [...text.matchAll(/\b(?:App|Sidebar|AssistantsList|ChatArea|MessageBubble|InputBar|Composer|PreviewCard)\b|components\/[^`\s)]+\.jsx/giu)]
+      .map((match) => match[0].toLowerCase()),
+  );
+  return hasStructure && hasUsage && hasDesignOrSourceNotes && componentMentions.size >= 3;
 }
 
 function validateDesignRules(text: string): string | undefined {
