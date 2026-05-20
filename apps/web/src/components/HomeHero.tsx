@@ -1594,7 +1594,6 @@ function TypeTabBar({
             onClick={() => onPickChip(chip)}
             disabled={pluginsLoading || isPending || pendingPluginId !== null}
             aria-selected={isActive}
-            title={chip.hint ?? chip.label}
           >
             <span>{chip.label}</span>
           </button>

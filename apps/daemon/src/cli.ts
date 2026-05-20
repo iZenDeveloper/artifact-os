@@ -8,6 +8,7 @@ import { runDesignSystemsToolCli } from './tools-design-systems-cli.js';
 import { runLiveArtifactsToolCli } from './tools-live-artifacts-cli.js';
 import { splitResearchSubcommand } from './research/cli-args.js';
 import { resolveDaemonUrl } from './daemon-url.js';
+import { mintImportTokenViaSidecar } from './cli-import-token.js';
 
 const argv = process.argv.slice(2);
 
@@ -3842,13 +3843,27 @@ Common options:
       }
       const dir = typeof flags.dir === 'string' ? flags.dir : null;
       if (dir) {
-        // Replace mode — POST to /working-dir with the new path.
+        // Replace mode — POST to /working-dir with the new path. When
+        // the daemon's desktop-auth gate is active (a packaged desktop
+        // is paired with this daemon), the route refuses tokenless
+        // requests. Best-effort mint a token via the daemon's sidecar
+        // IPC so the same-user CLI invocation goes through. The IPC
+        // socket has user-only FS permissions, so minting a token here
+        // does not escalate privilege beyond what the caller already has.
+        const trimmedDir = dir.trim();
+        const headers = { 'content-type': 'application/json' };
+        const minted = await mintImportTokenViaSidecar(trimmedDir).catch(() => null);
+        if (minted && minted.ok === true) {
+          headers['x-od-desktop-import-token'] = minted.token;
+        } else if (minted && minted.ok === false) {
+          console.error(`[project] could not mint desktop import token: ${minted.reason}`);
+        }
         const resp = await fetch(
           `${base}/api/projects/${encodeURIComponent(id)}/working-dir`,
           {
             method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ baseDir: dir }),
+            headers,
+            body: JSON.stringify({ baseDir: trimmedDir }),
           },
         );
         const data = await resp.json().catch(() => ({}));
@@ -3858,7 +3873,7 @@ Common options:
           process.exit(1);
         }
         if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
-        console.log(`[project] working-dir set to ${data.baseDir ?? dir}`);
+        console.log(`[project] working-dir set to ${data.baseDir ?? trimmedDir}`);
         return;
       }
       // Read mode — GET the project and print resolvedDir.

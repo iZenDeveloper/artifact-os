@@ -423,7 +423,7 @@ describe('HomeView prompt handoff', () => {
     }));
   });
 
-  it('applies Home rail Prototype chip against the bundled web-prototype scenario plugin', async () => {
+  it('binds the Home rail Prototype chip locally and applies it on submit', async () => {
     const fetchMock = vi.fn<typeof fetch>(async (url) => {
       if (typeof url === 'string' && url === '/api/plugins') {
         return new Response(JSON.stringify({ plugins: [WEB_PROTOTYPE_PLUGIN] }), {
@@ -444,17 +444,29 @@ describe('HomeView prompt handoff', () => {
       cb(0);
       return 0;
     });
+    const onSubmit = vi.fn();
 
     render(
       <HomeView
         projects={[]}
-        onSubmit={() => undefined}
+        onSubmit={onSubmit}
         onOpenProject={() => undefined}
         onViewAllProjects={() => undefined}
       />,
     );
 
     fireEvent.click(await screen.findByTestId('home-hero-rail-prototype'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home-hero-active-plugin').textContent).toContain('Prototype');
+    });
+    expect(fetchMock.mock.calls.some(([url]) => (
+      typeof url === 'string' && url.includes('/api/plugins/example-web-prototype/apply')
+    ))).toBe(false);
+    fireEvent.change(screen.getByTestId('home-hero-input'), {
+      target: { value: 'Build a pricing-page prototype.' },
+    });
+    fireEvent.click(screen.getByTestId('home-hero-submit'));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       '/api/plugins/example-web-prototype/apply',
@@ -472,17 +484,15 @@ describe('HomeView prompt handoff', () => {
         template: 'the bundled web prototype seed',
       },
     });
-    expect(screen.getByTestId('home-hero-prompt-slot-fidelity')).toBeTruthy();
-    expect(screen.getByTestId('home-hero-prompt-slot-artifactKind')).toBeTruthy();
-    expect(screen.getByTestId('home-hero-prompt-slot-designSystem')).toBeTruthy();
-    expect(screen.getByTestId('home-hero-prompt-slot-template')).toBeTruthy();
-    // Template-backed inputs are represented inline in the prompt, so
-    // the structured form below should not duplicate the same fields.
-    expect(screen.queryByTestId('plugin-inputs-form')).toBeNull();
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      pluginId: 'example-web-prototype',
+      projectKind: 'prototype',
+      prompt: 'Build a pricing-page prototype.',
+    })));
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('applies output-type chips immediately when replacing an existing prompt', async () => {
+  it('switches output-type chips without replacing an existing prompt', async () => {
     const fetchMock = vi.fn<typeof fetch>(async (url) => {
       if (typeof url === 'string' && url === '/api/plugins') {
         return new Response(JSON.stringify({ plugins: [WEB_PROTOTYPE_PLUGIN] }), {
@@ -517,10 +527,13 @@ describe('HomeView prompt handoff', () => {
     fireEvent.change(input, { target: { value: 'Keep my current brief' } });
     fireEvent.click(await screen.findByTestId('home-hero-rail-prototype'));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-      '/api/plugins/example-web-prototype/apply',
-      expect.anything(),
-    ));
+    await waitFor(() => {
+      expect(screen.getByTestId('home-hero-active-plugin').textContent).toContain('Prototype');
+    });
+    expect(fetchMock.mock.calls.some(([url]) => (
+      typeof url === 'string' && url.includes('/api/plugins/example-web-prototype/apply')
+    ))).toBe(false);
+    expect((input as HTMLTextAreaElement).value).toBe('Keep my current brief');
     expect(screen.queryByRole('dialog', { name: /replace current prompt/i })).toBeNull();
   });
 
