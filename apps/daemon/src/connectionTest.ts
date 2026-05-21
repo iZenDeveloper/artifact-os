@@ -42,6 +42,7 @@ import {
 } from './runtimes/auth.js';
 import type { AgentCliEnvPrefs } from './app-config.js';
 import type { RuntimeAgentDef } from './runtimes/types.js';
+import { resolveModelForAgent } from './runtimes/models.js';
 import {
   isBlockedExternalApiHostname,
   isLoopbackApiHost,
@@ -1067,7 +1068,13 @@ function attachAgentStreamHandlers(
       child,
       prompt,
       cwd,
-      model: model ?? null,
+      // Same substitution as the chat-run path in server.ts — adapters whose
+      // CLI rejects the synthetic 'default' (e.g. AMR / vela, which forces
+      // session/set_model before session/prompt) need the def's first
+      // concrete fallback id here too, otherwise Test connection deadlocks
+      // on the same `session/set_model must be called before session/prompt`
+      // error the chat-run path already handles.
+      model: resolveModelForAgent(def as never, model ?? null),
       mcpServers: [],
       send,
     });
