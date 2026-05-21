@@ -8285,6 +8285,7 @@ export async function startServer({
     agentId,
     projectId,
     skillId,
+    skillIds,
     designSystemId,
     streamFormat,
     connectedExternalMcp,
@@ -8301,6 +8302,17 @@ export async function startServer({
         ? designSystemId
         : project?.designSystemId;
     const metadata = project?.metadata;
+    const allSkills = await listAllSkillLikeEntries();
+
+    // Per-turn skills picked via the composer's @-mention popover. They
+    // never persist on the project — we just append their bodies after the
+    // primary skill so the agent sees one combined block this turn.
+    const adHocSkillIds = Array.isArray(skillIds)
+      ? skillIds
+          .map((s) => (typeof s === 'string' ? s.trim() : ''))
+          .filter(Boolean)
+          .filter((id) => id !== effectiveSkillId)
+      : [];
 
     let skillBody;
     let skillName;
@@ -8316,10 +8328,7 @@ export async function startServer({
       // Span both functional skills and design templates so a project
       // saved against either surface keeps its system prompt after the
       // skills/design-templates split. See specs/current/skills-and-design-templates.md.
-      const skill = findSkillById(
-        await listAllSkillLikeEntries(),
-        effectiveSkillId,
-      );
+      const skill = findSkillById(allSkills, effectiveSkillId);
       if (skill) {
         skillBody = skill.body;
         skillName = skill.name;
@@ -8328,6 +8337,33 @@ export async function startServer({
         skillCritiquePolicy = skill.critiquePolicy;
         if (Array.isArray(skill.craftRequires))
           skillCraftRequires = skill.craftRequires;
+      }
+    }
+    if (adHocSkillIds.length > 0) {
+      const seen = new Set(effectiveSkillId ? [effectiveSkillId] : []);
+      const blocks = [];
+      const baseBody = skillBody && skillBody.trim().length > 0 ? skillBody : '';
+      for (const id of adHocSkillIds) {
+        if (seen.has(id)) continue;
+        seen.add(id);
+        const extra = findSkillById(allSkills, id);
+        if (!extra) continue;
+        if (Array.isArray(extra.craftRequires)) {
+          for (const craft of extra.craftRequires) {
+            if (!skillCraftRequires.includes(craft)) skillCraftRequires.push(craft);
+          }
+        }
+        blocks.push(
+          `\n\n---\n\n## Composed skill — ${extra.name || id}\n\n${(extra.body || '').trim()}`,
+        );
+      }
+      if (blocks.length > 0) {
+        skillBody = baseBody + blocks.join('');
+        if (!skillName) {
+          skillName = adHocSkillIds.length === 1
+            ? findSkillById(allSkills, adHocSkillIds[0])?.name ?? null
+            : 'composed';
+        }
       }
     }
 
@@ -8740,6 +8776,7 @@ export async function startServer({
       assistantMessageId,
       clientRequestId,
       skillId,
+      skillIds,
       designSystemId,
       attachments = [],
       commentAttachments = [],
@@ -8979,6 +9016,7 @@ export async function startServer({
         agentId,
         projectId,
         skillId,
+        skillIds,
         designSystemId,
         streamFormat: def?.streamFormat ?? 'plain',
         connectedExternalMcp,

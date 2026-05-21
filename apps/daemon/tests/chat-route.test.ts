@@ -178,6 +178,50 @@ process.exit(0);
     );
   });
 
+  it('injects @-mention skillIds into the composed system prompt', async () => {
+    await withFakeAgent(
+      'opencode',
+      `
+let prompt = '';
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', (chunk) => {
+  prompt += chunk;
+});
+process.stdin.on('end', () => {
+  const checks = [
+    prompt.includes('## Composed skill — faq-page') ? 'has-composed-skill-header' : 'missing-composed-skill-header',
+    prompt.includes('# FAQ Page Skill') ? 'has-faq-skill-body' : 'missing-faq-skill-body',
+    prompt.includes('category filtering') ? 'has-faq-skill-content' : 'missing-faq-skill-content',
+  ];
+  console.log(JSON.stringify({ type: 'step_start' }));
+  console.log(JSON.stringify({ type: 'text', part: { text: checks.join('\\n') } }));
+  console.log(JSON.stringify({ type: 'step_finish', part: { tokens: { input: 1, output: 1 } } }));
+  process.exit(0);
+});
+`,
+      async () => {
+        const response = await fetch(`${baseUrl}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agentId: 'opencode',
+            message: 'build an faq page',
+            skillIds: ['faq-page'],
+          }),
+        });
+        const body = await response.text();
+
+        expect(response.ok).toBe(true);
+        expect(body).toContain('has-composed-skill-header');
+        expect(body).toContain('has-faq-skill-body');
+        expect(body).toContain('has-faq-skill-content');
+        expect(body).not.toContain('missing-composed-skill-header');
+        expect(body).not.toContain('missing-faq-skill-body');
+        expect(body).not.toContain('missing-faq-skill-content');
+      },
+    );
+  });
+
   it('classifies Cursor Agent authentication stderr as a typed run error', async () => {
     await withFakeAgent(
       'cursor-agent',
