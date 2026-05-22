@@ -117,6 +117,13 @@ const jsonLd = [
             {ui.catalog.skills.upstream}
           </a>
         )}
+        <button
+          type="button"
+          class="btn btn-ghost detail-share-trigger"
+          data-share-open={`skill:${skill.slug}`}
+        >
+          Share ↗
+        </button>
       </div>
     </header>
 
@@ -168,78 +175,70 @@ const jsonLd = [
     )}
 
     {/*
-      Social share row — six channels: Reddit, X, LinkedIn, Facebook,
-      Email, Copy. Each anchor is a vendor "intent" URL (no tracker
-      SDKs, no client JS beyond the copy-link button bound by the
-      header enhancer).
+      Share modal — opens a `<dialog>` containing the canonical share
+      copy (with the brand keyword "open-source Claude Design
+      alternative" baked in), a one-click "Copy" button, and a row of
+      platform jump buttons. Each platform button just opens the
+      vendor's compose URL — the user pastes the already-copied text.
+      This works around a real cross-platform pain point: LinkedIn /
+      Facebook ignore pre-fill `text` params, X has length limits that
+      truncate Chinese content unpredictably, and Reddit's title param
+      survives but title-only is a weak signal. Copy-then-paste is
+      uniformly reliable.
 
-      Share copy keeps the brand SEO keyword "open-source Claude Design
-      alternative" front-and-center across every channel — same shape
-      Google associates with the homepage and the /alternatives/claude-
-      design/ page, so each social click reinforces the same entity
-      claim. The skill-specific name + summary follow so a reader who
-      lands on a friend's tweet has a concrete reason to click.
+      The trigger sits inside `.detail-actions` instead of as a
+      separate row below `.detail-meta` so it has visual weight equal
+      to the primary CTAs. Joey called this out specifically.
     */}
-    <section class="detail-share" aria-label="Share">
-      <span class="detail-share-label">Share</span>
-      <a
-        class="detail-share-btn"
-        href={`https://www.reddit.com/submit?url=${encodeURIComponent(`https://open-design.ai/skills/${skill.slug}/`)}&title=${encodeURIComponent(`${skill.name} — open-source Claude Design alternative`)}`}
-        target="_blank"
-        rel="noopener"
-        aria-label="Share on Reddit"
-        title="Share on Reddit"
-      >
-        <span aria-hidden="true">R</span>
-      </a>
-      <a
-        class="detail-share-btn"
-        href={`https://x.com/intent/tweet?text=${encodeURIComponent(`I'm using ${skill.name} from @opendesignai — the open-source Claude Design alternative.\n\n${description}`)}&url=${encodeURIComponent(`https://open-design.ai/skills/${skill.slug}/`)}`}
-        target="_blank"
-        rel="noopener"
-        aria-label="Share on X"
-        title="Share on X"
-      >
-        <span aria-hidden="true">𝕏</span>
-      </a>
-      <a
-        class="detail-share-btn"
-        href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`https://open-design.ai/skills/${skill.slug}/`)}`}
-        target="_blank"
-        rel="noopener"
-        aria-label="Share on LinkedIn"
-        title="Share on LinkedIn"
-      >
-        <span aria-hidden="true">in</span>
-      </a>
-      <a
-        class="detail-share-btn"
-        href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`https://open-design.ai/skills/${skill.slug}/`)}`}
-        target="_blank"
-        rel="noopener"
-        aria-label="Share on Facebook"
-        title="Share on Facebook"
-      >
-        <span aria-hidden="true">f</span>
-      </a>
-      <a
-        class="detail-share-btn"
-        href={`mailto:?subject=${encodeURIComponent(`${skill.name} — open-source Claude Design alternative`)}&body=${encodeURIComponent(`I thought you'd like this — ${skill.name}, an open-source Claude Design alternative skill from Open Design.\n\n${description}\n\nhttps://open-design.ai/skills/${skill.slug}/`)}`}
-        aria-label="Share by Email"
-        title="Share by Email"
-      >
-        <span aria-hidden="true">✉</span>
-      </a>
-      <button
-        type="button"
-        class="detail-share-btn detail-share-copy"
-        data-copy-link={`https://open-design.ai/skills/${skill.slug}/`}
-        aria-label="Copy link"
-        title="Copy link"
-      >
-        <span aria-hidden="true">🔗</span>
-      </button>
-    </section>
+    <dialog
+      class="detail-share-dialog"
+      data-share-dialog={`skill:${skill.slug}`}
+    >
+      <form method="dialog" class="detail-share-dialog-form">
+        <header class="detail-share-dialog-head">
+          <h2>Share this skill</h2>
+          <button type="submit" class="detail-share-dialog-close" aria-label="Close" value="cancel">×</button>
+        </header>
+        <p class="detail-share-dialog-lead">
+          Copy the message below, then jump to the platform you want to share on and paste.
+        </p>
+        <textarea
+          class="detail-share-dialog-text"
+          readonly
+          rows="6"
+          data-share-text
+        >{`I'm using ${skill.name} from @opendesignai — the open-source Claude Design alternative.\n\n${description}\n\nhttps://open-design.ai/skills/${skill.slug}/`}</textarea>
+        <div class="detail-share-dialog-actions">
+          <button
+            type="button"
+            class="btn btn-primary detail-share-dialog-copy"
+            data-share-copy
+          >
+            Copy text
+          </button>
+          <button
+            type="button"
+            class="btn btn-ghost detail-share-dialog-copy-link"
+            data-copy-link={`https://open-design.ai/skills/${skill.slug}/`}
+          >
+            Copy link only
+          </button>
+        </div>
+        <div class="detail-share-dialog-platforms">
+          <span class="detail-share-dialog-platforms-label">Then jump to:</span>
+          <a class="detail-share-platform-btn" href="https://x.com/compose/post" target="_blank" rel="noopener">X</a>
+          <a class="detail-share-platform-btn" href="https://www.linkedin.com/feed/?shareActive=true" target="_blank" rel="noopener">LinkedIn</a>
+          <a class="detail-share-platform-btn" href="https://www.reddit.com/submit" target="_blank" rel="noopener">Reddit</a>
+          <a class="detail-share-platform-btn" href="https://www.facebook.com/" target="_blank" rel="noopener">Facebook</a>
+          <a
+            class="detail-share-platform-btn"
+            href={`mailto:?subject=${encodeURIComponent(`${skill.name} — open-source Claude Design alternative`)}`}
+          >
+            Email
+          </a>
+        </div>
+      </form>
+    </dialog>
 
     <dl class="detail-meta">
       {skill.mode && (

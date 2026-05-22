@@ -1411,54 +1411,142 @@ body.sub-page {
 }
 
 /*
- * Six-channel share row: Reddit · X · LinkedIn · Facebook · Email · Copy.
- * Each button is a small circular pill in Atelier Zero ink-on-paper;
- * WeChat QR was dropped per Joey's revision in favor of the YouMind-
- * style channel set.
+ * Share dialog — replaces the previous inline 6-button row. The
+ * trigger is a `Share ↗` button inside `.detail-actions` (so it has
+ * visual weight equal to the primary CTAs); clicking opens a
+ * `<dialog>` with the canonical share copy ready to copy + a row of
+ * platform jump buttons that just open the vendor's compose page.
+ *
+ * The copy-then-paste flow works around platform pre-fill limits:
+ * LinkedIn / Facebook ignore `text` params, X truncates Chinese
+ * unpredictably, Reddit's title is title-only. Copy-then-paste is
+ * uniformly reliable.
  */
-.detail-share {
-  margin: 32px 0 24px;
+.detail-share-dialog {
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  width: min(540px, calc(100vw - 32px));
+  padding: 0;
+  border-radius: 4px;
+  box-shadow: 0 32px 80px rgba(21, 20, 15, 0.32);
+}
+.detail-share-dialog::backdrop {
+  background: rgba(21, 20, 15, 0.42);
+}
+.detail-share-dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px 28px 28px;
+  margin: 0;
+}
+.detail-share-dialog-head {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0;
 }
-.detail-share-label {
+.detail-share-dialog-head h2 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 22px;
+  margin: 0;
+}
+.detail-share-dialog-close {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  background: transparent;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--ink-mute);
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+.detail-share-dialog-close:hover { color: var(--coral); border-color: var(--coral); }
+.detail-share-dialog-lead {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-mute);
+}
+.detail-share-dialog-text {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--paper-warm);
+  padding: 12px 14px;
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink);
+  border-radius: 2px;
+  resize: vertical;
+}
+.detail-share-dialog-text:focus {
+  outline: none;
+  border-color: var(--coral);
+}
+.detail-share-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.detail-share-dialog-actions .btn {
+  flex: 1 1 auto;
+  text-align: center;
+}
+.detail-share-dialog-copy[data-copied],
+.detail-share-dialog-copy-link[data-copied] {
+  background: var(--coral) !important;
+  color: var(--paper) !important;
+  border-color: var(--coral) !important;
+}
+.detail-share-dialog-platforms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid var(--line-soft);
+}
+.detail-share-dialog-platforms-label {
   font-family: var(--mono);
   font-size: 10.5px;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-mute);
-  margin-right: 8px;
+  margin-right: 4px;
 }
-.detail-share-btn {
-  width: 36px;
-  height: 36px;
+.detail-share-platform-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  border: 1px solid currentColor;
+  padding: 6px 14px;
+  border: 1px solid var(--ink);
   border-radius: 999px;
   font-family: var(--sans);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink);
-  background: transparent;
   text-decoration: none;
-  cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  background: transparent;
+  transition: background 0.12s ease, color 0.12s ease;
 }
-.detail-share-btn:hover {
+.detail-share-platform-btn:hover {
   background: var(--ink);
   color: var(--paper);
-  border-color: var(--ink);
 }
-.detail-share-copy[data-copied] {
-  background: var(--coral);
-  color: var(--paper);
-  border-color: var(--coral);
+
+/* The trigger button itself in `.detail-actions` */
+.detail-share-trigger {
+  /* uses existing `.btn .btn-ghost` styling; this just lets future
+   * code target it for analytics or a11y customizations */
 }
 
 @media (max-width: 720px) {
   .detail-preview-popout { top: 8px; right: 8px; padding: 4px 10px; font-size: 9.5px; }
+  .detail-share-dialog-form { padding: 20px 22px 24px; }
+  .detail-share-dialog-actions { flex-direction: column; }
 }
