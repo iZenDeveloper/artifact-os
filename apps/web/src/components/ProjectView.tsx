@@ -707,8 +707,11 @@ export function ProjectView({
   const currentConversationBusy = currentConversationLoading
     || currentConversationStreaming
     || currentConversationHasActiveRun;
+  const currentConversationAwaitingActiveRunAttach =
+    currentConversationHasActiveRun && !currentConversationStreaming;
   const currentConversationSendDisabled = currentConversationLoading
-    || failedMessagesConversationId === activeConversationId;
+    || failedMessagesConversationId === activeConversationId
+    || currentConversationAwaitingActiveRunAttach;
   const currentConversationActionDisabled = currentConversationBusy || currentConversationSendDisabled;
   const currentConversationQueuedItems = activeConversationId
     ? queuedChatSends
@@ -2086,6 +2089,12 @@ export function ProjectView({
           ...(meta === undefined ? {} : { meta }),
           createdAt: Date.now(),
         });
+        if (commentAttachments.length > 0) {
+          const reservedCommentIds = new Set(commentAttachments.map((attachment) => attachment.id));
+          setAttachedComments((current) =>
+            current.filter((comment) => !reservedCommentIds.has(comment.id)),
+          );
+        }
         return;
       }
       setChatSeed(null);

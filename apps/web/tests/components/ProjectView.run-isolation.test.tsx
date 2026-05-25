@@ -5,7 +5,13 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProjectView } from '../../src/components/ProjectView';
-import type { AppConfig, ChatMessage, Conversation, Project } from '../../src/types';
+import type {
+  AppConfig,
+  ChatMessage,
+  Conversation,
+  PreviewComment,
+  Project,
+} from '../../src/types';
 
 const listConversations = vi.fn();
 const listMessages = vi.fn();
@@ -124,6 +130,9 @@ vi.mock('../../src/components/ChatPane', () => ({
     conversations,
     streaming,
     sendDisabled,
+    previewComments,
+    attachedComments,
+    onAttachComment,
     onSelectConversation,
     onSend,
     onNewConversation,
@@ -133,38 +142,74 @@ vi.mock('../../src/components/ChatPane', () => ({
     conversations: Conversation[];
     streaming: boolean;
     sendDisabled?: boolean;
+    previewComments?: PreviewComment[];
+    attachedComments?: PreviewComment[];
     error: string | null;
+    onAttachComment?: (comment: PreviewComment) => void;
     onSelectConversation: (id: string) => void;
     onSend: (prompt: string, attachments: unknown[], commentAttachments: unknown[]) => void;
     onNewConversation: () => void;
-  }) => (
-    <section>
-      <output data-testid="active-conversation">{activeConversationId}</output>
-      <output data-testid="streaming-state">{streaming ? 'streaming' : 'idle'}</output>
-      <output data-testid="chat-error">{error}</output>
-      {conversations.map((conversation) => (
+  }) => {
+    const attached = attachedComments ?? [];
+    return (
+      <section>
+        <output data-testid="active-conversation">{activeConversationId}</output>
+        <output data-testid="streaming-state">{streaming ? 'streaming' : 'idle'}</output>
+        <output data-testid="chat-error">{error}</output>
+        <output data-testid="attached-comment-count">{attached.length}</output>
+        {conversations.map((conversation) => (
+          <button
+            key={conversation.id}
+            type="button"
+            data-testid={`conversation-select-${conversation.id}`}
+            onClick={() => onSelectConversation(conversation.id)}
+          >
+            {conversation.id}
+          </button>
+        ))}
         <button
-          key={conversation.id}
           type="button"
-          data-testid={`conversation-select-${conversation.id}`}
-          onClick={() => onSelectConversation(conversation.id)}
+          data-testid="attach-first-comment"
+          onClick={() => {
+            const first = previewComments?.[0];
+            if (first) onAttachComment?.(first);
+          }}
         >
-          {conversation.id}
+          attach comment
         </button>
-      ))}
-      <button
-        type="button"
-        data-testid="send-message"
-        onClick={() => onSend('hello from b', [], [])}
-        disabled={sendDisabled}
-      >
-        send
-      </button>
-      <button type="button" data-testid="new-conversation" onClick={onNewConversation}>
-        new
-      </button>
-    </section>
-  ),
+        <button
+          type="button"
+          data-testid="send-message"
+          onClick={() =>
+            onSend(
+              'hello from b',
+              [],
+              attached.map((comment, index) => ({
+                id: comment.id,
+                order: index + 1,
+                filePath: comment.filePath,
+                elementId: comment.elementId,
+                selector: comment.selector,
+                label: comment.label,
+                comment: comment.note,
+                currentText: comment.text,
+                pagePosition: comment.position,
+                htmlHint: comment.htmlHint,
+                selectionKind: comment.selectionKind ?? 'element',
+                source: 'saved-comment',
+              })),
+            )
+          }
+          disabled={sendDisabled}
+        >
+          send
+        </button>
+        <button type="button" data-testid="new-conversation" onClick={onNewConversation}>
+          new
+        </button>
+      </section>
+    );
+  },
 }));
 
 const config: AppConfig = {
@@ -220,6 +265,23 @@ const succeededAssistant: ChatMessage = {
   content: 'done',
   runStatus: 'succeeded',
   endedAt: 2,
+};
+
+const previewComment: PreviewComment = {
+  id: 'comment-1',
+  projectId: project.id,
+  conversationId: 'conv-a',
+  filePath: 'index.html',
+  elementId: 'hero',
+  selector: '[data-od-id="hero"]',
+  label: 'Hero',
+  text: 'Hero copy',
+  position: { x: 1, y: 2, width: 30, height: 40 },
+  htmlHint: '<section data-od-id="hero">Hero copy</section>',
+  note: 'tighten this area',
+  status: 'open',
+  createdAt: 1,
+  updatedAt: 1,
 };
 
 describe('ProjectView conversation run isolation', () => {
@@ -384,6 +446,27 @@ describe('ProjectView conversation run isolation', () => {
 
     expect(streamViaDaemon).not.toHaveBeenCalled();
     expect(reattachDaemonRun).not.toHaveBeenCalled();
+  });
+
+  it('detaches saved comment attachments after queueing them for a busy conversation', async () => {
+    fetchPreviewComments.mockResolvedValue([previewComment]);
+
+    renderProjectView();
+
+    await waitFor(() => expect(screen.getByTestId('active-conversation').textContent).toBe('conv-a'));
+    await waitFor(() => expect(screen.getByTestId('streaming-state').textContent).toBe('streaming'));
+
+    fireEvent.click(screen.getByTestId('attach-first-comment'));
+    await waitFor(() => expect(screen.getByTestId('attached-comment-count').textContent).toBe('1'));
+
+    fireEvent.click(screen.getByTestId('send-message'));
+
+    await waitFor(() => expect(screen.getByTestId('attached-comment-count').textContent).toBe('0'));
+
+    fireEvent.click(screen.getByTestId('send-message'));
+
+    expect(streamViaDaemon).not.toHaveBeenCalled();
+    expect(screen.getByTestId('attached-comment-count').textContent).toBe('0');
   });
 
   it('surfaces conversation message load errors and keeps sends disabled until messages load', async () => {
