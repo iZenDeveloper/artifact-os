@@ -26,6 +26,11 @@ import { mkdir, cp, readdir, readFile, stat, unlink, writeFile } from 'node:fs/p
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
+import {
+  loadSkillCardMeta,
+  renderFallbackCard,
+  type SkillCardMeta,
+} from './fallback-preview-card.ts';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const LANDING_ROOT = path.resolve(HERE, '..');
@@ -50,6 +55,13 @@ interface Job {
   sourceRoot: string;
   /** Optional ready-made preview to copy verbatim (skips browser). */
   reuseFrom?: string;
+  /**
+   * When set, the renderer screenshots this in-memory HTML instead of
+   * navigating to `htmlPath`. Used by the fallback-card path for skills
+   * that ship a SKILL.md but no runnable demo. `htmlPath` still points
+   * at SKILL.md so the source-hash machinery picks up edits.
+   */
+  htmlContent?: string;
 }
 
 interface PreviewManifestEntry {
@@ -189,6 +201,11 @@ async function sourceHashForJob(job: Job, directoryHashes: Map<string, string>):
   }
 
   const hash = createHash('sha256');
+  // Fallback-card jobs encode their input in `htmlContent` (template
+  // output for SKILL.md frontmatter). Folding it into the source hash
+  // means a template tweak invalidates only the 96 fallbacks, not the
+  // expensive real-demo screenshots that don't depend on it.
+  if (job.htmlContent) hash.update(job.htmlContent);
   hash.update(baseHash);
   hash.update(await hashExtraDependencyRoots(job, directoryHashes));
   return hash.digest('hex');
@@ -248,6 +265,56 @@ async function removeIfExists(filePath: string): Promise<void> {
   await unlink(filePath);
 }
 
+/**
+ * Skills without a runnable `example.html` — pure SKILL.md instruction
+ * skills like `copywriting`, `creative-director`, `competitive-ads-extractor`.
+ * We synthesize a typographic editorial card and screenshot it so the
+ * catalog row stops falling back to a blank diagonal-stripe placeholder.
+ *
+ * The card's Nº matches the row's position WITHIN the instruction
+ * section (1..N over instruction skills only, sorted by featured asc
+ * then alphabetical). That keeps card numbering stable with what the
+ * catalog renders on `/skills/instructions/` and the Instructions
+ * section of `/skills/`.
+ */
+async function buildFallbackCardJobs(): Promise<Job[]> {
+  const allSlugs: string[] = [];
+  for (const entry of await readdir(SKILLS_DIR, { withFileTypes: true })) {
+    if (entry.isDirectory()) allSlugs.push(entry.name);
+  }
+
+  const instructionSlugs = allSlugs.filter(
+    (slug) => !existsSync(path.join(SKILLS_DIR, slug, 'example.html')),
+  );
+
+  const instructions = instructionSlugs
+    .map((slug) => loadSkillCardMeta(SKILLS_DIR, slug))
+    .filter((m): m is SkillCardMeta => m !== null);
+
+  // Match `_lib/catalog.ts` → `getSkillRecords` sort: featured (∞ if
+  // unset) ascending, then alphabetical.
+  instructions.sort((a, b) => {
+    const af = a.featured ?? Number.POSITIVE_INFINITY;
+    const bf = b.featured ?? Number.POSITIVE_INFINITY;
+    if (af !== bf) return af - bf;
+    return a.slug.localeCompare(b.slug);
+  });
+
+  const jobs: Job[] = [];
+  for (let i = 0; i < instructions.length; i++) {
+    const meta = instructions[i]!;
+    const skillDir = path.join(SKILLS_DIR, meta.slug);
+    jobs.push({
+      bucket: 'skills',
+      slug: meta.slug,
+      htmlPath: path.join(skillDir, 'SKILL.md'),
+      sourceRoot: skillDir,
+      htmlContent: renderFallbackCard(meta, i + 1),
+    });
+  }
+  return jobs;
+}
+
 async function discoverJobs(): Promise<Job[]> {
   const jobs: Job[] = [];
 
@@ -264,6 +331,11 @@ async function discoverJobs(): Promise<Job[]> {
       });
     }
   }
+
+  // Synthesize cards for every other SKILL.md so the catalog never
+  // shows a bare diagonal-stripe placeholder when the agent has nothing
+  // demo-able to render.
+  jobs.push(...(await buildFallbackCardJobs()));
 
   if (existsSync(DESIGN_TEMPLATES_DIR)) {
     const designTemplateEntries = await readdir(DESIGN_TEMPLATES_DIR, { withFileTypes: true });
@@ -343,10 +415,22 @@ async function captureOne(browser: Browser, job: Job): Promise<{
   });
   const page = await ctx.newPage();
   try {
-    await page.goto(pathToFileURL(job.htmlPath).toString(), {
-      waitUntil: 'load',
-      timeout: NAVIGATION_TIMEOUT_MS,
-    });
+    if (job.htmlContent) {
+      // In-memory render path (fallback cards). `setContent` resolves
+      // before `<link rel="stylesheet">` finishes, so explicitly wait
+      // for `load` and `document.fonts.ready` — without this the
+      // screenshot captures a flash of unstyled serif glyphs.
+      await page.setContent(job.htmlContent, {
+        waitUntil: 'load',
+        timeout: NAVIGATION_TIMEOUT_MS,
+      });
+      await page.evaluate(() => document.fonts.ready);
+    } else {
+      await page.goto(pathToFileURL(job.htmlPath).toString(), {
+        waitUntil: 'load',
+        timeout: NAVIGATION_TIMEOUT_MS,
+      });
+    }
     await page.waitForTimeout(SETTLE_MS);
     await page.screenshot({
       path: targetPng,

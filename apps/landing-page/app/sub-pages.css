@@ -767,6 +767,93 @@ body.sub-page {
   color: var(--ink);
   margin-bottom: 12px;
 }
+
+/*
+ * Inline-rendered SKILL.md body for instruction-kind skills. We strip
+ * the SKILL.md H1 (already on the page as the detail header) and the
+ * `> Curated from @author.` blockquote (already exposed in attribution),
+ * but otherwise let Astro's standard markdown pipeline take over so
+ * tables, code blocks, lists, etc. all render with the existing site
+ * typography.
+ */
+.detail-md > h1:first-child,
+.detail-md > blockquote:first-of-type {
+  display: none;
+}
+.detail-md p,
+.detail-md ul,
+.detail-md ol {
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--ink);
+  max-width: 720px;
+}
+.detail-md p,
+.detail-md ul,
+.detail-md ol,
+.detail-md pre,
+.detail-md table {
+  margin: 0 0 18px;
+}
+.detail-md h3 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 18px;
+  margin: 28px 0 8px;
+  color: var(--ink);
+}
+.detail-md h4 {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin: 24px 0 6px;
+}
+.detail-md ul,
+.detail-md ol {
+  padding-left: 1.4em;
+}
+.detail-md li {
+  margin-bottom: 4px;
+}
+.detail-md code {
+  font-family: var(--mono);
+  font-size: 13px;
+  background: var(--paper-dark, var(--paper-warm));
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.detail-md pre {
+  background: var(--paper-dark, var(--paper-warm));
+  border: 1px solid var(--line-soft);
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.detail-md pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.detail-md a {
+  color: var(--ink);
+  border-bottom: 1px solid var(--ink-mute);
+}
+.detail-md a:hover {
+  color: var(--coral);
+  border-bottom-color: var(--coral);
+}
+.detail-md blockquote {
+  margin: 0 0 18px;
+  padding-left: 14px;
+  border-left: 2px solid var(--line);
+  color: var(--ink-mute);
+  font-style: italic;
+}
 .block-lead {
   color: var(--ink-soft);
   font-size: 15px;
