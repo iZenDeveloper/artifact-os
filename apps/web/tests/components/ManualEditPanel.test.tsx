@@ -59,6 +59,23 @@ describe('ManualEditPanel', () => {
     expect(host.textContent).not.toContain('Advanced');
   });
 
+  it('shows a readable selected element name in the titlebar', () => {
+    renderPanel({
+      selectedTarget: {
+        ...target,
+        id: 'path-0-0',
+        kind: 'container',
+        label: 'div.container.hero-split',
+        className: 'container hero-split',
+        text: 'Turn a brand brief into an editorial collage system.',
+        attributes: { 'data-od-source-path': 'path-0-0' },
+      },
+    });
+
+    expect(host.querySelector('.manual-edit-titlebar')?.textContent).toContain('Hero split');
+    expect(host.querySelector('.manual-edit-titlebar')?.textContent).not.toContain('div.container');
+  });
+
   it('allows returning from an element inspector to the page inspector', () => {
     const onClearSelection = vi.fn();
     renderPanel({ onClearSelection });

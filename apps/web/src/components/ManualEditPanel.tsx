@@ -67,6 +67,7 @@ export function ManualEditPanel({
   const selectedTargetRef = useRef<ManualEditTarget | null>(selectedTarget);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const targetForInspector = selectedTarget;
+  const panelTitle = targetForInspector ? readableManualEditTargetName(targetForInspector) : 'Edit';
   useEffect(() => {
     selectedTargetRef.current = selectedTarget;
   }, [selectedTarget]);
@@ -94,7 +95,7 @@ export function ManualEditPanel({
     >
       <section className="manual-edit-modal cc-panel">
         <div className="manual-edit-titlebar">
-          <span>Edit</span>
+          <span title={panelTitle}>{panelTitle}</span>
           {onExit ? (
             <button
               type="button"
@@ -221,6 +222,93 @@ export function ManualEditPanel({
       </section>
     </aside>
   );
+}
+
+function readableManualEditTargetName(target: ManualEditTarget): string {
+  const explicit = firstReadableText(
+    target.attributes['data-od-label'],
+    target.attributes['aria-label'],
+    target.attributes.title,
+  );
+  if (explicit) return explicit;
+
+  if (target.kind === 'text' || target.kind === 'link' || target.kind === 'token') {
+    const textName = readableContentName(target.text || target.fields.text || target.label);
+    if (textName) return textName;
+  }
+  if (target.kind === 'image') {
+    const imageName = readableContentName(target.fields.alt || target.label);
+    if (imageName) return imageName;
+  }
+
+  const identifierName = readableIdentifierName(
+    target.attributes.id ||
+    target.attributes['data-od-id'] ||
+    target.id,
+  );
+  if (identifierName) return identifierName;
+
+  const className = readableClassName(target.className);
+  if (className) return className;
+
+  const labelName = readableContentName(target.label);
+  if (labelName && !looksCodeLikeLabel(labelName)) return labelName;
+
+  if (target.kind === 'container') return 'Container';
+  if (target.kind === 'image') return 'Image';
+  if (target.kind === 'link') return 'Link';
+  return 'Text';
+}
+
+function firstReadableText(...values: Array<string | undefined>): string {
+  for (const value of values) {
+    const readable = readableContentName(value);
+    if (readable) return readable;
+  }
+  return '';
+}
+
+function readableContentName(value: string | undefined): string {
+  const clean = (value ?? '').replace(/\s+/g, ' ').trim();
+  if (!clean) return '';
+  if (looksGeneratedIdentifier(clean)) return '';
+  return clean.length > 42 ? `${clean.slice(0, 39).trim()}...` : clean;
+}
+
+function readableIdentifierName(value: string | undefined): string {
+  const raw = (value ?? '').trim();
+  if (!raw || looksGeneratedIdentifier(raw)) return '';
+  const lastSelectorPart = (raw.includes('.') ? raw.split('.').filter(Boolean).at(-1) : raw) ?? '';
+  const lastIdPart = (lastSelectorPart.includes('#') ? lastSelectorPart.split('#').filter(Boolean).at(-1) : lastSelectorPart) ?? '';
+  return humanizeIdentifier(lastIdPart);
+}
+
+function readableClassName(value: string | undefined): string {
+  const classes = (value ?? '').split(/\s+/).map((item) => item.trim()).filter(Boolean);
+  const candidate = classes.find((item) => {
+    const lower = item.toLowerCase();
+    return !looksGeneratedIdentifier(item) && !['container', 'wrapper', 'group', 'section', 'row', 'col'].includes(lower);
+  }) ?? classes.find((item) => !looksGeneratedIdentifier(item));
+  return humanizeIdentifier(candidate);
+}
+
+function humanizeIdentifier(value: string | undefined): string {
+  const clean = (value ?? '')
+    .replace(/^[_#.\s-]+|[_#.\s-]+$/g, '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!clean || looksGeneratedIdentifier(clean)) return '';
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
+
+function looksCodeLikeLabel(value: string): boolean {
+  return /^[a-z][a-z0-9-]*(?:[#.][\w-]+)+$/i.test(value) || /^[a-z][a-z0-9-]*\s+#/.test(value);
+}
+
+function looksGeneratedIdentifier(value: string): boolean {
+  return /^path(?:-\d+)+$/i.test(value) || /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value);
 }
 
 function PageInspector({
