@@ -79,9 +79,9 @@ git lfs version
 & $cargo --version
 & $makensis /VERSION
 
-git fetch --tags --force --depth=1 origin
-
 if ([string]::IsNullOrWhiteSpace($ReleaseVersion)) {
+  git fetch --force --depth=1 origin "+refs/tags/open-design-v*:refs/tags/open-design-v*"
+
   $previousMetadataUrl = $env:OPEN_DESIGN_BETA_METADATA_URL
   $previousGitHubOutput = $env:GITHUB_OUTPUT
   try {

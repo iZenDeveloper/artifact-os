@@ -14,6 +14,11 @@ on:
         required: true
         type: boolean
         default: false
+      release_version:
+        description: "Local beta candidate version for no-publish self-hosted validation."
+        required: true
+        type: string
+        default: "0.8.1-beta.0"
 
 permissions:
   contents: read
@@ -41,7 +46,7 @@ jobs:
         shell: cmd
         run: |
           @echo on
-          powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .github\scripts\release\build-beta.ps1 -Platform win -Lane self-hosted -Namespace release-beta-win
+          powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .github\scripts\release\build-beta.ps1 -Platform win -Lane self-hosted -Namespace release-beta-win -ReleaseVersion "${{ inputs.release_version }}"
 
       - name: Publish local summary
         if: ${{ always() }}
