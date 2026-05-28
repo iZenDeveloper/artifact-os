@@ -666,6 +666,12 @@ async function handleMcpToolCall(baseUrl: string, name: unknown, args: McpArgs) 
         const declaredEntry = project?.metadata?.entryFile ?? null;
         const entryFile = await resolveProjectEntry(baseUrl, id, declaredEntry);
         const previewUrl = rawPreviewUrl(baseUrl, id, entryFile);
+        // Build the studio deep link too — needs the project's
+        // default conversation, which we look up once. Cheap to skip
+        // when the daemon has no webBaseUrl configured.
+        const webBase = await getWebBaseUrl(baseUrl);
+        const conversationId = webBase ? await getDefaultConversationId(baseUrl, id) : null;
+        const studioUrl = buildStudioUrl(webBase, id, conversationId, entryFile);
         return ok(
           withActiveEcho(
             {
@@ -673,10 +679,14 @@ async function handleMcpToolCall(baseUrl: string, name: unknown, args: McpArgs) 
               entryFile,
               kind: project?.metadata?.kind ?? null,
               resolvedDir,
-              // Open in a browser to view the rendered design (HTML
-              // entries render directly; see rawPreviewUrl). Omitted
-              // when the project has no entry file yet.
+              // previewUrl: open in a browser to view the rendered
+              // design directly (HTML entries render; see
+              // rawPreviewUrl). studioUrl: open the OD studio page
+              // that shows the rendered file alongside the chat
+              // history for the project. Both omitted when their
+              // prerequisites aren't met.
               ...(previewUrl ? { previewUrl } : {}),
+              ...(studioUrl ? { studioUrl } : {}),
             },
             active,
             resolved,
@@ -970,11 +980,18 @@ async function startRun(baseUrl: string, args: McpArgs) {
     body.pluginInputs = args.inputs;
   }
   const created = await postJson<JsonObject>(`${baseUrl}/api/runs`, body);
+  // Build studioUrl (conversation-level — no entry file yet) so the
+  // outer agent has a URL to give the user right away. The daemon
+  // returns conversationId in the response now that POST /api/runs
+  // falls back to the project's default conversation for MCP callers.
+  const webBase = await getWebBaseUrl(baseUrl);
+  const studioUrl = buildStudioUrl(webBase, id, created?.conversationId, null);
   return ok(
     withActiveEcho(
       {
         ...created,
-        hint: 'Run started. Open Design generation normally takes 5–30 minutes. Polls showing status:running with no new files / unchanged file mtimes is the inner agent thinking, NOT a hang — DO NOT cancel_run out of impatience and DO NOT substitute write_file to produce the design yourself; OD\'s pipeline is what gives the result its design quality. Poll get_run(runId) every 30–60 seconds; report "still working" to the user between polls and keep waiting. On terminal status the response carries previewUrl + agentMessage which together are the canonical deliverable.',
+        ...(studioUrl ? { studioUrl } : {}),
+        hint: 'Run started. Open Design generation normally takes 5–30 minutes. Polls showing status:running with no new files / unchanged file mtimes is the inner agent thinking, NOT a hang — DO NOT cancel_run out of impatience and DO NOT substitute write_file to produce the design yourself; OD\'s pipeline is what gives the result its design quality. Poll get_run(runId) every 30–60 seconds; report "still working" to the user between polls and keep waiting. On terminal status the response carries previewUrl + agentMessage which together are the canonical deliverable. studioUrl (when present) is the URL to suggest to the user — it shows the file preview + the chat history.',
       },
       active,
       resolved,
@@ -1001,24 +1018,37 @@ async function getRun(baseUrl: string, args: McpArgs) {
     // eventsLogPath with a tail hint so the outer agent can watch live
     // progress in its own shell instead of cancelling because polling
     // shows nothing changing.
+    const webBase = await getWebBaseUrl(baseUrl);
+    const studioUrl = buildStudioUrl(webBase, status.projectId, status.conversationId, null);
+    const enriched: JsonObject = { ...status };
+    if (studioUrl) enriched.studioUrl = studioUrl;
     if (typeof status.eventsLogPath === 'string' && status.eventsLogPath.length > 0) {
-      return ok({
-        ...status,
-        hint: 'Run still in flight. Tail eventsLogPath in your own shell (e.g. `tail -n 50 -f "' + status.eventsLogPath + '"`) to see live text_delta / tool_use events from the inner agent — that is your in-flight progress signal. Keep polling get_run every 30–60s; do not cancel because file mtimes look static, that is the agent thinking between writes.',
-      });
+      enriched.hint = 'Run still in flight. Tail eventsLogPath in your own shell (e.g. `tail -n 50 -f "' + status.eventsLogPath + '"`) to see live text_delta / tool_use events from the inner agent — that is your in-flight progress signal. Keep polling get_run every 30–60s; do not cancel because file mtimes look static, that is the agent thinking between writes.';
+      if (studioUrl) {
+        enriched.hint += ` Once you have something to show the user, suggest they open studioUrl (${studioUrl}) — that page renders the project file AND streams the chat history live.`;
+      }
     }
-    return ok(status);
+    return ok(enriched);
   }
-  const [previewUrl, agentMessage] = await Promise.all([
+  const [previewUrl, agentMessage, webBase] = await Promise.all([
     buildRunPreviewUrl(baseUrl, status.projectId),
     fetchRunAgentMessage(baseUrl, String(status.id ?? args.runId)),
+    getWebBaseUrl(baseUrl),
   ]);
+  // Reverse-derive entryFile from previewUrl when present so we can
+  // build a fully-specified studio link (project + conversation +
+  // file) rather than just the conversation-level URL.
+  const entryFile = previewUrl
+    ? decodeURIComponent(previewUrl.split('/raw/')[1] ?? '')
+    : null;
+  const studioUrl = buildStudioUrl(webBase, status.projectId, status.conversationId, entryFile);
   const enriched: JsonObject = { ...status };
   if (previewUrl) enriched.previewUrl = previewUrl;
   if (agentMessage) enriched.agentMessage = agentMessage;
+  if (studioUrl) enriched.studioUrl = studioUrl;
   enriched.hint = previewUrl
-    ? `Run finished. Open previewUrl in the user-facing browser now to show the rendered design — clients with a built-in browser pane (e.g. Codex CLI) should navigate to it directly; otherwise surface it as a clickable link the user can click. agentMessage carries the inner agent's explanation; show it alongside the preview. Call get_artifact({ project: "${status.projectId}" }) when you need the source files — always pass project explicitly; omitting it falls back to the active project, which may differ. eventsLogPath, when present, holds the full inner-agent event log for forensics.`
-    : 'Run finished but produced no files. The inner agent\'s output is in agentMessage — relay it to the user verbatim. Most often this is a clarifying question (e.g. a <question-form>) you should answer by calling start_run again with a more specific prompt or a chosen plugin. eventsLogPath, when present, holds the full event log if you need to inspect what happened.';
+    ? `Run finished. studioUrl (when present) is the BEST link to hand the user — it opens the OD studio page that shows the rendered design AND the chat history (your prompts and the inner agent's replies) side by side. previewUrl is the raw file URL if the user only wants the rendered output. agentMessage carries the inner agent's explanation; show it alongside the link. Call get_artifact({ project: "${status.projectId}" }) when you need the source files — always pass project explicitly; omitting it falls back to the active project, which may differ. eventsLogPath, when present, holds the full inner-agent event log for forensics.`
+    : 'Run finished but produced no files. The inner agent\'s output is in agentMessage — relay it to the user verbatim. Most often this is a clarifying question (e.g. a <question-form>) you should answer by calling start_run again with a more specific prompt or a chosen plugin. studioUrl, when present, opens the OD page that shows the chat history for the user. eventsLogPath, when present, holds the full event log if you need to inspect what happened.';
   return ok(enriched);
 }
 
@@ -1053,6 +1083,88 @@ async function fetchRunAgentMessage(baseUrl: string, runId: string): Promise<str
     }
     const message = parts.join('');
     return message.length > 0 ? message : null;
+  } catch {
+    return null;
+  }
+}
+
+// Studio deep links (browser-facing OD page that shows the file
+// preview alongside the conversation history for a run). Built from
+// the daemon's advertised webBaseUrl + project + conversation + entry
+// file. The webBaseUrl is exposed by /api/mcp/install-info; we cache
+// it briefly because each get_run/get_project poll otherwise pays for
+// an extra fetch. Returns null when any required piece is missing —
+// callers omit the field rather than emit a half-built URL.
+
+interface WebBaseUrlCache {
+  t: number;
+  url: string | null;
+}
+const WEB_BASE_URL_TTL_MS = 5_000;
+let webBaseUrlCache: WebBaseUrlCache | null = null;
+
+// Internal — for tests only. Module-scoped caches persist across `it`
+// blocks inside the same vitest module load, so an earlier test that
+// returns `null` would otherwise poison subsequent tests for 5s. Test
+// files call this in afterEach to start each case with a clean cache.
+export function _resetWebBaseUrlCache(): void {
+  webBaseUrlCache = null;
+}
+
+async function getWebBaseUrl(daemonBaseUrl: string): Promise<string | null> {
+  const now = Date.now();
+  if (webBaseUrlCache && now - webBaseUrlCache.t < WEB_BASE_URL_TTL_MS) {
+    return webBaseUrlCache.url;
+  }
+  try {
+    const data = await getJson<{ webBaseUrl?: string | null }>(
+      `${daemonBaseUrl}/api/mcp/install-info`,
+    );
+    const url =
+      typeof data?.webBaseUrl === 'string' && data.webBaseUrl.length > 0
+        ? data.webBaseUrl
+        : null;
+    webBaseUrlCache = { t: now, url };
+    return url;
+  } catch {
+    webBaseUrlCache = { t: now, url: null };
+    return null;
+  }
+}
+
+function buildStudioUrl(
+  webBaseUrl: string | null,
+  projectId: unknown,
+  conversationId: unknown,
+  entryFile: unknown,
+): string | null {
+  if (!webBaseUrl) return null;
+  if (typeof projectId !== 'string' || !projectId) return null;
+  if (typeof conversationId !== 'string' || !conversationId) return null;
+  const base = `${webBaseUrl}/projects/${encodeURIComponent(projectId)}/conversations/${encodeURIComponent(conversationId)}`;
+  if (typeof entryFile === 'string' && entryFile.length > 0) {
+    const segments = entryFile
+      .split('/')
+      .filter((s) => s.length > 0)
+      .map(encodeURIComponent)
+      .join('/');
+    return `${base}/files/${segments}`;
+  }
+  return base;
+}
+
+// For get_project / start_run: pick the project's first / default
+// conversation so the studio link lands the user on a coherent page.
+// create_project seeds a default conversation per project; this just
+// reads the same one back. Returns null on any lookup failure — caller
+// omits studioUrl.
+async function getDefaultConversationId(baseUrl: string, projectId: string): Promise<string | null> {
+  try {
+    const data = await getJson<{ conversations?: Array<{ id?: string }> }>(
+      `${baseUrl}/api/projects/${encodeURIComponent(projectId)}/conversations`,
+    );
+    const first = Array.isArray(data?.conversations) ? data.conversations[0] : null;
+    return typeof first?.id === 'string' && first.id.length > 0 ? first.id : null;
   } catch {
     return null;
   }

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { handleMcpToolCall } from '../src/mcp.js';
+import { _resetWebBaseUrlCache, handleMcpToolCall } from '../src/mcp.js';
 
 const originalFetch = globalThis.fetch;
 
@@ -18,6 +18,7 @@ describe('public MCP discovery + generation tools', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     globalThis.fetch = originalFetch;
+    _resetWebBaseUrlCache();
   });
 
   it('list_skills proxies GET /api/skills', async () => {
@@ -121,7 +122,9 @@ describe('public MCP discovery + generation tools', () => {
 
   it('get_run does not add a previewUrl while the run is still running', async () => {
     const fetchMock = vi.fn(async (url: string) => {
-      expect(url).toBe('http://127.0.0.1:17456/api/runs/run-99');
+      if (url.endsWith('/api/mcp/install-info')) {
+        return new Response(JSON.stringify({ webBaseUrl: null }), { status: 200 });
+      }
       return new Response(JSON.stringify({ id: 'run-99', status: 'running', projectId: 'project-1' }), { status: 200 });
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -130,7 +133,6 @@ describe('public MCP discovery + generation tools', () => {
     const parsed = JSON.parse(firstText(result));
     expect(parsed.status).toBe('running');
     expect(parsed.previewUrl).toBeUndefined();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   // When a run is mid-flight, the outer agent has no in-band signal
@@ -138,6 +140,126 @@ describe('public MCP discovery + generation tools', () => {
   // after a few polls and substitute their own output. Surfacing
   // eventsLogPath plus a hint to tail it gives Codex a way to see live
   // progress in its own shell and trust the run.
+  // studioUrl deep-links to the OD studio page that shows BOTH the
+  // file preview and the chat history for a run. Built when the
+  // daemon advertises a webBaseUrl (via /api/mcp/install-info) and
+  // the run is bound to a project + conversation. This is the URL
+  // Codex hands back to the user — way better than the raw `/api/.../raw/`
+  // path because the chat panel shows what Codex asked and what the
+  // inner agent replied.
+
+  it('get_run includes studioUrl on success when webBaseUrl + conversationId are available', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith('/api/mcp/install-info')) {
+        return new Response(JSON.stringify({ webBaseUrl: 'http://127.0.0.1:65321' }), { status: 200 });
+      }
+      if (url.endsWith('/api/runs/run-42')) {
+        return new Response(JSON.stringify({
+          id: 'run-42',
+          status: 'succeeded',
+          projectId: 'project-1',
+          conversationId: 'conv-9',
+        }), { status: 200 });
+      }
+      if (url.endsWith('/api/projects/project-1')) {
+        return new Response(JSON.stringify({ project: { id: 'project-1', metadata: { entryFile: 'index.html' } } }), { status: 200 });
+      }
+      if (url.endsWith('/api/runs/run-42/events')) {
+        return new Response('', { status: 200 });
+      }
+      throw new Error('unexpected url ' + url);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await handleMcpToolCall('http://127.0.0.1:17456', 'get_run', { runId: 'run-42' });
+    const parsed = JSON.parse(firstText(result));
+    expect(parsed.studioUrl).toBe(
+      'http://127.0.0.1:65321/projects/project-1/conversations/conv-9/files/index.html',
+    );
+  });
+
+  it('get_run omits studioUrl when webBaseUrl is not configured', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith('/api/mcp/install-info')) {
+        return new Response(JSON.stringify({ webBaseUrl: null }), { status: 200 });
+      }
+      if (url.endsWith('/api/runs/run-42')) {
+        return new Response(JSON.stringify({
+          id: 'run-42',
+          status: 'succeeded',
+          projectId: 'project-1',
+          conversationId: 'conv-9',
+        }), { status: 200 });
+      }
+      if (url.endsWith('/api/projects/project-1')) {
+        return new Response(JSON.stringify({ project: { id: 'project-1', metadata: { entryFile: 'index.html' } } }), { status: 200 });
+      }
+      if (url.endsWith('/api/runs/run-42/events')) {
+        return new Response('', { status: 200 });
+      }
+      throw new Error('unexpected url ' + url);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await handleMcpToolCall('http://127.0.0.1:17456', 'get_run', { runId: 'run-42' });
+    const parsed = JSON.parse(firstText(result));
+    expect(parsed.studioUrl).toBeUndefined();
+  });
+
+  it('start_run returns studioUrl and conversationId for the new run', async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/projects')) {
+        return new Response(JSON.stringify({ projects: [{ id: 'project-1', name: 'Demo' }] }), { status: 200 });
+      }
+      if (url.endsWith('/api/mcp/install-info')) {
+        return new Response(JSON.stringify({ webBaseUrl: 'http://127.0.0.1:65321' }), { status: 200 });
+      }
+      if (url.endsWith('/api/runs') && init?.method === 'POST') {
+        return new Response(JSON.stringify({
+          runId: 'run-77',
+          conversationId: 'conv-9',
+          assistantMessageId: 'msg-9',
+        }), { status: 202 });
+      }
+      throw new Error('unexpected url ' + url);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await handleMcpToolCall('http://127.0.0.1:17456', 'start_run', {
+      project: 'Demo',
+      prompt: 'make a deck',
+    });
+    const parsed = JSON.parse(firstText(result));
+    expect(parsed.runId).toBe('run-77');
+    expect(parsed.conversationId).toBe('conv-9');
+    expect(parsed.studioUrl).toBe('http://127.0.0.1:65321/projects/project-1/conversations/conv-9');
+  });
+
+  it('get_project returns studioUrl using the project default conversation', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith('/api/mcp/install-info')) {
+        return new Response(JSON.stringify({ webBaseUrl: 'http://127.0.0.1:65321' }), { status: 200 });
+      }
+      if (url.endsWith('/api/projects/' + PROJECT_UUID)) {
+        return new Response(JSON.stringify({ project: { id: PROJECT_UUID, metadata: { entryFile: 'index.html' } } }), { status: 200 });
+      }
+      if (url.endsWith('/api/projects/' + PROJECT_UUID + '/conversations')) {
+        return new Response(JSON.stringify({ conversations: [{ id: 'conv-9', projectId: PROJECT_UUID }] }), { status: 200 });
+      }
+      if (url.endsWith('/api/projects/' + PROJECT_UUID + '/files')) {
+        return new Response(JSON.stringify({ files: [] }), { status: 200 });
+      }
+      throw new Error('unexpected url ' + url);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await handleMcpToolCall('http://127.0.0.1:17456', 'get_project', { project: PROJECT_UUID });
+    const parsed = JSON.parse(firstText(result));
+    expect(parsed.studioUrl).toBe(
+      `http://127.0.0.1:65321/projects/${PROJECT_UUID}/conversations/conv-9/files/index.html`,
+    );
+  });
+
   it('get_run surfaces eventsLogPath with a tail hint while running', async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({
       id: 'run-99',

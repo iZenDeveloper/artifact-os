@@ -165,8 +165,14 @@ export interface ChatRunFeedbackResponse {
 
 export interface ChatRunCreateResponse {
   runId: string;
-  appliedPluginSnapshotId?: string;
-  pluginId?: string;
+  // Daemon-resolved conversation/message ids — populated for MCP /
+  // SDK callers that POST /api/runs with only projectId. The web flow
+  // normally sends these in already; daemon falls back to the
+  // project's default conversation otherwise.
+  conversationId?: string | null;
+  assistantMessageId?: string | null;
+  appliedPluginSnapshotId?: string | null;
+  pluginId?: string | null;
 }
 
 export interface ChatRunStatusResponse {
@@ -184,6 +190,9 @@ export interface ChatRunStatusResponse {
   signal?: string | null;
   error?: string | null;
   errorCode?: string | null;
+  /** Absolute path to the per-run JSONL event log the daemon mirrors
+   *  the SSE stream to (see runs.ts `runsLogDir`). Null when the
+   *  daemon was launched without event persistence configured. */
   eventsLogPath?: string | null;
 }
 

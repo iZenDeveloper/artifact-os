@@ -49,6 +49,16 @@ export function registerMcpRoutes(app: Express, ctx: RegisterMcpRoutesDeps) {
     if (isSidecarMode) {
       sidecarEnv[SIDECAR_ENV.IPC_PATH] = sidecarIpcPath;
     }
+    // tools-dev / packaged launchers export OD_WEB_PORT so the daemon
+    // knows where the browser-facing Open Design studio is running.
+    // CLI-only / headless launches set neither and webBaseUrl falls
+    // through as null — MCP clients then just omit the studio deep
+    // link from their responses.
+    const webPortRaw = process.env.OD_WEB_PORT;
+    const webPortNum = webPortRaw ? Number(webPortRaw) : Number.NaN;
+    const webBaseUrl = Number.isFinite(webPortNum) && webPortNum > 0
+      ? `http://127.0.0.1:${webPortNum}`
+      : null;
     return buildMcpInstallPayload({
       cliPath,
       cliExists: fs.existsSync(cliPath),
@@ -66,6 +76,7 @@ export function registerMcpRoutes(app: Express, ctx: RegisterMcpRoutesDeps) {
       electronAsNode: process.env.ELECTRON_RUN_AS_NODE === '1',
       isSidecarMode,
       sidecarEnv,
+      webBaseUrl,
     });
   }
 
