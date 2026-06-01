@@ -111,7 +111,7 @@ jobs:
     needs: metadata
     if: ${{ inputs.enable_win }}
     runs-on: [self-hosted, Windows, X64, nexu-win, release-beta]
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.2
