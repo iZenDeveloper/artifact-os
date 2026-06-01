@@ -12,8 +12,11 @@
 
 import {
   DEFAULT_LOCALE,
+  LANDING_LOCALES,
   getCommonCopy,
   getHeaderProductMenuCopy,
+  getLocaleDefinition,
+  localePath,
   localizedHref,
   type HeaderCopy,
   type LandingLocaleCode,
@@ -88,15 +91,23 @@ export function Header({
   const href = (path: string) => localizedHref(path, locale);
   const homeBrandHref = brandHref === '/' ? href('/') : brandHref;
   const productMenuCopy = getHeaderProductMenuCopy(locale);
+  const localeDef = getLocaleDefinition(locale);
+  const localeOptions = LANDING_LOCALES.map((entry) => ({
+    ...entry,
+    href: localePath(entry.code, '/'),
+  }));
 
   return (
     <header className='nav' data-od-id='nav'>
       <div className='container nav-inner'>
         <a href={homeBrandHref} className='brand'>
-          <span className='brand-mark'>
-            <img src='/logo.webp' alt='' width={44} height={44} />
-          </span>
-          <span className='brand-name'>Open Design</span>
+          <img
+            className='brand-logo'
+            src='/open-design-logo-new.svg'
+            alt='Open Design'
+            width={150}
+            height={61}
+          />
         </a>
         {/*
           Mobile / tablet hamburger. Hidden by CSS at ≥1100px (the desktop
@@ -276,8 +287,15 @@ export function Header({
           </ul>
         </nav>
         <div className='nav-side'>
+          <a
+            className='nav-amr'
+            href={AMR_URL}
+            aria-label={`${productMenuCopy.amrName}: ${productMenuCopy.amrBlurb}`}
+          >
+            <img src='/amr-nav-logo.svg' alt='' width={66} height={24} aria-hidden='true' />
+          </a>
           {/*
-            Discord + X icon buttons live before Download / Star so the
+            Discord + X icon buttons live near Download / Star so the
             community channels are reachable from every page without
             burning a nav text slot. The icons are aria-labeled and
             otherwise unlabeled. At ≤1080px they collapse alongside the
@@ -308,17 +326,6 @@ export function Header({
             </svg>
           </a>
           <a
-            className='nav-amr'
-            href={AMR_URL}
-            aria-label={`${productMenuCopy.amrName}: ${productMenuCopy.amrBlurb}`}
-          >
-            <img src='/amr-logo.svg' alt='' width={28} height={28} aria-hidden='true' />
-            <span className='nav-amr-copy'>
-              <span className='nav-amr-title'>AMR</span>
-              <span className='nav-amr-kicker'>{productMenuCopy.amrKicker}</span>
-            </span>
-          </a>
-          <a
             className='nav-cta ghost is-star'
             href={REPO}
             aria-label={headerCopy.starAria}
@@ -329,7 +336,7 @@ export function Header({
             <span data-github-stars>{github?.starsLabel ?? '40K+'}</span>
           </a>
           <a
-            className='nav-cta is-download'
+            className='nav-cta ghost is-download'
             href={REPO_RELEASES}
             aria-label={headerCopy.downloadAria}
             title={headerCopy.downloadTitle}
@@ -339,7 +346,49 @@ export function Header({
             {headerCopy.download}
             <span className='download-arch' data-download-arch hidden />
           </a>
-          <span className='status-dot' aria-hidden='true' />
+          <details className='locale-switch nav-locale' data-locale-switch>
+            <summary
+              className='locale-trigger'
+              aria-label={getCommonCopy(locale).topbar.languageSwitcherLabel}
+            >
+              <span className='locale-trigger-code'>{localeDef.shortLabel}</span>
+              <svg
+                className='locale-trigger-caret'
+                viewBox='0 0 8 5'
+                aria-hidden='true'
+                focusable='false'
+              >
+                <path
+                  d='M0.5 0.75 L4 4 L7.5 0.75'
+                  fill='none'
+                  stroke='currentColor'
+                  strokeWidth='1'
+                  strokeLinecap='square'
+                />
+              </svg>
+            </summary>
+            <div className='locale-menu' role='menu'>
+              {localeOptions.map((entry) => (
+                <a
+                  className={`locale-menu-item${
+                    entry.code === locale ? ' is-active' : ''
+                  }`}
+                  role='menuitem'
+                  data-locale-link
+                  data-locale-code={entry.code}
+                  href={entry.href}
+                  lang={entry.htmlLang}
+                  aria-current={entry.code === locale ? 'true' : undefined}
+                  key={entry.code}
+                >
+                  <span className='locale-menu-code'>
+                    {entry.code.toUpperCase()}
+                  </span>
+                  <span className='locale-menu-label'>{entry.label}</span>
+                </a>
+              ))}
+            </div>
+          </details>
         </div>
       </div>
     </header>
