@@ -4235,7 +4235,20 @@ const [manualEditTargets, setManualEditTargets] = useState<ManualEditTarget[]>([
   );
   const [activeCommentTarget, setActiveCommentTarget] = useState<PreviewCommentSnapshot | null>(null);
   const [hoveredCommentTarget, setHoveredCommentTarget] = useState<PreviewCommentSnapshot | null>(null);
+  // True while the pointer is physically over the floating hover card. The card
+  // sits on top of the preview iframe, so reaching it makes the iframe fire a
+  // mouseout -> od:comment-leave. We ignore that leave while pinned so the card
+  // (and its selectable values) stays put instead of unmounting and flickering.
+  // The pointer cannot be over the iframe and the host card at once, so a fresh
+  // od:comment-hover never races this; only the card's own leave clears it.
+  const hoverCardPinnedRef = useRef(false);
   const [hoveredPodMemberId, setHoveredPodMemberId] = useState<string | null>(null);
+  // If the card unmounts for any other reason while the pointer is still over
+  // it (its onMouseLeave never fires), drop the pin so later leaves dismiss
+  // normally instead of being swallowed forever.
+  useEffect(() => {
+    if (!hoveredCommentTarget) hoverCardPinnedRef.current = false;
+  }, [hoveredCommentTarget]);
   const [activePreviewCommentId, setActivePreviewCommentId] = useState<string | null>(null);
   const [liveCommentTargets, setLiveCommentTargets] = useState<Map<string, PreviewCommentSnapshot>>(() => new Map());
   const liveCommentTargetsRef = useRef(liveCommentTargets);
@@ -5054,6 +5067,9 @@ const [manualEditTargets, setManualEditTargets] = useState<ManualEditTarget[]>([
         return;
       }
       if (data.type === 'od:comment-leave') {
+        // Pointer moved from the element onto the floating hover card, not away
+        // from it — keep the card mounted so it doesn't flicker.
+        if (hoverCardPinnedRef.current) return;
         setHoveredCommentTarget(null);
         return;
       }
@@ -7164,7 +7180,17 @@ const [manualEditTargets, setManualEditTargets] = useState<ManualEditTarget[]>([
             ) : null}
             {commentComposer}
             {boardMode && !commentCreateMode && hoveredCommentTarget && (!activeCommentTarget || commentPortalHost) ? (
-              <AnnotationHoverPopover target={hoveredCommentTarget} scale={overlayPreviewScale} />
+              <AnnotationHoverPopover
+                target={hoveredCommentTarget}
+                scale={overlayPreviewScale}
+                onMouseEnter={() => {
+                  hoverCardPinnedRef.current = true;
+                }}
+                onMouseLeave={() => {
+                  hoverCardPinnedRef.current = false;
+                  setHoveredCommentTarget(null);
+                }}
+              />
             ) : null}
             {commentPortalHost && commentSidePanel
               ? createPortal(commentSidePanel, commentPortalHost)
