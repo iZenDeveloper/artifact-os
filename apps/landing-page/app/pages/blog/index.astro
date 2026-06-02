@@ -58,6 +58,7 @@ const headerHtml = renderToStaticMarkup(
     brandHref: '/',
     active: 'blog',
     locale,
+    currentPath: Astro.url.pathname,
   }),
 );
 

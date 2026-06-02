@@ -789,6 +789,43 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     expect(screen.getByText('Model discovery is not available for this protocol.')).toBeTruthy();
   });
 
+  it('auto-loads provider models after a pasted dirty key is cleaned on blur', async () => {
+    fetchProviderModelsMock.mockResolvedValueOnce({
+      ok: true,
+      kind: 'success',
+      latencyMs: 12,
+      models: [{ id: 'gpt-account', label: 'Account Model' }],
+    });
+    renderSettingsDialog({
+      apiProtocol: 'openai',
+      baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-4o',
+      apiProviderBaseUrl: 'https://api.openai.com/v1',
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: 'OpenAI' }));
+    expect(fetchProviderModelsMock).not.toHaveBeenCalled();
+
+    // Paste a key with a leading zero-width char + trailing newline/tab.
+    fireEvent.change(screen.getByLabelText('API key'), {
+      target: { value: '\u200Bsk-openai\n\t' },
+    });
+    fireEvent.blur(screen.getByLabelText('API key'));
+
+    // If onByokKeyCommit committed the dirty-key cache key, the auto-fetch
+    // effect would bail on providerModelsCommittedKey !== providerModelsKey
+    // and this text would never appear.
+    expect(await screen.findByText('✓ Loaded 1 models from your account.')).toBeTruthy();
+    expect(fetchProviderModelsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        protocol: 'openai',
+        baseUrl: 'https://api.openai.com/v1',
+        apiKey: 'sk-openai',
+      }),
+      expect.any(AbortSignal),
+    );
+  });
+
   it('does not show a BYOK Test button or nag when the API key is still missing', () => {
     renderSettingsDialog({
       apiProtocol: 'anthropic',
@@ -997,7 +1034,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
       expect(JSON.parse(String(init?.body))).toMatchObject({
         mode: 'provider',
         protocol: 'anthropic',
-        apiKey: 'sk-test-provider',
+        apiKey: 'sk-ant-test-provider',
         baseUrl: 'https://api.anthropic.com',
         model: 'claude-sonnet-4-5',
       });
@@ -1014,7 +1051,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    renderSettingsDialog({ apiKey: 'sk-test-provider' });
+    renderSettingsDialog({ apiKey: 'sk-ant-test-provider' });
 
     expect(screen.getByRole('button', { name: 'Test' })).toBeTruthy();
 
@@ -1030,6 +1067,76 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
       ([input]) => input.toString() === '/api/test/connection',
     );
     expect(testConnectionCalls).toHaveLength(1);
+  });
+
+  it('blocks an obvious OpenAI key in the Anthropic tab before testing', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (input.toString() === '/api/memory') {
+        return new Response(
+          JSON.stringify({ enabled: true, memories: [], extraction: null }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      }
+      throw new Error(`unexpected request: ${input.toString()}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderSettingsDialog({ apiKey: 'sk-openai-provider' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+
+    expect(screen.getByRole('alert').textContent).toContain('Invalid API key.');
+    await waitFor(() => {
+      const testConnectionCalls = fetchMock.mock.calls.filter(
+        ([input]) => input.toString() === '/api/test/connection',
+      );
+      expect(testConnectionCalls).toHaveLength(0);
+    });
+  });
+
+  it('sends a cleaned API key when the pasted value has trailing newline/zero-width characters', async () => {
+    let sentApiKey: unknown;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      if (url === '/api/memory') {
+        return new Response(
+          JSON.stringify({ enabled: true, memories: [], extraction: null }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      }
+      expect(url).toBe('/api/test/connection');
+      sentApiKey = JSON.parse(String(init?.body)).apiKey;
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          kind: 'ok',
+          latencyMs: 7,
+          model: 'claude-sonnet-4-5',
+          sample: 'pong',
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    // Leading zero-width char + trailing newline/tab — the exact shape a
+    // pasted key picks up from a docs code block or a terminal copy.
+    renderSettingsDialog({ apiKey: '\u200Bsk-ant-test-provider\n\t' });
+
+    fireEvent.blur(screen.getByLabelText('API key'));
+
+    // The auto-test must survive the apiKey-cleanup re-render: if it fired in
+    // the blur tick it would be dropped by the stale-revision guard and the
+    // success state would never reach the UI.
+    await waitFor(() => {
+      expect(screen.getByText(/Connected\. Replied in 7 ms/)).toBeTruthy();
+    });
+    const testConnectionCalls = fetchMock.mock.calls.filter(
+      ([input]) => input.toString() === '/api/test/connection',
+    );
+    expect(testConnectionCalls).toHaveLength(1);
+    // The malformed value must never reach the wire.
+    expect(sentApiKey).toBe('sk-ant-test-provider');
   });
 
   it('lets users retry a failed BYOK connection test without editing the API key', async () => {
@@ -1065,7 +1172,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    renderSettingsDialog({ apiKey: 'sk-test-provider' });
+    renderSettingsDialog({ apiKey: 'sk-ant-test-provider' });
 
     fireEvent.click(screen.getByRole('button', { name: 'Test' }));
     expect(await screen.findByRole('button', { name: 'Retry test' })).toBeTruthy();
