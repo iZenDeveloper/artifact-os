@@ -711,7 +711,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     }
 
     function currentCommentAttachments(extra: ChatCommentAttachment[] = []): ChatCommentAttachment[] {
-      return [...commentAttachments, ...stagedVisualComments, ...extra];
+      return sortChatCommentAttachmentsByOrder([...commentAttachments, ...stagedVisualComments, ...extra]);
     }
 
     function setStreamingAnnotationSendPending(value: boolean) {
@@ -933,7 +933,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                 const screenshot = detail.file ? uploaded[0] : null;
                 if (screenshot && detail.markKind && detail.bounds) {
                   visualAttachmentInput = {
-                    order: 1,
+                    order: isFiniteAttachmentOrder(screenshot.order) ? screenshot.order : orderStart,
                     idSeed: screenshot.path,
                     screenshotPath: screenshot.path,
                     markKind: detail.markKind,
@@ -976,7 +976,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                   ...current,
                   buildVisualAnnotationAttachment({
                     ...visualAttachmentInput!,
-                    order: commentAttachments.length + current.length + 1,
                   }),
                 ]);
               }
@@ -1001,7 +1000,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
               if (visualAttachmentInput) {
                 visualAttachment = buildVisualAnnotationAttachment({
                   ...visualAttachmentInput,
-                  order: commentAttachments.length + stagedVisualComments.length + 1,
                 });
               }
               const prompt = [draft.trim(), detail.note].filter(Boolean).join('\n');
@@ -1022,7 +1020,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
               if (visualAttachmentInput) {
                 visualAttachment = buildVisualAnnotationAttachment({
                   ...visualAttachmentInput,
-                  order: commentAttachments.length + stagedVisualComments.length + 1,
                 });
               }
               const prompt = [draft.trim(), detail.note].filter(Boolean).join('\n');
@@ -2078,6 +2075,18 @@ function nextChatAttachmentOrder(attachments: ChatAttachment[]): number {
 }
 
 function sortChatAttachmentsByOrder(attachments: ChatAttachment[]): ChatAttachment[] {
+  return attachments
+    .map((attachment, index) => ({ attachment, index }))
+    .sort((a, b) => {
+      const aOrder = isFiniteAttachmentOrder(a.attachment.order) ? a.attachment.order : a.index;
+      const bOrder = isFiniteAttachmentOrder(b.attachment.order) ? b.attachment.order : b.index;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a.index - b.index;
+    })
+    .map((entry) => entry.attachment);
+}
+
+function sortChatCommentAttachmentsByOrder(attachments: ChatCommentAttachment[]): ChatCommentAttachment[] {
   return attachments
     .map((attachment, index) => ({ attachment, index }))
     .sort((a, b) => {
