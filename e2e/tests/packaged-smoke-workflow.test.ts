@@ -114,6 +114,8 @@ describe("packaged smoke workflow", () => {
     expect(workflow).toContain('default: "off"');
     expect(workflow).toContain("name: Prepare beta metadata");
     expect(workflow).toContain("OPEN_DESIGN_BETA_METADATA_URL: ${{ inputs.s3_public_origin }}/beta/latest/metadata.json");
+    expect(workflow).toContain("apps/packaged/package.json");
+    expect(workflow).toContain("scripts/release-beta.ts");
     expect(workflow).toContain('git fetch --force --depth=1 origin "+refs/tags/open-design-v*:refs/tags/open-design-v*"');
     expect(workflow).toContain("release-beta-s requires at least one self-hosted platform");
     expect(workflow).toContain("name: Probe Windows signing capability");

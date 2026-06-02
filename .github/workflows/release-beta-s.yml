@@ -113,6 +113,9 @@ jobs:
           clean: false
           fetch-depth: 1
           lfs: false
+          sparse-checkout: |
+            apps/packaged/package.json
+            scripts/release-beta.ts
 
       - name: Fetch stable release tags
         run: git fetch --force --depth=1 origin "+refs/tags/open-design-v*:refs/tags/open-design-v*"
