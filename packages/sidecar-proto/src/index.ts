@@ -1,4 +1,3 @@
-// Temporary cache validation marker for release-beta-s runner tuning.
 export const APP_KEYS = Object.freeze({
   DAEMON: "daemon",
   DESKTOP: "desktop",
