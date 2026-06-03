@@ -40,10 +40,11 @@ on:
         type: string
         default: ""
       win_smoke_mode:
-        description: "Windows smoke coverage. Core gates install/start/cleanup; full adds the real upgrade lifecycle."
+        description: "Windows smoke coverage. Skip only builds; core gates install/start/cleanup; full adds the real upgrade lifecycle."
         required: true
         type: choice
         options:
+          - skip
           - core
           - full
         default: core
@@ -74,6 +75,15 @@ on:
           - "off"
           - "on"
         default: "off"
+      mac_smoke_mode:
+        description: "mac arm64 smoke coverage. Skip only builds; core gates install/start/cleanup; full adds updater checks."
+        required: true
+        type: choice
+        options:
+          - skip
+          - core
+          - full
+        default: core
 
 permissions:
   contents: read
@@ -277,11 +287,13 @@ jobs:
           if-no-files-found: warn
 
       - name: Smoke beta mac packaged runtime
+        if: ${{ inputs.mac_smoke_mode != 'skip' }}
         working-directory: _release-build/e2e
         env:
           OD_PACKAGED_E2E_BUILD_JSON_PATH: ${{ runner.temp }}/mac-tools-pack-build.json
           OD_PACKAGED_E2E_BUILD_LOG_PATH: ${{ runner.temp }}/mac-tools-pack-build.log
           OD_PACKAGED_E2E_MAC: "1"
+          OD_PACKAGED_E2E_MAC_SMOKE_PROFILE: ${{ inputs.mac_smoke_mode }}
           OD_PACKAGED_E2E_NAMESPACE: release-beta
           OD_PACKAGED_E2E_RELEASE_CHANNEL: beta
           OD_PACKAGED_E2E_RELEASE_VERSION: ${{ inputs.release_version || needs.metadata.outputs.beta_version }}

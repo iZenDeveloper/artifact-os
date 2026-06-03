@@ -7,7 +7,7 @@ param(
   [string]$Root = "",
   [string]$ReleaseVersion = "",
   [string]$MetadataUrl = "https://releases.open-design.ai/beta/latest/metadata.json",
-  [ValidateSet("full", "core")]
+  [ValidateSet("skip", "core", "full")]
   [string]$SmokeMode = "full",
   [ValidateSet("all", "dir", "nsis", "zip")]
   [string]$Target = "all",
@@ -808,9 +808,13 @@ try {
     Remove-Item Env:OD_PACKAGED_E2E_WIN_UPDATE_BUILD_JSON_PATH -ErrorAction SilentlyContinue
   }
 
-  Measure-Step "release smoke win" {
-    Remove-Item -LiteralPath $env:OD_PACKAGED_E2E_REPORT_DIR -Recurse -Force -ErrorAction SilentlyContinue
-    Invoke-Node24 -Arguments @("pnpm.cmd", "exec", "tsx", "scripts/release-smoke.ts", "win", "specs/win.spec.ts") -WorkingDirectory (Join-Path $workspaceRoot "e2e")
+  if ($SmokeMode -eq "skip") {
+    Write-Host "Skipping Windows packaged runtime smoke: smoke mode skip"
+  } else {
+    Measure-Step "release smoke win" {
+      Remove-Item -LiteralPath $env:OD_PACKAGED_E2E_REPORT_DIR -Recurse -Force -ErrorAction SilentlyContinue
+      Invoke-Node24 -Arguments @("pnpm.cmd", "exec", "tsx", "scripts/release-smoke.ts", "win", "specs/win.spec.ts") -WorkingDirectory (Join-Path $workspaceRoot "e2e")
+    }
   }
 
   Measure-Step "write index" {

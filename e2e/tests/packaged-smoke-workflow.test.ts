@@ -120,6 +120,9 @@ describe("packaged smoke workflow", () => {
     expect(workflow).toContain("win_update_metadata_url:");
     expect(workflow).toContain("win_update_target_version:");
     expect(workflow).toContain("mac_sign_mode:");
+    expect(workflow).toContain("mac_smoke_mode:");
+    expect(workflow).toMatch(/win_smoke_mode:[\s\S]*?options:[\s\S]*?- skip[\s\S]*?- core[\s\S]*?- full[\s\S]*?default: core/);
+    expect(workflow).toMatch(/mac_smoke_mode:[\s\S]*?options:[\s\S]*?- skip[\s\S]*?- core[\s\S]*?- full[\s\S]*?default: core/);
     expect(workflow).toContain('default: "off"');
     expect(workflow).toMatch(/win_sign_mode:[\s\S]*?description: "Windows signing mode\. Defaults to unsigned; use auto\/on only for explicit signing validation\."[\s\S]*?default: "off"/);
     expect(workflow).not.toMatch(/^      enable_win:/m);
@@ -147,6 +150,8 @@ describe("packaged smoke workflow", () => {
     expect(workflow).toContain("publish-platform.ps1");
     expect(workflow).toContain("Upload windows publish manifest");
     expect(workflow).toContain("open-design-beta-win-publish-manifest");
+    expect(workflow).toContain("if: ${{ inputs.mac_smoke_mode != 'skip' }}");
+    expect(workflow).toContain("OD_PACKAGED_E2E_MAC_SMOKE_PROFILE: ${{ inputs.mac_smoke_mode }}");
     expect(workflow).toContain("runs-on: [self-hosted, macOS, ARM64, nexu-mac, release-beta]");
     expect(workflow).toContain("path: _release-build");
     expect(workflow).toContain("working-directory: _release-build");
