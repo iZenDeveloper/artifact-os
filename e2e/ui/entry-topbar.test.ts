@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ensureRailOpen } from '@/playwright/rail';
 import type { Page } from '@playwright/test';
 
 const STORAGE_KEY = 'open-design:config';
@@ -187,6 +188,7 @@ test('[P2] clicking the top-left logo from another entry view returns to the hom
   await page.getByTestId('entry-use-everywhere-button').click();
   await expect(page.getByRole('heading', { name: 'Integrations' })).toBeVisible();
 
+  await ensureRailOpen(page);
   await page.getByTestId('entry-nav-logo').click();
   await expect(page.getByTestId('home-hero')).toBeVisible();
   await expect(page.getByTestId('home-hero-input')).toBeVisible();

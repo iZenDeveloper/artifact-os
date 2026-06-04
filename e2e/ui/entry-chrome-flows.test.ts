@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ensureRailOpen } from '@/playwright/rail';
 import type { Page, Request } from '@playwright/test';
 import { applyStandardMocks, fulfillAgentsRoute, STORAGE_KEY } from '@/playwright/mock-factory';
 const LOCAL_CLI_LABEL = /Local CLI|本机 CLI|本地 CLI/i;
@@ -78,9 +79,13 @@ test('[P0] entry chrome exposes the primary home creation surface and settings e
   await gotoEntryHome(page);
   await expect(page.getByTestId('entry-star-badge')).toBeVisible();
   await expect(page.getByTestId('entry-use-everywhere-button')).toBeVisible();
-  await expect(page.getByTestId('entry-nav-logo')).toBeVisible();
   await expect(page.getByTestId('recent-projects-strip')).toHaveCount(0);
+  // The nav rail is collapsed by default — only the topbar toggle shows.
+  // Expand it to assert the rail and its logo are reachable.
+  await expect(page.getByTestId('entry-rail-toggle')).toBeVisible();
+  await page.getByTestId('entry-rail-toggle').click();
   await expect(page.locator('.entry-nav-rail')).toBeVisible();
+  await expect(page.getByTestId('entry-nav-logo')).toBeVisible();
   await expect(page.locator('.entry-brand')).toHaveCount(0);
   await expect(page.getByTestId('home-hero-input')).toBeVisible();
   await expect(page.getByTestId('home-hero-attach')).toBeVisible();
@@ -111,6 +116,7 @@ test('[P0] entry chrome exposes the primary home creation surface and settings e
 
 test('[P1] entry top navigation matches the current home tab structure', async ({ page }) => {
   await gotoEntryHome(page);
+  await ensureRailOpen(page);
 
   await expect(page.getByTestId('entry-nav-logo')).toBeVisible();
   await expect(page.getByTestId('entry-nav-home')).toHaveAttribute('aria-current', 'page');
@@ -147,6 +153,7 @@ test('[P1] home view exposes the redesigned hero, recent projects, and starters'
   await expect(page.getByTestId('home-hero')).toBeVisible();
   await expect(page.getByTestId('entry-nav-home')).toHaveAttribute('aria-current', 'page');
 
+  await ensureRailOpen(page);
   await page.getByTestId('entry-nav-projects').click();
   await expect(page).toHaveURL(/\/projects$/);
   await expect(page.getByTestId('entry-nav-projects')).toHaveAttribute('aria-current', 'page');
@@ -197,6 +204,7 @@ test('[P1] design systems page is reachable from entry nav and supports search, 
   });
 
   await gotoEntryHome(page);
+  await ensureRailOpen(page);
   await page.getByTestId('entry-nav-design-systems').click();
 
   await expect(page).toHaveURL(/\/design-systems$/);
@@ -390,6 +398,7 @@ test('[P2] entry help menu exposes community links and topbar routes Use everywh
     'true',
   );
 
+  await ensureRailOpen(page);
   await page.getByTestId('entry-nav-logo').click();
   await expect(page.getByTestId('home-hero')).toBeVisible();
   await page.getByTestId('entry-help-trigger').click();
@@ -476,6 +485,7 @@ test('[P1] home starters can browse registry and use a starter query from Home',
   await expect(page.getByTestId('plugins-create-button')).toBeVisible();
   await expect(page.getByTestId('plugins-import-button')).toBeVisible();
 
+  await ensureRailOpen(page);
   await page.getByTestId('entry-nav-logo').click();
   await expect(page.getByTestId('home-hero')).toBeVisible();
   await expect(page.getByTestId('plugins-home-use-menu-localized-plugin')).toBeVisible();
