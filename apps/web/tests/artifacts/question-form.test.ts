@@ -205,17 +205,35 @@ describe('parsePartialQuestionForm (true token-by-token streaming)', () => {
     expect(parsePartialQuestionForm(buf)?.questions.map((q) => q.label)).toEqual(['Q']);
   });
 
-  it('keeps a preview question id stable when label streams before its canonical id', () => {
-    // label-first: id falls back to the index-pinned preview id.
+  it('holds a label-first question until its canonical id is determinable', () => {
+    // label streamed, the in-flight object has no id yet — surfacing it now
+    // would force a later id swap that orphans an in-progress answer, so it
+    // waits. Once the id streams it appears with the canonical id.
     const labelFirst = parsePartialQuestionForm(
       '<question-form id="discovery">{"questions":[{"label":"Platform"',
     );
-    // …then the canonical id arrives — the preview id must NOT change, or the
-    // editable field remounts and orphans the user's in-progress answer.
+    expect(labelFirst?.questions).toEqual([]);
     const idLater = parsePartialQuestionForm(
       '<question-form id="discovery">{"questions":[{"label":"Platform","id":"platform"',
     );
-    expect(labelFirst?.questions[0]?.id).toBe('q1');
-    expect(idLater?.questions[0]?.id).toBe('q1');
+    expect(idLater?.questions[0]?.id).toBe('platform');
+  });
+
+  it('gives preview question ids identical to the final parse (no orphaned answers on swap)', () => {
+    const finalIds = (input: string) => {
+      const seg = splitOnQuestionForms(input).find((s) => s.kind === 'form');
+      return seg && seg.kind === 'form' ? seg.form.questions.map((q) => q.id) : [];
+    };
+    // id-bearing question: preview id == final canonical id.
+    const withId =
+      '<question-form id="discovery">{"questions":[{"id":"platform","label":"Platform","type":"radio","options":["A"]}';
+    expect(parsePartialQuestionForm(withId)?.questions.map((q) => q.id)).toEqual(['platform']);
+    expect(finalIds(`${withId}]}</question-form>`)).toEqual(['platform']);
+    // no-id question that has closed (not in-flight): preview falls back to the
+    // same index id the final parse will assign.
+    const noId =
+      '<question-form id="discovery">{"questions":[{"label":"First","type":"text"},{"id":"b"';
+    expect(parsePartialQuestionForm(noId)?.questions.map((q) => q.id)).toEqual(['q1']);
+    expect(finalIds('<question-form id="discovery">{"questions":[{"label":"First","type":"text"}]}</question-form>')).toEqual(['q1']);
   });
 });

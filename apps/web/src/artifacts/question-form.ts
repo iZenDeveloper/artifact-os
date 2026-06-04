@@ -369,18 +369,25 @@ function endsInsideJsonString(s: string): boolean {
 function shapeStreamingQuestions(rawQuestions: unknown): FormQuestion[] {
   if (!Array.isArray(rawQuestions)) return [];
   const out: FormQuestion[] = [];
+  const lastIndex = rawQuestions.length - 1;
   rawQuestions.forEach((raw, index) => {
     if (!raw || typeof raw !== 'object') return;
-    const label = (raw as Record<string, unknown>).label;
+    const q = raw as Record<string, unknown>;
+    const label = q.label;
     if (typeof label !== 'string' || label.trim().length === 0) return;
+    // Surface a question only once its canonical id is determinable, so the
+    // preview id is identical to the id the final parse assigns — `id` keys
+    // both the rendered field and the user's answer in the still-editable
+    // panel, so a mismatch would orphan an in-progress answer (mid-stream when
+    // a late id replaces the fallback, and again at the preview→final swap).
+    //   - `id` field has streamed → use it.
+    //   - not the in-flight (last) object → its braces have closed, so no id
+    //     is coming and `mapRawQuestion`'s `q${index+1}` fallback is final.
+    //   - last object with no id yet → it may still gain one; hold it back.
+    const hasId = typeof q.id === 'string' && q.id.trim().length > 0;
+    if (!hasId && index === lastIndex) return;
     const mapped = mapRawQuestion(raw, index);
-    // Pin the preview id to the array position for the whole streaming phase.
-    // The panel stays editable while building and keys fields / answers off
-    // `q.id`, so if we surfaced a question on its `label` and then adopted a
-    // later-arriving canonical `id`, the field would remount and orphan
-    // whatever the user already picked. Index is stable (questions only append
-    // once their label exists); the final non-preview parse uses the real id.
-    if (mapped) out.push({ ...mapped, id: `q${index + 1}` });
+    if (mapped) out.push(mapped);
   });
   return out;
 }
