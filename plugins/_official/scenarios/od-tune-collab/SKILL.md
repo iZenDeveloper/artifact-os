@@ -1,6 +1,6 @@
 ---
 name: od-tune-collab
-description: Default reference pipeline for the tune-collab taskKind — pick a direction, patch-edit the existing artifact, critique, hand off.
+description: Default reference pipeline for the tune-collab taskKind — pick a direction, patch-edit the existing artifact, critique with visual validation, hand off.
 od:
   scenario: tune-collab
   mode: scenario
@@ -23,7 +23,7 @@ artifact lineage chain stays intact across multi-turn tune cycles.
     { "id": "patch",     "atoms": ["patch-edit"] },
     {
       "id": "critique",
-      "atoms": ["critique-theater"],
+      "atoms": ["critique-theater", "visual-validation"],
       "repeat": true,
       "until": "critique.score>=4 || iterations>=3"
     },
@@ -35,4 +35,6 @@ artifact lineage chain stays intact across multi-turn tune cycles.
 The handoff stage records `handoffKind: 'patch'` (or
 `'deployable-app'` when the user opted in via
 `od plugin run --target deployable-app` AND `build-test` ran
-successfully somewhere upstream in the project's history).
+successfully somewhere upstream in the project's history). When a
+project includes reference PNGs, the critique stage also compares
+the current artifact screenshot against them before converging.

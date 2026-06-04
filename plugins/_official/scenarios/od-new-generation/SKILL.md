@@ -1,6 +1,6 @@
 ---
 name: od-new-generation
-description: Default reference pipeline for the new-generation taskKind — discovery → plan → generate → critique with a critique-theater devloop.
+description: Default reference pipeline for the new-generation taskKind — discovery → plan → generate → critique with critique-theater and visual-validation in the devloop.
 od:
   scenario: new-generation
   mode: scenario
@@ -22,7 +22,7 @@ rather than a code change.
     { "id": "plan",      "atoms": ["direction-picker", "todo-write"] },
     { "id": "generate",  "atoms": ["file-write", "live-artifact"] },
     {
-      "id": "critique", "atoms": ["critique-theater"],
+      "id": "critique", "atoms": ["critique-theater", "visual-validation"],
       "repeat": true,
       "until": "critique.score>=4 || iterations>=3"
     }
@@ -33,7 +33,8 @@ rather than a code change.
 The discovery stage gives the agent a clean surface for clarifying
 questions; the plan stage commits to a TodoWrite-backed plan; the
 generate stage produces the artifact; the critique stage devloops
-until the score converges or the iteration ceiling is hit.
+until the score converges or the iteration ceiling is hit, combining
+text critique with screenshot comparison whenever reference PNGs are present.
 
 ## Plugins that customise this scenario
 
