@@ -1,0 +1,312 @@
+# AI Native Observability Loop
+
+## Purpose
+
+Define the target observability loop that lets Open Design improve agent
+quality, reliability, latency, and cost from production evidence.
+
+This is a planning spec. It does not implement runtime behavior. It connects the
+existing Langfuse trace forwarding, PostHog run analytics, datasets,
+experiments, annotation, and release gates into one product and engineering
+loop.
+
+Issue: [#3713](https://github.com/nexu-io/open-design/issues/3713)
+
+## Current State
+
+Open Design already reports completed runs to Langfuse and PostHog. The current
+implementation captures useful operational facts:
+
+- trace identity: `run_id == langfuse_trace_id == traceId`;
+- run status, error code, failure category, failure detail, retryability, and
+  user action;
+- timing fields for queue, prompt build, spawn, first token, generation, tool
+  aggregate, finalize, and total duration;
+- token and cache fields for provider input, effective input, cache read/write,
+  uncached input, estimated context tokens, and cache source;
+- tags and metadata for agent, model, skill, design system, runtime, app
+  channel, operating system, and client type;
+- user feedback scores such as `user_rating` and `user_rating_reason`.
+
+The current Langfuse tree is still mostly runtime-oriented. A typical trace is
+shaped like:
+
+```text
+open-design-turn
+  agent-run
+    llm
+    tool:read
+    tool:write
+    tool:todowrite
+```
+
+This answers "what did the subprocess and tools do?" It does not consistently
+answer "which product task stage made the run succeed, fail, become slow, become
+expensive, or require human judgment?"
+
+The current project also has far more traces than durable evaluation assets.
+That means Open Design can inspect individual runs, but the system does not yet
+turn production evidence into enough datasets, experiments, annotation queues,
+and release gates to drive continuous improvement.
+
+## Target Model
+
+Open Design should treat observability as a closed loop:
+
+```text
+production trace
+  -> semantic task observations
+  -> automatic scores
+  -> agent triage and clustering
+  -> dataset or annotation candidate
+  -> experiment and regression gate
+  -> optimization proposal
+  -> human approval when risk is high
+  -> release
+  -> online observation
+```
+
+Langfuse is the trace, score, dataset, experiment, and annotation surface.
+PostHog remains the aggregate product analytics and alerting surface. Open
+Design owns the domain model that maps a design-agent run onto task stages,
+quality signals, and release decisions.
+
+### Semantic Trace Shape
+
+The target trace tree should expose product stages in addition to low-level
+runtime spans:
+
+```text
+open-design-turn
+  brief-intake
+  route-task-kind
+  resolve-context
+    resolve-skill
+    resolve-design-system
+    resolve-memory
+    resolve-plugin
+  build-prompt-stack
+  spawn-agent
+  agent-work
+    plan
+    generate-artifact
+    edit-artifact
+    tool-call
+  verify-artifact
+    preview-render
+    artifact-manifest
+    export-check
+  critique
+  repair
+  evaluator
+  finalize
+```
+
+The exact implementation can preserve the existing `agent-run`, `llm`, and
+`tool:*` observations, but those observations should sit inside or alongside
+semantic task stages so humans and agents can diagnose by product intent.
+
+### Score Model
+
+Every eligible run should receive automatic scores where the signal can be
+computed safely:
+
+| Score | Meaning |
+| --- | --- |
+| `task_success` | The run produced a useful terminal result for the requested task. |
+| `artifact_valid` | Required artifact files and manifest entries exist and are readable. |
+| `preview_ok` | The primary preview renders without fatal runtime errors. |
+| `user_request_covered` | The output appears to address the explicit user request. |
+| `design_quality` | Automated or rubric-based critique result for visual/product quality. |
+| `stability_risk` | Failure, retry, timeout, or brittle-runtime risk bucket. |
+| `cost_bucket` | Cost/token use relative to task kind and model baseline. |
+| `latency_bucket` | Latency relative to task kind and agent/model baseline. |
+| `user_rating` | Human end-user feedback, already reported from the UI. |
+
+Automatic scores should start conservative. Deterministic evaluators are
+preferred before LLM-as-judge. Human feedback and annotation can later calibrate
+or replace weak automatic scores.
+
+### Dataset and Experiment Model
+
+Production traces should become evaluation assets through an explicit promotion
+path:
+
+- failed traces with clear root cause become regression dataset candidates;
+- low-score traces become quality dataset candidates;
+- high-cost or high-latency traces become efficiency dataset candidates;
+- ambiguous traces enter annotation queues before promotion;
+- accepted dataset items retain source trace id, task kind, agent, model, skill,
+  design system, prompt stack fingerprint, and expected outcome.
+
+Experiments should run the same dataset against candidate changes such as:
+
+- prompt stack edits;
+- skill or design-system changes;
+- agent/model routing changes;
+- retry and runtime policy changes;
+- context compression or cacheability changes;
+- evaluator or guardrail changes.
+
+An experiment is successful only when quality, reliability, latency, and cost
+are considered together. A lower-cost run that fails the task is not an
+improvement.
+
+## Human and Agent Responsibilities
+
+The loop is AI Native because agents should operate the routine diagnosis and
+validation work, while humans intervene at high-leverage judgment points.
+
+Agent-owned work:
+
+- scan recent traces and dashboards on a schedule;
+- rank failures by category, detail, stage, agent, model, OS, and task kind;
+- cluster low-score or high-cost traces into failure modes;
+- propose dataset and annotation candidates;
+- run experiments for candidate prompt, skill, model, or runtime changes;
+- summarize tradeoffs across quality, reliability, latency, and cost;
+- draft optimization PRs or prompt/skill changes when the risk is low.
+
+Human-owned work:
+
+- approve production releases and high-risk behavior changes;
+- label ambiguous or subjective quality cases;
+- approve major system prompt, skill, or design-system changes;
+- decide quality versus cost tradeoffs when metrics conflict;
+- review annotation queues and calibrate evaluators.
+
+The intended working loop is:
+
+```text
+agent finds a signal
+  -> agent explains the likely cause
+  -> agent proposes data/evaluator/prompt/runtime changes
+  -> experiment proves or rejects the proposal
+  -> human approves only the meaningful risk
+```
+
+## Metrics
+
+The loop should report progress through a small set of durable metrics.
+
+Quality:
+
+- `task_success` by task kind, agent, model, skill, and design system;
+- `preview_ok` and `artifact_valid` for artifact-producing tasks;
+- user rating rate and negative-reason distribution;
+- annotation agreement or evaluator drift where available.
+
+Reliability:
+
+- terminal failure rate;
+- unknown or unattributable failure share;
+- retryable failure share and retry success rate;
+- failure category/detail/stage distribution.
+
+Latency:
+
+- P50/P90/P99 total duration by task kind;
+- slowest segment by queue, prompt build, spawn, first token, generation, tool
+  aggregate, verify, and finalize;
+- preview and artifact verification duration once those stages are observable.
+
+Cost:
+
+- provider input tokens, effective input tokens, output tokens, and total tokens;
+- estimated context tokens and uncached input tokens;
+- cache hit ratio and cache source;
+- calculated cost when Langfuse pricing supports the model;
+- fallback cost bucket when a model has no pricing mapping.
+
+Loop health:
+
+- dataset item count by source and task kind;
+- experiment count and pass/fail trend;
+- annotation queue throughput and aging;
+- number of shipped changes linked to observed trace evidence.
+
+## Rollout Slices
+
+### Slice 1: Spec and Baseline
+
+- Land this spec.
+- Keep runtime behavior unchanged.
+- Document current trace coverage, score coverage, dataset count, and known gaps
+  from Langfuse/PostHog.
+
+### Slice 2: Semantic Stage Observations
+
+- Add task-stage observations around existing run lifecycle boundaries.
+- Preserve existing trace ids, tags, and low-level observations.
+- Emit stage status, duration, and failure metadata so failed traces can be
+  grouped by product stage.
+
+### Slice 3: Automatic Evaluators
+
+- Add deterministic scores for artifact validity, preview success, task success
+  proxy, latency bucket, and cost bucket.
+- Keep evaluator failures non-blocking.
+- Write scores back to Langfuse and mirror aggregate fields to PostHog where
+  dashboarding needs them.
+
+### Slice 4: Dataset and Annotation Promotion
+
+- Add an agent-operable workflow that proposes dataset items from failed,
+  low-score, high-cost, and high-latency traces.
+- Route ambiguous quality cases to Langfuse annotation queues.
+- Preserve provenance from dataset item back to source trace and accepted human
+  annotation.
+
+### Slice 5: Experiment and Release Gates
+
+- Define fixed task datasets for core task kinds.
+- Run experiments before prompt, skill, model-routing, retry, or context changes
+  are treated as durable wins.
+- Gate releases on quality not regressing while reliability, latency, or cost
+  improves.
+
+### Slice 6: Agent-Operated Optimization Loop
+
+- Schedule an agent report that ranks the most important quality, reliability,
+  latency, and cost opportunities.
+- Let agents draft low-risk improvement PRs with linked trace, dataset, and
+  experiment evidence.
+- Require human approval for high-risk prompts, guardrails, model-routing, and
+  product-quality decisions.
+
+## Relationship to Existing Plans
+
+`specs/current/run-reliability-optimization-plan.md` remains the concrete plan
+for reducing failures and optimizing latency/token cost after the first
+observability slice. This spec is the higher-level loop that makes that work
+repeatable and connects it to quality evaluation, datasets, experiments,
+annotation, and human-agent collaboration.
+
+`specs/current/automation-self-evolution.md` describes how successful runs and
+sources can promote durable memory, skills, design systems, and automation
+templates. This observability loop provides the evidence and gates for deciding
+which proposed evolutions are trustworthy.
+
+## Non-goals
+
+- This spec does not replace Langfuse or PostHog.
+- This spec does not add a new model router.
+- This spec does not require all evaluators to be LLM judges.
+- This spec does not implement runtime changes in the spec-only PR.
+- This spec does not make agents auto-ship high-risk changes without human
+  approval.
+
+## Acceptance Criteria for Follow-up Implementation
+
+The loop is working when a representative production regression can be handled
+end to end:
+
+1. A bad run produces a trace with a clear failing task stage.
+2. Automatic or human scores identify the quality, stability, latency, or cost
+   problem.
+3. The trace is promoted to a dataset item or annotation queue with provenance.
+4. An experiment compares a proposed fix against the accepted dataset.
+5. The result summarizes quality, reliability, latency, and cost tradeoffs.
+6. A human approves high-risk changes or the agent proceeds with a low-risk
+   improvement.
+7. Online dashboards confirm the improvement after release.
