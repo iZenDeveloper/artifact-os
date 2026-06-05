@@ -67,11 +67,11 @@ const SOLUTION_ROLES: ReadonlyArray<{
   key: SolutionPageKey;
   href: string;
 }> = [
-  { key: 'roleSoloBuilder', href: '/for/solo-builder/' },
-  { key: 'roleDesigner', href: '/for/designer/' },
-  { key: 'roleEngineering', href: '/for/engineering/' },
-  { key: 'roleProductManagers', href: '/for/product-managers/' },
-  { key: 'roleMarketing', href: '/for/marketing/' },
+  { key: 'roleSoloBuilder', href: '/roles/solo-builder/' },
+  { key: 'roleDesigner', href: '/roles/designer/' },
+  { key: 'roleEngineering', href: '/roles/engineering/' },
+  { key: 'roleProductManagers', href: '/roles/product-managers/' },
+  { key: 'roleMarketing', href: '/roles/marketing/' },
 ];
 
 

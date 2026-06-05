@@ -1,11 +1,11 @@
 ---
 /*
- * /for/solo-builder/ — Solution → Role page: Open Design for solo builders.
+ * /roles/designer/ — Solution → Role page: Open Design for designers.
  *
  * Same layout as the Solution use-case pages. The feature grid mixes real
  * plugins across categories (roles span scenarios), rendered via
  * <TemplateCard> from the full catalogue. Copy lives in solution-pages-i18n.ts
- * under the 'roleSoloBuilder' key.
+ * under the 'roleDesigner' key.
  */
 import Layout from '../../../_components/sub-page-layout.astro';
 import LazyImg from '../../../_components/lazy-img.astro';
@@ -23,27 +23,27 @@ const REPO_RELEASES = `${REPO}/releases`;
 const locale = localeFromPath(Astro.url.pathname);
 const href = (path: string) => localizedHref(path, locale);
 const common = getInfoPageCopy(locale).common;
-const page = getSolutionPageCopy(locale, 'roleSoloBuilder');
+const page = getSolutionPageCopy(locale, 'roleDesigner');
 
 const title = page.title;
 const description = page.description;
 
-const heroImg = imageAsset('for/solo-builder/hero.png', { width: 1280, quality: 82 });
-const heroSrcset = imageAssetSrcset('for/solo-builder/hero.png', [768, 1280]);
+const heroImg = imageAsset('for/designer/hero.png', { width: 1280, quality: 82 });
+const heroSrcset = imageAssetSrcset('for/designer/hero.png', [768, 1280]);
 
 // Feature grid mixes real plugins across categories (a role spans scenarios),
 // so the pool is the full catalogue, not one category. pickSolutionPlugins
 // throws on any missing id, so a renamed/removed plugin fails the build.
 const FEATURED_ROLE_IDS = [
-  'example-saas-landing',
-  'example-web-prototype',
-  'example-mobile-app',
-  'example-dashboard',
-  'example-blog-post',
-  'example-deck-open-slide-canvas',
+  'example-web-prototype-taste-editorial',
+  'example-web-prototype-taste-brutalist',
+  'example-mobile-onboarding',
+  'example-wireframe-sketch',
+  'example-web-prototype-taste-soft',
+  'example-image-poster',
 ];
 const allPlugins = getBundledPlugins();
-const featuredPrototypes = pickSolutionPlugins(allPlugins, FEATURED_ROLE_IDS, 'solo-builder');
+const featuredPrototypes = pickSolutionPlugins(allPlugins, FEATURED_ROLE_IDS, 'designer');
 
 // Locale-aware page URL for JSON-LD so /ja/, /de/, … emit their own canonical
 // rather than the English one (the layout's <link rel=canonical> is localized).

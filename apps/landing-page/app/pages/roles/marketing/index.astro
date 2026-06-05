@@ -1,11 +1,11 @@
 ---
 /*
- * /for/product-managers/ — Solution → Role page: Open Design for product managers.
+ * /roles/marketing/ — Solution → Role page: Open Design for marketing teams.
  *
  * Same layout as the Solution use-case pages. The feature grid mixes real
  * plugins across categories (roles span scenarios), rendered via
  * <TemplateCard> from the full catalogue. Copy lives in solution-pages-i18n.ts
- * under the 'roleProductManagers' key.
+ * under the 'roleMarketing' key.
  */
 import Layout from '../../../_components/sub-page-layout.astro';
 import LazyImg from '../../../_components/lazy-img.astro';
@@ -23,27 +23,27 @@ const REPO_RELEASES = `${REPO}/releases`;
 const locale = localeFromPath(Astro.url.pathname);
 const href = (path: string) => localizedHref(path, locale);
 const common = getInfoPageCopy(locale).common;
-const page = getSolutionPageCopy(locale, 'roleProductManagers');
+const page = getSolutionPageCopy(locale, 'roleMarketing');
 
 const title = page.title;
 const description = page.description;
 
-const heroImg = imageAsset('for/product-managers/hero.png', { width: 1280, quality: 82 });
-const heroSrcset = imageAssetSrcset('for/product-managers/hero.png', [768, 1280]);
+const heroImg = imageAsset('for/marketing/hero.png', { width: 1280, quality: 82 });
+const heroSrcset = imageAssetSrcset('for/marketing/hero.png', [768, 1280]);
 
 // Feature grid mixes real plugins across categories (a role spans scenarios),
 // so the pool is the full catalogue, not one category. pickSolutionPlugins
 // throws on any missing id, so a renamed/removed plugin fails the build.
 const FEATURED_ROLE_IDS = [
-  'example-pm-spec',
-  'example-team-okrs',
-  'example-simple-deck',
-  'example-mockup-device-3d',
-  'example-weekly-update',
-  'example-meeting-notes',
+  'example-html-ppt-product-launch',
+  'example-email-marketing',
+  'example-html-ppt-xhs-white-editorial',
+  'example-digital-eguide',
+  'example-deck-guizang-editorial',
+  'example-social-carousel',
 ];
 const allPlugins = getBundledPlugins();
-const featuredPrototypes = pickSolutionPlugins(allPlugins, FEATURED_ROLE_IDS, 'product-managers');
+const featuredPrototypes = pickSolutionPlugins(allPlugins, FEATURED_ROLE_IDS, 'marketing');
 
 // Locale-aware page URL for JSON-LD so /ja/, /de/, … emit their own canonical
 // rather than the English one (the layout's <link rel=canonical> is localized).
