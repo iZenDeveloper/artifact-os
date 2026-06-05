@@ -414,6 +414,34 @@ describe('live artifact schema validation', () => {
     }
   });
 
+  it('rejects uppercase or mixed-case .JSON read_json selectors across every alias', () => {
+    // executeProjectFilesReadJson does a case-sensitive endsWith('.json'); schema
+    // must match or a `DATA.JSON` source persists yet fails every refresh.
+    for (const alias of ['path', 'file', 'name'] as const) {
+      for (const value of ['reports/DATA.JSON', 'reports/data.Json']) {
+        const result = validateLiveArtifactCreateInput({
+          ...validCreateInput(),
+          document: {
+            ...validCreateInput().document,
+            sourceJson: {
+              type: 'local_file',
+              toolName: 'project_files.read_json',
+              input: { [alias]: value },
+              refreshPermission: 'manual_refresh_granted_for_read_only',
+            },
+          },
+        });
+
+        expect(result.ok, `${alias}=${value} should be rejected`).toBe(false);
+        if (!result.ok) {
+          expect(result.issues).toEqual(expect.arrayContaining([
+            expect.objectContaining({ path: `input.document.sourceJson.input.${alias}` }),
+          ]));
+        }
+      }
+    }
+  });
+
   it('rejects oversized bounded JSON payloads', () => {
     const oversized = Object.fromEntries(Array.from({ length: 100 }, (_, index) => [`field${index}`, 'x'.repeat(3_000)]));
     const result = validateBoundedJsonObject(oversized, 'data');

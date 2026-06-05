@@ -349,7 +349,9 @@ function validateReadJsonSelector(value: string, path: string, issues: LiveArtif
   if (segments.some((part) => RESERVED_READ_JSON_SEGMENTS.has(part))) {
     issues.push({ path, message: `${path} cannot reference a reserved project path` });
   }
-  if (!value.toLowerCase().endsWith('.json')) {
+  // Case-sensitive to match executeProjectFilesReadJson's `endsWith('.json')` exactly;
+  // lowercasing here would accept `DATA.JSON` that the runtime then rejects.
+  if (!value.endsWith('.json')) {
     issues.push({ path, message: `${path} must point to a .json file for project_files.read_json sources` });
   }
 }
