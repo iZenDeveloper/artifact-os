@@ -185,6 +185,16 @@ describe("packaged smoke workflow", () => {
     expect(publishBetaMetadataScript).toContain("outputs[`${target}_${artifactName}_url`] = artifact.url");
   });
 
+  it("publishes release-beta mac_x64 payloads while preserving the zip feed", async () => {
+    const workflow = await readFile(releaseBetaWorkflowPath, "utf8");
+    const macX64Job = sectionBetween(workflow, "  build_mac_x64:", "  build_win_x64:");
+    const prepareStep = sectionBetween(macX64Job, "      - name: Prepare mac_x64 assets", "      - name: Publish mac_x64 platform");
+    const publishStep = sectionBetween(macX64Job, "      - name: Publish mac_x64 platform", "      - name: Upload mac_x64 publish manifest");
+
+    expect(prepareStep).toContain("RELEASE_ARTIFACT_MODE: all");
+    expect(publishStep).toContain("RELEASE_ARTIFACT_MODE: all");
+  });
+
   it("keeps the self-hosted beta lane metadata-driven with reusable platform publish scripts", async () => {
     const [workflow, posixBuildScript, windowsBuildScript, platformPublishScript, publishBetaMetadataScript] = await Promise.all([
       readFile(releaseBetaSelfHostedWorkflowPath, "utf8"),
