@@ -405,6 +405,7 @@ describe("desktop updater", () => {
         env: {
           ...updaterEnv(fixture.metadataUrl, "win32"),
           [DESKTOP_UPDATE_ENV.CURRENT_VERSION]: "1.0.0-beta.1",
+          [DESKTOP_UPDATE_ENV.OPEN_DRY_RUN]: "0",
         },
         launcherRoot: root,
         launcherRuntimePath,
@@ -436,6 +437,7 @@ describe("desktop updater", () => {
     const launcherRuntimePath = join(root, "launcher", "runtime.json");
     const launcherRoot = root;
     const versionRoot = join(root, "launcher", "channels", "beta", "namespaces", "release-beta-win", "versions");
+    const launches: Array<{ appPid: number; installerPath: string; root: string }> = [];
     try {
       await mkdir(join(root, "launcher"), { recursive: true });
       await mkdir(join(versionRoot, "1.0.0-beta.1"), { recursive: true });
@@ -457,6 +459,7 @@ describe("desktop updater", () => {
         env: {
           ...updaterEnv(fixture.metadataUrl, "win32"),
           [DESKTOP_UPDATE_ENV.CURRENT_VERSION]: "1.0.0-beta.1",
+          [DESKTOP_UPDATE_ENV.OPEN_DRY_RUN]: "0",
         },
         launcherRoot,
         launcherRuntimePath,
@@ -483,6 +486,16 @@ describe("desktop updater", () => {
           );
           await writeFile(join(destinationRoot, "payload", "resources", "open-design-config.json"), "{}\n");
         },
+        launchInstallerAfterQuit: async (input) => {
+          launches.push({
+            appPid: input.appPid,
+            installerPath: input.installerPath,
+            root: input.root,
+          });
+          return "";
+        },
+        processExecPath: "C:\\Program Files\\Open Design Beta\\Open Design Beta.exe",
+        processPid: 4242,
       });
 
       const checked = await updater.checkForUpdates();
@@ -496,6 +509,13 @@ describe("desktop updater", () => {
       expect(installed.state).toBe(DESKTOP_UPDATE_STATES.DOWNLOADED);
       expect(installed.installResult?.path).toBe(checked.downloadPath);
       expect(installed.installResult?.dryRun).toBe(false);
+      expect(launches).toEqual([
+        {
+          appPid: 4242,
+          installerPath: "C:\\Program Files\\Open Design Beta\\Open Design Beta.exe",
+          root: await realpath(join(root, "updates")),
+        },
+      ]);
       expect(await readFile(join(root, "launcher", "channels", "beta", "namespaces", "release-beta-win", "versions", "1.0.0-beta.2", "manifest.json"), "utf8")).toContain("1.0.0-beta.2");
       const runtime = JSON.parse(await readFile(launcherRuntimePath, "utf8")) as {
         active?: { generation?: number; version?: string };
@@ -506,6 +526,98 @@ describe("desktop updater", () => {
       expect(existsSync(join(root, "launcher", "channels", "beta", "namespaces", "release-beta-win", "versions", "1.0.0-beta.1"))).toBe(true);
       expect(existsSync(join(root, "launcher", "channels", "beta", "namespaces", "release-beta-win", "versions", "0.9.0-beta.1"))).toBe(false);
       expect(existsSync(join(root, "launcher", "channels", "beta", "namespaces", "release-beta-win", "updates", "staging"))).toBe(false);
+    } finally {
+      await fixture.close();
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
+
+  it("relaunches mac launcher payloads through the installed app bundle after quit", async () => {
+    const root = makeRoot();
+    const fixture = await createUpdaterFixture({
+      artifactBody: "open design mac dmg fixture",
+      channel: "beta",
+      includePayload: true,
+      payloadBody: "open design mac payload fixture",
+      platform: "mac",
+      version: "1.0.0-beta.2",
+    });
+    const launcherRuntimePath = join(root, "launcher", "runtime.json");
+    const launcherRoot = root;
+    const launches: Array<{ appPid: number; installerPath: string; root: string }> = [];
+    try {
+      await mkdir(join(root, "launcher"), { recursive: true });
+      await mkdir(join(root, "launcher", "channels", "beta", "namespaces", "release-beta", "versions", "1.0.0-beta.1"), { recursive: true });
+      await writeFile(
+        launcherRuntimePath,
+        `${JSON.stringify({
+          active: { generation: 0, version: "1.0.0-beta.1" },
+          channel: "beta",
+          lastSuccessful: { generation: 0, version: "1.0.0-beta.1" },
+          namespace: "release-beta",
+          schemaVersion: LAUNCHER_SCHEMA_VERSION,
+        })}\n`,
+      );
+      const updater = createDesktopUpdater({
+        arch: "arm64",
+        currentVersion: "1.0.0-beta.1",
+        downloadRoot: join(root, "updates"),
+        env: {
+          ...updaterEnv(fixture.metadataUrl, "darwin"),
+          [DESKTOP_UPDATE_ENV.CURRENT_VERSION]: "1.0.0-beta.1",
+          [DESKTOP_UPDATE_ENV.OPEN_DRY_RUN]: "0",
+        },
+        launcherRoot,
+        launcherRuntimePath,
+        namespace: "release-beta",
+        source: SIDECAR_SOURCES.PACKAGED,
+      }, {
+        extractLauncherPayloadArchive: async ({ destinationRoot }) => {
+          await mkdir(join(destinationRoot, "payload", "Open Design Beta.app", "Contents", "MacOS"), { recursive: true });
+          await writeFile(join(destinationRoot, "payload", "Open Design Beta.app", "Contents", "MacOS", "Open Design Beta"), "");
+          await writeFile(
+            join(destinationRoot, "manifest.json"),
+            `${JSON.stringify({
+              channel: "beta",
+              entry: {
+                cwd: "payload/Open Design Beta.app",
+                executable: "payload/Open Design Beta.app/Contents/MacOS/Open Design Beta",
+              },
+              namespace: "release-beta",
+              payloadRoot: "payload",
+              platform: "darwin",
+              schemaVersion: LAUNCHER_SCHEMA_VERSION,
+              version: "1.0.0-beta.2",
+            })}\n`,
+          );
+        },
+        launchInstallerAfterQuit: async (input) => {
+          launches.push({
+            appPid: input.appPid,
+            installerPath: input.installerPath,
+            root: input.root,
+          });
+          return "";
+        },
+        processExecPath: "/Applications/Open Design Beta.app/Contents/MacOS/Open Design Beta",
+        processPid: 4243,
+      });
+
+      const checked = await updater.checkForUpdates();
+      expect(checked.artifact?.type).toBe("payload");
+
+      const installed = await updater.installUpdate();
+
+      expect(installed.state).toBe(DESKTOP_UPDATE_STATES.DOWNLOADED);
+      expect(installed.installResult?.path).toBe(checked.downloadPath);
+      expect(installed.installResult?.dryRun).toBe(false);
+      expect(launches).toEqual([
+        {
+          appPid: 4243,
+          installerPath: "/Applications/Open Design Beta.app",
+          root: await realpath(join(root, "updates")),
+        },
+      ]);
     } finally {
       await fixture.close();
       rmSync(root, { force: true, recursive: true });

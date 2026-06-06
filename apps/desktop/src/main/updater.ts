@@ -144,6 +144,7 @@ export type DesktopUpdaterDeps = {
   logger?: DesktopUpdaterLogger;
   now?: () => Date;
   openPath?: (path: string) => Promise<string>;
+  processExecPath?: string;
   processPid?: number;
   spawnDetached?: SpawnInstallerHelper;
 };
@@ -1349,6 +1350,24 @@ function windowsPowerShellCommand(env: NodeJS.ProcessEnv = process.env): string 
   return join(systemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
 }
 
+function macAppBundlePathFromExecutable(executablePath: string): string | null {
+  const marker = ".app/Contents/MacOS/";
+  const markerIndex = executablePath.indexOf(marker);
+  if (markerIndex < 0) return null;
+  return executablePath.slice(0, markerIndex + ".app".length);
+}
+
+function stableAppLaunchPathFromExecutable(platform: string, executablePath: string): string {
+  if (platform === "darwin") {
+    const appBundlePath = macAppBundlePathFromExecutable(executablePath);
+    if (appBundlePath == null || appBundlePath.length === 0) {
+      throw new Error(`cannot derive mac app bundle path from executable: ${executablePath}`);
+    }
+    return appBundlePath;
+  }
+  return executablePath;
+}
+
 async function launchMacInstallerAfterQuit(
   input: DeferredInstallerLaunchInput,
   deps: { now: () => Date; spawnDetached: SpawnInstallerHelper },
@@ -1637,6 +1656,7 @@ export function createDesktopUpdater(
   const logger = deps.logger ?? console;
   const now = deps.now ?? (() => new Date());
   const openPath = deps.openPath ?? (async () => "openPath is not available");
+  const processExecPath = deps.processExecPath ?? process.execPath;
   const processPid = deps.processPid ?? process.pid;
   const extractLauncherPayloadArchive = deps.extractLauncherPayloadArchive ?? defaultExtractLauncherPayloadArchive;
   const spawnDetached: SpawnInstallerHelper = deps.spawnDetached ?? ((command, args, options) => spawn(command, args, options));
@@ -2038,6 +2058,23 @@ export function createDesktopUpdater(
     });
   }
 
+  async function requestPayloadRelaunch(updateRoot: string): Promise<string> {
+    if (config.openDryRun) return "";
+    if (config.platform !== "darwin" && config.platform !== "win32") return "";
+    let launchPath: string;
+    try {
+      launchPath = stableAppLaunchPathFromExecutable(config.platform, processExecPath);
+    } catch (launchPathError) {
+      return launchPathError instanceof Error ? launchPathError.message : String(launchPathError);
+    }
+    return await launchInstallerAfterQuit({
+      appPid: processPid,
+      installerPath: launchPath,
+      root: updateRoot,
+      timeoutMs: config.platform === "win32" ? WINDOWS_DEFERRED_INSTALLER_TIMEOUT_MS : MAC_DEFERRED_INSTALLER_TIMEOUT_MS,
+    });
+  }
+
   async function installUpdate(): Promise<DesktopUpdateStatusSnapshot> {
     const unsupported = unsupportedStatus();
     if (unsupported != null) return unsupported;
@@ -2089,9 +2126,13 @@ export function createDesktopUpdater(
           extractLauncherPayloadArchive,
           now,
         });
+        const relaunchError = await requestPayloadRelaunch(opened.root.realRoot);
+        if (relaunchError.length > 0) {
+          return setState(DESKTOP_UPDATE_STATES.ERROR, createError("payload-relaunch-failed", relaunchError));
+        }
         installFrozen = true;
         installResult = {
-          dryRun: false,
+          ...(config.openDryRun ? { dryRun: true } : { dryRun: false }),
           openedAt: appliedAt,
           path: resolvedDownload,
         };

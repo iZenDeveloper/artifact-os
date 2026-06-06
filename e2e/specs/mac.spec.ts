@@ -79,6 +79,7 @@ const clickUpdaterRailExpression = `
 `;
 
 type DesktopStatus = {
+  pid?: number;
   state?: string;
   title?: string | null;
   url?: string | null;
@@ -305,6 +306,7 @@ macDescribe('packaged mac runtime smoke', () => {
         expect(popup.title?.trim().length).toBeGreaterThan(0);
         expect(popup.installButtonVisible).toBe(true);
         expect(popup.text ?? '').toContain(updaterVersion);
+        expect(popup.text ?? '').not.toMatch(/installer|安装器/i);
 
         const updateInspect = await runToolsPackJson<MacInspectResult>('inspect', ['--update-action', 'status']);
         expect(updateInspect.update?.state).toBe('downloaded');
@@ -319,34 +321,20 @@ macDescribe('packaged mac runtime smoke', () => {
         const clickInstall = await runToolsPackJson<MacInspectResult>('inspect', ['--expr', clickUpdaterInstallExpression]);
         const clickValue = assertUpdaterClickEvalValue(clickInstall.eval?.value);
         expect(clickValue.clicked).toBe(true);
-        const updateInstallInspect = await waitForUpdaterInstallerOpened();
-        expect(updateInstallInspect.update?.state).toBe('downloaded');
-        expect(updateInstallInspect.update?.artifact?.type).toBe('payload');
-        expect(updateInstallInspect.update?.installResult?.dryRun).not.toBe(true);
-        expectPathInside(updateInstallInspect.update?.installResult?.path ?? '', join(runtimeNamespaceRoot, 'updates'));
-        assertLauncherPointer(updateInstallInspect.launcher.active, updaterVersion, 1, 'post-apply active');
-        assertLauncherPointer(
-          updateInstallInspect.launcher.lastSuccessful,
-          updateScenario.expectedCurrentVersion,
-          0,
-          'post-apply lastSuccessful',
-        );
-        if (updateInstallInspect.update == null) throw new Error('mac update install status is missing');
-        updateInstall = updateInstallInspect.update;
-
-        const stopAfterApply = await runToolsPackJson<MacStopResult>('stop');
-        started = false;
-        expect(stopAfterApply.status).not.toBe('partial');
-        const restart = await runToolsPackJson<MacStartResult>('start');
+        const postUpdateInspect = await waitForHealthyDesktopVersion(updaterVersion, start.pid);
         started = true;
-        expect(restart.namespace).toBe(namespace);
-        expect(restart.source).toBe('installed');
-        const postUpdateInspect = await waitForHealthyDesktop();
         const postUpdateHealth = assertHealthEvalValue(postUpdateInspect.eval?.value);
         expect(postUpdateHealth.status).toBe(200);
         expect(postUpdateHealth.health.ok).toBe(true);
         expect(postUpdateHealth.health.version).toBe(updaterVersion);
-        await waitForLauncherLastSuccessful(updaterVersion);
+        assertLauncherPointer(postUpdateInspect.launcher.active, updaterVersion, 1, 'post-relaunch active');
+        assertLauncherPointer(postUpdateInspect.launcher.lastSuccessful, updaterVersion, 1, 'post-relaunch lastSuccessful');
+        const terminalUpdate = await waitForUpdaterStatus(
+          (status) => status.update?.state === 'not-available' && status.update.currentVersion === updaterVersion,
+          'post-relaunch updater terminal state',
+        );
+        if (terminalUpdate.update == null) throw new Error('mac terminal update status is missing');
+        updateInstall = terminalUpdate.update;
       }
 
       await mkdir(dirname(screenshotPath), { recursive: true });
@@ -1752,6 +1740,35 @@ async function waitForHealthyDesktop(): Promise<MacInspectResult> {
   throw new Error(`packaged mac runtime did not become healthy: ${formatUnknown(lastResult)}`);
 }
 
+async function waitForHealthyDesktopVersion(expectedVersion: string, previousPid: number | null | undefined): Promise<MacInspectResult> {
+  const timeoutMs = 120_000;
+  const startedAt = Date.now();
+  let lastResult: unknown = null;
+
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const inspect = await runToolsPackJson<MacInspectResult>('inspect', ['--expr', healthExpression]);
+      lastResult = inspect;
+      if (inspect.status?.state === 'running' && inspect.eval?.ok === true) {
+        const value = asHealthEvalValue(inspect.eval.value);
+        if (
+          value?.status === 200 &&
+          value.health.ok === true &&
+          value.health.version === expectedVersion &&
+          (previousPid == null || inspect.status.pid !== previousPid)
+        ) {
+          return inspect;
+        }
+      }
+    } catch (error) {
+      lastResult = error;
+    }
+    await delay(1000);
+  }
+
+  throw new Error(`packaged mac runtime did not relaunch healthy on ${expectedVersion}: ${formatUnknown(lastResult)}`);
+}
+
 async function waitForUpdaterStatus(
   predicate: (inspect: MacInspectResult) => boolean,
   label: string,
@@ -1820,48 +1837,6 @@ async function waitForUpdaterPopupMatching(
   }
 
   throw new Error(`${label}: updater popup timed out: ${formatUnknown(lastResult)}`);
-}
-
-async function waitForUpdaterInstallerOpened(): Promise<MacInspectResult> {
-  const timeoutMs = 60_000;
-  const startedAt = Date.now();
-  let lastResult: unknown = null;
-
-  while (Date.now() - startedAt < timeoutMs) {
-    try {
-      const inspect = await runToolsPackJson<MacInspectResult>('inspect', ['--update-action', 'status']);
-      lastResult = inspect;
-      if (inspect.update?.installResult?.path != null) return inspect;
-    } catch (error) {
-      lastResult = error;
-    }
-    await delay(1000);
-  }
-
-  throw new Error(`packaged mac updater did not observe installer open: ${formatUnknown(lastResult)}`);
-}
-
-async function waitForLauncherLastSuccessful(expectedVersion: string, timeoutMs = 45_000): Promise<LauncherSnapshot> {
-  const startedAt = Date.now();
-  let lastLauncher: unknown = null;
-  while (Date.now() - startedAt < timeoutMs) {
-    const inspect = await runToolsPackJson<MacInspectResult>('inspect').catch((error: unknown) => {
-      lastLauncher = error;
-      return null;
-    });
-    if (inspect != null) {
-      lastLauncher = inspect.launcher;
-      if (
-        inspect.launcher.active?.version === expectedVersion &&
-        inspect.launcher.lastSuccessful?.version === expectedVersion
-      ) {
-        expect(inspect.launcher.error).toBeUndefined();
-        return inspect.launcher;
-      }
-    }
-    await delay(750);
-  }
-  throw new Error(`launcher lastSuccessful did not advance to ${expectedVersion}: ${formatUnknown(lastLauncher)}`);
 }
 
 function assertLauncherPointer(
