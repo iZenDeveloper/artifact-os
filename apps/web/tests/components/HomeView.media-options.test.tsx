@@ -304,6 +304,30 @@ describe('HomeView media composer options', () => {
     }));
   });
 
+  it('strips deferred media settings from the forwarded pluginInputs', async () => {
+    // The footer pills for ratio / duration / model / resolution / audioType /
+    // voice were removed so the agent asks for them via AskUserQuestion during
+    // the run. `buildHomeMediaComposer` still seeds those defaults into the
+    // composer state, so submission must strip them before forwarding —
+    // otherwise the run arrives with `ratio: 16:9` / `duration: 5` baked in and
+    // the first-turn discovery flow has nothing left to ask.
+    stubFetch();
+    const onSubmit = vi.fn();
+    renderHome({ onSubmit });
+
+    await clickHomeRailChip('video');
+    await waitFor(() => expect(screen.getByTestId('home-hero-footer-option-designSystem')).toBeTruthy());
+    await setHomePrompt('Create a launch teaser.');
+    await submitHome();
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    const [{ pluginInputs }] = onSubmit.mock.calls[0] as [{ pluginInputs?: Record<string, unknown> }];
+    expect(pluginInputs).toBeTruthy();
+    for (const deferred of ['model', 'ratio', 'resolution', 'duration', 'audioType', 'voice']) {
+      expect(pluginInputs).not.toHaveProperty(deferred);
+    }
+  });
+
   it('submits HyperFrames as a video project with the hyperframes-html model', async () => {
     stubFetch();
     const onSubmit = vi.fn();

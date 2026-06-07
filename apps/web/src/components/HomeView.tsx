@@ -1368,25 +1368,33 @@ export function HomeView({
       designSystemOptions,
       trimmed,
     );
-    const submittedPluginInputs = submittedActive
-      ? stripArtifactFooterInputs(
-          applyHomeDesignSystemSelectionToInputs(
-            submittedActive.inputs,
-            submittedDesignSystemSelection,
-            designSystemOptions,
-          ),
+    // Inputs used to (re)apply the plugin: design-system selection folded in,
+    // but the deferred footer/media fields kept so the apply still validates
+    // its required inputs (e.g. od-media-generation needs `subject`). Stripping
+    // them here would change `inputsEqual` and force a needless re-apply.
+    const submittedApplyInputs = submittedActive
+      ? applyHomeDesignSystemSelectionToInputs(
+          submittedActive.inputs,
+          submittedDesignSystemSelection,
+          designSystemOptions,
         )
       : defaultInputs;
+    // Inputs forwarded to the run: drop every now-hidden footer/media setting so
+    // the first-turn AskUserQuestion flow collects them instead of inheriting a
+    // baked-in default (`ratio: 16:9`, `duration: 5`, `audioType: speech`, …).
+    const submittedPluginInputs = submittedActive
+      ? stripArtifactFooterInputs(submittedApplyInputs)
+      : defaultInputs;
     const activeInputsChangedForSubmit = submittedActive
-      ? !inputsEqual(submittedActive.inputs, submittedPluginInputs)
+      ? !inputsEqual(submittedActive.inputs, submittedApplyInputs)
       : false;
     if (submittedActive && (!submittedActive.result || activeInputsChangedForSubmit)) {
-      const result = await resolveActivePlugin(submittedActive.record, submittedPluginInputs);
+      const result = await resolveActivePlugin(submittedActive.record, submittedApplyInputs);
       if (!result) {
         setError(`Failed to apply ${submittedActive.record.title}. Check the plugin parameters and try again.`);
         return;
       }
-      submittedActive = { ...submittedActive, result, inputs: submittedPluginInputs };
+      submittedActive = { ...submittedActive, result, inputs: submittedApplyInputs };
       setActive(submittedActive);
     }
     // Reconcile each selected context against the serialized prompt text before
@@ -1760,6 +1768,19 @@ const ARTIFACT_FOOTER_FIELD_NAMES = new Set([
   'fidelity',
   'slideCount',
   'speakerNotes',
+  // Media surfaces (image/video/audio/hyperframes) defer the same way. These
+  // were dropped from the footer but `buildHomeMediaComposer` still seeds them
+  // (`model: gpt-image-2`, `ratio: 16:9`, `duration: 5`, `audioType: speech`,
+  // …) so they must be stripped before submission — otherwise the run arrives
+  // with baked-in defaults and the first-turn AskUserQuestion flow has nothing
+  // left to ask. `subject` / `style` / `aspect` / `mediaKind` are intentionally
+  // NOT listed: the od-media-generation apply still validates against them.
+  'model',
+  'ratio',
+  'resolution',
+  'duration',
+  'audioType',
+  'voice',
 ]);
 
 // The prototype/deck footer no longer exposes these settings, so any plugin
