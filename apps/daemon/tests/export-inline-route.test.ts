@@ -628,6 +628,35 @@ describe('GET /api/projects/:id/export/*?inline=1 route', () => {
     expect(body).toContain('data-od-inline-asset="assets/app.css"');
   });
 
+  it('exports a nested Vite dev HTML entry through its sibling built dist artifact', async () => {
+    const dir = path.join(projectsRoot, projectId, 'pages');
+    await mkdir(path.join(dir, 'dist', 'assets'), { recursive: true });
+    await writeFile(
+      path.join(dir, 'nested-vite.html'),
+      '<!doctype html><html><head><script type="module" src="/src/main.tsx"></script></head><body><div id="root"></div></body></html>',
+    );
+    await writeFile(
+      path.join(dir, 'dist', 'index.html'),
+      '<!doctype html><html><head>' +
+        '<script type="module" crossorigin src="/assets/nested.js"></script>' +
+        '<link rel="stylesheet" crossorigin href="/assets/nested.css">' +
+        '</head><body><div id="root"></div></body></html>',
+    );
+    await writeFile(path.join(dir, 'dist', 'assets', 'nested.js'), 'window.NESTED_VITE_EXPORT_OK = true;');
+    await writeFile(path.join(dir, 'dist', 'assets', 'nested.css'), 'body{background:#abcdef}');
+
+    const res = await fetch(exportUrl('pages/nested-vite.html'));
+    expect(res.status).toBe(200);
+    const body = await res.text();
+
+    expect(body).toContain('window.NESTED_VITE_EXPORT_OK = true;');
+    expect(body).toContain('body{background:#abcdef}');
+    expect(body).not.toContain('/src/main.tsx');
+    expect(body).not.toContain('/assets/nested.js');
+    expect(body).not.toContain('/assets/nested.css');
+    expect(body).toContain('data-od-inline-asset="assets/nested.css"');
+  });
+
   it('sends Content-Security-Policy: sandbox allow-scripts to block daemon-origin privilege escalation', async () => {
     // PR #1312 round-2 review (lefarcen P2 @ import-export-routes.ts:423):
     // top-level browser navigation to the export URL sends no Origin

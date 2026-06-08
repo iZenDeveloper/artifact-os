@@ -715,7 +715,8 @@ async function resolveHtmlExportSource({
 }): Promise<{ html: string; relPath: string }> {
   if (!isViteDevHtmlEntry(html)) return { html, relPath };
 
-  const distRelPath = 'dist/index.html';
+  const ownerDir = nodePath.posix.dirname(relPath);
+  const distRelPath = ownerDir === '.' ? 'dist/index.html' : `${ownerDir}/dist/index.html`;
   try {
     const distMeta = await resolveProjectFilePath(projectsRoot, projectId, distRelPath, metadata);
     if (distMeta.size > MAX_INLINE_OWNER_BYTES || !distMeta.mime.startsWith('text/html')) {
