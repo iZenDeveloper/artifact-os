@@ -69,6 +69,11 @@ const tiers = [
 
 const allAgents = tiers.flatMap((t) => t.agents);
 
+// Agents that have a dedicated `/agents/<slug>/` detail page. Their hub
+// card heading links into it; the rest stay plain text until their page
+// ships. Keep in lockstep with `pages/agents/<slug>/index.astro`.
+const DETAILED = new Set(['claude-code', 'codex', 'cursor', 'opencode']);
+
 const localizedCredentialLabels: Partial<Record<LandingLocaleCode, Record<string, string>>> = {
   zh: {
     'claude-code': 'Anthropic API key（BYOK）或 Claude 订阅',
@@ -184,7 +189,7 @@ const jsonLd = [
         <ul class="agent-grid">
           {tier.agents.map((a) => (
             <li class="agent-card" id={a.slug}>
-              <h3>{a.name}</h3>
+              <h3>{DETAILED.has(a.slug) ? <a href={href(`/agents/${a.slug}/`)}>{a.name}</a> : a.name}</h3>
               <p><strong>{page.vendor}:</strong> {a.vendor}</p>
               <p><strong>{page.credential}:</strong> {credentialLabel(a)}</p>
             </li>
