@@ -176,7 +176,7 @@ const jsonLd = [
     <span aria-current="page">{page.breadcrumb}</span>
   </nav>
 
-  <article class="info-page">
+  <article class="info-page agents-hub">
     <header class="catalog-head">
       <span class="label">{page.label}</span>
       <h1 class="display">{page.heading(allAgents.length)}</h1>
@@ -186,23 +186,16 @@ const jsonLd = [
     <section class="info-section">
       <h2>{page.adaptersTitle}</h2>
       <p>{page.adaptersBody}</p>
+      <ul class="agent-grid">
+        {allAgents.map((a) => (
+          <li class="agent-card" id={a.slug}>
+            <h3>{DETAIL_ROUTES[a.slug] ? <a href={href(`/agents/${DETAIL_ROUTES[a.slug]}/`)}>{a.name}</a> : a.name}</h3>
+            <p><strong>{page.vendor}:</strong> {a.vendor}</p>
+            <p><strong>{page.credential}:</strong> {credentialLabel(a)}</p>
+          </li>
+        ))}
+      </ul>
     </section>
-
-    {tiers.map((tier) => (
-      <section class="info-section">
-        <h2>{tier.label}</h2>
-        <p>{tier.blurb}</p>
-        <ul class="agent-grid">
-          {tier.agents.map((a) => (
-            <li class="agent-card" id={a.slug}>
-              <h3>{DETAIL_ROUTES[a.slug] ? <a href={href(`/agents/${DETAIL_ROUTES[a.slug]}/`)}>{a.name}</a> : a.name}</h3>
-              <p><strong>{page.vendor}:</strong> {a.vendor}</p>
-              <p><strong>{page.credential}:</strong> {credentialLabel(a)}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
-    ))}
 
     <section class="info-section" id="byok">
       <h2>{page.byokTitle}</h2>

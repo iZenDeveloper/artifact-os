@@ -2578,3 +2578,12 @@ dialog.tpl-share-popover .detail-share-dialog-text {
   border-radius: 14px;
   background: var(--paper-warm);
 }
+
+/* ---------------------------------------------------------------------------
+ * Agents hub (/agents/) — all adapters in one grid, no tier split. Tighten the
+ * vertical rhythm: the page is a long list of short sections, so the shared
+ * 44px info-section gap reads as too airy here.
+ * ------------------------------------------------------------------------- */
+.agents-hub .info-section + .info-section { margin-top: 30px; }
+.agents-hub .info-section > p { margin-bottom: 14px; }
+.agents-hub .agent-grid { margin-top: 18px; }
