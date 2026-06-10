@@ -45,6 +45,17 @@ test('DSML artifact suppressor strips legacy artifact blocks', () => {
   );
 });
 
+test('DSML artifact suppressor strips split legacy artifact close tags', () => {
+  const suppressor = createDsmlArtifactTextSuppressor();
+
+  assert.equal(
+    suppressor.strip('Done\n\n<artifact identifier="page" type="text/html" title="Page">raw'),
+    'Done\n\n',
+  );
+  assert.equal(suppressor.strip('</art'), '');
+  assert.equal(suppressor.strip('ifact>Tail'), 'Tail');
+});
+
 test('DSML artifact suppressor strips split legacy artifact open tags', () => {
   const suppressor = createDsmlArtifactTextSuppressor();
 

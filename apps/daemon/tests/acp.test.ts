@@ -305,7 +305,7 @@ test('attachAcpSession keeps incremental ACP message chunks unchanged', () => {
   assert.deepEqual(textDeltas, ['Agent Haven', ' — managed AI agents']);
 });
 
-test('attachAcpSession stops after duplicate DSML artifact text starts', () => {
+test('attachAcpSession suppresses split duplicate DSML artifact text and preserves trailing prose', () => {
   const child = new FakeAcpChild();
   const events: Array<{ event: string; payload: unknown }> = [];
 
@@ -330,10 +330,14 @@ test('attachAcpSession stops after duplicate DSML artifact text starts', () => {
     sessionUpdate: 'agent_message_chunk',
     content: { text: 'Build passes. No AI slop detected.\n\n< | DSML artifact identifier="page" type="text/html">' },
   });
-  assert.equal(child.stdin.writableEnded, true);
+  assert.equal(child.stdin.writableEnded, false);
   writeAcpUpdate(child, {
     sessionUpdate: 'agent_message_chunk',
-    content: { text: '\n<!doctype html><html><body>raw html</body></html>\n</artifact>Tail' },
+    content: { text: '\n<!doctype html><html><body>raw html</body></html>\n</art' },
+  });
+  writeAcpUpdate(child, {
+    sessionUpdate: 'agent_message_chunk',
+    content: { text: 'ifact>Tail' },
   });
   writeAcpResult(child, 3, { usage: { inputTokens: 1, outputTokens: 2 } });
 
@@ -341,14 +345,14 @@ test('attachAcpSession stops after duplicate DSML artifact text starts', () => {
     .filter((entry) => entry.event === 'agent' && (entry.payload as { type?: unknown }).type === 'text_delta')
     .map((entry) => (entry.payload as { delta?: unknown }).delta);
 
-  assert.deepEqual(textDeltas, ['Build passes. No AI slop detected.\n\n']);
+  assert.deepEqual(textDeltas, ['Build passes. No AI slop detected.\n\n', 'Tail']);
   assert.equal(
     events.some((entry) => entry.event === 'agent' && (entry.payload as { type?: unknown }).type === 'usage'),
-    false,
+    true,
   );
 });
 
-test('attachAcpSession stops after duplicate legacy artifact text starts', () => {
+test('attachAcpSession suppresses split duplicate legacy artifact text', () => {
   const child = new FakeAcpChild();
   const events: Array<{ event: string; payload: unknown }> = [];
 
@@ -376,9 +380,9 @@ test('attachAcpSession stops after duplicate legacy artifact text starts', () =>
   assert.equal(child.stdin.writableEnded, false);
   writeAcpUpdate(child, {
     sessionUpdate: 'agent_message_chunk',
-    content: { text: 'ifact identifier="page" type="text/html">\n<!doctype html><html></html>' },
+    content: { text: 'ifact identifier="page" type="text/html">\n<!doctype html><html></html></artifact>' },
   });
-  assert.equal(child.stdin.writableEnded, true);
+  assert.equal(child.stdin.writableEnded, false);
   writeAcpResult(child, 3, { usage: { inputTokens: 1, outputTokens: 2 } });
 
   const textDeltas = events
@@ -386,6 +390,52 @@ test('attachAcpSession stops after duplicate legacy artifact text starts', () =>
     .map((entry) => (entry.payload as { delta?: unknown }).delta);
 
   assert.deepEqual(textDeltas, ['Ready to output.\n\n']);
+});
+
+test('attachAcpSession suppresses DSML echo after opaque completed write update', () => {
+  const child = new FakeAcpChild();
+  const events: Array<{ event: string; payload: unknown }> = [];
+
+  attachAcpSession({
+    child: child as never,
+    prompt: 'build landing page',
+    cwd: '/tmp/od-project',
+    model: null,
+    mcpServers: [],
+    send: (event, payload) => events.push({ event, payload }),
+  });
+
+  writeAcpResult(child, 1, {});
+  writeAcpResult(child, 2, { sessionId: 'session-1' });
+  writeAcpUpdate(child, {
+    sessionUpdate: 'tool_call',
+    toolCallId: 'tc-opaque',
+    title: 'edit',
+    status: 'pending',
+  });
+  writeAcpUpdate(child, {
+    sessionUpdate: 'tool_call_update',
+    toolCallId: 'tc-opaque',
+    status: 'completed',
+  });
+  writeAcpUpdate(child, {
+    sessionUpdate: 'agent_message_chunk',
+    content: { text: 'Done\n\n<artifact identifier="page">raw html</artifact>Tail' },
+  });
+  writeAcpUpdate(child, {
+    sessionUpdate: 'agent_message_chunk',
+    content: { text: ' Later docs mention <artifact identifier="example">literal</artifact> syntax.' },
+  });
+  writeAcpResult(child, 3, { usage: { inputTokens: 1, outputTokens: 2 } });
+
+  const textDeltas = events
+    .filter((entry) => entry.event === 'agent' && (entry.payload as { type?: unknown }).type === 'text_delta')
+    .map((entry) => (entry.payload as { delta?: unknown }).delta);
+
+  assert.deepEqual(textDeltas, [
+    'Done\n\nTail',
+    ' Later docs mention <artifact identifier="example">literal</artifact> syntax.',
+  ]);
 });
 
 test('attachAcpSession preserves literal artifact prose before any write echo is expected', () => {

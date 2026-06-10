@@ -3,7 +3,6 @@ import type { Writable } from 'node:stream';
 import path from 'node:path';
 import {
   createDsmlArtifactTextSuppressor,
-  emitWithTextSuppressor,
   type ArtifactTextSuppressor,
 } from './artifact-text-suppression.js';
 
@@ -340,13 +339,29 @@ function isAcpCompletedStatus(update: JsonObject): boolean {
   return status === 'completed' || status === 'complete' || status === 'succeeded' || status === 'success';
 }
 
-function isAcpArtifactWriteUpdate(update: JsonObject): boolean {
-  if (!isAcpCompletedStatus(update)) return false;
+function isAcpTerminalFailureStatus(update: JsonObject): boolean {
+  const status = acpUpdateStatus(update);
+  return status === 'failed' || status === 'failure' || status === 'error' || status === 'cancelled' || status === 'canceled';
+}
+
+function acpToolCallId(update: JsonObject): string | null {
+  return typeof update.toolCallId === 'string' && update.toolCallId.trim()
+    ? update.toolCallId.trim()
+    : null;
+}
+
+function isAcpArtifactWriteLabel(update: JsonObject): boolean {
   const label = [
     typeof update.title === 'string' ? update.title : '',
     typeof update.name === 'string' ? update.name : '',
   ].join(' ');
   return /\b(?:edit|write|create|update|save|patch|replace)\b/i.test(label);
+}
+
+function isAcpArtifactWriteUpdate(update: JsonObject, writeToolCallIds: Set<string>): boolean {
+  if (!isAcpCompletedStatus(update)) return false;
+  const toolCallId = acpToolCallId(update);
+  return isAcpArtifactWriteLabel(update) || (toolCallId ? writeToolCallIds.has(toolCallId) : false);
 }
 
 export function createJsonLineStream(onMessage: (message: unknown, rawLine: string) => void) {
@@ -763,6 +778,7 @@ export function attachAcpSession({
   let aborted = false;
   let stageTimer: TimerHandle | null = null;
   let dsmlArtifactSuppressor: ArtifactTextSuppressor | null = null;
+  const acpArtifactWriteToolCallIds = new Set<string>();
 
   const stageWatchdogDisabled = stageTimeoutMs <= 0;
   const resetStageTimer = (label: string) => {
@@ -1005,14 +1021,18 @@ export function attachAcpSession({
               });
             }
             if (dsmlArtifactSuppressor) {
-              const emitted = emitWithTextSuppressor(
-                dsmlArtifactSuppressor,
-                (event) => send('agent', event),
-                delta,
-              );
-              if (emitted) emittedVisibleTextChunk = true;
-              if (emittedVisibleTextChunk && dsmlArtifactSuppressor.isSuppressing()) {
-                finishCleanPrompt();
+              const wasSuppressingArtifact = dsmlArtifactSuppressor.isSuppressing();
+              const strippedDelta = dsmlArtifactSuppressor.strip(delta);
+              if (strippedDelta) {
+                emittedVisibleTextChunk = true;
+                send('agent', { type: 'text_delta', delta: strippedDelta });
+              }
+              if (
+                !dsmlArtifactSuppressor.isSuppressing() &&
+                !dsmlArtifactSuppressor.hasPendingCandidate() &&
+                (wasSuppressingArtifact || strippedDelta !== delta)
+              ) {
+                dsmlArtifactSuppressor = null;
               }
             } else {
               emittedVisibleTextChunk = true;
@@ -1030,8 +1050,16 @@ export function attachAcpSession({
         // when the model emits no closing assistant text. Track it so the prompt-complete
         // handler does not misreport such a turn as "no output / model unavailable".
         emittedToolCall = true;
-        if (isAcpArtifactWriteUpdate(update)) {
+        const toolCallId = acpToolCallId(update);
+        if (toolCallId && isAcpArtifactWriteLabel(update)) {
+          acpArtifactWriteToolCallIds.add(toolCallId);
+        }
+        if (isAcpArtifactWriteUpdate(update, acpArtifactWriteToolCallIds)) {
           dsmlArtifactSuppressor = createDsmlArtifactTextSuppressor();
+          if (toolCallId) acpArtifactWriteToolCallIds.delete(toolCallId);
+        } else if (toolCallId && isAcpTerminalFailureStatus(update)) {
+          acpArtifactWriteToolCallIds.delete(toolCallId);
+          dsmlArtifactSuppressor = null;
         }
         return;
       }
