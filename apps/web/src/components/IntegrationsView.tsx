@@ -5,6 +5,7 @@ import {
   trackIntegrationsConnectorsTabClick,
   trackIntegrationsSkillsTabClick,
   trackIntegrationsTabClick,
+  trackIntegrationsTopClick,
   trackPageView,
   trackSettingsConnectorAuthResult,
 } from '../analytics/events';
@@ -82,7 +83,17 @@ export function IntegrationsView({
             {t('integrations.lede')}
           </p>
         </div>
-        <div className="integrations-view__badge" aria-hidden="true">
+        <div
+          className="integrations-view__badge"
+          aria-hidden="true"
+          onClick={() =>
+            trackIntegrationsTopClick(analytics.track, {
+              page_name: 'integrations',
+              area: 'integrations',
+              element: 'agent_ready',
+            })
+          }
+        >
           <Icon name="link" size={15} />
           <span>{t('integrations.agentReady')}</span>
         </div>
