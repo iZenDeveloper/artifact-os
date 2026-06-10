@@ -1,3 +1,4 @@
+import type { Dict } from '../i18n/types';
 import type { AgentInfo, AppConfig } from '../types';
 
 export type AmrSendPreflightIssueKind =
@@ -69,6 +70,25 @@ export function resolveAmrSendPreflightIssue(
   }
 
   return null;
+}
+
+// Shared by the preflight dialog and the avatar popover warning so both
+// surfaces name the exact missing BYOK fields with identical wording.
+export const BYOK_FIELD_LABEL_KEYS: Record<AmrByokField, keyof Dict> = {
+  apiKey: 'settings.apiKey',
+  baseUrl: 'settings.baseUrl',
+  model: 'avatar.modelLabel',
+};
+
+export function formatByokFieldList(locale: string, labels: string[]): string {
+  try {
+    return new Intl.ListFormat(locale, {
+      style: 'narrow',
+      type: 'conjunction',
+    }).format(labels);
+  } catch {
+    return labels.join(', ');
+  }
 }
 
 function hasBlockingAgentDiagnostic(agent: AgentInfo): boolean {

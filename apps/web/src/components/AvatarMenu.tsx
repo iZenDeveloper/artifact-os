@@ -13,10 +13,11 @@ import { apiProtocolLabel } from '../utils/apiProtocol';
 import { fetchProviderModels } from '../providers/provider-models';
 import { isMacPlatform } from '../utils/platform';
 import { amrConsoleUrlForProfile } from '../runtime/amr-guidance';
-import type {
-  AmrByokField,
-  AmrSendPreflightIssue,
-  AmrSendPreflightIssueKind,
+import {
+  BYOK_FIELD_LABEL_KEYS,
+  formatByokFieldList,
+  type AmrSendPreflightIssue,
+  type AmrSendPreflightIssueKind,
 } from '../runtime/amr-preflight';
 
 interface Props {
@@ -593,23 +594,6 @@ export function AvatarMenu({
       ) : null}
     </div>
   );
-}
-
-const BYOK_FIELD_LABEL_KEYS: Record<AmrByokField, keyof Dict> = {
-  apiKey: 'settings.apiKey',
-  baseUrl: 'settings.baseUrl',
-  model: 'avatar.modelLabel',
-};
-
-function formatByokFieldList(locale: string, labels: string[]): string {
-  try {
-    return new Intl.ListFormat(locale, {
-      style: 'narrow',
-      type: 'conjunction',
-    }).format(labels);
-  } catch {
-    return labels.join(', ');
-  }
 }
 
 function avatarAmrPreflightDetailKey(kind: AmrSendPreflightIssueKind): keyof Dict {

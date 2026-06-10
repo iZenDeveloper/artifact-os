@@ -17,7 +17,7 @@ import { createPortal } from 'react-dom';
 import { useAnalytics } from '../analytics/provider';
 import { trackChatPanelClick, trackRunFailedToastSurfaceView } from '../analytics/events';
 import { attributedAmrUrl, recordAmrEntry } from '../analytics/amr-attribution';
-import { useT } from '../i18n';
+import { useI18n, useT } from '../i18n';
 import {
   FEATURED_DESIGN_TOOLBOX_ACTION_IDS,
   findDesignToolboxSkill,
@@ -43,7 +43,10 @@ import { AssistantMessage, type QuestionFormOpenRequest } from './AssistantMessa
 import { AmrGuidance } from './AmrGuidance';
 import { amrRechargeUrlForProfile, resolveRunFailureUi } from '../runtime/amr-guidance';
 import {
+  BYOK_FIELD_LABEL_KEYS,
+  formatByokFieldList,
   resolveAmrSendPreflightIssue,
+  type AmrByokField,
   type AmrSendPreflightIssueKind,
 } from '../runtime/amr-preflight';
 import { RESUME_CONTINUE_PROMPT } from '../runtime/resume';
@@ -55,6 +58,7 @@ import {
 import { listDesignArtifactCandidates } from './design-files/designArtifacts';
 import type { PluginFolderAgentAction } from './design-files/pluginFolderActions';
 import { Icon, type IconName } from './Icon';
+import { RemixIcon } from './RemixIcon';
 import { repoConnectCopy } from './design-system-github-evidence';
 import { isRenderableSketchJson, SketchPreview } from './SketchPreview';
 import type { SettingsSection } from './SettingsDialog';
@@ -665,6 +669,8 @@ export interface AmrPreflightSendDraft {
 
 interface AmrPreflightBlockedDraft extends AmrPreflightSendDraft {
   issueKind: AmrSendPreflightIssueKind;
+  /** For `byok-incomplete`: lets the dialog name the exact missing fields. */
+  missingByokFields?: AmrByokField[];
 }
 
 // Gap left above the anchored user message when it is pinned to the top.
@@ -779,6 +785,7 @@ export function ChatPane({
   config,
 }: Props) {
   const t = useT();
+  const { locale } = useI18n();
   const analytics = useAnalytics();
   const amrProfile = config?.agentCliEnv?.amr?.[AMR_PROFILE_ENV_KEY] ?? null;
   const logRef = useRef<HTMLDivElement | null>(null);
@@ -1745,6 +1752,9 @@ export function ChatPane({
             commentAttachments,
             ...(meta ? { meta } : {}),
             issueKind: amrPreflightIssue.kind,
+            ...(amrPreflightIssue.missingByokFields?.length
+              ? { missingByokFields: amrPreflightIssue.missingByokFields }
+              : {}),
           };
           setAmrPreflightDraft(blockedDraft);
           restoreBlockedSendToComposer(blockedDraft);
@@ -2287,7 +2297,19 @@ export function ChatPane({
           {amrPreflightDraft && typeof document !== 'undefined'
             ? createPortal(
                 <AmrPreflightDialog
-                  issueKind={amrPreflightDraft.issueKind}
+                  detail={
+                    amrPreflightDraft.issueKind === 'byok-incomplete' &&
+                    amrPreflightDraft.missingByokFields?.length
+                      ? t('chat.amrPreflight.detailByokMissing', {
+                          fields: formatByokFieldList(
+                            locale,
+                            amrPreflightDraft.missingByokFields.map((field) =>
+                              t(BYOK_FIELD_LABEL_KEYS[field]),
+                            ),
+                          ),
+                        })
+                      : t(amrPreflightDetailKey(amrPreflightDraft.issueKind))
+                  }
                   signedIn={amrSignedIn}
                   onClose={dismissAmrPreflight}
                   onUseAmr={continueBlockedSendWithAmr}
@@ -2304,7 +2326,8 @@ export function ChatPane({
 }
 
 interface AmrPreflightDialogProps {
-  issueKind: AmrSendPreflightIssueKind;
+  /** Localized description of the exact blocking problem. */
+  detail: string;
   /** AMR login status; `null` = unknown (lookup pending or failed). */
   signedIn: boolean | null;
   onClose: () => void;
@@ -2314,7 +2337,7 @@ interface AmrPreflightDialogProps {
 }
 
 function AmrPreflightDialog({
-  issueKind,
+  detail,
   signedIn,
   onClose,
   onUseAmr,
@@ -2349,7 +2372,8 @@ function AmrPreflightDialog({
         </header>
         <p className="amr-preflight-body">{t('chat.amrPreflight.body')}</p>
         <p className="amr-preflight-detail">
-          {t(amrPreflightDetailKey(issueKind))}
+          <RemixIcon name="error-warning-line" size={15} />
+          <span>{detail}</span>
         </p>
         <p className="amr-preflight-meta">{t('chat.amrPreflight.meta')}</p>
         <div className="amr-preflight-actions">
