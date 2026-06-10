@@ -108,7 +108,9 @@ export interface ExamplePromptInfo {
 interface Props {
   active?: boolean;
   // Arms the first-run guidance trail (prototype chip → first preset
-  // card sheen). HomeView enables it only while the user has no projects.
+  // card sheen). Tri-state: true = brand-new user (no projects), false =
+  // existing user, undefined = projects still loading — the guide neither
+  // arms nor completes until the answer is known.
   firstRunGuide?: boolean;
   prompt: string;
   onPromptChange: (value: string) => void;
@@ -231,7 +233,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     prompt,
     onPromptChange,
     onSubmit,
-    firstRunGuide = false,
+    firstRunGuide,
     sessionMode = 'design',
     onSessionModeChange,
     activePluginTitle,
@@ -548,7 +550,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   // First-run guide, beat 1: pulse the Prototype chip for brand-new users.
   // The settle delay lets the hero finish its entrance before the sheen.
   useEffect(() => {
-    if (!firstRunGuide) return;
+    if (firstRunGuide !== true) return;
     if (readHomeGuideStage() !== 'chip') return;
     const arm = window.setTimeout(() => setGuidePulseChipId('prototype'), 900);
     const disarm = window.setTimeout(() => setGuidePulseChipId(null), 3600);
@@ -561,7 +563,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   // Users with existing projects never see the trail — complete it silently
   // so a later empty-projects state doesn't replay it.
   useEffect(() => {
-    if (firstRunGuide) return;
+    if (firstRunGuide !== false) return;
     if (readHomeGuideStage() === 'chip') writeHomeGuideStage('done');
   }, [firstRunGuide]);
 

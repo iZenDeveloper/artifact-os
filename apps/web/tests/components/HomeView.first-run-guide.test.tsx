@@ -85,6 +85,29 @@ describe('Home first-run guide trail', () => {
     expect(chip?.className ?? '').not.toContain('home-hero__attention-sheen');
   });
 
+  it('stays inert while projects are still loading', async () => {
+    stubPluginsFetch();
+    render(
+      <I18nProvider initial="en">
+        <HomeView
+          projects={[] as never}
+          projectsLoading
+          onSubmit={() => undefined}
+          onOpenProject={() => undefined}
+          onViewAllProjects={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    const chip = await screen.findByTestId('home-hero-rail-prototype');
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    // Unknown projects state: no pulse, and crucially the stage is NOT
+    // silently completed — a brand-new user still gets the trail once
+    // loading resolves.
+    expect(chip.className).not.toContain('home-hero__attention-sheen');
+    expect(readHomeGuideStage()).toBe('chip');
+  });
+
   it('never replays once done', async () => {
     writeHomeGuideStage('done');
     stubPluginsFetch();

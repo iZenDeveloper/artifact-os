@@ -1552,7 +1552,7 @@ export function HomeView({
       <HomeHero
         ref={inputRef}
         active={isActive}
-        firstRunGuide={projects.length === 0}
+        firstRunGuide={projectsLoading ? undefined : projects.length === 0}
         prompt={prompt}
         onPromptChange={handlePromptChange}
         onSubmit={submit}
