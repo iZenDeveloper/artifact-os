@@ -364,8 +364,6 @@ function isAcpArtifactWriteUpdate(update: JsonObject, writeToolCallIds: Set<stri
   return isAcpArtifactWriteLabel(update) || (toolCallId ? writeToolCallIds.has(toolCallId) : false);
 }
 
-const ACP_ARTIFACT_ECHO_PREFIX_RE = /^\s*(?:<\s*\|?\s*DSML[\s,]+artifact\b|<\s*artifact\b)/i;
-
 export function createJsonLineStream(onMessage: (message: unknown, rawLine: string) => void) {
   let buffer = '';
   let pendingJson = '';
@@ -780,6 +778,7 @@ export function attachAcpSession({
   let aborted = false;
   let stageTimer: TimerHandle | null = null;
   let dsmlArtifactSuppressor: ArtifactTextSuppressor | null = null;
+  let dsmlArtifactSuppressorArmedAfterText = false;
   const acpArtifactWriteToolCallIds = new Set<string>();
 
   const stageWatchdogDisabled = stageTimeoutMs <= 0;
@@ -1024,18 +1023,21 @@ export function attachAcpSession({
               });
             }
             if (dsmlArtifactSuppressor) {
+              const wasSuppressingArtifact = dsmlArtifactSuppressor.isSuppressing();
+              const hadPendingArtifactCandidate = dsmlArtifactSuppressor.hasPendingCandidate();
+              const strippedDelta = dsmlArtifactSuppressor.strip(delta);
+              const hasOpenArtifactCandidate =
+                dsmlArtifactSuppressor.isSuppressing() || dsmlArtifactSuppressor.hasPendingCandidate();
               const shouldPreserveIncrementalProse =
                 !isCumulativeSnapshot &&
-                !dsmlArtifactSuppressor.isSuppressing() &&
-                !dsmlArtifactSuppressor.hasPendingCandidate() &&
-                !ACP_ARTIFACT_ECHO_PREFIX_RE.test(delta);
-              const wasSuppressingArtifact = dsmlArtifactSuppressor.isSuppressing();
-              const strippedDelta = shouldPreserveIncrementalProse
-                ? delta
-                : dsmlArtifactSuppressor.strip(delta);
-              if (strippedDelta) {
+                !wasSuppressingArtifact &&
+                !hadPendingArtifactCandidate &&
+                !hasOpenArtifactCandidate &&
+                (strippedDelta === delta || !dsmlArtifactSuppressorArmedAfterText);
+              const outputDelta = shouldPreserveIncrementalProse ? delta : strippedDelta;
+              if (outputDelta) {
                 emittedVisibleTextChunk = true;
-                send('agent', { type: 'text_delta', delta: strippedDelta });
+                send('agent', { type: 'text_delta', delta: outputDelta });
               }
               const consumedArtifactText =
                 !shouldPreserveIncrementalProse && (wasSuppressingArtifact || strippedDelta !== delta);
@@ -1043,11 +1045,11 @@ export function attachAcpSession({
                 shouldPreserveIncrementalProse ||
                 (
                   consumedArtifactText &&
-                  !dsmlArtifactSuppressor.isSuppressing() &&
-                  !dsmlArtifactSuppressor.hasPendingCandidate()
+                  !hasOpenArtifactCandidate
                 )
               ) {
                 dsmlArtifactSuppressor = null;
+                dsmlArtifactSuppressorArmedAfterText = false;
               }
             } else {
               emittedVisibleTextChunk = true;
@@ -1071,10 +1073,12 @@ export function attachAcpSession({
         }
         if (isAcpArtifactWriteUpdate(update, acpArtifactWriteToolCallIds)) {
           dsmlArtifactSuppressor = createDsmlArtifactTextSuppressor();
+          dsmlArtifactSuppressorArmedAfterText = emittedTextBuffer.length > 0;
           if (toolCallId) acpArtifactWriteToolCallIds.delete(toolCallId);
         } else if (toolCallId && isAcpTerminalFailureStatus(update)) {
           acpArtifactWriteToolCallIds.delete(toolCallId);
           dsmlArtifactSuppressor = null;
+          dsmlArtifactSuppressorArmedAfterText = false;
         }
         return;
       }
