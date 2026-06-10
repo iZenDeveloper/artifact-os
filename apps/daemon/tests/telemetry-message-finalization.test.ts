@@ -272,6 +272,49 @@ describe('Langfuse message finalization gate', () => {
     });
   });
 
+  it('allows a real final message report after a terminal fallback report', () => {
+    const run = {
+      id: 'run-failed-late-final',
+      projectId: 'project-1',
+      conversationId: 'conv-1',
+      assistantMessageId: 'assistant-1',
+      status: 'failed',
+      createdAt: 1,
+      updatedAt: 2,
+      events: [],
+    };
+    const report = vi.fn();
+    const reporter = createFinalizedMessageTelemetryReporter({
+      design: { runs: { get: vi.fn(() => run) } },
+      db: 'db',
+      dataDir: '/tmp/od-data',
+      reportedRuns: new Set<string>(),
+      report,
+    });
+
+    reporter(
+      { ...terminalMessage, runId: run.id, runStatus: 'failed', endedAt: 1234 },
+      { telemetryFinalized: true },
+      { reportTrigger: 'terminal_fallback' },
+    );
+    reporter(
+      { ...terminalMessage, runId: run.id, runStatus: 'failed', endedAt: 1235 },
+      { telemetryFinalized: true },
+      { reportTrigger: 'final_message' },
+    );
+    reporter(
+      { ...terminalMessage, runId: run.id, runStatus: 'failed', endedAt: 1236 },
+      { telemetryFinalized: true },
+      { reportTrigger: 'final_message' },
+    );
+
+    expect(report).toHaveBeenCalledTimes(2);
+    expect(report.mock.calls.map(([call]) => call.persistedEndedAt)).toEqual([
+      1234,
+      1235,
+    ]);
+  });
+
   it('captures Langfuse report acceptance after final message reporting resolves', async () => {
     const run = {
       id: 'run-accepted',

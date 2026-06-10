@@ -406,6 +406,7 @@ import {
   getConversation,
   getDeployment,
   getDeploymentById,
+  getMessageTelemetryFinalizationState,
   getProject,
   getTemplate,
   insertConversation,
@@ -3128,6 +3129,7 @@ export function createFinalizedMessageTelemetryReporter({
       });
       return;
     }
+    const reportTrigger = options.reportTrigger ?? 'final_message';
     if (reportedRuns.has(run.id)) {
       captureResult({
         analyticsContext: options.analyticsContext,
@@ -3147,7 +3149,9 @@ export function createFinalizedMessageTelemetryReporter({
       });
       return;
     }
-    reportedRuns.add(run.id);
+    if (reportTrigger !== 'terminal_fallback') {
+      reportedRuns.add(run.id);
+    }
     void (async () => {
       const start = Date.now();
       const delivery = await report({
@@ -3168,7 +3172,7 @@ export function createFinalizedMessageTelemetryReporter({
         delivery: state,
         durationMs: Date.now() - start,
         projectId: options.projectId,
-        reportTrigger: options.reportTrigger,
+        reportTrigger,
         reportResult: state.langfuse_expected === false
           ? 'skipped'
           : state.langfuse_delivery_status === 'accepted'
@@ -5829,8 +5833,10 @@ export async function startServer({
     });
   });
 
-  // Tracks runs whose completion has already been forwarded to Langfuse so
-  // repeated message updates only emit one trace per run.
+  // Tracks runs whose finalized assistant message has already been forwarded
+  // to Langfuse so repeated message updates only emit one final trace per run.
+  // Terminal fallback reports intentionally do not claim this set; a delayed
+  // telemetry-finalized message can still replace the synthetic fallback.
   const reportedRuns = new Set();
 
   // App-version snapshot read once at server start for Langfuse trace metadata.
@@ -5871,6 +5877,11 @@ export async function startServer({
     if (!shouldReportRunCompletionTelemetryFallbackStatus(status)) return;
     const timer = setTimeout(() => {
       if (reportedRuns.has(run.id)) return;
+      if (run.assistantMessageId) {
+        const messageTelemetry = getMessageTelemetryFinalizationState(db, run.assistantMessageId);
+        if (messageTelemetry.finalizedAt !== null) return;
+        if (messageTelemetry.exists && messageTelemetry.hasBufferedPayload) return;
+      }
       reportFinalizedMessage(
         {
           id: run.assistantMessageId ?? `${run.id}-terminal`,

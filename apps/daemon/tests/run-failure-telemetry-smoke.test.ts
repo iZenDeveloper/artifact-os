@@ -219,6 +219,48 @@ describe('run failure telemetry smoke', () => {
     expect(trace.body.id).toBe(run.id);
     expect(trace.body.metadata.error_code).toBe(deriveRunErrorCode(run));
   });
+
+  it('lets a delayed failed-run final message report win over terminal fallback', async () => {
+    binDir = await mkdtemp(path.join(os.tmpdir(), 'od-run-failure-late-final-bin-'));
+    await writeFakeClaude(binDir, 'claude-late-final', 'late finalization smoke failure');
+
+    ingestion = await startLangfuseIngestion();
+    process.env.LANGFUSE_PUBLIC_KEY = 'pk-test';
+    process.env.LANGFUSE_SECRET_KEY = 'sk-test';
+    process.env.LANGFUSE_BASE_URL = ingestion.url;
+    delete process.env.OPEN_DESIGN_TELEMETRY_RELAY_URL;
+    delete process.env.POSTHOG_KEY;
+
+    started = await startServer({ port: 0, returnServer: true }) as StartedServer;
+    restoreSetTimeout = accelerateLangfuseTerminalFallbackDelay(1000);
+    await putConfig(started.url, {
+      agentId: 'claude',
+      agentCliEnv: { claude: { CLAUDE_BIN: path.join(binDir, 'claude-late-final') } },
+      telemetry: { metrics: true, content: true, artifactManifest: false },
+      privacyDecisionAt: Date.now(),
+    });
+
+    const run = await createAndWaitForRun(started.url, {
+      caseId: 'late_finalized_failed_message',
+      agentId: 'claude',
+      message: 'od-failure-smoke-late-finalized-message',
+    });
+    const finalContent = 'late finalized failed assistant content';
+
+    await saveAssistantMessage(started.url, run, {
+      content: finalContent,
+      producedFiles: [{ name: 'late-final.html', kind: 'html', size: 42 }],
+    });
+    await delay(1200);
+    expect(ingestion.traces.some((trace) => trace.body.id === run.id)).toBe(false);
+
+    await finalizeAssistantMessage(started.url, run, {
+      content: finalContent,
+      producedFiles: [{ name: 'late-final.html', kind: 'html', size: 42 }],
+    });
+    const trace = await ingestion.waitForTrace(run.id);
+    expect(trace.body.output).toBe(finalContent);
+  });
 });
 
 function snapshotEnv(): Record<string, string | undefined> {
@@ -239,7 +281,7 @@ function restoreEnv(env: Record<string, string | undefined>): void {
   }
 }
 
-function accelerateLangfuseTerminalFallbackDelay(): () => void {
+function accelerateLangfuseTerminalFallbackDelay(delayMs = 0): () => void {
   const originalSetTimeout = globalThis.setTimeout;
   const spy = vi.spyOn(globalThis, 'setTimeout');
   spy.mockImplementation(((
@@ -247,7 +289,7 @@ function accelerateLangfuseTerminalFallbackDelay(): () => void {
     timeout: Parameters<typeof globalThis.setTimeout>[1],
     ...args: any[]
   ) => {
-    const delay = timeout === 15_000 ? 0 : timeout;
+    const delay = timeout === 15_000 ? delayMs : timeout;
     return originalSetTimeout(handler, delay, ...args);
   }) as typeof globalThis.setTimeout);
   return () => spy.mockRestore();
@@ -400,7 +442,12 @@ async function readRunEvents(file: string): Promise<RunEvent[]> {
     .map((line) => JSON.parse(line) as RunEvent);
 }
 
-async function finalizeAssistantMessage(url: string, run: RunStatus): Promise<void> {
+async function saveAssistantMessage(
+  url: string,
+  run: RunStatus,
+  patch: Record<string, unknown> = {},
+  telemetryFinalized = false,
+): Promise<void> {
   const response = await fetch(
     `${url}/api/projects/${encodeURIComponent(run.projectId)}/conversations/${encodeURIComponent(run.conversationId)}/messages/${encodeURIComponent(run.assistantMessageId)}`,
     {
@@ -415,11 +462,20 @@ async function finalizeAssistantMessage(url: string, run: RunStatus): Promise<vo
         runStatus: run.status,
         startedAt: run.createdAt,
         endedAt: run.updatedAt,
-        telemetryFinalized: true,
+        ...patch,
+        ...(telemetryFinalized ? { telemetryFinalized: true } : {}),
       }),
     },
   );
   expect(response.status).toBe(200);
+}
+
+async function finalizeAssistantMessage(
+  url: string,
+  run: RunStatus,
+  patch: Record<string, unknown> = {},
+): Promise<void> {
+  await saveAssistantMessage(url, run, patch, true);
 }
 
 function delay(ms: number): Promise<void> {
