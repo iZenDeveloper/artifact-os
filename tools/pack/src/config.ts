@@ -26,6 +26,7 @@ export type ToolPackCliOptions = {
   containerized?: boolean;
   dir?: string;
   diagnoseAttempts?: string | number;
+  expectedVersion?: string;
   expr?: string;
   headless?: boolean;
   json?: boolean;
@@ -33,6 +34,7 @@ export type ToolPackCliOptions = {
   notarize?: boolean;
   namespace?: string;
   path?: string;
+  payloadPath?: string;
   portable?: boolean;
   removeData?: boolean;
   removeLogs?: boolean;

@@ -197,6 +197,14 @@ describe("packaged smoke workflow", () => {
     expect(releaseBetaWorkflow).toContain("RELEASE_TARGET: win_x64");
     expect(releaseBetaWorkflow).toContain("RELEASE_TARGET: mac_x64");
     expect(releaseBetaWorkflow).toContain("RELEASE_TARGET: linux_x64");
+    const betaWinJob = sectionBetween(releaseBetaWorkflow, "  build_win_x64:", "  build_linux_x64:");
+    expect(betaWinJob).not.toContain("tools\\release\\scripts\\build-platform.ps1");
+    expect(betaWinJob).toContain("uses: actions/cache/restore@v5");
+    expect(betaWinJob).toContain("uses: actions/cache/save@v5");
+    expect(betaWinJob).toContain("tools-pack-win-v1-beta-$env:RUNNER_OS-");
+    expect(betaWinJob).toContain('"tools-pack", "win", "build"');
+    expect(betaWinJob).toContain("tools-pack win validate-payload");
+    expect(betaWinJob).toContain("pnpm exec tsx scripts/release-smoke.ts win specs/win.spec.ts");
     const betaBuildScript = await readFile(releaseBetaPosixBuildScriptPath, "utf8");
     expect(betaBuildScript).toContain('release_channel="${RELEASE_CHANNEL:-beta}"');
     expect(betaBuildScript).toContain('OD_PACKAGED_E2E_RELEASE_CHANNEL="$release_channel"');
