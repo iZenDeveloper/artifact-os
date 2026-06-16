@@ -5,10 +5,15 @@
 // you ran the daemon on a non-default port.
 
 const $ = (id) => document.getElementById(id);
+const I18N = globalThis.OD_CLIPPER_I18N;
+const locale = I18N?.currentLocale ? I18N.currentLocale() : 'en';
+const t = (key, vars) => (I18N?.t ? I18N.t(key, vars, locale) : key);
+
+if (I18N?.translateDocument) I18N.translateDocument(document, locale);
 
 function send(message) {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage(message, (res) => resolve(res || { ok: false, error: 'no response' }));
+    chrome.runtime.sendMessage(message, (res) => resolve(res || { ok: false, error: t('noResponse') }));
   });
 }
 
@@ -127,7 +132,7 @@ function hideRefresh() {
 
 function render(connected) {
   const status = $('status');
-  status.textContent = connected ? 'Connected' : 'Offline';
+  status.textContent = connected ? t('statusConnected') : t('statusOffline');
   status.dataset.paired = connected ? 'true' : 'false';
   $('hint').hidden = connected;
   // Capture stays available even when disconnected; the buttons surface a clear
@@ -167,10 +172,10 @@ function reportCapture(res, okText) {
     return;
   }
   if (res.error === 'not running') {
-    setMsg('Open Design isn’t running — start the app first.', 'err');
+    setMsg(t('openDesignNotRunning'), 'err');
     void refresh();
   } else {
-    setMsg(`Failed: ${res.error || 'unknown'}`, 'err');
+    setMsg(t('failed', { error: res.error || t('unknown') }), 'err');
   }
 }
 
@@ -178,7 +183,7 @@ $('save-daemon').addEventListener('click', async () => {
   const url = $('daemon').value.trim();
   const res = await send({ type: 'setDaemonUrl', url });
   render(Boolean(res.connected));
-  setMsg(res.connected ? 'Saved — connected.' : 'Saved, but Open Design wasn’t detected at that URL.', res.connected ? 'ok' : 'err');
+  setMsg(res.connected ? t('savedConnected') : t('savedNotDetected'), res.connected ? 'ok' : 'err');
 });
 
 // Capture options shared by the page / figma actions.
@@ -189,50 +194,50 @@ function captureOpts() {
 
 $('page').addEventListener('click', async () => {
   setBusy(true);
-  setMsg('Capturing page…', 'loading');
+  setMsg(t('capturingPage'), 'loading');
   const res = await send({ type: 'capturePageToLibrary', opts: captureOpts() });
   reportCapture(res, (r) => {
-    if (r.deduped) return 'Page already in library.';
+    if (r.deduped) return t('pageAlreadyInLibrary');
     // A very large page is captured at reduced fidelity rather than failing:
     // the layout (Figma IR) may be partial and/or some images stay as live
     // links. Tell the user when either happened so the result isn't surprising.
     const notes = [];
-    if (r.truncated) notes.push('large page — partial layout');
-    if (r.figmaDropped) notes.push('Figma layout skipped — page too large');
+    if (r.truncated) notes.push(t('largePagePartialLayout'));
+    if (r.figmaDropped) notes.push(t('figmaLayoutSkippedPageTooLarge'));
     if (r.partialImages) {
-      notes.push(`${r.partialImages} image${r.partialImages === 1 ? '' : 's'} left as links`);
+      notes.push(t('imagesLeftLinks', { count: r.partialImages }));
     }
     const suffix = notes.length ? ` (${notes.join('; ')})` : '';
     return r.hasFigma
-      ? `Saved page + Figma capture${suffix} to library.`
-      : `Saved page${suffix} to library.`;
+      ? t('savedPageWithFigma', { suffix })
+      : t('savedPage', { suffix });
   });
 });
 
 $('figma').addEventListener('click', async () => {
   setBusy(true);
-  setMsg('Building Figma import JSON…', 'loading');
+  setMsg(t('buildingFigma'), 'loading');
   const res = await send({ type: 'downloadFigma', opts: captureOpts() });
-  reportCapture(res, () => 'Figma import JSON downloaded — run the OD Figma Import plugin inside Figma, then choose this file.');
+  reportCapture(res, () => t('figmaDownloaded'));
 });
 
 $('system')?.addEventListener('click', async () => {
   setBusy(true);
-  setMsg('Extracting design system…', 'loading');
+  setMsg(t('extractingBrandKit'), 'loading');
   const res = await send({ type: 'captureDesignSystemToLibrary', opts: captureOpts() });
   reportCapture(res, (r) => {
     const suffix = r.partialImages
-      ? ` (${r.partialImages} resource${r.partialImages === 1 ? '' : 's'} left as links)`
+      ? ` (${t('resourcesLeftLinks', { count: r.partialImages })})`
       : '';
-    return r.deduped ? `Design system already in library${suffix}.` : `Design system saved to library${suffix}.`;
+    return r.deduped ? t('brandKitAlreadyInLibrary', { suffix }) : t('brandKitSaved', { suffix });
   });
 });
 
 $('shot').addEventListener('click', async () => {
   setBusy(true);
-  setMsg('Capturing screenshot…', 'loading');
+  setMsg(t('capturingScreenshot'), 'loading');
   const res = await send({ type: 'captureScreenshot' });
-  reportCapture(res, (r) => (r.deduped ? 'Already in library.' : 'Screenshot saved to library.'));
+  reportCapture(res, (r) => (r.deduped ? t('alreadyInLibrary') : t('screenshotSaved')));
 });
 
 // Open an on-page surface (element picker / image picker) in the active tab,
@@ -241,7 +246,7 @@ async function openOnPage(message, startedMsg, unavailableMsg) {
   const tab = await activeTab();
   const tabId = tab && tab.id;
   if (!tabId) {
-    setMsg('Open a normal web page to use this.', 'err');
+    setMsg(t('openNormalPage'), 'err');
     return;
   }
   const res = await sendToTabEnsuringScript(tabId, tab.url, message);
@@ -251,7 +256,7 @@ async function openOnPage(message, startedMsg, unavailableMsg) {
     // on an injectable page. On a restricted page (chrome://, the Web Store, …)
     // nothing can attach, so say so plainly.
     if (isInjectable(tab.url)) {
-      setMsg('Open Design hasn’t attached to this page yet.', 'err');
+      setMsg(t('odNotAttached'), 'err');
       showRefresh(() => openOnPage(message, startedMsg, unavailableMsg));
     } else {
       setMsg(unavailableMsg, 'err');
@@ -265,24 +270,24 @@ async function openOnPage(message, startedMsg, unavailableMsg) {
 $('element')?.addEventListener('click', () =>
   openOnPage(
     { type: 'odClipper:pickElement' },
-    'Click an element on the page…',
-    'The element picker isn’t available on this page — try a normal website.',
+    t('clickElement'),
+    t('elementPickerUnavailable'),
   ),
 );
 
 $('imgs')?.addEventListener('click', () =>
   openOnPage(
     { type: 'odClipper:pickImages' },
-    'Pick images on the page…',
-    'The image picker isn’t available on this page — try a normal website.',
+    t('pickImagesOnPage'),
+    t('imagePickerUnavailable'),
   ),
 );
 
 $('region')?.addEventListener('click', () =>
   openOnPage(
     { type: 'odClipper:pickRegion' },
-    'Drag a region on the page…',
-    'Region capture isn’t available on this page — try a normal website.',
+    t('dragRegionOnPage'),
+    t('regionUnavailable'),
   ),
 );
 
@@ -290,21 +295,21 @@ $('toolbar-toggle').addEventListener('click', async function toggleToolbar() {
   const tab = await activeTab();
   const tabId = tab && tab.id;
   if (!tabId) {
-    setMsg('Open a normal web page to use the on-page bar.', 'err');
+    setMsg(t('openNormalPageForBar'), 'err');
     return;
   }
   const res = await sendToTabEnsuringScript(tabId, tab.url, { type: 'odClipper:setToolbar', mode: 'toggle' });
   if (!res || !res.ok) {
     if (isInjectable(tab.url)) {
-      setMsg('Open Design hasn’t attached to this page yet.', 'err');
+      setMsg(t('odNotAttached'), 'err');
       showRefresh(toggleToolbar);
     } else {
-      setMsg('The on-page bar isn’t available on this page — try a normal website.', 'err');
+      setMsg(t('onPageBarUnavailable'), 'err');
     }
     return;
   }
   renderToolbar(Boolean(res.visible));
-  setMsg(res.visible ? 'On-page bar shown.' : 'On-page bar hidden.', 'ok');
+  setMsg(res.visible ? t('onPageBarShown') : t('onPageBarHidden'), 'ok');
 });
 
 // Per-image hover capture toggle. Persisted to storage so it applies to every
@@ -322,7 +327,7 @@ $('image-hover')?.addEventListener('click', async () => {
   }
   const tab = await activeTab();
   if (tab && tab.id) void sendToTab(tab.id, { type: 'odClipper:setImageHover', enabled: next });
-  setMsg(next ? 'Image hover button on.' : 'Image hover button off.', 'ok');
+  setMsg(next ? t('imageHoverOn') : t('imageHoverOff'), 'ok');
 });
 
 // Recover from a tab that never received the content script. Inject it in place
@@ -345,19 +350,19 @@ $('refresh-page')?.addEventListener('click', async () => {
   await injectContentScript(tabId);
   if (await pingTab(tabId)) {
     if (typeof retry === 'function') await retry();
-    else setMsg('Ready — try again.', 'ok');
+    else setMsg(t('readyTryAgain'), 'ok');
     return;
   }
   // Couldn't re-arm in place → genuinely reload and wait for the fresh content
   // script to attach, then resume the original action.
-  setMsg('Reloading the page…');
+  setMsg(t('reloadingPage'));
   chrome.tabs.reload(tabId);
   if (await waitForAttach(tabId, 6000)) {
     if (typeof retry === 'function') await retry();
-    else setMsg('Ready — try again.', 'ok');
+    else setMsg(t('readyTryAgain'), 'ok');
   } else {
     hideRefresh();
-    setMsg('Reloaded — reopen this popup to continue.', 'ok');
+    setMsg(t('reloadedReopen'), 'ok');
   }
 });
 

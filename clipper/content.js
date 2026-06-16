@@ -17,6 +17,15 @@
 
 (function () {
   if (window.__odClipperInjected) return;
+  const I18N = globalThis.OD_CLIPPER_I18N;
+  const locale = I18N?.currentLocale ? I18N.currentLocale() : 'en';
+  const t = (key, vars) => (I18N?.t ? I18N.t(key, vars, locale) : key);
+  const esc = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
   // Trusted-Types-safe HTML insertion. Pages that send
   // `require-trusted-types-for 'script'` in their CSP (The Economist and many
@@ -106,7 +115,7 @@
   // control named for assistive tech. We deliberately drop the native `title`
   // so there's no slow, duplicate OS tooltip stacked on ours.
   const btn = (act, title) =>
-    `<button data-act="${act}" data-tip="${title}" aria-label="${title}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICON[act]}</svg></button>`;
+    `<button data-act="${act}" data-tip="${esc(title)}" aria-label="${esc(title)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICON[act]}</svg></button>`;
   setHTML(shadow, `
     <style>
       .bar {
@@ -205,29 +214,29 @@
       @keyframes odSpin { to { transform: rotate(360deg); } }
     </style>
     <div class="bar">
-      <div class="grip" data-tip="Drag to move" aria-label="Drag the Open Design bar">
+      <div class="grip" data-tip="${esc(t('toolbarDrag'))}" aria-label="${esc(t('toolbarDragLabel'))}">
         <svg viewBox="0 0 10 16" fill="currentColor" aria-hidden="true">
           <circle cx="2.5" cy="3" r="1.4"/><circle cx="7.5" cy="3" r="1.4"/>
           <circle cx="2.5" cy="8" r="1.4"/><circle cx="7.5" cy="8" r="1.4"/>
           <circle cx="2.5" cy="13" r="1.4"/><circle cx="7.5" cy="13" r="1.4"/>
         </svg>
       </div>
-      <a class="brand" href="https://open-design.ai" target="_blank" rel="noopener noreferrer" data-tip="Open Design — open-design.ai" aria-label="Open Design home">
+      <a class="brand" href="https://open-design.ai" target="_blank" rel="noopener noreferrer" data-tip="${esc(t('toolbarHomeTip'))}" aria-label="${esc(t('toolbarHomeLabel'))}">
         <svg viewBox="0 0 93 93" fill="#fff" xmlns="http://www.w3.org/2000/svg">
           <path fill-rule="evenodd" clip-rule="evenodd" d="M46.38 17.5c15.85 0 28.7 12.85 28.7 28.7 0 15.85-12.85 28.7-28.7 28.7H21.5a3.82 3.82 0 0 1-3.82-3.82V46.19c0-15.85 12.85-28.7 28.7-28.7Zm0 5.74c-12.68 0-22.96 10.28-22.96 22.96 0 12.68 10.28 22.96 22.96 22.96 12.68 0 22.96-10.28 22.96-22.96 0-12.68-10.28-22.96-22.96-22.96Z"/>
           <path d="M44.59 59.66 35.84 36.64a.94.94 0 0 1 1.18-1.19l23.04 8.91c.95.37.69 1.78-.33 1.78H46.36v13.19c0 1.03-1.41 1.29-1.77.33Z"/>
         </svg>
       </a>
       <span class="sep"></span>
-      ${btn('page', 'Capture page → Library')}
-      ${btn('system', 'Extract design system')}
-      ${btn('figma', 'Download Figma import JSON')}
-      ${btn('shot', 'Capture screenshot')}
-      ${btn('region', 'Capture a region')}
-      ${btn('imgs', 'Pick images to save')}
-      ${btn('element', 'Pick an element to capture')}
+      ${btn('page', t('toolbarCapturePage'))}
+      ${btn('system', t('toolbarExtractBrandKit'))}
+      ${btn('figma', t('toolbarDownloadFigma'))}
+      ${btn('shot', t('toolbarCaptureScreenshot'))}
+      ${btn('region', t('toolbarCaptureRegion'))}
+      ${btn('imgs', t('toolbarPickImages'))}
+      ${btn('element', t('toolbarPickElement'))}
       <span class="sep"></span>
-      <button class="close" data-act="close" data-tip="Hide Open Design bar" aria-label="Hide Open Design bar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON.close}</svg></button>
+      <button class="close" data-act="close" data-tip="${esc(t('toolbarHide'))}" aria-label="${esc(t('toolbarHide'))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON.close}</svg></button>
       <div class="busy-veil" aria-hidden="true"><span class="spinner"></span></div>
     </div>`);
   document.documentElement.appendChild(host);
@@ -308,28 +317,28 @@
         res = await chrome.runtime.sendMessage({ type });
       } catch {
         setBusy(false);
-        toast('Extension error — reload the page');
+        toast(t('extensionErrorReload'));
         return;
       }
       setBusy(false);
       if (!res || !res.ok) {
         toast(res && res.error === 'not running'
-          ? 'Open Design isn’t running — start the app'
-          : `Failed: ${(res && res.error) || 'unknown'}`);
+          ? t('openDesignStartApp')
+          : t('failed', { error: (res && res.error) || t('unknown') }));
         return;
       }
       if (type === 'capturePageToLibrary') {
-        if (res.deduped) toast('Page already in library');
+        if (res.deduped) toast(t('pageAlreadyInLibrary'));
         else {
           // Reduced-fidelity fallback for very large pages: note when some
           // images were left as live links so the save isn't misread as full.
-          const base = res.hasFigma ? 'Saved page + Figma' : 'Saved page';
-          toast(res.partialImages ? `${base} (some images left as links)` : base);
+          const base = res.hasFigma ? t('savedPageFigmaShort') : t('savedPageShort');
+          toast(res.partialImages ? `${base} (${t('someImagesLeftLinks')})` : base);
         }
       } else if (type === 'captureDesignSystemToLibrary') {
-        toast(res.deduped ? 'Design system already in library' : 'Saved design system');
-      } else if (type === 'downloadFigma') toast('Figma import JSON downloaded');
-      else toast(res.deduped ? 'Already in library' : 'Saved screenshot');
+        toast(res.deduped ? t('brandKitAlreadyInLibrary', { suffix: '' }) : t('savedBrandKitShort'));
+      } else if (type === 'downloadFigma') toast(t('figmaDownloaded'));
+      else toast(res.deduped ? t('alreadyInLibrary') : t('savedScreenshot'));
     });
   });
 
