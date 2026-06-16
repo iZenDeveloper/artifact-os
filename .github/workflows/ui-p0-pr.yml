@@ -42,7 +42,7 @@ concurrency:
 jobs:
   ui_smoke:
     name: UI P0 smoke
-    if: ${{ github.repository == 'nexu-io/open-design' }}
+    if: ${{ github.repository == 'nexu-io/open-design' && github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -91,18 +91,7 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - name: entry-onboarding
-            shard: entry-onboarding
-          - name: project-workspace
-            shard: project-workspace
-          - name: workspace-restoration
-            shard: workspace-restoration
-          - name: runtime-recovery
-            shard: runtime-recovery
-          - name: settings-connectors
-            shard: settings-connectors
+      matrix: ${{ fromJSON(github.event_name == 'pull_request' && '{"include":[{"name":"entry-settings-smoke","shard":"pr-entry-settings-smoke"},{"name":"project-workspace","shard":"pr-project-workspace"},{"name":"runtime-restoration","shard":"pr-runtime-restoration"}]}' || '{"include":[{"name":"entry-onboarding","shard":"entry-onboarding"},{"name":"project-workspace","shard":"project-workspace"},{"name":"workspace-restoration","shard":"workspace-restoration"},{"name":"runtime-recovery","shard":"runtime-recovery"},{"name":"settings-connectors","shard":"settings-connectors"}]}') }}
 
     steps:
       - name: Checkout
@@ -127,9 +116,7 @@ jobs:
         run: pnpm -C e2e exec tsx scripts/playwright.ts clean
 
       - name: Run UI P0 domain
-        env:
-          SHARD: ${{ github.event_name == 'pull_request' && format('{0}-critical', matrix.shard) || matrix.shard }}
-        run: pnpm -C e2e exec tsx scripts/ui-p0-shards.ts "$SHARD"
+        run: pnpm -C e2e exec tsx scripts/ui-p0-shards.ts "${{ matrix.shard }}"
 
       - name: Upload Playwright debug artifact
         if: ${{ always() }}
