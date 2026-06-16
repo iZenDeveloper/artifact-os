@@ -1080,7 +1080,7 @@ function addSharedOptions(command: ReturnType<typeof cli.command>) {
     .option("--namespace <name>", "runtime namespace (default: default)")
     .option("--tools-dev-root <path>", "tools-dev runtime root")
     .option("--env-file <path>", "load env file before resolving tools-dev config; repeatable")
-    .option("--no-env-file", "skip automatic .env file loading")
+    .option("--no-env-file", "skip automatic .env file loading", { default: false })
     .option("--json", "print JSON");
 }
 
