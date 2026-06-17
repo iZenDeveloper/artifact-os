@@ -151,6 +151,7 @@ test('[P0] @critical AMR auth failures offer inline Authorize & retry sign-in', 
 
 test('[P0] @critical AMR model catalog invalid-key failures route to authorization recovery', async ({ page }) => {
   let loggedIn = false;
+  let loginRequested = false;
   await page.route('**/api/integrations/vela/status', async (route) => {
     await route.fulfill({
       status: 200,
@@ -173,6 +174,7 @@ test('[P0] @critical AMR model catalog invalid-key failures route to authorizati
     });
   });
   await page.route('**/api/integrations/vela/login', async (route) => {
+    loginRequested = true;
     loggedIn = true;
     await route.fulfill({
       status: 202,
@@ -239,12 +241,8 @@ test('[P0] @critical AMR model catalog invalid-key failures route to authorizati
   await expect(page.getByRole('button', { name: /Switch to AMR & retry/i })).toHaveCount(0);
 
   await authorizeAndRetry.click();
-  const settings = page.getByRole('dialog');
-  await expect(settings).toBeVisible({ timeout: 10_000 });
-  await settings.getByRole('button', { name: /^Authorize$|^授权$/i }).click();
-  await expect(settings.getByRole('button', { name: /^Sign out$|^退出登录$/i })).toBeVisible({
-    timeout: 10_000,
-  });
+  await expect.poll(() => loginRequested, { timeout: 10_000 }).toBe(true);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
 test('[P0] @critical Settings reopens AMR with the configured profile, account badge, and model catalog', async ({ page }) => {
