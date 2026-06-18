@@ -175,6 +175,12 @@ jobs:
             cd "$work_dir"
             git fetch origin "+refs/heads/$head_ref:refs/remotes/origin/$head_ref"
             git checkout -B "handoff-$id" "refs/remotes/origin/$head_ref"
+            checked_out="$(git rev-parse HEAD)"
+            if [ "$checked_out" != "$head_sha" ]; then
+              echo "Skipping stale autofix handoff $id for $head_sha; fetched $checked_out."
+              cd "$GITHUB_WORKSPACE"
+              continue
+            fi
             git apply --check "$patch_path"
             git apply "$patch_path"
 
