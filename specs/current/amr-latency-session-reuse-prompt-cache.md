@@ -72,8 +72,18 @@ Explicit order: measure first, run the cheap gateway/cache experiment second, an
 | Gemini | Explicit ctx cache | ~0.25–0.75× | Configurable | Yes |
 
 ### Cache scope + TTL (design constraints)
-- **Scope = upstream account/project level, not global and not cross-organization**. AMR uses server-side credentials, so a shared-cache cohort is architecturally plausible, but production catalog/routing is unverified. Treat **cross-user common-prefix benefit** and **turn-1 immunity to TTL** as explicit hypotheses until measured; `account.go` proves server-side credential selection, not a shared cache cohort. claude_code is BYOK and uses each user's own account → no cross-user sharing.
+- **Scope = upstream account/project level, not global and not cross-organization**. AMR uses server-side credentials, so a shared-cache cohort is architecturally plausible. claude_code is BYOK and uses each user's own account → no cross-user sharing.
+- **Cross-user shared cache — verified by provider docs (the mechanism is real, but it does NOT cover AMR's lead model):**
+  | Provider | Cross-user shared cache? | Evidence |
+  |---|---|---|
+  | Anthropic (Claude, incl. Vertex) | ✅ **Documented** | Cache is scoped per **workspace/org, NOT per-API-key and NOT per-end-user**; two end-users on the same key with an identical prefix hit the same cache. Vertex/Bedrock = org-level isolation. |
+  | OpenAI | ✅ **Documented** | Org-scoped; "within the same org, the first user pays full price and subsequent users with an identical prefix get −50%" — exactly the cross-user warming model. |
+  | Gemini (Vertex explicit ctx cache) | ✅ Plausible | project/org-scoped cached-content resource, reused across requests in the project. |
+  | **DeepSeek (AMR lead model)** | ⚠️ **Unverified, wording leans isolated** | The KV-cache doc only defines prefix-match mechanics and **does not document an account isolation boundary**; other material says "each user's cache is isolated and logically invisible to others" → per-account vs per-conversation undefined. |
+- **Two preconditions for the turn-1 cross-user benefit** (both must hold, hence "hypothesis" not "fact"): (1) AMR must route all users through the **same upstream key/workspace** — `account.go` selects from a server-side catalog by key weight, so multi-key routing dilutes the hit rate even on Anthropic; (2) the provider must be org-scoped — **AMR's dominant lead model is DeepSeek, whose cross-user sharing is exactly the unverified case**. So the turn-1 benefit is documented-real for Claude/OpenAI/Gemini but **unproven on AMR's main DeepSeek path**.
+- **turn-1 immunity to TTL** remains a hypothesis: it only holds if (1)+(2) above hold and concurrency keeps the shared prefix warm.
 - **turn-2+ single-session history is exposed to TTL** (human time between turns is often >5min) → use **1h extended TTL** + keep one process alive per conversation.
+- Sources: Anthropic prompt-caching docs (workspace/org isolation), OpenAI prompt-caching guide (org-scoped, −50% for later users), DeepSeek KV-cache docs (no account-isolation boundary documented).
 
 ### Session invalidation & lifecycle
 
@@ -123,7 +133,7 @@ This feasibility was checked premise by premise by codex, with material correcti
 1. **Caching is actually already implemented in the Vela Link gateway** (`services/link/internal/bifrostengine/prompt_cache.go`): after converting the OpenAI-compatible body to Bifrost, the gateway **injects cache control into system/developer content** (`:173/340`), strips directives unsupported by clients (`:107`), and uses **a limited number of cache breakpoints** (`markChatContentCacheable(content, remaining)`). → **No need to pass cache_control through ACP**; however, it **only injects `{type: ephemeral}` and no TTL** → default 5min, **1h is not wired**.
 2. **Provider table correction**: DeepSeek read discount is **0.5×** — **vela's own billing says deepseek-v3.2 reads at 0.5×** (`services/api/src/billing.ts:178-180`); **AMR actual model preference = DeepSeek/GLM/Gemini**, not Claude/OpenAI (`runtimes/defs/amr.ts:8`). Anthropic numbers are verified. OpenAI/Gemini vary by model/config.
 3. **session reuse = architecture change, not a config switch** (single largest risk): opencode `serve` natively supports multi-turn (`/session/{id}/prompt_async`), while "single session/no load" is a vela ACP choice; **but vela creates/deletes an opencode temp home every turn** (`opencode_process.go:336/376`) → session is destroyed with it, and **whether a fresh serve process can reload a persisted session is unverified**. Required work: stop temp deletion + persist + prove opencode reload + one process per conversation in the daemon.
-4. **Cross-user shared cache is architecturally plausible, not production-proven**: Vela Link upstream credentials are selected from the **server-side catalog, not passed per user** (`account.go`) → provider account sharing is possible; but routing is key-weighted and production catalog layout is unverified.
+4. **Cross-user shared cache — mechanism verified per provider, but not on AMR's lead model**: provider docs confirm the mechanism is real and org/workspace-scoped (Anthropic: per-workspace/org, not per-key/per-user; OpenAI: org-scoped, −50% for later users; Gemini: project-scoped). It does **not** clearly apply to **DeepSeek (AMR's dominant lead model)**, whose docs define prefix-match mechanics but **no account-isolation boundary**. Vela Link selects upstream credentials from a **server-side catalog, key-weighted, not per user** (`account.go`), so even on the org-scoped providers the turn-1 benefit additionally requires all users to land on the **same key/workspace**. Net: documented-real for Claude/OpenAI/Gemini, unproven on the main DeepSeek path — see the provider table under "Cache scope + TTL".
 5. **1h TTL is not wired**: Anthropic supports `ttl:"1h"`, but Vertex/Bedrock automatic caching does not support it and only accepts explicit breakpoints; Vela Link currently defaults to ephemeral without TTL (`prompt_cache.go:340`) → 1h for Vertex-Claude on this path is unverified.
 
 **Therefore, reorder into Step 0/1/2 (after correcting difficulty/feasibility):**
@@ -136,7 +146,7 @@ This feasibility was checked premise by premise by codex, with material correcti
 ## Open questions
 
 - After vela session/load, what should the opencode session persistence granularity be (per conversation? invalidation conditions?).
-- Are upstream accounts for AMR models truly shared (confirm turn-1 cross-user cache assumption).
+- Does AMR route all users through the same upstream key/workspace, and is the DeepSeek lead model's cache shared per-account? (Provider mechanism is documented for Claude/OpenAI/Gemini; DeepSeek isolation boundary is undocumented — this is the gating unknown for the turn-1 cross-user benefit.)
 - Is the opencode direct p50 31s anomaly the same root cause (separate issue).
 
 ## Reproduction · Reproduce
