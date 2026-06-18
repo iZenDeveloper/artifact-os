@@ -1,73 +1,75 @@
-# 引擎可修失败的深挖与修复（工程视角失败率）
+# Deep dive and fixes for engine-fixable failures (engineering-view failure rate)
 
-Status: proposed · Parent: #3408 · 上游背景:stability-performance-state-and-plan.md · Spec format: spec-battle
+Design doc (human/reviewer-facing). Implementation runbooks per slice are written separately at build time.
 
-## Why · 为什么要做
+Status: proposed · Parent: #3408 · Upstream background: stability-performance-state-and-plan.md · Spec format: spec-battle
 
-- **用例**:#3408 排查后,把失败按"产品视角(用户面向)/工程视角(引擎可修)"拆开。**工程视角失败率 ~7% 才是我们真正能修的产品可靠性**,但它一直被全量 ~22% 的噪音(用户自救 + 老版本)淹没。
-- **痛点**:工程视角里最大的桶是 `process_exit`,其中 `execution_failed`(~4,489/周)是个不透明兜底,藏着真 bug;另有一批已具名的真 bug(配置、spawn、协议)。这些都是**我们引擎的锅、可修**。
+## Why · Why this matters
 
-## Sources · 事实源（已核实）
+- **Use case**: After investigating #3408, failures were split into "product view (user-facing)" and "engineering view (engine-fixable)". **The engineering-view failure rate ~7% is the product reliability we can actually fix**, but it has been buried under the noisy overall ~22% number (user self-recovery + old versions).
+- **Pain**: The largest engineering-view bucket is `process_exit`, where `execution_failed`(~4,489/week) is an opaque catch-all hiding real bugs; there is also a set of already-named real bugs (config, spawn, protocol). These are **our engine's responsibility and are fixable**.
 
-- **Repo**:`nexu-io/open-design`(main)。`gh repo clone … && git checkout main`。数据:PostHog OpenDesign=420348(`run_finished`)+ Langfuse `us.cloud.langfuse.com`。
-- **process_exit 细分(7d 实测)**:execution_failed 4,489 · terminated_unknown 535 · **agent_config_invalid 382** · fabricated_role_marker 310 · cli_not_installed 260 · agent_protocol_error 255 · exit_code 185 · **spawn_ebadf 66 / spawn_eperm 61 / spawn_enoexec 22** · signal_killed 22 · stdin_write_eof 20。
-- **fix_config 根因(Langfuse 实测)**:报错 `Error loading config.toml: unknown variant `default`, expected `fast` or `flex` in `service_tier``。即 codex app 写了 `service_tier="default"`,CLI 只认 `fast`/`flex`。
-  - 归一化器 `apps/daemon/src/codex-config-normalize.ts:76` 的正则**只匹配 `"priority"`** → `default` 等其他无效值漏过(`:52-53` 注释明说不管未知值)。382/周全在当前版本(0.10.1=282/0.10.0=56/0.11.0=42,非老版本)。
-- **execution_failed 分类延续**:`apps/daemon/src/run-failure-classification.ts`(#4502 已把 execution_failed 按 `runtime_close` 拆成 stream_error/exit_nonzero/fatal_rpc_error,in review)。stream_error 真因多被 opencode 吞(见 reference,需 Langfuse + 可能 opencode 侧加日志)。
-- **访问前提**:PostHog `phx_` key、Langfuse pk/sk。
+## Sources · Verified facts
+
+- **Repo**: `nexu-io/open-design` (main). `gh repo clone … && git checkout main`. Data: PostHog OpenDesign=420348 (`run_finished`) + Langfuse `us.cloud.langfuse.com`.
+- **process_exit breakdown (7d measured)**: execution_failed 4,489 · terminated_unknown 535 · **agent_config_invalid 382** · fabricated_role_marker 310 · cli_not_installed 260 · agent_protocol_error 255 · exit_code 185 · **spawn_ebadf 66 / spawn_eperm 61 / spawn_enoexec 22** · signal_killed 22 · stdin_write_eof 20.
+- **fix_config root cause (Langfuse measured)**: error `Error loading config.toml: unknown variant `default`, expected `fast` or `flex` in `service_tier``. In other words, the codex app wrote `service_tier="default"`, while the CLI only accepts `fast`/`flex`.
+  - The normalizer at `apps/daemon/src/codex-config-normalize.ts:76` has a regex that **only matches `"priority"`** → `default` and other invalid values slip through (the comment at `:52-53` explicitly says unknown values are not handled). All 382/week are on current versions (0.10.1=282/0.10.0=56/0.11.0=42, not old-version noise).
+- **execution_failed classification follow-up**: `apps/daemon/src/run-failure-classification.ts` (#4502 has split execution_failed by `runtime_close` into stream_error/exit_nonzero/fatal_rpc_error, in review). The real stream_error causes are often swallowed by opencode (see reference, requires Langfuse + possibly added logging on the opencode side).
+- **Access prerequisites**: PostHog `phx_` key, Langfuse pk/sk.
 
 ## Goals / Non-goals
 
-- **Goals**:降工程视角失败率——先修已定位的具体 bug(fix_config),再把 execution_failed 不透明桶继续拆细、挖真因、逐个修。
-- **Non-goals**:产品视角失败(auth/余额——用户自救);老版本(null,自愈);TTFT 口径(单列);AMR 延迟(独立项目)。
+- **Goals**: Reduce the engineering-view failure rate: first fix the already-located concrete bug (fix_config), then continue splitting the opaque execution_failed bucket, find real causes, and fix them one by one.
+- **Non-goals**: Product-view failures (auth/balance, user self-recovery); old versions (null, self-healing); TTFT definition (separate); AMR latency (separate project).
 
-## Proposed design（按可立即落地排切片）
+## Proposed design (slices ordered by immediate shippability)
 
-### Slice 1 · fix_config:codex service_tier 归一化通配（先 ship,小而确定）
-- **现状**:归一化器只补 `priority→fast`;实测漏的是 `default`。
-- **修**:把 `normalizeCodexConfigContent` 从"匹配 `priority`"改成"**匹配任何 service_tier 值,若不在合法集 {fast,flex} 则归一化**"(归一化成安全默认 `fast`,或剥掉该行让 CLI 用内置默认)。
-- **保持 scoped**:仍只碰 service_tier 行(锚定行首 + 排除注释/别的 key 的字符串值),别的原样;幂等;原子写。
-- **红 spec**:用可注入的 `CodexConfigIO`,断言 `service_tier="default"`(及任意非法值)被归一化、合法值不动、注释/别的 key 不误伤。
-- **收益**:~382/周当前版本失败消除 + 未来 codex 再改名不用打地鼠。
+### Slice 1 · fix_config: wildcard normalization for codex service_tier (ship first, small and certain)
+- **Current state**: The normalizer only patches `priority→fast`; the measured leaked value is `default`.
+- **Fix**: Change `normalizeCodexConfigContent` from "match `priority`" to "**match any service_tier value, and normalize it if it is not in the valid set {fast,flex}**" (normalize to safe default `fast`, or remove the line so the CLI uses its built-in default).
+- **Keep scoped**: Still only touch the service_tier line (anchor to line start + exclude comments/other keys' string values); preserve everything else; idempotent; atomic write.
+- **Red spec**: Use injectable `CodexConfigIO`, asserting that `service_tier="default"` (and any invalid value) is normalized, valid values are unchanged, and comments/other keys are not touched.
+- **Benefit**: Eliminates ~382/week current-version failures + avoids whack-a-mole if codex renames this again.
 
-### Slice 2 · execution_failed 深挖（持续战役)
-- #4502 已把 execution_failed 按 close-reason 拆(stream_error/exit_nonzero/fatal_rpc_error)。下一步:
-  - 从 PostHog 取 stream_error/exit_nonzero 的 `langfuse_trace_id` → Langfuse 挖真实错误形态 → 给 `classifyRunFailure` 加真 pattern 分支(把 opaque 拆成可定位的子因)。
-  - opencode 多吞真因("Unexpected server error")→ 评估在 opencode 适配器侧加结构化日志(另一条线,跨 opencode)。
+### Slice 2 · execution_failed deep dive (ongoing campaign)
+- #4502 has split execution_failed by close reason (stream_error/exit_nonzero/fatal_rpc_error). Next steps:
+  - Pull `langfuse_trace_id` for stream_error/exit_nonzero from PostHog → inspect real error shapes in Langfuse → add real pattern branches to `classifyRunFailure` (split opaque into locatable sub-causes).
+  - opencode often swallows the true cause ("Unexpected server error") → evaluate adding structured logging in the opencode adapter (separate line, cross-opencode).
 
-### Slice 3 · 已具名的真 bug（execution_failed 之外，process_exit 里可直接修的)
-- **spawn_ebadf 66 / spawn_eperm 61 / spawn_enoexec 22(~149/周)**:子进程 spawn 失败。ebadf 关联 #4100 的 FD 泄漏前科——查是否同源(FD 耗尽)、eperm/enoexec 查权限/可执行格式。
-- **agent_protocol_error 255**:`json-rpc id N: Internal error`——查 ACP 协议层。
-- **fabricated_role_marker 310**:模型伪造 role marker 被 guard 拦——评估是否可重试/是否特定 model。
-- 每个先红 spec 复现、再修;按量×our-fault 排。
+### Slice 3 · Named real bugs (outside execution_failed, directly fixable inside process_exit)
+- **spawn_ebadf 66 / spawn_eperm 61 / spawn_enoexec 22(~149/week)**: child-process spawn failures. ebadf relates to the prior FD leak in #4100; check whether this is the same root cause (FD exhaustion), and inspect permissions/executable format for eperm/enoexec.
+- **agent_protocol_error 255**: `json-rpc id N: Internal error` — inspect the ACP protocol layer.
+- **fabricated_role_marker 310**: model fabricates a role marker and is blocked by the guard — evaluate retry behavior and whether it is model-specific.
+- For each item, start with a red spec reproducing it, then fix; prioritize by volume × our-fault.
 
 ## Alternatives considered
 
-- fix_config 用"再加一个值映射(default→fast)"而非通配:否决——打地鼠,codex 下次再改名又漏。通配非法值一次性解决。
-- execution_failed 直接在 daemon 加更多 pattern 而不挖 Langfuse:否决——不知道真实错误形态就加 pattern 是猜;先挖真因。
+- For fix_config, add another value mapping (default→fast) instead of a wildcard: rejected because it is whack-a-mole; the next codex rename would leak again. Wildcard normalization solves invalid values once.
+- For execution_failed, add more daemon patterns without digging through Langfuse: rejected because adding patterns without knowing the real error shape is guessing; first dig into the actual cause.
 
 ## Risks & mitigations
 
-- **fix_config 通配误伤**:若某非法值其实有语义,归一化成 fast 可能改变用户意图 → 缓解:`default` 语义本就是"让系统选",归一化成 fast 或剥行(用 CLI 默认)都安全;红 spec 覆盖"合法值不动/注释不误伤"。
-- **execution_failed 挖掘依赖 Langfuse**:trace 留存率有限、opencode 吞真因 → 收益有上限,如实标注;能拆多少拆多少。
-- **spawn bug 可能是环境**:ebadf/eperm 部分是用户机器环境 → 先归因再判是否我们可控。
-- 无契约/迁移风险(分类是附加;归一化只改本地配置文件)。
+- **fix_config wildcard false positive**: If an invalid value actually carries semantics, normalizing to fast may change user intent → mitigation: `default` semantically means "let the system choose", so normalizing to fast or removing the line (using the CLI default) is safe; red specs cover "valid values unchanged / comments not touched".
+- **execution_failed digging depends on Langfuse**: Trace retention is limited and opencode swallows some true causes → benefit has a ceiling; document that honestly and split as much as possible.
+- **spawn bug may be environmental**: Some ebadf/eperm cases may be user-machine environment → attribute first, then decide whether we control it.
+- No contract/migration risk (classification is additive; normalization only edits a local config file).
 
-## Validation · 验收
+## Validation · Acceptance
 
-- Slice 1:红 spec 先红后绿(`service_tier="default"`→归一化);线上看 agent_config_invalid 当前版本量下降。
-- Slice 2:execution_failed 中被拆出具名子因的占比上升(工程视角看板可见)。
-- Slice 3:对应 detail(spawn_*/agent_protocol_error)量下降。
-- 不需要 #3545 QA gate（不改模型输入输出）。
+- Slice 1: red spec goes red then green (`service_tier="default"`→normalized); watch current-version agent_config_invalid volume drop in production.
+- Slice 2: share of execution_failed split into named sub-causes increases (visible in engineering-view dashboard).
+- Slice 3: corresponding detail (spawn_*/agent_protocol_error) volume drops.
+- Does not need #3545 QA gate (does not change model input/output).
 
 ## Reproduction
 
-- process_exit 细分:`SELECT properties.failure_detail, count() FROM events WHERE event='run_finished' AND properties.failure_category='process_exit' AND timestamp>=now()-INTERVAL 7 DAY GROUP BY 1 ORDER BY 2 DESC`
-- fix_config 真因:上面取 `failure_detail='agent_config_invalid'` 的 `langfuse_trace_id` → Langfuse `GET /api/public/traces/{id}` → observations ERROR statusMessage(见 `unknown variant 'default'`)。
-- 版本拆:加 `GROUP BY properties.app_version` 确认当前版本(非老版本噪音)。
+- process_exit breakdown: `SELECT properties.failure_detail, count() FROM events WHERE event='run_finished' AND properties.failure_category='process_exit' AND timestamp>=now()-INTERVAL 7 DAY GROUP BY 1 ORDER BY 2 DESC`
+- fix_config true cause: from above, take `langfuse_trace_id` where `failure_detail='agent_config_invalid'` → Langfuse `GET /api/public/traces/{id}` → observations ERROR statusMessage (see `unknown variant 'default'`).
+- Version split: add `GROUP BY properties.app_version` to confirm current versions (not old-version noise).
 
 ## Open questions
 
-- service_tier 归一化:遇到未知值,归一化成 `fast` 还是剥行(用 CLI 默认)更稳?(倾向剥行,最小假设)
-- spawn_ebadf 是否就是 #4100 FD 泄漏的残留/回归?
-- execution_failed 的 exit_nonzero 子桶,Langfuse 里有没有可提取的真因,还是也被吞?
+- service_tier normalization: when encountering an unknown value, is it steadier to normalize to `fast` or remove the line (use CLI default)? (Current preference: remove the line, smallest assumption.)
+- Is spawn_ebadf just residue/regression of the #4100 FD leak?
+- In Langfuse, does the exit_nonzero sub-bucket of execution_failed contain extractable true causes, or are they swallowed too?

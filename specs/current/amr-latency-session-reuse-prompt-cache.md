@@ -1,131 +1,133 @@
 # AMR latency: session reuse + prompt-cache efficiency
 
+Design doc (human/reviewer-facing). Implementation runbooks per slice are written separately at build time.
+
 Status: proposed · Parent: #3408 · Sibling: agent-startup-latency-profiling.md (#4504) · Spec format: spec-battle
 
-## Why · 为什么要做
+## Why · Why this matters
 
-- **用例**:接手 #3408 性能线,严格 profiling 后发现 AMR 每轮首 token ~11s 的真实大头,且根因和落点都定位清楚了。
-- **痛点**:① 延迟——AMR 续轮 TTFT p50 ~11s,用户每发一句要等 ~11s;② 成本/稳定性——AMR 每轮重付 100-153k input token,直接烧 AMR Cloud balance,而 `insufficient_balance` 是 AMR 失败第一大(7,053/周,#4455 在打)。**这条 perf 优化同时是 stability 优化**。
+- **Use case**: While taking over the performance thread for #3408, strict profiling found the real major contributor to AMR first token latency of ~11s per turn, and both the root cause and implementation target are now clear.
+- **Pain**: ① Latency — AMR follow-up TTFT p50 ~11s, so users wait ~11s after every message; ② Cost/stability — AMR repays 100-153k input tokens every turn, directly burning AMR Cloud balance, and `insufficient_balance` is AMR's largest failure bucket (7,053/week, #4455 is addressing it). **This performance optimization is also a stability optimization**.
 
-## Sources · 事实源(已在本会话逐条核实)
+## Sources · Verified facts (checked item by item in this session)
 
-- **Repo / 拉取**:`nexu-io/open-design`(main)+ 本地 vela 仓库 `~/Documents/vela`(HEAD `fe8266e`)。
-  - `gh repo clone nexu-io/open-design && git checkout main`;vela 已在本地。
-- **vela 侧(根因,已核实)**:`~/Documents/vela/apps/cli/internal/agent/acp_runtime.go`
-  - `:248` `"loadSession": false` —— vela 自报不支持加载/恢复 session。
-  - `newSession` 内 `if runtime.sessionID != "" { return ... "only one ACP session is supported" }` —— 一进程只允许一个 session。
-  - `handleRequest` switch 只处理 `initialize / session/new / session/set_model / session/prompt` —— **没有 `session/load`**,default→"Method not found"。
-- **open-design daemon 侧(已核实)**:
-  - `apps/daemon/src/server.ts:7670` —— `composed` = `# Instructions{易失系统块}` + `# User request{拍平 transcript}`;`prompts/system.ts:632` BASE_SYSTEM_PROMPT 在前、`:637` memoryBody 等易失块在后。
-  - `apps/web/src/providers/daemon.ts:222` —— `buildDaemonTranscript` 每轮把历史拍平成 content-only markdown blob、丢 thinking/tool_use/tool_result。
-  - `apps/daemon/src/runtimes/defs/amr.ts`(`acp-json-rpc`,无 `resumesSessionViaCli`)→ `server.ts:7578` `agentSupportsSessionResume=false` → `skipTranscript:false` → **AMR 每轮重发拍平历史**。(对比 claude.ts `resumesSessionViaCli:true` → 已 resume。)
-  - `apps/daemon/src/runtimes/mcp.ts:13-22` —— daemon 注入的 MCP:AMR(mature-acp)+1 个 live-artifacts;claude 走用户 external MCP。
-- **数据源**:PostHog project **OpenDesign=420348**(`run_finished`,需 `phx_` key);Langfuse `us.cloud.langfuse.com`(trace_id==run.id)。查询见 Reproduction 段。
-- **访问前提**:PostHog personal key 复跑;vela 改动需本地 vela 仓库(已具备)。
+- **Repo / checkout**: `nexu-io/open-design` (main) + local vela repo `~/Documents/vela` (HEAD `fe8266e`).
+  - `gh repo clone nexu-io/open-design && git checkout main`; vela is already local.
+- **vela side (root cause, verified)**: `~/Documents/vela/apps/cli/internal/agent/acp_runtime.go`
+  - `:248` `"loadSession": false` — vela reports that loading/resuming sessions is unsupported.
+  - In `newSession`, `if runtime.sessionID != "" { return ... "only one ACP session is supported" }` — only one session per process.
+  - `handleRequest` switch only handles `initialize / session/new / session/set_model / session/prompt` — **no `session/load`**, default→"Method not found".
+- **open-design daemon side (verified)**:
+  - `apps/daemon/src/server.ts:7670` — `composed` = `# Instructions{volatile system block}` + `# User request{flattened transcript}`; `prompts/system.ts:632` BASE_SYSTEM_PROMPT comes first, while `:637` memoryBody and other volatile blocks come later.
+  - `apps/web/src/providers/daemon.ts:222` — `buildDaemonTranscript` flattens history into a content-only markdown blob every turn, dropping thinking/tool_use/tool_result.
+  - `apps/daemon/src/runtimes/defs/amr.ts` (`acp-json-rpc`, no `resumesSessionViaCli`) → `server.ts:7578` `agentSupportsSessionResume=false` → `skipTranscript:false` → **AMR resends flattened history every turn**. (Contrast with claude.ts `resumesSessionViaCli:true` → already resumes.)
+  - `apps/daemon/src/runtimes/mcp.ts:13-22` — MCP injected by the daemon: AMR(mature-acp)+1 live-artifacts; claude uses user external MCP.
+- **Data sources**: PostHog project **OpenDesign=420348** (`run_finished`, requires `phx_` key); Langfuse `us.cloud.langfuse.com` (trace_id==run.id). Queries are in the Reproduction section.
+- **Access prerequisites**: PostHog personal key to rerun; vela changes require the local vela repo (already available).
 
-## 实测数据底座（真实生产客户端 + 本地 daemon）
+## Measured data baseline (real production client + local daemon)
 
-- AMR TTFT:turn-1 p50 ~11.7s,turn-2+ p50 ~10.9-11.1s(占 ~90% 的 run);命中 vs 未命中 10.9s vs 13.3s。
-- **每轮未缓存 input(大头)**:AMR turn-1 ~100.7k、turn-2+ ~153.2k(claude 91k/126k)。首轮总输入 ~281k(claude ~629k)——Open Design 前置系统+工具+DS+skill+discovery。
-- 缓存效率:AMR ~73%(命中读 392k / 仍重付 143k);claude ~93%。
-- 本地真实 daemon claude(极简轮)拆段:setup 1.67s + 模型首字节 3.14s(claude 自报 `[API:timing] first byte 3140ms`)。
-- 排除项:bun install 不进用户 TTFT(ship 版 opencode 自包含,实测);进程冷启动非大头。
+- AMR TTFT: turn-1 p50 ~11.7s, turn-2+ p50 ~10.9-11.1s (about ~90% of runs); hit vs miss 10.9s vs 13.3s.
+- **Uncached input per turn (main contributor)**: AMR turn-1 ~100.7k, turn-2+ ~153.2k (claude 91k/126k). First-turn total input ~281k (claude ~629k) — Open Design front-loads system + tools + DS + skill + discovery.
+- Cache efficiency: AMR ~73% (hit reads 392k / still repays 143k); claude ~93%.
+- Real local daemon claude (minimal turn) breakdown: setup 1.67s + model first byte 3.14s (claude self-reports `[API:timing] first byte 3140ms`).
+- Ruled out: bun install is not in user TTFT (shipped opencode is self-contained, measured); process cold start is not the main contributor.
 
 ## Goals / Non-goals
 
-- **Goals**:把 AMR 每轮重付的 100-153k 未缓存 input 砍到"只剩本轮新内容",降 TTFT + 降 token 成本。
-- **Non-goals**:claude(已 resume);provider 侧首 token 地板(~3s,网络多跳+模型本身);opencode 直连 31s 异常(单列待查)。
+- **Goals**: Cut the 100-153k uncached input AMR repays every turn down to "only the new content for this turn", reducing TTFT + token cost.
+- **Non-goals**: claude (already resumes); provider-side first-token floor (~3s, network hops + model itself); opencode direct 31s anomaly (separate investigation).
 
 ## Root cause
 
-AMR 每轮重付 100-153k 未缓存 = 把"模型上一轮已处理过、逐字节相同的历史"重新喂、重新算。根因:
-1. **vela 不支持 session 复用**(`loadSession:false` + 单 session + 无 `session/load`)→ 每轮 `session/new` 从头来;
-2. **daemon 每轮把历史拍平成新 user 消息**(`buildDaemonTranscript`)→ 前缀和上一轮原生结构对不上;
-3. **易失系统块**(MCP/记忆/runContext)穿插在系统前缀里 → 提前截断可缓存前缀(对显式缓存模型)。
+AMR repays 100-153k uncached tokens every turn because it feeds "history the model already processed in the previous turn, byte-for-byte identical" again and recomputes it. Root causes:
+1. **vela does not support session reuse** (`loadSession:false` + single session + no `session/load`) → every turn starts from `session/new`;
+2. **daemon flattens history into a new user message every turn** (`buildDaemonTranscript`) → prefixes and the previous turn's native structure do not line up;
+3. **volatile system blocks** (MCP/memory/runContext) are interleaved inside the system prefix → they truncate the cacheable prefix early (for explicit-cache models).
 
 ## Proposed design
 
-两个杠杆,**按缓存类型决定要不要碰 cache_control**:
+Two levers, **with cache_control changes determined by cache type**:
 
-### 杠杆 A — session 复用(**通用必改**,对所有会缓存的模型都有用)
-- vela 三处改:① `initialize` 把 `loadSession` 改 `true`;② `handleRequest` 加 `case "session/load"`;③ 持久化 opencode session(现 session id 只在内存)。
-- daemon 配合:resume-capable 判定纳入 AMR/ACP(或专门路径),改成「一对话一条长存活 ACP 连接、按轮 `session/prompt`」,不再每轮重发拍平历史。
-- 效果:turn-2+ 未缓存从 153k → 只剩本轮新内容。
+### Lever A — session reuse (**universally required**, useful for every model that can cache)
+- Three vela changes: ① change `initialize` to `loadSession=true`; ② add `case "session/load"` in `handleRequest`; ③ persist the opencode session (the current session id only lives in memory).
+- Daemon coordination: include AMR/ACP in resume-capable detection (or a dedicated path), switching to "one long-lived ACP connection per conversation, `session/prompt` per turn", and stop resending flattened history every turn.
+- Effect: turn-2+ uncached input drops from 153k → only new content for the current turn.
 
-### 杠杆 B — cache_control 透传 + 稳定前缀(**只对显式缓存模型**:Claude/Gemini)
-- 自动缓存模型(**DeepSeek、OpenAI**)**不需要**——AMR 头部模型 `deepseek-v4-flash` 就是自动缓存,只要前缀稳定 + 不重发即可。
-- 显式缓存模型(走 Vertex 的 Claude / Gemini):需在 opencode/vela 发上游时带 `cache_control` 断点 + 把易失系统块挪到稳定断点之后。
-- 分层断点:`[通用核心]断点[项目稳定]断点[易失]断点[user]` —— 通用核心**跨用户共享**(见下)。
+### Lever B — cache_control passthrough + stable prefix (**only for explicit-cache models**: Claude/Gemini)
+- Automatic-cache models (**DeepSeek, OpenAI**) **do not need this** — AMR's lead model `deepseek-v4-flash` uses automatic caching; it only needs a stable prefix + no resend.
+- Explicit-cache models (Claude / Gemini through Vertex): upstream requests need `cache_control` breakpoints + volatile system blocks moved after the stable breakpoint.
+- Layered breakpoints: `[common core]breakpoint[project stable]breakpoint[volatile]breakpoint[user]` — common core is **shared across users** (see below).
 
-### 缓存模型分类（写给实现者）
-| 模型 | 缓存 | 读折扣 | TTL | 要 cache_control |
+### Cache model classification (for implementers)
+| Model | Cache | Read discount | TTL | Needs cache_control |
 |---|---|---|---|---|
-| Claude(Vertex/直连) | 显式 | 0.1× | 5m/1h(写 1.25×/2×) | 要 |
-| DeepSeek(AMR 头部) | 自动 | ~0.1× | 自动 | 不要 |
-| OpenAI | 自动 | ~0.5× | 短/不可控 | 不要 |
-| Gemini | 显式 ctx cache | ~0.25–0.75× | 可配 | 要 |
+| Claude(Vertex/direct) | Explicit | 0.1× | 5m/1h(write 1.25×/2×) | Yes |
+| DeepSeek(AMR lead) | Automatic | ~0.1× | Automatic | No |
+| OpenAI | Automatic | ~0.5× | Short/uncontrollable | No |
+| Gemini | Explicit ctx cache | ~0.25–0.75× | Configurable | Yes |
 
-### 缓存作用域 + TTL（设计约束）
-- **作用域 = 上游账号/项目级,非全局、不跨组织**。AMR 走**共享后端账号**(AMR Cloud)→ **通用系统前缀可跨用户共享**:写一次、全用户读(0.1×)、高并发自保 warm → **turn-1 对 TTL 免疫**。claude_code 是 BYOK 自己账号 → 不跨用户。
-- **turn-2+ 单会话历史会被 TTL 咬**(人类两轮间常 >5min)→ 用 **1h 扩展 TTL** + 一对话一进程保活。
+### Cache scope + TTL (design constraints)
+- **Scope = upstream account/project level, not global and not cross-organization**. AMR uses a **shared backend account** (AMR Cloud) → **the common system prefix can be shared across users**: write once, all users read (0.1×), high concurrency self-warms → **turn-1 is immune to TTL**. claude_code is BYOK and uses each user's own account → no cross-user sharing.
+- **turn-2+ single-session history is exposed to TTL** (human time between turns is often >5min) → use **1h extended TTL** + keep one process alive per conversation.
 
-## 预期收益（量化 + 置信度）
+## Expected benefit (quantified + confidence)
 
-| 轮次 | 现状未缓存 | 手段 | 砍后 | TTFT |
+| Turn | Current uncached | Method | After cut | TTFT |
 |---|---|---|---|---|
-| turn-1 | ~100k | 通用前缀跨用户共享 + 稳前缀(显式模型加 cache_control) | 只剩首条消息 | 估 ~6-7s |
-| turn-2+(~90%) | ~153k | session 复用(vela) | 只剩本轮新内容 | **~11s → 估 ~6-7s** |
+| turn-1 | ~100k | Common prefix shared across users + stable prefix (explicit models add cache_control) | Only first message remains | Estimate ~6-7s |
+| turn-2+(~90%) | ~153k | session reuse (vela) | Only new content for this turn remains | **~11s → estimate ~6-7s** |
 
-- **延迟**:AMR 续轮 ~11s → 估 ~6-7s(约 −40%),覆盖 ~90% run。
-- **成本/稳定性**:每轮少处理 ~100-150k token → 少烧 balance → **缓解 insufficient_balance(#4455 第一大失败)**。
-- **置信度**:"现状 11s / 未缓存 100-153k" 是生产实测(硬);"砍后 6-7s" 是基于"模型首字节随未缓存量缩"的推算,**精确值实现完再验**;地板 ~3s(网络+模型,实测)动不了。
-- **范围注**:AMR 体量 ~4.4k 成功 run/周(< claude 73k),绝对 reach 小,但 AMR 是付费托管层,per-user 体验 + 成本敏感,且有 stability 联动。
+- **Latency**: AMR follow-up turns ~11s → estimate ~6-7s (about −40%), covering ~90% of runs.
+- **Cost/stability**: Process ~100-150k fewer tokens per turn → burn less balance → **mitigate insufficient_balance (#4455 largest failure)**.
+- **Confidence**: "current 11s / uncached 100-153k" is production-measured (hard data); "after cut 6-7s" is an estimate based on "model first byte shrinks with uncached volume", **exact value must be verified after implementation**; floor ~3s (network+model, measured) cannot be moved.
+- **Scope note**: AMR volume is ~4.4k successful runs/week (< claude 73k), so absolute run reach is smaller, but AMR is the paid hosted layer, per-user experience + cost are sensitive, and it links to stability.
 
 ## Risks & mitigations
 
-- **跨仓 vela**:session/load + 持久化是 vela 改动;用户 own vela,非阻塞;需 vela 测 + open-design daemon 联调。
-- **正确性**:session 复用别重蹈 #3380 丢编辑状态;改模型/cwd/agent/cancel 要有 session 失效与回落。
-- **TTL 慢对话**:1h 扩展 TTL + 保活缓解;仍有极慢对话 miss(可接受)。
-- **埋点缺口**:AMR `cache_creation` 字段为空(疑 vertex 不上报)→ AMR 缓存账可能不全,验收时补埋点。
-- **observability**:加 `cache_efficiency` / 续轮 uncached_tokens 看板,防优化衰退。
+- **Cross-repo vela**: session/load + persistence are vela changes; user owns vela, non-blocking; requires vela tests + open-design daemon integration.
+- **Correctness**: session reuse must not repeat #3380 and lose edit state; model/cwd/agent/cancel changes need session invalidation and fallback.
+- **Slow conversations vs TTL**: 1h extended TTL + keepalive mitigates; very slow conversations may still miss (acceptable).
+- **Instrumentation gap**: AMR `cache_creation` field is empty (possibly Vertex does not report it) → AMR cache accounting may be incomplete; add instrumentation during acceptance.
+- **observability**: Add `cache_efficiency` / follow-up uncached_tokens dashboards to prevent regression.
 
-## Validation · 验收（behavior-level）
+## Validation · Acceptance (behavior-level)
 
-- before/after：AMR 续轮 `time_to_first_token_ms` p50 下降;`input_tokens`(未缓存)从 ~153k 显著下降;`cache_read/(cache_read+input)` 效率上升(目标趋 claude 的 ~93%)。
-- 一条可证伪：同 `conversationId` 连发两轮,断言第二轮 `input_tokens` << 第一轮(session 复用后历史不再重付)。
-- 不需要 #3545 QA gate（不改模型输入语义/输出，纯减少重发与重算）。
+- before/after: AMR follow-up `time_to_first_token_ms` p50 drops; `input_tokens` (uncached) drops significantly from ~153k; `cache_read/(cache_read+input)` efficiency rises (target approaches claude's ~93%).
+- One falsifiable check: send two consecutive turns in the same `conversationId`, assert second-turn `input_tokens` << first-turn `input_tokens` (history is no longer repaid after session reuse).
+- Does not need #3545 QA gate (does not change model input semantics/output, only reduces resend and recomputation).
 
-## Regression guard（防衰退）
+## Regression guard
 
-- prompt-stack 字节级 golden test：可缓存通用前缀在仅易失输入变化时逐字节不变（复用 `prompt-telemetry.ts` 的 section fingerprint）。
-- STABLE/VOLATILE 分类强制：新增 prompt 段未分类即测试红，逼声明落点（随功能演进自守）。
-- 线上 cache 效率 + 续轮 uncached 看板 + 告警。
+- Prompt-stack byte-level golden test: cacheable common prefix stays byte-for-byte identical when only volatile inputs change (reuse the section fingerprint from `prompt-telemetry.ts`).
+- Enforce STABLE/VOLATILE classification: new prompt sections without classification fail tests, forcing authors to declare placement (self-protecting as features evolve).
+- Production cache efficiency + follow-up uncached dashboards + alerting.
 
-## Feasibility review（codex GPT-5.5,已 ground-check vela + provider docs)— 修正与重排
+## Feasibility review (codex GPT-5.5, ground-checked against vela + provider docs) — corrections and reprioritization
 
-这份的可行性被 codex 逐前提核过,有实质修正,**按此为准**:
+This feasibility was checked premise by premise by codex, with material corrections; **treat this as authoritative**:
 
-1. **缓存其实已在 Vela Link 网关侧做了**(`services/link/internal/bifrostengine/prompt_cache.go`):网关把 OpenAI 兼容 body 转 Bifrost 后,**给 system/developer 内容注入 cache control**(`:173/340`)、剥掉客户端不支持的 directive(`:107`),且按**有限个 cache 断点**(`markChatContentCacheable(content, remaining)`)。→ **不需要从 ACP 透传 cache_control**;但**只注入 `{type: ephemeral}`、无 TTL** → 默认 5min,**1h 没接**。
-2. **provider 表修正**:DeepSeek 读折扣**不是 0.1×**——**vela 自己 billing 写 deepseek-v3.2 读 0.5×**(`services/api/src/billing.ts:170`);**AMR 实际模型偏好 = DeepSeek/GLM/Gemini**,非 Claude/OpenAI(`runtimes/defs/amr.ts:8`)。Anthropic 数核对无误。OpenAI/Gemini 按 model/config 变。
-3. **session 复用 = 架构改造,不是配置开关**(单点最大风险):opencode `serve` 原生支持多轮(`/session/{id}/prompt_async`),"单 session/无 load"是 vela ACP 选择;**但 vela 每轮建/删 opencode temp home**(`opencode_process.go:336/376`)→ session 随之销毁,且**"fresh serve 进程能否 reload 持久化 session"未验证**。要做需:停 temp 销毁 + 持久化 + 证明 opencode reload + daemon 一对话一进程。
-4. **跨用户共享缓存 = 架构上成立、生产未证**:Vela Link 上游凭据从**服务端 catalog 选、非每用户传**(`account.go`)→ 能共享 provider 账号;但路由按 key 加权、生产 catalog 布局未验。
-5. **1h TTL 未接**:Anthropic 支持 `ttl:"1h"`,但 Vertex/Bedrock 上自动缓存不支持、只认显式断点;Vela Link 默认只 ephemeral 无 TTL(`prompt_cache.go:340`)→ Vertex-Claude 走这条的 1h 未验。
+1. **Caching is actually already implemented in the Vela Link gateway** (`services/link/internal/bifrostengine/prompt_cache.go`): after converting the OpenAI-compatible body to Bifrost, the gateway **injects cache control into system/developer content** (`:173/340`), strips directives unsupported by clients (`:107`), and uses **a limited number of cache breakpoints** (`markChatContentCacheable(content, remaining)`). → **No need to pass cache_control through ACP**; however, it **only injects `{type: ephemeral}` and no TTL** → default 5min, **1h is not wired**.
+2. **Provider table correction**: DeepSeek read discount is **not 0.1×** — **vela's own billing says deepseek-v3.2 reads at 0.5×** (`services/api/src/billing.ts:170`); **AMR actual model preference = DeepSeek/GLM/Gemini**, not Claude/OpenAI (`runtimes/defs/amr.ts:8`). Anthropic numbers are verified. OpenAI/Gemini vary by model/config.
+3. **session reuse = architecture change, not a config switch** (single largest risk): opencode `serve` natively supports multi-turn (`/session/{id}/prompt_async`), while "single session/no load" is a vela ACP choice; **but vela creates/deletes an opencode temp home every turn** (`opencode_process.go:336/376`) → session is destroyed with it, and **whether a fresh serve process can reload a persisted session is unverified**. Required work: stop temp deletion + persist + prove opencode reload + one process per conversation in the daemon.
+4. **Cross-user shared cache is architecturally plausible, not production-proven**: Vela Link upstream credentials are selected from the **server-side catalog, not passed per user** (`account.go`) → provider account sharing is possible; but routing is key-weighted and production catalog layout is unverified.
+5. **1h TTL is not wired**: Anthropic supports `ttl:"1h"`, but Vertex/Bedrock automatic caching does not support it and only accepts explicit breakpoints; Vela Link currently defaults to ephemeral without TTL (`prompt_cache.go:340`) → 1h for Vertex-Claude on this path is unverified.
 
-**因此重排两步(难度/可行性修正后):**
-- **Step 1(小、更可行,先做)**:Vela Link 把 ephemeral 改 **1h TTL** + 保证可缓存前缀稳定。只帮显式缓存模型(Claude/Gemini),DeepSeek 自动缓存 TTL 不可设——收益部分。
-- **Step 2(大、是项目)**:session 复用(停 temp 销毁 + 持久化 + 验 opencode reload + daemon 一对话一连接)。吃 turn-2+ 那 153k 的大头,但需立项。
+**Therefore, reorder into two steps (after correcting difficulty/feasibility):**
+- **Step 1 (small, more feasible, first)**: Change Vela Link ephemeral to **1h TTL** + ensure the cacheable prefix is stable. Helps explicit-cache models only (Claude/Gemini); DeepSeek automatic-cache TTL cannot be set — partial benefit.
+- **Step 2 (large, a project)**: session reuse (stop temp deletion + persist + verify opencode reload + one daemon connection per conversation). This captures the large turn-2+ 153k item, but needs a project.
 
-> 据此,本优化**不是低垂果实,是一个需要立项的 vela 跨仓项目**;Step 1 相对小,但收益受"AMR 头部是自动缓存模型(DeepSeek/GLM)"限制。
+> Therefore, this optimization is **not low-hanging fruit; it is a vela cross-repo project that needs to be planned**. Step 1 is comparatively small, but its benefit is limited by "AMR's lead models are automatic-cache models (DeepSeek/GLM)".
 
 ## Open questions
 
-- vela session/load 后,opencode session 持久化粒度（按 conversation？失效条件？）。
-- AMR 各模型走的上游账号是否真共享（确认 turn-1 跨用户缓存假设）。
-- opencode 直连 p50 31s 异常是否同源（单独 issue）。
+- After vela session/load, what should the opencode session persistence granularity be (per conversation? invalidation conditions?).
+- Are upstream accounts for AMR models truly shared (confirm turn-1 cross-user cache assumption).
+- Is the opencode direct p50 31s anomaly the same root cause (separate issue).
 
-## Reproduction · 复现
+## Reproduction · Reproduce
 
-PostHog OpenDesign=420348,`POST /api/projects/420348/query/`。HogQL：数值用 `toFloat()`,null 用 `isNull()`,P90 用 `quantile(0.9)`,轮次用 `row_number() OVER (PARTITION BY conversation_id ORDER BY timestamp)`。
-- 输入构成（turn-1 vs turn-2+）：`avg(toFloat(properties.input_tokens))` / `cache_read_input_tokens` / `cache_creation_input_tokens`，按 `if(turn=1,...)` 分桶。
-- 命中 vs 未命中 TTFT：`if(toFloat(properties.cache_read_input_tokens)>0,'HIT','MISS')` 分组。
-- vela 核实：`git -C ~/Documents/vela grep -n 'loadSession\|session/load' apps/cli`。
+PostHog OpenDesign=420348, `POST /api/projects/420348/query/`. HogQL: use `toFloat()` for numbers, `isNull()` for null, `quantile(0.9)` for P90, and `row_number() OVER (PARTITION BY conversation_id ORDER BY timestamp)` for turn ordinal.
+- Input composition (turn-1 vs turn-2+): `avg(toFloat(properties.input_tokens))` / `cache_read_input_tokens` / `cache_creation_input_tokens`, bucketed by `if(turn=1,...)`.
+- Hit vs miss TTFT: group by `if(toFloat(properties.cache_read_input_tokens)>0,'HIT','MISS')`.
+- vela verification: `git -C ~/Documents/vela grep -n 'loadSession\|session/load' apps/cli`.

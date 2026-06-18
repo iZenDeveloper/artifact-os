@@ -1,40 +1,42 @@
 # Agent startup latency: profiling and session-reuse
 
+Design doc (human/reviewer-facing). Implementation runbooks per slice are written separately at build time.
+
 Status: proposed · Parent: #3408 · Related: #3380, #3535 · Spec format: `spec-battle`
 
-## Why · 为什么要做
+## Why · Why this matters
 
-- **用例**:接手 #3408 可靠性 / 性能线后,产品里最被用户感知到的延迟是「每次发消息后要等 ~10s 才出第一个字」。这是自己撞到 + 用户反馈的真痛点,不是前瞻补位。
-- **痛点**:这 10s 在**每一条消息**上重复,不是一次性预热。它直接拉低 AMR / `claude_code` 的可用体感,是 #3408 这条线里 ROI 最高、且与失败率正交的一块。
+- **Use case**: After taking over the #3408 reliability/performance thread, the most user-visible latency in the product is "after sending a message, it takes ~10s before the first word appears." This is a real pain point encountered directly and reported by users, not speculative pre-work.
+- **Pain**: This 10s repeats on **every message**, not as a one-time warmup. It directly hurts perceived usability for AMR / `claude_code`, and it is one of the highest-ROI items on the #3408 track while being orthogonal to failure rate.
 
-## Sources · 事实源(必填,reviewer 照此核对)
+## Sources · Fact sources (required, reviewers can verify against these)
 
-- **Repo**:`nexu-io/open-design`。本 spec 在分支 `spec/agent-startup-latency`(PR #4504);要核对的**代码在 `origin/main`**。
-- **拉取**:
+- **Repo**: `nexu-io/open-design`. This spec is on branch `spec/agent-startup-latency` (PR #4504); the **code to verify is in `origin/main`**.
+- **Checkout**:
   ```
   gh repo clone nexu-io/open-design && cd open-design && git checkout main
-  # 看本 spec:gh pr checkout 4504
+  # To view this spec: gh pr checkout 4504
   ```
-- **关键代码位置**(reviewer 直接跳过去):
-  - `apps/daemon/src/run-analytics-observability.ts:284-346` — `summarizeRunTimingAnalytics`,`spawn_to_first_token_ms` / `time_to_first_token_ms` / `process_spawn_duration_ms` 在此从 `run.analyticsTelemetry` 的时间戳算出。`:50-60` 是 `RunTimingAnalytics` 字段表。
-  - `apps/daemon/src/server.ts:8853`(`processSpawnStartedAt`)/ `:8868`(`processSpawnedAt`)/ `:9228-9232`(`noteFirstTokenAt` → `firstTokenAt`)。**`processSpawnedAt` → `firstTokenAt` 之间就是 `spawn_to_first_token` 这段 8-10s**,Phase 1 要在这中间加 `cli_ready` / `session_init` 两个新锚点。
-  - `apps/daemon/src/server.ts:10846`(`summarizeRunTimingAnalytics(...)` 调用)/ `:10945`(`...timingAnalytics` 摊进 `run_finished`)——新字段在此上线到遥测。
-  - `apps/daemon/src/runtimes/defs/claude.ts` + `apps/daemon/src/claude-stream.ts` — `claude_code` 的 session 处理,#3380 的修复(session resume)会落在这。
-  - `packages/contracts/src/analytics/events.ts` — `TrackingRunTiming*` 处加三个新字段。
-  - **prompt-cache 前缀稳定性(下方 Root cause 段,已在最新 main 核对)**:
-    - `apps/daemon/src/server.ts:7670` — `composed` 拼装顺序:`# Instructions {instructionPrompt + cwdHint}` 在前、`# User request`(含拍平 transcript)在后。
-    - `instructionPrompt` 前缀含**易失块**:`connectedExternalMcp`(server.ts:7464/7483)、`memoryBody`(:6762/7011)、`runContextPrompt`(:7343)、当前文件列表。
-    - `apps/web/src/providers/daemon.ts:222-235` — `buildDaemonTranscript` 每条消息只渲染 `## role\n{m.content}`,**丢弃 `m.events`**(thinking/tool_use/tool_result);开头条件性插 `buildPriorRunContextWarning`(:87)。`MAX_TRANSCRIPT_MESSAGE_CHARS=12000`(:56)。
-    - vela 侧 `loadSession:false` / 单 ACP session 在 **vela 仓库**(本仓核不到,见 Open questions)。
-- **相关材料**:#3408(总线)、#3380(Claude 每条消息新建 session 而非 resume)、PR #3535(reuse ACP sessions per conversation,他人在做)、PR #4502(同线的分类 sibling)。
-- **数据源**:PostHog project **OpenDesign = 420348**,`run_finished` 事件的 timing 字段。本 spec 的两张表由下列查询得出(rolling 7d,`result='success'`):
-  - segment p50/p90:`quantile(...)(toFloat(properties.<seg>_ms))` group by `agent_provider_id`。
-  - turn-ordinal:`row_number() OVER (PARTITION BY conversation_id ORDER BY timestamp)`,按 turn=1 vs 2+ 分桶比 `time_to_first_token_ms`。
-- **访问前提**:复跑查询需 PostHog personal API key(`phx_…`);翻单条 trace 的真实错误可选用 Langfuse `us.cloud.langfuse.com`(trace_id == run.id)。
+- **Key code locations** (reviewers can jump directly):
+  - `apps/daemon/src/run-analytics-observability.ts:284-346` — `summarizeRunTimingAnalytics`, `spawn_to_first_token_ms` / `time_to_first_token_ms` / `process_spawn_duration_ms` are computed here from timestamps in `run.analyticsTelemetry`. `:50-60` is the `RunTimingAnalytics` field list.
+  - `apps/daemon/src/server.ts:8853` (`processSpawnStartedAt`) / `:8868` (`processSpawnedAt`) / `:9228-9232` (`noteFirstTokenAt` → `firstTokenAt`). **The interval between `processSpawnedAt` → `firstTokenAt` is the 8-10s `spawn_to_first_token` segment**; Phase 1 adds two new anchors inside it: `cli_ready` / `session_init`.
+  - `apps/daemon/src/server.ts:10846` (`summarizeRunTimingAnalytics(...)` call) / `:10945` (`...timingAnalytics` spread into `run_finished`) — new telemetry fields ship here.
+  - `apps/daemon/src/runtimes/defs/claude.ts` + `apps/daemon/src/claude-stream.ts` — `claude_code` session handling; the #3380 fix (session resume) lands here.
+  - `packages/contracts/src/analytics/events.ts` — add three new fields near `TrackingRunTiming*`.
+  - **prompt-cache prefix stability (Root cause below, verified on latest main)**:
+    - `apps/daemon/src/server.ts:7670` — `composed` assembly order: `# Instructions {instructionPrompt + cwdHint}` first, `# User request` (with flattened transcript) later.
+    - The `instructionPrompt` prefix includes **volatile blocks**: `connectedExternalMcp` (server.ts:7464/7483), `memoryBody` (:6762/7011), `runContextPrompt` (:7343), current file list.
+    - `apps/web/src/providers/daemon.ts:222-235` — `buildDaemonTranscript` renders each message only as `## role\n{m.content}`, **dropping `m.events`** (thinking/tool_use/tool_result); conditionally inserts `buildPriorRunContextWarning` at the beginning (:87). `MAX_TRANSCRIPT_MESSAGE_CHARS=12000` (:56).
+    - vela-side `loadSession:false` / single ACP session is in the **vela repo** (not verifiable in this repo; see Open questions).
+- **Related material**: #3408 (umbrella), #3380 (Claude creates a new session for every message instead of resuming), PR #3535 (reuse ACP sessions per conversation, by another author), PR #4502 (classification sibling on the same thread).
+- **Data source**: PostHog project **OpenDesign = 420348**, timing fields on the `run_finished` event. The two tables in this spec come from the following queries (rolling 7d, `result='success'`):
+  - segment p50/p90: `quantile(...)(toFloat(properties.<seg>_ms))` group by `agent_provider_id`.
+  - turn ordinal: `row_number() OVER (PARTITION BY conversation_id ORDER BY timestamp)`, bucketed by turn=1 vs 2+ and comparing `time_to_first_token_ms`.
+- **Access prerequisites**: Rerunning queries requires a PostHog personal API key (`phx_…`); inspecting real errors on individual traces can optionally use Langfuse `us.cloud.langfuse.com` (trace_id == run.id).
 
 ## What the telemetry already shows
 
-启动 timing 分解(success runs, 7d, p50):
+Startup timing breakdown (success runs, 7d, p50):
 
 | segment | AMR | claude_code |
 |---|---|---|
@@ -44,94 +46,94 @@ Status: proposed · Parent: #3408 · Related: #3380, #3535 · Spec format: `spec
 | **spawn → first token** | **10,378 ms** | **8,150 ms** |
 | time_to_first_token(total) | 11,120 ms(p90 24.8 s) | 9,063 ms(p90 34.3 s) |
 
-整段 ~10s 全在 `spawn_to_first_token`;queue+spawn+prompt-build 合计 ~0.5s,不值得优化。
+The full ~10s sits in `spawn_to_first_token`; queue+spawn+prompt-build total ~0.5s and are not worth optimizing.
 
-**每条消息都重付一次完整冷启动(印证 #3380)** —— TTFT 按会话内轮次(success, 7d, p50):
+**Every message repays a full cold start (corroborates #3380)** — TTFT by turn within a conversation (success, 7d, p50):
 
 | provider | turn 1 | turn 2+ |
 |---|---|---|
-| **claude_code** | 8,226 ms | **9,308 ms(反而更慢)** |
-| amr | 12,169 ms | 10,859 ms(快 ~11%) |
+| **claude_code** | 8,226 ms | **9,308 ms (slower)** |
+| amr | 12,169 ms | 10,859 ms (faster by ~11%) |
 
-若 session 被复用,后续轮该明显更快。`claude_code` **零**复用收益 → 每条消息重新冷启动 session,正是 #3380。AMR 有部分复用但基线仍 ~10s。
+If sessions were reused, follow-up turns should be meaningfully faster. `claude_code` has **zero** reuse benefit → each message cold-starts a new session, exactly #3380. AMR shows partial reuse, but the baseline is still ~10s.
 
-## Root cause（在最新 origin/main 核对）：prompt-cache 前缀不稳定
+## Root cause (verified on latest origin/main): prompt-cache prefix instability
 
-> 这套归因最初来自另一位 AI 的排查,本 spec 已逐条在最新 `origin/main` 核对真实代码(锚点见 Sources)。
+> This attribution originally came from another AI's investigation; this spec has verified each claim against real latest `origin/main` code (anchors in Sources).
 
-为什么 cache 命中率低、续轮不提速?三个叠加的结构问题:
+Why are cache hit rate low and follow-up turns not faster? Three structural problems stack together:
 
-1. **易失系统块在稳定 transcript 前面**(`server.ts:7670`)。发给模型的 prompt = `[# Instructions:含 MCP 列表 / 个人记忆 / 当前文件列表 / run context 的易失前缀]` + `[# User request:append-only transcript]`。prompt-cache 按前缀字节匹配——只要易失块任一变化(生成个文件、连个 MCP、改条记忆),前缀漂移 → 后面本来逐字节稳定的 transcript 也整段失效。**稳定内容必须在前、易失在后,这里放反了。**
-2. **每轮新 session + 历史拍平成纯文本**(`daemon.ts:222`)。`buildDaemonTranscript` 把多轮历史拍平成单个 `## role\n{可见文本}` 的 markdown blob,**丢掉 thinking/tool_use/tool_result 的原生结构**,每轮喂给全新 session。上一轮 agent 内部建立的原生结构化缓存(带签名 thinking、结构化 tool 往返)在跨轮那一刻随进程一起丢,下一轮从零重付 input token。
-3. **TTL 兜底也救不了**:Anthropic 默认 cache 5 分钟 TTL,人类两轮间的思考/打字常超时。
+1. **Volatile system blocks are before the stable transcript** (`server.ts:7670`). The prompt sent to the model = `[# Instructions: volatile prefix with MCP list / personal memory / current file list / run context]` + `[# User request: append-only transcript]`. Prompt cache matches byte prefixes — if any volatile block changes (a generated file, a connected MCP, a memory edit), the prefix drifts → the later transcript, which would otherwise be byte-stable, is invalidated too. **Stable content must come first and volatile content later; here it is reversed.**
+2. **New session every turn + history flattened into plain text** (`daemon.ts:222`). `buildDaemonTranscript` flattens multi-turn history into a single `## role\n{visible text}` markdown blob, **dropping the native thinking/tool_use/tool_result structure**, and feeds it to a fresh session every turn. The native structured cache built by the agent in the previous turn (signed thinking, structured tool round trips) is lost with the process across turns, so the next turn repays input tokens from zero.
+3. **TTL fallback cannot save this**: Anthropic default cache TTL is 5 minutes, and human thinking/typing time between turns often exceeds it.
 
-唯一可能幸存的是那段拍平 transcript 文本(append-only),但命中需同时满足 ① daemon 冻住前面的易失系统块、② vela/opencode 网关透传 `cache_control`、③ 在 TTL 内——**目前三条都不满足**。
+The only thing that might survive is the flattened transcript text (append-only), but a hit requires all three conditions: ① daemon freezes the volatile system blocks before it, ② vela/opencode gateway passes through `cache_control`, ③ still within TTL — **currently none of the three hold**.
 
-### 实验来源(诚实标注)
-- ✅ **真实生产客户端**:上面 cache 命中/未命中 TTFT、跨轮命中率,均来自 PostHog `run_finished`(真实 Open Design 客户端遥测)。
-- ✅ **最新 origin/main 代码核对**:Root cause 三条已逐条对真实代码核实。
-- ❌ **已作废**:早期一次本地裸 `claude -p` 的 setup/model 拆分**不经过 daemon**,不代表真实路径,弃用;真实子段拆分待 Phase 1 埋点在 daemon 内测得。
+### Experiment source (honest labels)
+- ✅ **Real production client**: cache hit/miss TTFT and cross-turn hit rate above come from PostHog `run_finished` (real Open Design client telemetry).
+- ✅ **Latest origin/main code verification**: all three Root cause points were checked against real code.
+- ❌ **Invalidated**: an early local bare `claude -p` setup/model breakdown **did not go through the daemon** and does not represent the real path; discarded. Real subsegment breakdown must be measured inside the daemon by Phase 1 instrumentation.
 
 ## Goals / Non-goals
 
-- **Goals**:(1) 把 `spawn_to_first_token` 拆成 `cli_ready_ms` / `session_init_ms` / `model_first_token_ms` 并和现有 `cache_hit_ratio` 关联,定位 10s 的真实归属;(2) 提升 prompt-cache 命中率(根因=易失前缀漂移 + 每轮新 session,见 Root cause)——先做便宜的前缀稳定(3a),再做 ACP 原生 session 复用(3b),降低续轮 TTFT。主指标=cache-miss 率 + 续轮 TTFT p50。
-- **Non-goals**:provider 侧首 token 延迟(含 AMR→vela gateway 多一跳);token/context 裁剪(#3547,那条要走 #3545 gate);prompt-build / spawn 成本(已 ~0.5s)。
+- **Goals**: (1) Split `spawn_to_first_token` into `cli_ready_ms` / `session_init_ms` / `model_first_token_ms` and correlate with existing `cache_hit_ratio`, locating the real owner of the 10s; (2) improve prompt-cache hit rate (root cause = volatile prefix drift + new session every turn, see Root cause) — first do cheap prefix stabilization (3a), then ACP native session reuse (3b), reducing follow-up TTFT. Primary metrics = cache-miss rate + follow-up TTFT p50.
+- **Non-goals**: provider-side first-token latency (including AMR→vela gateway extra hop); token/context trimming (#3547, that path needs #3545 gate); prompt-build / spawn cost (already ~0.5s).
 
 ## Proposed design
 
-三段式,**先观测、用数据决定再动手修**:
+Three phases, **observe first, then use data to decide what to fix**:
 
-1. **Phase 1 — 给 `spawn_to_first_token` 加细分埋点(纯观测,先发)**:在 `processSpawnedAt`→`firstTokenAt` 之间加 `cliReadyAt`(CLI 首个 ready 信号 / 首条 ACP 消息)、`sessionInitDoneAt`(session 建立 / resume 握手完成)两个时间戳,`run_finished` 多发 `cli_ready_ms` / `session_init_ms` / `model_first_token_ms`(三者之和 ≈ `spawn_to_first_token_ms`,余量也发出以便审计)。无行为变化。
-2. **Phase 2 — 实验确认**:PostHog 用新子段重跑 turn-1 vs turn-2+(预期 `session_init_ms` 跨轮持平=冷启动重付,`model_first_token_ms` 随 context 增长);本地 A/B(同会话 fresh vs resumed,只经生产 HTTP API 注数据)。**决策规则**:`session_init_ms` 占 `spawn_to_first_token_ms` > 30%(claude_code)才进 Phase 3,否则定性为 provider 侧、记录结论收手。
-3. **Phase 3a — 稳定可缓存前缀(便宜、独立、无需 gate)**:把易失系统块(文件列表 / MCP 列表 / 个人记忆 / run context)从稳定 transcript **前面**挪到后面或冻结,让 append-only transcript 成为真正能命中的前缀;并确认 vela/opencode 网关透传 `cache_control`。这块不动 session 生命周期、收益立得到(降 cache-miss 率),应先做。
-4. **Phase 3b — ACP 原生多轮 session 复用(大、依赖 vela)**:daemon 改成「一对话一条长存活 ACP 连接、按轮 `session/prompt`」,agent 自己维护原生多轮数组 + 工作记忆 + 缓存,host 不再每轮重发拍平历史。前提是 vela 侧先支持 `session/load` + opencode session 持久化(现版 `loadSession:false` 接不住),需跨仓协调。对齐 #3380 / #3535。验收=续轮 cache 命中率上升、`session_init_ms` 趋零、TTFT p50 下降,且不丢编辑状态。
+1. **Phase 1 — Add subsegment instrumentation to `spawn_to_first_token` (pure observability, ship first)**: Add two timestamps between `processSpawnedAt`→`firstTokenAt`: `cliReadyAt` (CLI first ready signal / first ACP message) and `sessionInitDoneAt` (session establishment / resume handshake complete), and emit `cli_ready_ms` / `session_init_ms` / `model_first_token_ms` on `run_finished` (sum of the three ≈ `spawn_to_first_token_ms`; also emit remainder for audit). No behavior change.
+2. **Phase 2 — Confirm experimentally**: Rerun turn-1 vs turn-2+ in PostHog with the new subsegments (expected: `session_init_ms` stays flat across turns = cold start repaid, `model_first_token_ms` grows with context); local A/B (same conversation fresh vs resumed, data injected only through production HTTP APIs). **Decision rule**: only enter Phase 3 if `session_init_ms` is > 30% of `spawn_to_first_token_ms` (claude_code); otherwise classify as provider-side and stop with a recorded conclusion.
+3. **Phase 3a — Stabilize cacheable prefix (cheap, independent, no gate needed)**: Move or freeze volatile system blocks (file list / MCP list / personal memory / run context) from **before** the stable transcript to after it, so the append-only transcript becomes a prefix that can really hit; confirm vela/opencode gateway passes through `cache_control`. This does not change session lifecycle, gives immediate benefit (lower cache-miss rate), and should happen first.
+4. **Phase 3b — ACP-native multi-turn session reuse (large, depends on vela)**: Change daemon to "one long-lived ACP connection per conversation, `session/prompt` per turn"; the agent maintains native multi-turn arrays + working memory + cache, and the host no longer resends flattened history every turn. Prerequisite: vela supports `session/load` + opencode session persistence first (current `loadSession:false` cannot handle it), requiring cross-repo coordination. Align with #3380 / #3535. Acceptance = follow-up cache hit rate rises, `session_init_ms` approaches zero, TTFT p50 drops, and edit state is not lost.
 
-### Phase 3a 的护栏:前缀稳定性不变量(结构化强制,随功能演进自守)
+### Phase 3a guardrail: prefix-stability invariant (structured enforcement that self-protects as features evolve)
 
-3a 把易失块挪走是**一次性**的;不加护栏,下一个功能又会往前缀塞易失内容、cache 再次悄悄失效。复用现成的 prompt-stack 遥测做结构护栏——`apps/daemon/src/prompt-telemetry.ts` 已按 `kind` 给每个 section 出 `fingerprint` + 全局 `stackFingerprint`,并有 `SECTION_PRIORITY`(`:105`)决定顺序、`REDACTED_CONTENT_KINDS`(`:91`)这类按 kind 的集合:
+3a moving volatile blocks away is **one-time**; without a guardrail, the next feature may put volatile content back into the prefix and silently break cache again. Reuse the existing prompt-stack telemetry as a structural guardrail — `apps/daemon/src/prompt-telemetry.ts` already emits each section's `fingerprint` plus global `stackFingerprint` by `kind`, and has kind-based collections such as `SECTION_PRIORITY` (`:105`) for ordering and `REDACTED_CONTENT_KINDS` (`:91`):
 
-- **分类**:给每个 `PromptTelemetrySectionKind` 标 `STABLE`(可缓存,必须在前缀)或 `VOLATILE`(每轮可变,必须排在 stable 前缀之后)。当前易失项:当前文件列表、`connectedExternalMcp`、`memoryBody`、`runContextPrompt`、`buildPriorRunContextWarning`。
-- **不变量(可证伪)**:把所有 STABLE section(系统核心 + 工具 + append-only transcript)按序拼成「可缓存前缀」,其 fingerprint **在只有 VOLATILE 输入变化时必须逐字节不变**。红测:固定历史,连改文件列表 / MCP 集 / 记忆三次,断言可缓存前缀 fingerprint 不变,且所有 VOLATILE section 的 `ordinal` 都大于该前缀边界。
-- **随功能演进自守**:STABLE/VOLATILE 分类是一张 map(类比现有 `SECTION_PRIORITY`),是未来新增 prompt 段时**唯一的声明落点**;护栏额外断言「每个 `kind` 都必须有分类」——新功能加了未分类的 section kind 就让测试**红**,逼作者显式声明它进前缀还是进尾部。于是「前缀稳定」不是修一次,而是被结构强制、随功能演进持续守住。这条护栏也写进 `specs/current/architecture-boundaries.md` 的 prompt 组装约束里。
+- **Classification**: Mark every `PromptTelemetrySectionKind` as `STABLE` (cacheable, must be in the prefix) or `VOLATILE` (changes every turn, must come after the stable prefix). Current volatile items: current file list, `connectedExternalMcp`, `memoryBody`, `runContextPrompt`, `buildPriorRunContextWarning`.
+- **Invariant (falsifiable)**: Concatenate all STABLE sections (system core + tools + append-only transcript) in order into the "cacheable prefix"; its fingerprint **must be byte-for-byte unchanged when only VOLATILE inputs change**. Red test: fixed history, change file list / MCP set / memory three times, assert cacheable prefix fingerprint is unchanged and all VOLATILE sections have `ordinal` greater than the prefix boundary.
+- **Self-protection as features evolve**: STABLE/VOLATILE classification is a map (analogous to existing `SECTION_PRIORITY`) and is the **single declaration point** when future prompt sections are added; the guardrail additionally asserts "every `kind` must have a classification" — if a new feature adds an unclassified section kind, tests go **red**, forcing the author to explicitly declare whether it belongs in the prefix or tail. This makes "prefix stability" structural, not a one-off fix, and it continues to hold as the system evolves. Also write this guardrail into `specs/current/architecture-boundaries.md` as a prompt assembly constraint.
 
 ## Alternatives considered
 
-- **直接上 session 复用、不先加埋点**:否决——turn-ordinal 数据虽强,但"冷启动重付"和"context 增长"混淆,不拆段就可能修错地方(花在 session 复用上、结果大头其实是模型首 token)。Phase 1 是便宜的去混淆手段。
-- **常驻 / 预热 agent 进程池**:更激进、可能更快,但跨 agent 复杂且有进程生命周期 / 隔离风险;session resume 是更小、与 #3380/#3535 既有方向一致的第一刀。若 Phase 2 显示 cli_ready(冷启动本身)才是大头,再回头考虑预热。
-- **provider 侧首 token**:不在我们控制内(尤其 AMR 多一跳),明确排除。
+- **Jump straight to session reuse without instrumentation**: rejected — turn-ordinal data is strong, but "cold start repaid" and "context growth" are confounded; without subsegments we may fix the wrong thing (spending effort on session reuse when the main contributor is actually model first token). Phase 1 is the cheap deconfounding step.
+- **Persistent / warmed agent process pool**: more aggressive and maybe faster, but cross-agent complexity plus process lifecycle/isolation risks are higher; session resume is smaller and aligned with #3380/#3535. If Phase 2 shows cli_ready (cold start itself) is the main contributor, revisit warming.
+- **Provider-side first token**: outside our control (especially with AMR's extra hop), explicitly excluded.
 
 ## Risks & mitigations
 
-- **observability**:`cli_ready` 的"ready 信号"每个 runtime 不同(ACP 首消息 / 纯 stdout / session ack),取错锚点会让子段失真 → Phase 1 必须为每类 runtime 定义可辩护的 ready 标记,并校验三子段之和 ≈ 总段。
-- **correctness(Phase 3)**:#3380 记录了"每条消息新 session"同时丢失编辑状态;session resume 必须保对(不能为了快重新引入丢状态)→ 验收除 TTFT 外要含状态连续性测试。
-- **compatibility**:新增 timing 字段是纯附加(contracts 加可选字段),老 reader 不受影响;无迁移、无回滚风险。
-- **scope creep**:Phase 1 必须零行为变化,审查时盯住「只加时间戳、不改控制流」。
+- **observability**: the "ready signal" for `cli_ready` differs per runtime (ACP first message / plain stdout / session ack); choosing the wrong anchor distorts subsegments → Phase 1 must define defensible ready markers per runtime type and verify the three subsegments sum to approximately the total segment.
+- **correctness (Phase 3)**: #3380 records that "new session every message" also loses edit state; session resume must stay correct (do not reintroduce lost state for speed) → acceptance must include state-continuity tests in addition to TTFT.
+- **compatibility**: new timing fields are additive only (optional fields in contracts); old readers are unaffected; no migration or rollback risk.
+- **scope creep**: Phase 1 must have zero behavior change; review should watch for "timestamps only, no control-flow changes".
 
-## Validation · 验收(behavior-level)
+## Validation · Acceptance (behavior-level)
 
-- Phase 1:一条 daemon 测试断言 `run_finished` 带三个新子段且 `cli_ready_ms + session_init_ms + model_first_token_ms + remainder == spawn_to_first_token_ms`(可证伪)。
-- Phase 3:同会话续轮的 `session_init_ms` 显著下降(before/after PostHog 切片 + 本地 A/B)。
-- **QA-gate 边界**:本线**不需要 #3545 gate**——只移除"出第一个 token 前的死时间",不改喂给模型的内容、不改输出,无质量回退面。before/after 证据就是 `spawn_to_first_token_ms` 及子段 p50/p90 + turn-ordinal 切片。
+- Phase 1: one daemon test asserts `run_finished` includes the three new subsegments and `cli_ready_ms + session_init_ms + model_first_token_ms + remainder == spawn_to_first_token_ms` (falsifiable).
+- Phase 3: `session_init_ms` drops significantly on follow-up turns in the same conversation (before/after PostHog slice + local A/B).
+- **QA-gate boundary**: this line **does not need #3545 gate** — it only removes "dead time before the first token"; it does not change what is fed to the model or the output, so there is no quality regression surface. before/after evidence is `spawn_to_first_token_ms` and subsegment p50/p90 + turn-ordinal slices.
 
 ## Implementation slices
 
-1. contracts 加 3 个可选 timing 字段 + Phase 1 埋点 + 求和测试(独立可上,纯观测)。
-2. Phase 2 实验脚本 + 结论(无代码改动 / 仅分析)。
-3. Phase 3 session resume(仅当 2 通过)+ 状态连续性 + TTFT 验收。
+1. Add 3 optional timing fields to contracts + Phase 1 instrumentation + sum test (independently shippable, pure observability).
+2. Phase 2 experiment script + conclusion (no code change / analysis only).
+3. Phase 3 session resume (only if 2 passes) + state continuity + TTFT acceptance.
 
-## Reproduction · 实验数据复现(数字怎么来的)
+## Reproduction · Reproduce experimental data (where the numbers came from)
 
-所有表里的数都可复现。PostHog project **OpenDesign = 420348**,需 personal API key(`phx_…`),`POST https://us.posthog.com/api/projects/420348/query/`,body `{"query":{"kind":"HogQLQuery","query":"<SQL>"}}`。HogQL 坑:数值字段用 `toFloat(properties.x)`(不是 `toFloat64OrNull`);null 过滤用 `isNull(...)`(`empty()` 对 JSON null 失效);P90 用 `quantile(0.9)(...)`;跨轮用 `row_number() OVER (PARTITION BY properties.conversation_id ORDER BY timestamp)`。窗口均 `result='success' AND timestamp >= now()-INTERVAL 7 DAY`。
+All table numbers are reproducible. PostHog project **OpenDesign = 420348**, personal API key required (`phx_…`), `POST https://us.posthog.com/api/projects/420348/query/`, body `{"query":{"kind":"HogQLQuery","query":"<SQL>"}}`. HogQL pitfalls: numeric fields use `toFloat(properties.x)` (not `toFloat64OrNull`); null filtering uses `isNull(...)` (`empty()` fails on JSON null); P90 uses `quantile(0.9)(...)`; cross-turn uses `row_number() OVER (PARTITION BY properties.conversation_id ORDER BY timestamp)`. Window is always `result='success' AND timestamp >= now()-INTERVAL 7 DAY`.
 
-- **启动 timing 分段表**:`SELECT properties.agent_provider_id AS prov, round(quantile(0.5)(toFloat(properties.queue_duration_ms))) AS queue, ...(pre_spawn_duration_ms / process_spawn_duration_ms / spawn_to_first_token_ms / time_to_first_token_ms)..., round(quantile(0.9)(toFloat(properties.time_to_first_token_ms))) AS ttft_p90 FROM events WHERE event='run_finished' AND properties.result='success' AND properties.agent_provider_id IN ('amr','claude_code') AND timestamp >= now()-INTERVAL 7 DAY GROUP BY prov`
-- **跨轮 TTFT(session 复用佐证)**:`WITH o AS (SELECT toFloat(properties.time_to_first_token_ms) AS ttft, row_number() OVER (PARTITION BY properties.conversation_id ORDER BY timestamp) AS turn FROM events WHERE event='run_finished' AND properties.result='success' AND properties.agent_provider_id IN ('claude_code','amr') AND isNotNull(properties.conversation_id) AND toFloat(properties.time_to_first_token_ms)>0 AND timestamp >= now()-INTERVAL 7 DAY) SELECT if(turn=1,'turn_1','turn_2plus') AS bucket, round(quantile(0.5)(ttft)) FROM o GROUP BY bucket`
-- **cache 命中 vs TTFT**:同上 `run_finished` 过滤 + `if(toFloat(properties.cache_read_input_tokens)>0,'HIT','MISS') AS cache, round(quantile(0.5)(...)), round(quantile(0.9)(...)) GROUP BY cache`
-- **cache 命中率按轮次**:同跨轮窗口,`countIf(cr>0)/count()`(`cr = toFloat(properties.cache_read_input_tokens)`)
-- **Langfuse 挖单条错误**:host `https://us.cloud.langfuse.com`(US only),Basic auth `base64(pk-lf-…:sk-lf-…)`,`GET /api/public/traces/{run_id}`(**trace_id == run.id**),读 `observations[].level=='ERROR'` 的 `statusMessage`。
-- ⚠️ **不要用裸 `claude -p` 外推**:不经过 daemon(无 system prompt 拼装 / 无拍平 transcript / 无 daemon session 语义),不代表真实路径。真实子段必须由 Phase 1 埋点在 daemon 内测得,或用上述 PostHog 生产遥测。本机若要端到端复现:`pnpm tools-dev`(Node 24)起真实 daemon,经 `/api/chat` 跑同一 `conversationId` 的两轮,读两轮 `run_finished` 的 `cache_read_input_tokens` / `time_to_first_token_ms` 对比。
+- **Startup timing segment table**: `SELECT properties.agent_provider_id AS prov, round(quantile(0.5)(toFloat(properties.queue_duration_ms))) AS queue, ...(pre_spawn_duration_ms / process_spawn_duration_ms / spawn_to_first_token_ms / time_to_first_token_ms)..., round(quantile(0.9)(toFloat(properties.time_to_first_token_ms))) AS ttft_p90 FROM events WHERE event='run_finished' AND properties.result='success' AND properties.agent_provider_id IN ('amr','claude_code') AND timestamp >= now()-INTERVAL 7 DAY GROUP BY prov`
+- **Cross-turn TTFT (session reuse evidence)**: `WITH o AS (SELECT toFloat(properties.time_to_first_token_ms) AS ttft, row_number() OVER (PARTITION BY properties.conversation_id ORDER BY timestamp) AS turn FROM events WHERE event='run_finished' AND properties.result='success' AND properties.agent_provider_id IN ('claude_code','amr') AND isNotNull(properties.conversation_id) AND toFloat(properties.time_to_first_token_ms)>0 AND timestamp >= now()-INTERVAL 7 DAY) SELECT if(turn=1,'turn_1','turn_2plus') AS bucket, round(quantile(0.5)(ttft)) FROM o GROUP BY bucket`
+- **Cache hit vs TTFT**: same `run_finished` filter + `if(toFloat(properties.cache_read_input_tokens)>0,'HIT','MISS') AS cache, round(quantile(0.5)(...)), round(quantile(0.9)(...)) GROUP BY cache`
+- **Cache hit rate by turn**: same cross-turn window, `countIf(cr>0)/count()` (`cr = toFloat(properties.cache_read_input_tokens)`)
+- **Langfuse single-error digging**: host `https://us.cloud.langfuse.com` (US only), Basic auth `base64(pk-lf-…:sk-lf-…)`, `GET /api/public/traces/{run_id}` (**trace_id == run.id**), read `statusMessage` from `observations[].level=='ERROR'`.
+- ⚠️ **Do not extrapolate from bare `claude -p`**: it does not go through the daemon (no system prompt assembly / no flattened transcript / no daemon session semantics), so it does not represent the real path. Real subsegments must be measured inside the daemon by Phase 1 instrumentation, or with the PostHog production telemetry above. For local end-to-end reproduction: start the real daemon with `pnpm tools-dev` (Node 24), run two turns against the same `conversationId` through `/api/chat`, and compare `cache_read_input_tokens` / `time_to_first_token_ms` on the two `run_finished` events.
 
 ## Open questions
 
-- 每个 runtime 的可靠「CLI ready」标记到底取哪个信号?(claude_code / ACP / 纯 stdout 各不同)——这是 Phase 1 能否成立的命门。
-- `claude_code` resume 能否保住足够状态以保正确(不重蹈 #3380 的丢编辑状态)?Phase 3 要的是又快又对。
-- 和 PR #3535(ACP session 复用)是否应合流,避免两条 session 复用各搞一套?
+- What exact signal should be the reliable "CLI ready" marker for each runtime? (claude_code / ACP / plain stdout differ) — this is the critical dependency for Phase 1.
+- Can `claude_code` resume preserve enough state to remain correct (avoiding #3380's lost edit state)? Phase 3 must be both faster and correct.
+- Should this merge with PR #3535 (ACP session reuse) to avoid two separate implementations of session reuse?
