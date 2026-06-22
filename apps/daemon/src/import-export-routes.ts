@@ -504,7 +504,18 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
       let contentType: string;
       let ext: string;
       if (format === 'pptx') {
-        buffer = await buildScreenshotPptx(images, { title: resolvedTitle });
+        // Derive the slide aspect from the rendered pixel dims so non-16:9 decks
+        // get a correctly-proportioned PPTX layout instead of a forced 16:9 one.
+        const aspect =
+          typeof rendered.width === 'number' &&
+          typeof rendered.height === 'number' &&
+          rendered.height > 0
+            ? rendered.width / rendered.height
+            : undefined;
+        buffer = await buildScreenshotPptx(images, {
+          title: resolvedTitle,
+          ...(aspect ? { aspect } : {}),
+        });
         contentType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
         ext = 'pptx';
       } else if (format === 'pdf') {

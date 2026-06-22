@@ -33,13 +33,17 @@ async function emitImages(
   };
 }
 
-// Deck slides are authored at 1920x1080 (16:9). We render at that logical size
-// and let Electron's capturePage emit the display's native pixel scale (2x on
-// retina => 3840x2160), so the PNGs are at least FHD and pixel-perfect to the
-// browser. This reuses the bundled Electron Chromium — no second headless
-// engine, so the packaged app does not grow.
+// Default deck slide stage when the authored size can't be measured: 1920x1080
+// (16:9). We render at the logical size and let Electron's capturePage emit the
+// display's native pixel scale (2x on retina => 3840x2160), so the PNGs are at
+// least FHD and pixel-perfect to the browser. This reuses the bundled Electron
+// Chromium — no second headless engine, so the packaged app does not grow.
 const SLIDE_W = 1920;
 const SLIDE_H = 1080;
+// Bounds for a measured slide size; outside this we fall back to the default to
+// avoid a pathological capture (a deck with a broken/zero/huge slide box).
+const SLIDE_MIN_PX = 320;
+const SLIDE_MAX_PX = 8192;
 
 // Chrome the live deck adds (presenter overlays, the auto-managed progress bar,
 // nav hints) must not bleed into a captured slide. Mirrors the print-hide list
@@ -113,8 +117,8 @@ export async function renderDeckSlides(
     await waitForPrintableContent(window);
     tAssets = Date.now();
 
-    // Force the exact content surface so the capture viewport is a true
-    // 1920x1080 regardless of the host display size.
+    // Lay out at the default stage first so the slide box can be measured
+    // against a stable viewport.
     window.setContentSize(SLIDE_W, SLIDE_H);
 
     // Paint invisibly: opacity 0 before showInactive => compositor renders the
@@ -135,13 +139,23 @@ export async function renderDeckSlides(
       return finish(await capturePage(window, input.pageImageFormat === "jpeg", input.outputDir));
     }
 
-    // Deck: pin the 1920x1080 stage.
-    await window.webContents.executeJavaScript(`(${pinDeckStage.toString()})()`, true);
+    // Measure the deck's authored slide size instead of assuming 16:9 — decks
+    // can be 4:3, square, portrait, or any custom canvas. The capture rect, the
+    // pinned stage, and (downstream) the PPTX layout all follow this so a non-16:9
+    // deck is not clipped or distorted. Falls back to 1920x1080 if unmeasurable.
+    const stage = await measureSlideStage(window);
+    window.setContentSize(stage.w, stage.h);
+    await nextFrames(window);
+
+    // Pin the stage to the measured slide size.
+    await window.webContents.executeJavaScript(`(${pinDeckStage.toString()})(${stage.w}, ${stage.h})`, true);
 
     // Image export of a deck wants every slide stitched top-to-bottom into one
     // tall image (the "whole deck as one picture").
     if (input.stitch) {
-      return finish(await stitchDeckSlides(window, count, input.pageImageFormat === "jpeg", input.outputDir));
+      return finish(
+        await stitchDeckSlides(window, count, stage, input.pageImageFormat === "jpeg", input.outputDir),
+      );
     }
 
     // Otherwise render every slide (or just the one requested by image export).
@@ -149,13 +163,13 @@ export async function renderDeckSlides(
       input.index != null && input.index >= 0 && input.index < count ? [input.index] : range(count);
     const jpeg = input.pageImageFormat === "jpeg";
     const images: Array<{ buffer: Buffer; jpeg: boolean }> = [];
-    let width = SLIDE_W;
-    let height = SLIDE_H;
+    let width = stage.w;
+    let height = stage.h;
     for (const i of indices) {
       await showDeckSlide(window, i);
-      // Clip to the exact 16:9 slide rect (DIP) so the PNG aspect is always
-      // correct even if the window content rounds differently.
-      const image = await window.webContents.capturePage({ x: 0, y: 0, width: SLIDE_W, height: SLIDE_H });
+      // Clip to the exact measured slide rect (DIP) so the PNG aspect always
+      // matches the authored deck, even if the window content rounds differently.
+      const image = await window.webContents.capturePage({ x: 0, y: 0, width: stage.w, height: stage.h });
       const size = image.getSize();
       width = size.width;
       height = size.height;
@@ -167,6 +181,39 @@ export async function renderDeckSlides(
   } finally {
     if (!window.isDestroyed()) window.destroy();
   }
+}
+
+// The measured (or fallback) logical slide stage in DIP.
+interface Stage {
+  w: number;
+  h: number;
+}
+
+// Measures the deck's authored slide box so the capture/PPTX follow the real
+// aspect ratio instead of assuming 16:9. Reads the rendered (post-transform)
+// rect of the first slide that has layout, so a fit-to-viewport deck reports the
+// stage it actually paints. Clamps to a sane range and falls back to 1920x1080.
+async function measureSlideStage(window: BrowserWindow): Promise<Stage> {
+  try {
+    const measured = (await window.webContents.executeJavaScript(
+      `(${measureSlide.toString()})(${JSON.stringify(SLIDE_SELECTOR)})`,
+      true,
+    )) as { w: number; h: number } | null;
+    if (
+      measured &&
+      Number.isFinite(measured.w) &&
+      Number.isFinite(measured.h) &&
+      measured.w >= SLIDE_MIN_PX &&
+      measured.w <= SLIDE_MAX_PX &&
+      measured.h >= SLIDE_MIN_PX &&
+      measured.h <= SLIDE_MAX_PX
+    ) {
+      return { w: Math.round(measured.w), h: Math.round(measured.h) };
+    }
+  } catch {
+    // fall through to the default stage
+  }
+  return { w: SLIDE_W, h: SLIDE_H };
 }
 
 // Shows exactly slide `i` and lets the style change settle for two frames. The
@@ -189,6 +236,7 @@ const DECK_STITCH_MAX_H = 30000;
 async function stitchDeckSlides(
   window: BrowserWindow,
   count: number,
+  stage: Stage,
   jpeg: boolean,
   outputDir: string | undefined,
 ): Promise<DesktopRenderSlidesResult> {
@@ -199,7 +247,7 @@ async function stitchDeckSlides(
   let placed = 0;
   for (let i = 0; i < count; i++) {
     await showDeckSlide(window, i);
-    const image = await window.webContents.capturePage({ x: 0, y: 0, width: SLIDE_W, height: SLIDE_H });
+    const image = await window.webContents.capturePage({ x: 0, y: 0, width: stage.w, height: stage.h });
     const bmp = image.toBitmap(); // BGRA, full-width rows
     const size = image.getSize();
     if (!bgra) {
@@ -549,15 +597,37 @@ function prepareDeck(slideSelector: string, hideSelector: string): number {
     .filter((el) => !(el as HTMLElement).closest(".mini-slide, .overview, .notes-overlay, .thumb")).length;
 }
 
-// Deck-only: pin to an exact 1920x1080 stage so each slide captures
+// Deck-only: pin to the measured WxH stage so each slide captures
 // deterministically. NOT applied in page mode — an ordinary page must keep its
 // natural width/height.
-function pinDeckStage(): void {
+function pinDeckStage(w: number, h: number): void {
   const style = document.createElement("style");
   style.textContent =
-    "html,body{margin:0!important;padding:0!important;width:1920px!important;height:1080px!important;overflow:hidden!important}" +
-    ".deck{width:1920px!important;height:1080px!important}";
+    `html,body{margin:0!important;padding:0!important;width:${w}px!important;height:${h}px!important;overflow:hidden!important}` +
+    `.deck{width:${w}px!important;height:${h}px!important}`;
   document.head.appendChild(style);
+}
+
+// Serialized into the page: measures the authored slide box. Prefers a slide
+// that already has a non-zero layout rect (covers decks that hide inactive
+// slides via opacity/visibility); if every slide is display:none, force-measures
+// the first one off-screen. Returns the rendered DIP size or null.
+function measureSlide(slideSelector: string): { w: number; h: number } | null {
+  const slides = Array.prototype.slice
+    .call(document.querySelectorAll(slideSelector))
+    .filter((el) => !(el as HTMLElement).closest(".mini-slide, .overview, .notes-overlay, .thumb"));
+  if (slides.length === 0) return null;
+  for (const node of slides) {
+    const r = (node as HTMLElement).getBoundingClientRect();
+    if (r.width > 1 && r.height > 1) return { w: r.width, h: r.height };
+  }
+  const el = slides[0] as HTMLElement;
+  const prev = el.style.cssText;
+  el.style.setProperty("display", "block", "important");
+  el.style.setProperty("visibility", "hidden", "important");
+  const rect = el.getBoundingClientRect();
+  el.style.cssText = prev;
+  return rect.width > 1 && rect.height > 1 ? { w: rect.width, h: rect.height } : null;
 }
 
 // Returns a Promise that resolves after the style change has settled for two

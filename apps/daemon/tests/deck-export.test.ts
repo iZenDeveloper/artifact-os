@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import JSZip from 'jszip';
 import { PDFDocument } from 'pdf-lib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -89,6 +90,30 @@ describe('buildScreenshotPptx', () => {
     expect(out.length).toBeGreaterThan(0);
     // .pptx is a ZIP container — starts with the local file header "PK".
     expect(out.subarray(0, 2).toString('latin1')).toBe('PK');
+  });
+
+  // Reads the slide-size aspect (cx/cy) from a .pptx buffer's presentation.xml.
+  async function pptxSlideAspect(buf: Buffer): Promise<number> {
+    const zip = await JSZip.loadAsync(buf);
+    const xml = await zip.file('ppt/presentation.xml')!.async('string');
+    const m = /<p:sldSz[^>]*\bcx="(\d+)"[^>]*\bcy="(\d+)"/.exec(xml);
+    if (!m) throw new Error('no sldSz in presentation.xml');
+    return Number(m[1]) / Number(m[2]);
+  }
+
+  it('defaults to a 16:9 slide layout', async () => {
+    const out = await buildScreenshotPptx(decodeSlideDataUrls([PNG_DATA_URL]));
+    expect(await pptxSlideAspect(out)).toBeCloseTo(16 / 9, 2);
+  });
+
+  it('follows a non-16:9 deck aspect (4:3) instead of forcing 16:9', async () => {
+    const out = await buildScreenshotPptx(decodeSlideDataUrls([PNG_DATA_URL]), { aspect: 4 / 3 });
+    expect(await pptxSlideAspect(out)).toBeCloseTo(4 / 3, 2);
+  });
+
+  it('follows a portrait deck aspect (9:16)', async () => {
+    const out = await buildScreenshotPptx(decodeSlideDataUrls([PNG_DATA_URL]), { aspect: 9 / 16 });
+    expect(await pptxSlideAspect(out)).toBeCloseTo(9 / 16, 2);
   });
 
   it('throws when there are no slides', async () => {

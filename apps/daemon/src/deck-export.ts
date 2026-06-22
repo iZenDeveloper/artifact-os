@@ -99,18 +99,33 @@ export function decodeSlideDataUrls(urls: string[]): SlideImage[] {
   });
 }
 
+// Standard PowerPoint 16:9 slide is 13.333" x 7.5". We keep 13.333" as the slide
+// width and derive the height from the deck's actual aspect ratio, so a 4:3,
+// square, or portrait deck gets a correctly-proportioned slide instead of being
+// letterboxed into a 16:9 frame.
+const PPTX_SLIDE_WIDTH_IN = 13.333;
+
 /**
  * Assembles per-slide images into a screenshot-based .pptx — one full-bleed
- * image per 16:9 slide. The slides are pixel-perfect images (not editable text),
- * the "exactly what you see" export mode. Returns the .pptx bytes.
+ * image per slide. The slide aspect ratio follows the deck's authored size
+ * (`opts.aspect` = width/height); falls back to 16:9. The slides are
+ * pixel-perfect images (not editable text), the "exactly what you see" export
+ * mode. Returns the .pptx bytes.
  */
 export async function buildScreenshotPptx(
   images: SlideImage[],
-  opts: { title?: string } = {},
+  opts: { title?: string; aspect?: number } = {},
 ): Promise<Buffer> {
   if (images.length === 0) throw new Error('no slides to export');
   const pptx = new PptxGenJS();
-  pptx.layout = 'LAYOUT_16x9';
+  const aspect = opts.aspect && Number.isFinite(opts.aspect) && opts.aspect > 0 ? opts.aspect : 16 / 9;
+  if (Math.abs(aspect - 16 / 9) < 0.01) {
+    pptx.layout = 'LAYOUT_16x9';
+  } else {
+    const height = Number((PPTX_SLIDE_WIDTH_IN / aspect).toFixed(3));
+    pptx.defineLayout({ name: 'OD_DECK', width: PPTX_SLIDE_WIDTH_IN, height });
+    pptx.layout = 'OD_DECK';
+  }
   pptx.author = 'Open Design';
   if (opts.title) pptx.title = opts.title;
   pptx.subject = 'Screenshot-based PPTX';
