@@ -1,10 +1,36 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { BrowserWindow, nativeImage } from "electron";
 import type { DesktopRenderSlidesInput, DesktopRenderSlidesResult } from "@open-design/sidecar-proto";
 
 import { waitForPrintableContent } from "./pdf-export.js";
+
+// Vendored dom-to-pptx browser UMD (apps/desktop/vendor/dom-to-pptx). Loaded
+// once and injected into the render window for editable PPTX export. Resolved
+// relative to this module (dist/main/ at runtime, src/main/ in dev) by walking
+// up to the apps/desktop root — works from the tsc dist output and the packaged
+// asar alike, as long as vendor/ ships with the app.
+let cachedDomToPptxBundle: string | null = null;
+async function loadDomToPptxBundle(): Promise<string> {
+  if (cachedDomToPptxBundle != null) return cachedDomToPptxBundle;
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    path.resolve(here, "../../vendor/dom-to-pptx/dom-to-pptx.bundle.js"),
+    path.resolve(here, "../../../vendor/dom-to-pptx/dom-to-pptx.bundle.js"),
+    path.resolve(here, "../vendor/dom-to-pptx/dom-to-pptx.bundle.js"),
+  ];
+  for (const candidate of candidates) {
+    try {
+      cachedDomToPptxBundle = await readFile(candidate, "utf8");
+      return cachedDomToPptxBundle;
+    } catch {
+      // try the next candidate
+    }
+  }
+  throw new Error("dom-to-pptx vendor bundle not found");
+}
 
 // Returns the rendered images either as on-disk files (when the daemon provided
 // an `outputDir`) or as base64 data URLs (legacy/fallback). Writing files keeps
@@ -153,6 +179,12 @@ export async function renderDeckSlides(
     // Pin the stage to the measured slide size.
     await window.webContents.executeJavaScript(`(${pinDeckStage.toString()})(${stage.w}, ${stage.h})`, true);
 
+    // Editable PPTX: hand the live, laid-out slides to the vendored dom-to-pptx
+    // engine (native shapes/text) instead of capturing images.
+    if (input.editable) {
+      return finish(await renderEditablePptx(window, stage, input.outputDir));
+    }
+
     // Deck slides always encode as PNG (crisp text, no JPEG artifacts) — JPEG is
     // a full-document `page`-mode optimization only, per the render-slides
     // contract. So `pageImageFormat` is intentionally ignored in the deck branch.
@@ -255,6 +287,41 @@ async function showDeckSlide(window: BrowserWindow, i: number, stage: Stage): Pr
     );
     await nextFrames(window);
   }
+}
+
+// Editable PPTX: every real slide is laid out at once, then handed to the
+// vendored dom-to-pptx engine, which walks each slide's DOM and emits native
+// PowerPoint shapes/text (not images). Returns one .pptx written to outputDir.
+async function renderEditablePptx(
+  window: BrowserWindow,
+  stage: Stage,
+  outputDir: string | undefined,
+): Promise<DesktopRenderSlidesResult> {
+  // dom-to-pptx measures each element's live layout, so all slides must be
+  // simultaneously laid out (decks normally show only the active one).
+  await window.webContents.executeJavaScript(
+    `(${showAllSlides.toString()})(${JSON.stringify(SLIDE_SELECTOR)})`,
+    true,
+  );
+  await nextFrames(window);
+  await window.webContents.executeJavaScript(await loadDomToPptxBundle(), true);
+  const out = (await window.webContents.executeJavaScript(
+    `(${runDomToPptx.toString()})(${JSON.stringify(SLIDE_SELECTOR)})`,
+    true,
+  )) as { b64?: string; error?: string };
+  if (!out || out.error || !out.b64) {
+    return { ok: false, error: out?.error || "editable PPTX export produced no output" };
+  }
+  const buffer = Buffer.from(out.b64, "base64");
+  if (outputDir) {
+    await mkdir(outputDir, { recursive: true });
+    const file = path.join(outputDir, "deck.pptx");
+    await writeFile(file, buffer);
+    return { ok: true, pptxFile: file, width: stage.w, height: stage.h, mode: "deck" };
+  }
+  // No outputDir (older caller) — return as a base64 data URL in slides[].
+  const mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+  return { ok: true, slides: [`data:${mime};base64,${out.b64}`], width: stage.w, height: stage.h, mode: "deck" };
 }
 
 // Captures every deck slide and stacks them top-to-bottom into one tall image
@@ -737,4 +804,61 @@ function restackActiveSlide(slideSelector: string, index: number, w: number, h: 
   el.style.setProperty("height", `${h}px`, "important");
   el.style.setProperty("transform", "none", "important");
   el.style.setProperty("z-index", "2147483647", "important");
+}
+
+// Serialized into the page: lays out every real slide simultaneously (stacked at
+// the origin, opacity 1) so dom-to-pptx can measure each one as its own slide.
+// Decks normally render only the active slide, which would give the others no
+// layout box.
+function showAllSlides(slideSelector: string): number {
+  const slides = Array.prototype.slice
+    .call(document.querySelectorAll(slideSelector))
+    .filter((el) => !(el as HTMLElement).closest(".mini-slide, .overview, .notes-overlay, .thumb"));
+  for (const node of slides) {
+    const el = node as HTMLElement;
+    el.style.setProperty("opacity", "1", "important");
+    el.style.setProperty("visibility", "visible", "important");
+    el.style.setProperty("transform", "none", "important");
+    el.style.setProperty("position", "absolute", "important");
+    el.style.setProperty("left", "0", "important");
+    el.style.setProperty("top", "0", "important");
+    ["active", "visible", "is-active", "current"].forEach((c) => el.classList.add(c));
+  }
+  return slides.length;
+}
+
+// Serialized into the page: runs the injected dom-to-pptx engine over every real
+// slide and returns the .pptx bytes as base64 (or an error). Fonts are
+// auto-detected + embedded; SVGs stay vector (editable in PowerPoint).
+async function runDomToPptx(slideSelector: string): Promise<{ b64?: string; error?: string }> {
+  try {
+    const w = window as unknown as {
+      domToPptx?: { exportToPptx: (t: unknown, o: unknown) => Promise<Blob> };
+    };
+    if (!w.domToPptx || typeof w.domToPptx.exportToPptx !== "function") {
+      return { error: "dom-to-pptx engine did not load" };
+    }
+    const slides = Array.prototype.slice
+      .call(document.querySelectorAll(slideSelector))
+      .filter((el) => !(el as HTMLElement).closest(".mini-slide, .overview, .notes-overlay, .thumb"));
+    if (slides.length === 0) return { error: "no slides to export" };
+    const blob = await w.domToPptx.exportToPptx(slides, {
+      fileName: "deck.pptx",
+      skipDownload: true,
+      autoEmbedFonts: true,
+      svgAsVector: true,
+    });
+    if (!blob || typeof (blob as Blob).arrayBuffer !== "function") {
+      return { error: "dom-to-pptx returned no blob" };
+    }
+    const bytes = new Uint8Array(await (blob as Blob).arrayBuffer());
+    let binary = "";
+    const CHUNK = 0x8000;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)));
+    }
+    return { b64: btoa(binary) };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
 }

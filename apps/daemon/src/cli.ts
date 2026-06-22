@@ -191,7 +191,7 @@ const PROJECT_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'follow']);
 // export against the same /api/projects/:id/export/* endpoints. Dual-track
 // closure for the PPTX/PDF export capability.
 const EXPORT_STRING_FLAGS = new Set(['daemon-url', 'project', 'file', 'output', 'title']);
-const EXPORT_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'deck', 'page']);
+const EXPORT_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'deck', 'page', 'editable']);
 // `od templates …` mirrors NewProjectPanel / ExamplesTab. Same surface,
 // same /api/templates store. The CLI form is the embeddability contract:
 // external agents (hermes-agent, openclaw, ...) can snapshot, list, or
@@ -5775,6 +5775,9 @@ Options:
   --deck              Treat the artifact as a slide deck (capture per slide).
   --page              Treat it as a single page (one full-page capture). Use this
                       for an ordinary HTML page that happens to contain .slide markup.
+  --editable          (pptx only) Produce an EDITABLE .pptx with native shapes/text
+                      instead of screenshot images. Fidelity is high but not pixel-
+                      perfect; omit for a 1:1 screenshot deck.
   --daemon-url <url>  Open Design daemon HTTP base.
   --json              Emit a machine-readable result.`);
     process.exit(args.length === 0 ? 2 : 0);
@@ -5811,6 +5814,10 @@ Options:
   // the daemon forces deck there; for PDF, forward the caller's choice. When
   // neither flag is given the daemon falls back to its .slide-count heuristic.
   const deckSignal = flags.deck ? true : flags.page ? false : undefined;
+  if (flags.editable && format !== 'pptx') {
+    console.error('--editable is only valid for `od export pptx`');
+    process.exit(2);
+  }
   const base = (await projectDaemonUrl(flags)).replace(/\/$/, '');
   const route = format === 'pdf' ? 'export/pdf-image' : 'export/pptx';
   let resp;
@@ -5822,6 +5829,7 @@ Options:
         fileName,
         ...(flags.title ? { title: flags.title } : {}),
         ...(deckSignal == null ? {} : { deck: deckSignal }),
+        ...(flags.editable ? { editable: true } : {}),
       }),
     });
   } catch (err) {

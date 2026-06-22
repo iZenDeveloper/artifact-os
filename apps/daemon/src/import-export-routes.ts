@@ -460,6 +460,9 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
       // page that happens to contain `.slide` markup is still captured full-page.
       if (format === 'pptx') {
         renderOptions.deck = true;
+        // Editable PPTX (native shapes/text via dom-to-pptx) vs the default
+        // screenshot PPTX (one image per slide).
+        if (body?.editable === true) renderOptions.editable = true;
       } else if (typeof body?.deck === 'boolean') {
         renderOptions.deck = body.deck;
       }
@@ -481,6 +484,52 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
         await buildDeckRenderInput(renderOptions);
       const rendered = await desktopSlideRenderer(input);
       const tRendered = Date.now();
+
+      // Editable PPTX: the renderer wrote a finished .pptx (native shapes/text)
+      // to the scratch dir. Stream it directly — no image assembly. Confine the
+      // path to the scratch dir, same defense as the image handoff.
+      if (renderOptions.editable) {
+        if (!rendered.ok || typeof rendered.pptxFile !== 'string') {
+          return sendApiError(
+            res,
+            502,
+            'UPSTREAM_UNAVAILABLE',
+            rendered.error || 'editable PPTX renderer returned no file',
+          );
+        }
+        const canonicalDir = await fs.promises.realpath(renderOutputDir).catch(() => renderOutputDir);
+        const realPptx = await fs.promises.realpath(rendered.pptxFile).catch(() => null);
+        if (!realPptx || (realPptx !== canonicalDir && !realPptx.startsWith(canonicalDir + path.sep))) {
+          return sendApiError(
+            res,
+            502,
+            'UPSTREAM_UNAVAILABLE',
+            'renderer returned a pptx path outside the export scratch directory',
+          );
+        }
+        const pptxBuffer = await fs.promises.readFile(realPptx);
+        // eslint-disable-next-line no-console
+        console.info('[od-export] assemble', {
+          format: 'pptx-editable',
+          via: 'file',
+          bytes: pptxBuffer.length,
+          rendererMs: tRendered - tStart,
+          totalMs: Date.now() - tStart,
+        });
+        const editableName = `${defaultFilename}.pptx`;
+        const editableAscii =
+          editableName.replace(/[^\x20-\x7e]/g, '_').replace(/"/g, '_') || 'deck.pptx';
+        res.setHeader(
+          'Content-Type',
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        );
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="${editableAscii}"; filename*=UTF-8''${encodeURIComponent(editableName)}`,
+        );
+        return res.send(pptxBuffer);
+      }
+
       const hasFiles = Array.isArray(rendered.slideFiles) && rendered.slideFiles.length > 0;
       const hasDataUrls = Array.isArray(rendered.slides) && rendered.slides.length > 0;
       if (!rendered.ok || (!hasFiles && !hasDataUrls)) {
