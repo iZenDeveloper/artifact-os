@@ -454,9 +454,11 @@ export async function readDesignSystemAssets(
       : readFileOptional(path.join(brandRoot, manifest?.files.components ?? 'components.html')),
     readManifestFileOptional(brandRoot, manifest?.componentsManifest ?? 'components.manifest.json'),
   ]);
+  const effectiveTokensCss =
+    tokensCss ?? (await deriveLegacyUserTokensCss(brandRoot, id, manifest !== null));
   return withComponentsManifest(id, {
     usageMd,
-    tokensCss,
+    tokensCss: effectiveTokensCss,
     fixtureHtml,
     componentsManifestJson,
     pullIndex: buildDesignSystemPullIndex(manifest),
@@ -2740,6 +2742,24 @@ function paletteToSourceTokens(palette: GeneratedPalette): SourceDesignToken[] {
     { name: '--accent', value: palette.accent, source },
     { name: '--success', value: palette.success, source },
   ];
+}
+
+// Backfill for legacy self-built packages created before path B wrote a
+// schema-aligned `tokens.css`. Such packages only have `colors_and_type.css`
+// on disk, so the pull would otherwise return an empty `tokensCss`. Rather than
+// a migration run over the data dir, derive the token contract on read from the
+// package's DESIGN.md palette. Scoped to user packages with no manifest;
+// imported/manifest packages and built-in DESIGN.md-only brands are untouched.
+async function deriveLegacyUserTokensCss(
+  brandRoot: string,
+  id: string,
+  hasManifest: boolean,
+): Promise<string | undefined> {
+  if (hasManifest || !id.startsWith('user:')) return undefined;
+  const body = await readFileOptional(path.join(brandRoot, 'DESIGN.md'));
+  if (!body) return undefined;
+  const palette = normalizeSwatches(body);
+  return buildDesignTokenContract({ sourceTokens: paletteToSourceTokens(palette) }).tokensCss;
 }
 
 function renderCssTokens(input: { title: string; palette: GeneratedPalette }): string {
