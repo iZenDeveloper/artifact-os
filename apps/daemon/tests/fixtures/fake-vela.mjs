@@ -56,6 +56,12 @@ import { dirname, join } from 'node:path';
 import { argv, stdin, stdout, stderr, env, exit } from 'node:process';
 
 const SESSION_ID = env.FAKE_VELA_SESSION_ID || 'fake-vela-session-1';
+// Durable upstream (OpenCode) session handle reported on session/new and
+// session/load — the value the daemon captures and replays to resume.
+const OPENCODE_SESSION_ID = env.FAKE_VELA_OPENCODE_SESSION_ID || 'oc-fake-1';
+// When set, a resumed session/prompt fails with the structured resume_failed
+// error (modelling vela's pre-prompt probe finding the session gone).
+const RESUME_FAILED = env.FAKE_VELA_RESUME_FAILED || '';
 const ASSISTANT_TEXT = Object.prototype.hasOwnProperty.call(env, 'FAKE_VELA_TEXT')
   ? env.FAKE_VELA_TEXT
   : 'Hello from fake vela.';
@@ -190,12 +196,21 @@ function handleMessage(msg) {
       }
       writeResult(id, {
         sessionId: SESSION_ID,
+        openCodeSessionId: OPENCODE_SESSION_ID,
         models: {
           currentModelId,
           availableModels: AVAILABLE_MODELS,
         },
       });
       return;
+    case 'session/load': {
+      // Resume: bind the prior upstream session, echoing back the durable
+      // handle. (vela validates existence before the first prompt, so a missing
+      // session surfaces as resume_failed on session/prompt, not here.)
+      const durable = typeof params?.sessionId === 'string' ? params.sessionId : OPENCODE_SESSION_ID;
+      writeResult(id, { sessionId: SESSION_ID, openCodeSessionId: durable });
+      return;
+    }
     case 'session/set_model': {
       if (SET_MODEL_ERROR) {
         writeError(id, SET_MODEL_ERROR, -32099);
@@ -218,6 +233,20 @@ function handleMessage(msg) {
       return;
     }
     case 'session/prompt': {
+      if (RESUME_FAILED) {
+        // Structured resume-miss: the resumed session is gone. Mirrors vela's
+        // pre-prompt probe emitting resume_failed BEFORE any model call.
+        writeMessage({
+          jsonrpc: '2.0',
+          id,
+          error: {
+            code: -32600,
+            message: 'the resumed session could not be loaded',
+            data: { kind: 'resume_failed', phase: 'session_load', retryable: true },
+          },
+        });
+        return;
+      }
       if (PROMPT_ERROR) {
         writeError(id, PROMPT_ERROR, -32602);
         return;
