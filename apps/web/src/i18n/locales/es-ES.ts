@@ -3408,5 +3408,7 @@ export const esES: Dict = {
   'ds.uploadFailed': 'Error al subir. Inténtalo de nuevo.',
   'ds.kitErrorTitle': 'Esta vista tuvo un problema.',
   'ds.kitErrorRetry': 'Recargar',
+  'ds.shortcutsLabel': 'Atajos de teclado',
+  'ds.shortcutsHint': 'Atajos: E editar · C copiar · U subir · R actualizar · ⌫ eliminar logo',
   'ds.moduleEmptyImages': 'Sin imágenes',
 };

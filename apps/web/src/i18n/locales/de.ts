@@ -3408,5 +3408,7 @@ export const de: Dict = {
   'ds.uploadFailed': 'Upload fehlgeschlagen. Bitte versuche es erneut.',
   'ds.kitErrorTitle': 'Bei dieser Ansicht ist ein Problem aufgetreten.',
   'ds.kitErrorRetry': 'Neu laden',
+  'ds.shortcutsLabel': 'Tastenkürzel',
+  'ds.shortcutsHint': 'Kürzel: E Bearbeiten · C Kopieren · U Hochladen · R Aktualisieren · ⌫ Logo löschen',
   'ds.moduleEmptyImages': 'Noch keine Bilder',
 };

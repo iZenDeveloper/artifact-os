@@ -3409,5 +3409,7 @@ export const zhCN: Dict = {
   'ds.uploadFailed': '上传失败,请重试。',
   'ds.kitErrorTitle': '此视图遇到问题。',
   'ds.kitErrorRetry': '重新加载',
+  'ds.shortcutsLabel': '键盘快捷键',
+  'ds.shortcutsHint': '快捷键：E 编辑 · C 复制 · U 上传 · R 刷新 · ⌫ 删除 Logo',
   'ds.moduleEmptyImages': '暂无图片',
 };

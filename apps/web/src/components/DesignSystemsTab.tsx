@@ -720,7 +720,11 @@ export function DesignSystemsTab({
         system={system}
         active={system.id === previewId}
         isDefault={system.id === selectedId}
-        categoryLabel={localizeDesignSystemCategory(locale, system.category || 'Uncategorized')}
+        categoryLabel={
+          isUserSystem(system)
+            ? t('brandDetail.designSystem')
+            : localizeDesignSystemCategory(locale, system.category || 'Uncategorized')
+        }
         statusLabel={(system.status ?? 'draft') === 'published' ? t('dsManager.statusPublished') : t('dsManager.statusDraft')}
         onSelect={() => handleSelectSystem(system)}
       />
@@ -809,25 +813,34 @@ function SystemRowPaletteLogo({ system }: { system: DesignSystemSummary }) {
   );
 }
 
-// Row thumbnail: prefer a real site favicon (captured source URL, reference
-// brand, or curated official-preset domain), otherwise fall back to palette.
+// Row thumbnail. For the user's own systems, prefer their actual logo (served
+// from the backing project via /api/brands/:id/logo) so a system with a logo
+// shows it instead of the palette stripe. Otherwise prefer a real site favicon
+// (captured source URL, reference brand, or curated official-preset domain).
+// Fall back to the palette stripe when neither resolves.
 function SystemRowLogo({ system }: { system: DesignSystemSummary }) {
   const host = designSystemLogoHost(system);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [host, system.id]);
+  const hasOwnLogo = isUserSystem(system) || Boolean(system.projectId);
+  type Stage = 'brand' | 'favicon' | 'palette';
+  const firstStage: Stage = hasOwnLogo ? 'brand' : host ? 'favicon' : 'palette';
+  const [stage, setStage] = useState<Stage>(firstStage);
+  useEffect(() => setStage(firstStage), [firstStage, system.id]);
 
-  if (!host) {
-    return <SystemRowPaletteLogo system={system} />;
-  }
-  if (failed) return <SystemRowPaletteLogo system={system} />;
+  if (stage === 'palette') return <SystemRowPaletteLogo system={system} />;
+  const src =
+    stage === 'brand'
+      ? `/api/brands/${encodeURIComponent(system.id)}/logo`
+      : `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
   return (
     <img
       className={styles.itemLogo}
-      src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`}
+      src={src}
       alt=""
       loading="lazy"
       referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
+      onError={() =>
+        setStage((s) => (s === 'brand' ? (host ? 'favicon' : 'palette') : 'palette'))
+      }
     />
   );
 }

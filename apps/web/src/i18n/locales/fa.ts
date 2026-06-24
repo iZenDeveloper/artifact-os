@@ -3403,5 +3403,7 @@ export const fa: Dict = {
   'ds.uploadFailed': 'بارگذاری ناموفق بود. لطفاً دوباره تلاش کنید.',
   'ds.kitErrorTitle': 'این نما با مشکلی مواجه شد.',
   'ds.kitErrorRetry': 'بارگذاری مجدد',
+  'ds.shortcutsLabel': 'میان‌برهای صفحه‌کلید',
+  'ds.shortcutsHint': 'میان‌برها: E ویرایش · C کپی · U بارگذاری · R تازه‌سازی · ⌫ حذف لوگو',
   'ds.moduleEmptyImages': 'بدون تصویر',
 };

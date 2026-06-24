@@ -3408,5 +3408,7 @@ export const ru: Dict = {
   'ds.uploadFailed': 'Не удалось загрузить. Попробуйте ещё раз.',
   'ds.kitErrorTitle': 'В этом представлении возникла проблема.',
   'ds.kitErrorRetry': 'Перезагрузить',
+  'ds.shortcutsLabel': 'Сочетания клавиш',
+  'ds.shortcutsHint': 'Сочетания: E редактировать · C копировать · U загрузить · R обновить · ⌫ удалить логотип',
   'ds.moduleEmptyImages': 'Нет изображений',
 };

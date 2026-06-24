@@ -3408,5 +3408,7 @@ export const ko: Dict = {
   'ds.uploadFailed': '업로드에 실패했습니다. 다시 시도해 주세요.',
   'ds.kitErrorTitle': '이 화면에서 문제가 발생했습니다.',
   'ds.kitErrorRetry': '새로고침',
+  'ds.shortcutsLabel': '키보드 단축키',
+  'ds.shortcutsHint': '단축키: E 편집 · C 복사 · U 업로드 · R 새로고침 · ⌫ 로고 삭제',
   'ds.moduleEmptyImages': '이미지 없음',
 };

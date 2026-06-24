@@ -3408,5 +3408,7 @@ export const en: Dict = {
   'ds.uploadFailed': 'Upload failed. Please try again.',
   'ds.kitErrorTitle': 'This view ran into a problem.',
   'ds.kitErrorRetry': 'Reload',
+  'ds.shortcutsLabel': 'Keyboard shortcuts',
+  'ds.shortcutsHint': 'Shortcuts: E edit · C copy · U upload · R refresh · ⌫ delete logo',
   'ds.moduleEmptyImages': 'No images yet',
 };

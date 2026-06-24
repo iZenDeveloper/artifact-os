@@ -3408,5 +3408,7 @@ export const hu: Dict = {
   'ds.uploadFailed': 'A feltöltés nem sikerült. Kérjük, próbáld újra.',
   'ds.kitErrorTitle': 'Ez a nézet hibába ütközött.',
   'ds.kitErrorRetry': 'Újratöltés',
+  'ds.shortcutsLabel': 'Billentyűparancsok',
+  'ds.shortcutsHint': 'Parancsok: E szerkesztés · C másolás · U feltöltés · R frissítés · ⌫ logó törlése',
   'ds.moduleEmptyImages': 'Még nincsenek képek',
 };

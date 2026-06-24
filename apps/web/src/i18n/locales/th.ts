@@ -3408,5 +3408,7 @@ export const th: Dict = {
   'ds.uploadFailed': 'อัปโหลดไม่สำเร็จ โปรดลองอีกครั้ง',
   'ds.kitErrorTitle': 'มุมมองนี้เกิดปัญหา',
   'ds.kitErrorRetry': 'โหลดใหม่',
+  'ds.shortcutsLabel': 'แป้นพิมพ์ลัด',
+  'ds.shortcutsHint': 'ทางลัด: E แก้ไข · C คัดลอก · U อัปโหลด · R รีเฟรช · ⌫ ลบโลโก้',
   'ds.moduleEmptyImages': 'ยังไม่มีรูปภาพ',
 };

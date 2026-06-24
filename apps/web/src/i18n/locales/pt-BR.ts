@@ -3408,5 +3408,7 @@ export const ptBR: Dict = {
   'ds.uploadFailed': 'Falha no envio. Tente novamente.',
   'ds.kitErrorTitle': 'Esta visualização encontrou um problema.',
   'ds.kitErrorRetry': 'Recarregar',
+  'ds.shortcutsLabel': 'Atalhos de teclado',
+  'ds.shortcutsHint': 'Atalhos: E editar · C copiar · U enviar · R atualizar · ⌫ excluir logo',
   'ds.moduleEmptyImages': 'Sem imagens',
 };

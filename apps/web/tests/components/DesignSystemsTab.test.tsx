@@ -166,7 +166,9 @@ describe('DesignSystemsTab', () => {
     );
 
     openOfficialPresets();
-    fireEvent.click(screen.getByTestId('design-system-select-linear'));
+    // "Make default" now lives in the detail's ⋯ overflow menu.
+    fireEvent.click(screen.getByTestId('design-kit-more-actions'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Default for new chats' }));
     expect(onSelect).toHaveBeenCalledWith('linear');
   });
 });

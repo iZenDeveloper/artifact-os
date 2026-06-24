@@ -2719,11 +2719,11 @@
   top: -5px;
   z-index: 1;
   padding: 8px 8px 4px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-faint);
   background: var(--bg, var(--surface, #fff));
 }
 .project-ds-picker-group-label:first-child {

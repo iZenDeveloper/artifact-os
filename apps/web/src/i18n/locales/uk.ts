@@ -3408,5 +3408,7 @@ export const uk: Dict = {
   'ds.uploadFailed': 'Не вдалося завантажити. Спробуйте ще раз.',
   'ds.kitErrorTitle': 'У цьому поданні виникла проблема.',
   'ds.kitErrorRetry': 'Перезавантажити',
+  'ds.shortcutsLabel': 'Комбінації клавіш',
+  'ds.shortcutsHint': 'Комбінації: E редагувати · C копіювати · U завантажити · R оновити · ⌫ видалити логотип',
   'ds.moduleEmptyImages': 'Немає зображень',
 };

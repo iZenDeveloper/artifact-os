@@ -3408,5 +3408,7 @@ export const tr: Dict = {
   'ds.uploadFailed': 'Yükleme başarısız oldu. Lütfen tekrar deneyin.',
   'ds.kitErrorTitle': 'Bu görünümde bir sorun oluştu.',
   'ds.kitErrorRetry': 'Yeniden yükle',
+  'ds.shortcutsLabel': 'Klavye kısayolları',
+  'ds.shortcutsHint': 'Kısayollar: E düzenle · C kopyala · U yükle · R yenile · ⌫ logoyu sil',
   'ds.moduleEmptyImages': 'Henüz görsel yok',
 };

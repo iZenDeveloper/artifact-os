@@ -3408,5 +3408,7 @@ export const ar: Dict = {
   'ds.uploadFailed': 'فشل الرفع. يرجى المحاولة مرة أخرى.',
   'ds.kitErrorTitle': 'واجه هذا العرض مشكلة.',
   'ds.kitErrorRetry': 'إعادة التحميل',
+  'ds.shortcutsLabel': 'اختصارات لوحة المفاتيح',
+  'ds.shortcutsHint': 'الاختصارات: E تحرير · C نسخ · U رفع · R تحديث · ⌫ حذف الشعار',
   'ds.moduleEmptyImages': 'لا توجد صور',
 };

@@ -3408,5 +3408,7 @@ export const fr: Dict = {
   'ds.uploadFailed': "Échec de l'import. Veuillez réessayer.",
   'ds.kitErrorTitle': 'Cette vue a rencontré un problème.',
   'ds.kitErrorRetry': 'Recharger',
+  'ds.shortcutsLabel': 'Raccourcis clavier',
+  'ds.shortcutsHint': 'Raccourcis : E modifier · C copier · U téléverser · R actualiser · ⌫ supprimer le logo',
   'ds.moduleEmptyImages': 'Aucune image',
 };

@@ -21,6 +21,7 @@ import {
   useState,
   type ChangeEvent,
   type DragEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent,
   type ReactNode,
 } from 'react';
@@ -597,6 +598,40 @@ function DesignKitViewInner({
     await copyDesignMdText(slice.text);
   }
 
+  // Core editing shortcuts, active when focus is within the kit (so they never
+  // hijack global typing). Plain letter keys only — modifier combos (⌘C copy,
+  // etc.) pass through, and inputs/editors/open modals are skipped. Delete is
+  // contextual: it only removes the logo when the logo stage itself is focused,
+  // so a stray keypress can't destroy an asset. See the "?" hint in the header.
+  function handleKitKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('input, textarea, select, [contenteditable="true"]')) return;
+    if (designMdOpen || colorEditor || lightbox || assetPreview) return;
+    const key = event.key.toLowerCase();
+    if (key === 'e' && canEditDesignMd) {
+      event.preventDefault();
+      openDesignMdEditor();
+    } else if (key === 'c' && designMd?.body) {
+      event.preventDefault();
+      void copyDesignMd();
+    } else if (key === 'u' && canUpload) {
+      event.preventDefault();
+      logoInputRef.current?.click();
+    } else if (key === 'r' && onRefresh) {
+      event.preventDefault();
+      onRefresh();
+    } else if (
+      (event.key === 'Delete' || event.key === 'Backspace') &&
+      onDeleteLogo &&
+      activeLogoSrc &&
+      target.closest('[data-kit-logo-stage]')
+    ) {
+      event.preventDefault();
+      onDeleteLogo(activeLogo);
+    }
+  }
+
   async function saveDesignMdDraft() {
     if (!designMd?.onSave) return;
     const nextBody = designMdTarget.kind === 'module'
@@ -824,6 +859,23 @@ function DesignKitViewInner({
   ];
   const hasHeaderMenu = headerMenuGroups.some((group) => group.length > 0);
 
+  // "?" affordance surfacing the keyboard shortcuts (E edit · C copy · U upload
+  // · R refresh · ⌫ delete logo). Only on full (non-compact) views where the
+  // shortcuts apply; tabIndex -1 keeps it out of the Tab order (info only).
+  const shortcutsHint =
+    !compact && (canEditDesignMd || canUpload || Boolean(onRefresh) || Boolean(designMd?.body)) ? (
+      <button
+        type="button"
+        className={styles.shortcutsHint}
+        title={t('ds.shortcutsHint')}
+        aria-label={t('ds.shortcutsLabel')}
+        tabIndex={-1}
+        data-testid="design-kit-shortcuts-hint"
+      >
+        <Icon name="help-circle" size={14} />
+      </button>
+    ) : null;
+
   return (
     <div
       className={[
@@ -833,6 +885,7 @@ function DesignKitViewInner({
       ].filter(Boolean).join(' ')}
       data-testid={dataTestId}
       data-variant={variant}
+      onKeyDown={handleKitKeyDown}
     >
       <input
         ref={logoInputRef}
@@ -967,9 +1020,10 @@ function DesignKitViewInner({
           </div>
         </div>
         {stickyHeader ? (
-          actionsSlot || hasHeaderMenu ? (
+          actionsSlot || hasHeaderMenu || shortcutsHint ? (
             <div className={styles.previewActions}>
               {actionsSlot}
+              {shortcutsHint}
               <HeaderActionsMenu groups={headerMenuGroups} label={t('designs.menuMore')} />
             </div>
           ) : null
@@ -977,6 +1031,7 @@ function DesignKitViewInner({
           <div className={styles.previewActions}>
             {!compact ? designMdActionButtons() : null}
             {actionsSlot}
+            {shortcutsHint}
           </div>
         ) : null}
       </header>
@@ -1019,6 +1074,7 @@ function DesignKitViewInner({
                   <button
                     type="button"
                     className={`${styles.logoStage} ${styles.logoStageButton}`}
+                    data-kit-logo-stage
                     onClick={() => setLightbox({ src: activeLogoSrc, caption: kit.name })}
                     aria-label={`${t('common.openPreview')}: ${kit.name}`}
                   >

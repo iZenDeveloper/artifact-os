@@ -3408,5 +3408,7 @@ export const ja: Dict = {
   'ds.uploadFailed': 'アップロードに失敗しました。もう一度お試しください。',
   'ds.kitErrorTitle': 'このビューで問題が発生しました。',
   'ds.kitErrorRetry': '再読み込み',
+  'ds.shortcutsLabel': 'キーボードショートカット',
+  'ds.shortcutsHint': 'ショートカット：E 編集 · C コピー · U アップロード · R 更新 · ⌫ ロゴを削除',
   'ds.moduleEmptyImages': '画像がありません',
 };

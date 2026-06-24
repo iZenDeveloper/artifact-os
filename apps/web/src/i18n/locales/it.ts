@@ -3408,5 +3408,7 @@ export const it: Dict = {
   'ds.uploadFailed': 'Caricamento non riuscito. Riprova.',
   'ds.kitErrorTitle': 'Questa vista ha riscontrato un problema.',
   'ds.kitErrorRetry': 'Ricarica',
+  'ds.shortcutsLabel': 'Scorciatoie da tastiera',
+  'ds.shortcutsHint': 'Scorciatoie: E modifica · C copia · U carica · R aggiorna · ⌫ elimina logo',
   'ds.moduleEmptyImages': 'Nessuna immagine',
 };

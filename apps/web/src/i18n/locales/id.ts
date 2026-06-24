@@ -3408,5 +3408,7 @@ export const id: Dict = {
   'ds.uploadFailed': 'Unggahan gagal. Silakan coba lagi.',
   'ds.kitErrorTitle': 'Tampilan ini mengalami masalah.',
   'ds.kitErrorRetry': 'Muat ulang',
+  'ds.shortcutsLabel': 'Pintasan keyboard',
+  'ds.shortcutsHint': 'Pintasan: E edit · C salin · U unggah · R segarkan · ⌫ hapus logo',
   'ds.moduleEmptyImages': 'Belum ada gambar',
 };

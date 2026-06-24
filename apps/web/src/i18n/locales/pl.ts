@@ -3408,5 +3408,7 @@ export const pl: Dict = {
   'ds.uploadFailed': 'Przesyłanie nie powiodło się. Spróbuj ponownie.',
   'ds.kitErrorTitle': 'W tym widoku wystąpił problem.',
   'ds.kitErrorRetry': 'Przeładuj',
+  'ds.shortcutsLabel': 'Skróty klawiszowe',
+  'ds.shortcutsHint': 'Skróty: E edytuj · C kopiuj · U prześlij · R odśwież · ⌫ usuń logo',
   'ds.moduleEmptyImages': 'Brak obrazów',
 };

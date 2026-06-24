@@ -2070,6 +2070,8 @@ export interface Dict {
   'ds.uploadFailed': string;
   'ds.kitErrorTitle': string;
   'ds.kitErrorRetry': string;
+  'ds.shortcutsLabel': string;
+  'ds.shortcutsHint': string;
   'ds.moduleEmptyImages': string;
   'ds.previewTitle': string;
   'ds.categoryAll': string;

@@ -3409,5 +3409,7 @@ export const zhTW: Dict = {
   'ds.uploadFailed': '上傳失敗,請重試。',
   'ds.kitErrorTitle': '此檢視遇到問題。',
   'ds.kitErrorRetry': '重新載入',
+  'ds.shortcutsLabel': '鍵盤快捷鍵',
+  'ds.shortcutsHint': '快捷鍵：E 編輯 · C 複製 · U 上傳 · R 重新整理 · ⌫ 刪除 Logo',
   'ds.moduleEmptyImages': '尚無圖片',
 };
