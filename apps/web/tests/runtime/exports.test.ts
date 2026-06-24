@@ -601,7 +601,9 @@ describe('exportProjectAsPptx', () => {
     expect(capturedFilename).toBe('deck.pdf');
   });
 
-  it('returns the daemon error message when the export is unavailable', async () => {
+  it('reports 501 (no off-screen renderer) as unavailable, not a semantic error', async () => {
+    // The caller may fall back to the vector/browser PDF only on genuine
+    // unavailability — so 501 must surface as `unavailable`, with no error.
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => new Response(JSON.stringify({ error: { message: 'desktop only' } }), { status: 501 })),
@@ -609,8 +611,28 @@ describe('exportProjectAsPptx', () => {
 
     const res = await exportProjectAsPptx({ projectId: 'p', fileName: 'deck.html' });
 
-    expect(res.ok).toBe(false);
-    expect(res.error).toBe('desktop only');
+    expect(res).toEqual({ ok: false, unavailable: true });
+  });
+
+  it('surfaces a semantic failure (non-501) as an error, not unavailable', async () => {
+    // A bad-deck 422 / renderer 502 must NOT be masked as "fall back to vector";
+    // it carries the daemon message so the caller can surface it.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ error: { message: 'this artifact is not a slide deck' } }), { status: 422 })),
+    );
+
+    const res = await exportProjectAsPptx({ projectId: 'p', fileName: 'deck.html' });
+
+    expect(res).toEqual({ ok: false, error: 'this artifact is not a slide deck' });
+  });
+
+  it('treats a transport failure as unavailable', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline'); }));
+
+    const res = await exportProjectAsPptx({ projectId: 'p', fileName: 'deck.html' });
+
+    expect(res).toEqual({ ok: false, unavailable: true });
   });
 });
 

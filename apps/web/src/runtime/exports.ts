@@ -856,7 +856,17 @@ export async function exportProjectAsZip(opts: {
   }
 }
 
-export type ProjectScreenshotExportResult = { ok: boolean; error?: string };
+// Tri-state, mirroring exportProjectImageDataUrl: callers must distinguish a
+// genuinely-unavailable off-screen renderer (no desktop host / 501 / transport
+// failure) — where falling back to the vector/browser PDF is correct — from a
+// SEMANTIC export failure (bad deck routing, unreadable renderer output, a
+// renderer-side 502, "page too tall", …), which must be surfaced rather than
+// silently masked by the old vector path (which can reintroduce the CJK-glyph /
+// fidelity bugs this screenshot path exists to avoid).
+export type ProjectScreenshotExportResult =
+  | { ok: true }
+  | { ok: false; unavailable: true }
+  | { ok: false; error: string };
 
 // Programmatic screenshot-based PPTX export. POSTs to the daemon, which renders
 // each deck slide to a pixel-perfect PNG (via the desktop's Electron Chromium)
@@ -884,6 +894,10 @@ export async function exportProjectAsPptx(opts: {
       }),
     });
     if (!resp.ok) {
+      // 501 = this runtime has no off-screen renderer → caller may fall back to
+      // the vector/browser PDF. Everything else is a real (semantic) failure
+      // that must surface, not be masked by the vector path.
+      if (resp.status === 501) return { ok: false, unavailable: true };
       let message = `export request failed (${resp.status})`;
       try {
         const err = await resp.json();
@@ -899,8 +913,10 @@ export async function exportProjectAsPptx(opts: {
     const fromHeader = filenameFromContentDisposition(resp);
     triggerDownload(blob, fromHeader || `${slug}.${format}`);
     return { ok: true };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  } catch {
+    // Transport-level failure (offline, daemon down) — genuinely unavailable, so
+    // the caller may fall back to the vector/browser PDF.
+    return { ok: false, unavailable: true };
   }
 }
 

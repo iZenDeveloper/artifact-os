@@ -5120,7 +5120,9 @@ export function ProjectView({
       // PPTX is deck-only (the action is gated to deck artifacts), so signal the
       // renderer explicitly rather than relying on `.slide` heuristics.
       return exportProjectAsPptx({ projectId: project.id, fileName, deck: true }).then((res) => {
-        if (!res.ok) throw new Error(res.error || 'PPTX export failed');
+        // PPTX is deck-only with no vector fallback, so any failure (semantic or
+        // unavailable) surfaces; read the message from whichever variant has it.
+        if (!res.ok) throw new Error('error' in res ? res.error : 'PPTX export failed');
       });
     },
     [project.id],

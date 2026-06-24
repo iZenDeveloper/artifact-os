@@ -4533,7 +4533,11 @@ function HtmlViewer({
     };
     const onErr = (err: unknown) => {
       finish('failed', err instanceof Error ? err.name : 'UNKNOWN');
-      if (showToast) setExportToast({ message: t('fileViewer.exportFailed'), tone: 'error' });
+      // Prefer the export's own (user-facing) message — e.g. a semantic
+      // screenshot-PDF failure like "page is too tall — export as PDF" — so a
+      // surfaced failure is actionable instead of a generic "export failed".
+      const message = err instanceof Error && err.message ? err.message : t('fileViewer.exportFailed');
+      if (showToast) setExportToast({ message, tone: 'error' });
     };
     try {
       const out = fn();
@@ -8932,6 +8936,14 @@ function HtmlViewer({
                             deck: deckExportSignal,
                           });
                           if (res.ok) return;
+                          // A SEMANTIC failure (bad deck routing, unreadable
+                          // renderer output, renderer 502, …) must surface — NOT
+                          // silently downgrade to the vector PDF, which can
+                          // reintroduce the CJK-glyph / fidelity bugs the
+                          // screenshot path exists to avoid. Only a genuinely
+                          // unavailable renderer (no host / 501 / transport)
+                          // falls through to the vector path below.
+                          if (!('unavailable' in res)) throw new Error(res.error);
                         }
                         await exportProjectAsPdf({
                           deck: deckExportSignal,
