@@ -226,6 +226,58 @@ describe('brand routes', () => {
     expect(storedMeta.extractionTerminalError).toBeUndefined();
   });
 
+  it('keeps stale ready finalize failures visible when the extraction run failed', async () => {
+    writeBrandFixture('brand-stale-ready', {
+      projectId: 'project-stale-ready',
+      extractionConversationId: 'conversation-stale-ready',
+      logoPrimary: 'logos/missing.svg',
+      status: 'ready',
+      extractionTerminalRunId: 'run-stale-ready-failed',
+      extractionTerminalError: 'Brand extraction failed after finalize.',
+    });
+    insertProject(db, {
+      id: 'project-stale-ready',
+      name: 'Stale Ready Brand Project',
+      skillId: null,
+      designSystemId: null,
+      createdAt: 1,
+      updatedAt: 1,
+      metadata: { kind: 'brand', brandId: 'brand-stale-ready' },
+    });
+    insertConversation(db, {
+      id: 'conversation-stale-ready',
+      projectId: 'project-stale-ready',
+      title: 'Extract brand',
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    upsertMessage(db, 'conversation-stale-ready', {
+      id: 'message-stale-ready-failed',
+      role: 'assistant',
+      content: 'Extraction failed.',
+      runId: 'run-stale-ready-failed',
+      runStatus: 'failed',
+      startedAt: 1,
+      endedAt: 2,
+    });
+
+    const detail = await requestJson('/api/brands/brand-stale-ready');
+    const list = await requestJson('/api/brands');
+
+    expect(detail.status).toBe(200);
+    expect(detail.body.meta.status).toBe('failed');
+    expect(detail.body.meta.error).toBe('Brand extraction failed after finalize.');
+    expect(list.body.brands.find((brand: any) => brand.meta.id === 'brand-stale-ready')?.meta.status).toBe(
+      'failed',
+    );
+
+    const storedMeta = JSON.parse(readFileSync(path.join(brandsRoot, 'brand-stale-ready', 'meta.json'), 'utf8'));
+    expect(storedMeta.status).toBe('failed');
+    expect(storedMeta.error).toBe('Brand extraction failed after finalize.');
+    expect(storedMeta.extractionTerminalRunId).toBe('run-stale-ready-failed');
+    expect(storedMeta.extractionTerminalError).toBe('Brand extraction failed after finalize.');
+  });
+
   it('does not regress ready brands after a later backing project run is canceled', async () => {
     writeBrandFixture('brand-ready', {
       projectId: 'project-ready',

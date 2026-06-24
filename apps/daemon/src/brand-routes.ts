@@ -313,7 +313,6 @@ function reconcileBrandMetaStatus(
   context: BrandStatusContext,
 ): BrandMeta {
   if (!meta.projectId) return meta;
-  if (meta.status !== 'extracting') return meta;
   const status = meta.extractionConversationId
     ? context.latestByConversation.get(meta.extractionConversationId)
     : context.latestByProject.get(meta.projectId);
@@ -334,6 +333,7 @@ function reconcileBrandMetaStatus(
       ...(status.runId ? { extractionTerminalRunId: status.runId } : {}),
     };
   }
+  if (meta.status !== 'extracting') return meta;
   // The backing run paused on a question form (anti-bot wall / clarifying
   // question). Surface it as needs_input WITHOUT persisting — answering the
   // question resumes extraction, so the brand must be free to flip back.
