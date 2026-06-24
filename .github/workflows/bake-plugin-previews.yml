@@ -108,8 +108,14 @@ jobs:
           esac
           cp "$NEW" "$OLD"
           BRANCH="chore/plugin-previews"
-          git config user.name "open-design-bot"
-          git config user.email "bot@open-design.ai"
+          # Commit AS github-actions[bot] (its canonical noreply email) so GitHub
+          # resolves the commits API `.committer.login` to that bot. The auto-merge
+          # reactor's `pristine` gate trusts that GitHub-backed login — not the raw
+          # committer email, which a collaborator could trivially spoof — to prove
+          # no human commit rode in. (Pushing via the App token below is what
+          # triggers CI; the commit identity is independent of the push token.)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # Rebuild the rolling branch from the current main HEAD + this manifest,
           # so it always carries exactly the freshest manifest on top of main.
           git checkout -B "$BRANCH"

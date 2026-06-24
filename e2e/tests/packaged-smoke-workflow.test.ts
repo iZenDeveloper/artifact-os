@@ -289,13 +289,14 @@ describe("packaged smoke workflow", () => {
     expect(workflow).toContain('select(.base.ref == "main")');
 
     // A human commit pushed onto the rolling branch is unreviewed, so auto-approve/merge require
-    // pristine == 'true': every commit's git committer email is the bake bot's (the bot email maps
-    // to no GitHub user, so .committer.login is null — check the raw email instead). Paginated
-    // across all commits; any non-bot one fails the count.
+    // pristine == 'true': every commit's GitHub-resolved committer login is github-actions[bot]
+    // (the same GitHub-backed field backport-automerge.yml trusts — NOT the raw git committer
+    // email, which is set in plaintext in bake-plugin-previews.yml and a collaborator could spoof).
+    // Paginated across all commits; any non-bot one fails the count.
     expect(workflow).toContain("steps.pr.outputs.pristine == 'true'");
-    expect(workflow).toContain('.[].commit.committer.email // "none"');
+    expect(workflow).toContain('.[].committer.login // "none"');
     expect(workflow).toContain("--paginate");
-    expect(workflow).toContain("grep -Fvxc 'bot@open-design.ai'");
+    expect(workflow).toContain("grep -Fvxc 'github-actions[bot]'");
 
     // The PR is resolved from the run's authoritative workflow_run.pull_requests association
     // (filtered to the main base at exactly the run's SHA), not a branch-name guess, and the merge
@@ -320,9 +321,14 @@ describe("packaged smoke workflow", () => {
 
     // The Feishu failure path carries the same identity gates, so a fork / non-bot PR can't spam
     // the release group.
-    const feishuStep = sectionBetween(workflow, "Notify Feishu on failed manifest CI", "FEISHU_WEBHOOK");
+    const feishuStep = sectionBetween(workflow, "Notify Feishu on failed manifest CI", "python3");
     expect(feishuStep).toContain("steps.pr.outputs.author == 'app/open-design-release-bot'");
     expect(feishuStep).toContain("steps.pr.outputs.cross == 'false'");
+    // Sign the release webhook with the SAME secret the rest of the repo pairs with
+    // FEISHU_RELEASE_WEBHOOK (notify-release-feishu / notify-daily-feishu / backport-automerge),
+    // not a stray secret that resolves empty and sends an unsigned, rejected request.
+    expect(feishuStep).toContain("secrets.FEISHU_RELEASE_WEBHOOK");
+    expect(feishuStep).toContain("secrets.FEISHU_RELEASE_SIGN_SECRET");
   });
 
   it("[P2] keeps PR and merge queue CI separated by hot/full validation mode", async () => {

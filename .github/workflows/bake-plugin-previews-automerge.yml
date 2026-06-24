@@ -62,23 +62,23 @@ jobs:
           fi
           row="$(gh pr view "$num" --repo "$REPO" \
                   --json number,baseRefName,isDraft,title,author,isCrossRepository,headRefOid)"
-          # "Pristine" = every commit on the branch was committed by the bake bot.
+          # "Pristine" = every commit on the branch was committed by github-actions[bot].
           # The rolling branch is rebuilt as `main HEAD + one manifest commit`, but a
-          # human with write access could push extra commits onto chore/plugin-previews;
-          # those would NOT carry the bake bot's committer email, so pristine=false and
-          # the approve/merge below skip — unreviewed code must get a real human review.
-          # Check the raw git committer email (bot@open-design.ai), which the bake job
-          # sets, rather than .committer.login (the bot email maps to no GitHub user, so
-          # login is null). Paginate across ALL commits — a >100-commit PR must not pass
-          # on its first page; one non-bot committer anywhere fails it. Fail closed on a
-          # partial/failed lookup: capture gh's exit via `if !` and blank the list, so
-          # pristine needs a complete, successful enumeration of every commit.
-          if ! emails="$(gh api "repos/$REPO/pulls/$num/commits?per_page=100" --paginate \
-                          --jq '.[].commit.committer.email // "none"' 2>/dev/null)"; then
-            emails=""
+          # human with write access could push extra commits onto chore/plugin-previews.
+          # Trust GitHub's resolved `.committer.login` (the same field backport-automerge.yml
+          # checks), NOT the raw git committer email — that email is set in plaintext in
+          # bake-plugin-previews.yml and a collaborator could spoof it to fake pristine.
+          # The bake job commits as github-actions[bot] so GitHub maps its commits to that
+          # login. Paginate across ALL commits — a >100-commit PR must not pass on its first
+          # page; one non-bot committer anywhere fails it. Fail closed on a partial/failed
+          # lookup: capture gh's exit via `if !` and blank the list, so pristine needs a
+          # complete, successful enumeration of every commit.
+          if ! logins="$(gh api "repos/$REPO/pulls/$num/commits?per_page=100" --paginate \
+                          --jq '.[].committer.login // "none"' 2>/dev/null)"; then
+            logins=""
           fi
-          nonbot="$(printf '%s\n' "$emails" | grep -Fvxc 'bot@open-design.ai' || true)"
-          if [ -n "$emails" ] && [ "${nonbot:-1}" = "0" ]; then
+          nonbot="$(printf '%s\n' "$logins" | grep -Fvxc 'github-actions[bot]' || true)"
+          if [ -n "$logins" ] && [ "${nonbot:-1}" = "0" ]; then
             pristine=true
           else
             pristine=false
@@ -152,7 +152,7 @@ jobs:
         if: ${{ steps.pr.outputs.found == 'true' && steps.pr.outputs.author == 'app/open-design-release-bot' && steps.pr.outputs.cross == 'false' && github.event.workflow_run.conclusion == 'failure' }}
         env:
           FEISHU_WEBHOOK: ${{ secrets.FEISHU_RELEASE_WEBHOOK }}
-          FEISHU_SIGN_SECRET: ${{ secrets.FEISHU_WEBHOOK_SECRET }}
+          FEISHU_SIGN_SECRET: ${{ secrets.FEISHU_RELEASE_SIGN_SECRET }}
           NUM: ${{ steps.pr.outputs.number }}
           TITLE: ${{ steps.pr.outputs.title }}
           RUN_URL: ${{ github.event.workflow_run.html_url }}
