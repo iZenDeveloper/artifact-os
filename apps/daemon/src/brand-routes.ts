@@ -77,6 +77,7 @@ export interface BrandRoutesDeps {
 
 const LOGO_EXT_PRIORITY = ['.svg', '.png', '.webp', '.jpg', '.jpeg', '.gif', '.ico'];
 const PROGRAMMATIC_CANCEL_ERROR = 'Programmatic extraction stopped by the user.';
+const BROWSER_HTML_EXTRACTION_ERROR = 'Could not extract a design system from the provided page.';
 
 export function registerBrandRoutes(app: Application, deps: BrandRoutesDeps): void {
   const { brandsRoot, userDesignSystemsRoot, projectsRoot, skillsRoot, dataDir, db, randomId } = deps;
@@ -101,6 +102,45 @@ export function registerBrandRoutes(app: Application, deps: BrandRoutesDeps): vo
     if (!active) return;
     active.abort();
     activeProgrammaticBrandExtractions.delete(brandId);
+  }
+
+  async function markBrowserHtmlExtractionFailed(brandId: string, previousMeta: BrandMeta): Promise<void> {
+    const failedMeta = patchMeta(brandsRoot, brandId, {
+      status: 'failed',
+      error: BROWSER_HTML_EXTRACTION_ERROR,
+      blocked: Boolean(previousMeta.blocked),
+      blockedReason: previousMeta.blockedReason,
+      extractionTerminalRunId: undefined,
+      extractionTerminalError: BROWSER_HTML_EXTRACTION_ERROR,
+    }) ?? {
+      ...previousMeta,
+      status: 'failed',
+      error: BROWSER_HTML_EXTRACTION_ERROR,
+      blocked: Boolean(previousMeta.blocked),
+      extractionTerminalError: BROWSER_HTML_EXTRACTION_ERROR,
+      updatedAt: Date.now(),
+    };
+    await renderBrandPreviewIntoProject({
+      id: brandId,
+      brandsRoot,
+      skillsRoot,
+      projectsRoot,
+      previewStatus: 'failed',
+      ...(failedMeta.projectId ? { projectId: failedMeta.projectId } : {}),
+      ...(failedMeta.locale ? { locale: failedMeta.locale } : {}),
+    }).catch((err) => {
+      console.warn(`[brand] failed to render failed browser HTML preview for ${brandId}`, err);
+    });
+    await reconcileProgrammaticExtractionTranscript({
+      db,
+      brandsRoot,
+      projectsRoot,
+      brandId,
+      outcome: 'needs_attention',
+      ...(failedMeta.locale ? { locale: failedMeta.locale } : {}),
+    }).catch((err) => {
+      console.warn(`[brand] failed to reconcile browser HTML retry transcript for ${brandId}`, err);
+    });
   }
 
   // GET /api/brands — list every stored brand as a summary.
@@ -363,9 +403,8 @@ export function registerBrandRoutes(app: Application, deps: BrandRoutesDeps): vo
         ...(deps.imageryFallback ? { imageryFallback: deps.imageryFallback } : {}),
       });
       if (!result) {
-        res
-          .status(422)
-          .json({ error: 'Could not extract a design system from the provided page.' });
+        await markBrowserHtmlExtractionFailed(id, meta);
+        res.status(422).json({ error: BROWSER_HTML_EXTRACTION_ERROR });
         return;
       }
       res.json(result);

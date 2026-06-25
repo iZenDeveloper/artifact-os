@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { registerBrandRoutes, type BrandRoutesDeps } from '../src/brand-routes.js';
-import { closeDatabase, insertConversation, insertProject, openDatabase, upsertMessage } from '../src/db.js';
+import { closeDatabase, insertConversation, insertProject, listMessages, openDatabase, upsertMessage } from '../src/db.js';
 import type { PrefetchResult } from '../src/brands/prefetch.js';
 
 const NO_LOGO_FALLBACK = async () => ({ changed: false });
@@ -430,6 +430,69 @@ describe('brand routes', () => {
       expect(getObservedSignal().aborted).toBe(true);
       expect(extracted.status).toBe(200);
       expect(extracted.body.id).toBe(started.body.id);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it('marks browser HTML retry failure terminal after aborting an active programmatic pass', async () => {
+    let prefetchStarted!: () => void;
+    const prefetchStartedPromise = new Promise<void>((resolve) => {
+      prefetchStarted = resolve;
+    });
+    let observedSignal: AbortSignal | null = null;
+    const prefetch = vi.fn((_url: string, _brandDir: string, opts?: { signal?: AbortSignal }) => {
+      observedSignal = opts?.signal ?? null;
+      prefetchStarted();
+      return new Promise<PrefetchResult | null>((resolve) => {
+        observedSignal?.addEventListener('abort', () => resolve(null), { once: true });
+      });
+    });
+    const getObservedSignal = () => {
+      if (!observedSignal) throw new Error('expected prefetch abort signal');
+      return observedSignal;
+    };
+    const server = await startBrandServer({
+      prefetch,
+      logoFallback: NO_LOGO_FALLBACK,
+      imageryFallback: NO_IMAGERY_FALLBACK,
+    });
+    try {
+      const started = await server.requestJson('/api/brands', {
+        method: 'POST',
+        body: { url: 'acme.com' },
+      });
+      expect(started.status).toBe(200);
+      await prefetchStartedPromise;
+      expect(getObservedSignal().aborted).toBe(false);
+
+      const extracted = await server.requestJson(`/api/brands/${started.body.id}/extract-from-html`, {
+        method: 'POST',
+        body: {
+          html: '<!doctype html><html><head><title>Loading</title></head><body>Still loading</body></html>',
+          baseUrl: 'https://acme.com/',
+        },
+      });
+
+      expect(getObservedSignal().aborted).toBe(true);
+      expect(extracted.status).toBe(422);
+      expect(extracted.body).toEqual({
+        error: 'Could not extract a design system from the provided page.',
+      });
+
+      const meta = JSON.parse(
+        readFileSync(path.join(brandsRoot, started.body.id, 'meta.json'), 'utf8'),
+      );
+      expect(meta.status).toBe('failed');
+      expect(meta.error).toBe('Could not extract a design system from the provided page.');
+      expect(meta.extractionTerminalError).toBe(
+        'Could not extract a design system from the provided page.',
+      );
+
+      const assistantMessage = listMessages(db, started.body.conversationId).find(
+        (message) => message.id === meta.extractionTranscriptMessageId,
+      );
+      expect(assistantMessage?.runStatus).toBe('failed');
     } finally {
       await server.close();
     }
