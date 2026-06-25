@@ -498,6 +498,109 @@ describe('brand routes', () => {
     }
   });
 
+  it('keeps cancel terminal when browser HTML extraction is in flight', async () => {
+    let prefetchStarted!: () => void;
+    const prefetchStartedPromise = new Promise<void>((resolve) => {
+      prefetchStarted = resolve;
+    });
+    let observedSignal: AbortSignal | null = null;
+    const prefetch = vi.fn((_url: string, _brandDir: string, opts?: { signal?: AbortSignal }) => {
+      observedSignal = opts?.signal ?? null;
+      prefetchStarted();
+      return new Promise<PrefetchResult | null>((resolve) => {
+        observedSignal?.addEventListener('abort', () => resolve(null), { once: true });
+      });
+    });
+    let logoFallbackStarted!: () => void;
+    const logoFallbackStartedPromise = new Promise<void>((resolve) => {
+      logoFallbackStarted = resolve;
+    });
+    let releaseLogoFallback!: () => void;
+    const logoFallbackGate = new Promise<void>((resolve) => {
+      releaseLogoFallback = resolve;
+    });
+    const logoFallback = vi.fn(async () => {
+      logoFallbackStarted();
+      await logoFallbackGate;
+      return { changed: false };
+    });
+    const getObservedSignal = () => {
+      if (!observedSignal) throw new Error('expected prefetch abort signal');
+      return observedSignal;
+    };
+    const server = await startBrandServer({
+      prefetch,
+      logoFallback,
+      imageryFallback: NO_IMAGERY_FALLBACK,
+    });
+    try {
+      const started = await server.requestJson('/api/brands', {
+        method: 'POST',
+        body: { url: 'acme.com' },
+      });
+      expect(started.status).toBe(200);
+      await prefetchStartedPromise;
+      expect(getObservedSignal().aborted).toBe(false);
+
+      const extraction = server.requestJson(`/api/brands/${started.body.id}/extract-from-html`, {
+        method: 'POST',
+        body: {
+          html: [
+            '<!doctype html><html><head>',
+            '<title>Acme Inc</title>',
+            '<meta name="description" content="We build delightful developer tools.">',
+            '</head><body>',
+            '<h1>Welcome to Acme</h1><h2>Fast, friendly software</h2>',
+            `<p>${'Acme builds delightful developer tools teams enjoy using every day. '.repeat(2)}</p>`,
+            '</body></html>',
+          ].join(''),
+          css: [
+            ':root{--brand:#3b5bdb}',
+            'h1{color:#3b5bdb;font-family:"Inter",sans-serif}',
+            'body{background:#ffffff;color:#1f2933}',
+            'a{color:#e8590c}.accent{color:#0ca678}.cta{background:#3b5bdb}',
+          ].join(''),
+          baseUrl: 'https://acme.com/',
+        },
+      });
+      await logoFallbackStartedPromise;
+      const extractingMeta = JSON.parse(
+        readFileSync(path.join(brandsRoot, started.body.id, 'meta.json'), 'utf8'),
+      );
+
+      const cancel = await server.requestJson(`/api/brands/${started.body.id}/cancel-extraction`, {
+        method: 'POST',
+      });
+      expect(cancel.status).toBe(200);
+      const canceledMeta = JSON.parse(
+        readFileSync(path.join(brandsRoot, started.body.id, 'meta.json'), 'utf8'),
+      );
+      expect(canceledMeta.status).toBe('failed');
+      expect(canceledMeta.error).toBe('Programmatic extraction stopped by the user.');
+      expect(canceledMeta.extractionAttemptId).not.toBe(extractingMeta.extractionAttemptId);
+
+      releaseLogoFallback();
+      const extracted = await extraction;
+      expect(extracted.status).toBe(409);
+      expect(extracted.body).toEqual({
+        error: 'Programmatic extraction stopped by the user.',
+      });
+
+      const finalMeta = JSON.parse(
+        readFileSync(path.join(brandsRoot, started.body.id, 'meta.json'), 'utf8'),
+      );
+      expect(finalMeta.status).toBe('failed');
+      expect(finalMeta.error).toBe('Programmatic extraction stopped by the user.');
+      const assistantMessage = listMessages(db, started.body.conversationId).find(
+        (message) => message.id === finalMeta.extractionTranscriptMessageId,
+      );
+      expect(assistantMessage?.runStatus).toBe('canceled');
+    } finally {
+      releaseLogoFallback();
+      await server.close();
+    }
+  });
+
   function writeBrandFixture(
     id: string,
     options: {

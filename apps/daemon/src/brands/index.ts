@@ -1219,7 +1219,7 @@ function throwIfProgrammaticExtractionNotCurrent(input: {
   if (!programmaticExtractionAttemptIsCurrent(input)) throw new ProgrammaticExtractionAbortError();
 }
 
-function isProgrammaticExtractionAbortError(err: unknown): boolean {
+export function isProgrammaticExtractionAbortError(err: unknown): boolean {
   return err instanceof ProgrammaticExtractionAbortError;
 }
 

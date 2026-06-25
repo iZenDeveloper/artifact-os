@@ -10,6 +10,7 @@
 //   POST /api/brands/:id/finalize — register the agent's brand kit. JSON.
 
 import fs from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
 import type { Application, Request, Response } from 'express';
@@ -25,6 +26,7 @@ import {
   continueBrandExtraction,
   extractBrandFromHtml,
   finalizeBrand,
+  isProgrammaticExtractionAbortError,
   listBrandSummaries,
   readBrandDetail,
   reconcileProgrammaticExtractionTranscript,
@@ -265,6 +267,7 @@ export function registerBrandRoutes(app: Application, deps: BrandRoutesDeps): vo
           error: PROGRAMMATIC_CANCEL_ERROR,
           blocked: false,
           blockedReason: undefined,
+          extractionAttemptId: randomUUID(),
           extractionTerminalRunId: undefined,
           extractionTerminalError: PROGRAMMATIC_CANCEL_ERROR,
         });
@@ -409,6 +412,10 @@ export function registerBrandRoutes(app: Application, deps: BrandRoutesDeps): vo
       }
       res.json(result);
     } catch (err) {
+      if (isProgrammaticExtractionAbortError(err)) {
+        res.status(409).json({ error: PROGRAMMATIC_CANCEL_ERROR });
+        return;
+      }
       const message = err instanceof Error ? err.message : String(err);
       res.status(/not found/i.test(message) ? 404 : 500).json({ error: message });
     }

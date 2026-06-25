@@ -1323,6 +1323,7 @@ export function ProjectView({
   const [workspaceContexts, setWorkspaceContexts] = useState<WorkspaceContextItem[]>([]);
   const tabsLoadedRef = useRef(false);
   const tabsHydratedFromSavedStateRef = useRef(false);
+  const [tabsHydrationVersion, setTabsHydrationVersion] = useState(0);
   const hasAppliedInitialPrimaryOpenRef = useRef(false);
   // Routed to FileWorkspace — bumped whenever the user clicks "open" on a
   // tool card, an attachment chip, or a produced-file chip in chat. We
@@ -1944,6 +1945,7 @@ export function ProjectView({
       tabsHydratedFromSavedStateRef.current = state.hasSavedState === true;
       setOpenTabsState(nextState);
       tabsLoadedRef.current = true;
+      setTabsHydrationVersion((version) => version + 1);
     })();
     return () => {
       cancelled = true;
@@ -6110,12 +6112,29 @@ export function ProjectView({
       return;
     }
     if (autoOpenedBrandDesignSystemRef.current === designSystemProject.id) return;
+    if (!tabsLoadedRef.current) return;
+    if (routeFileName) {
+      autoOpenedBrandDesignSystemRef.current = designSystemProject.id;
+      return;
+    }
+    if (openTabsState.active || openTabsState.tabs.length > 0) {
+      autoOpenedBrandDesignSystemRef.current = designSystemProject.id;
+      return;
+    }
+    if (tabsHydratedFromSavedStateRef.current) {
+      autoOpenedBrandDesignSystemRef.current = designSystemProject.id;
+      return;
+    }
     autoOpenedBrandDesignSystemRef.current = designSystemProject.id;
     requestOpenFile(DESIGN_SYSTEM_TAB);
   }, [
     designSystemProject?.id,
+    openTabsState.active,
+    openTabsState.tabs.length,
     projectIsProgrammaticBrandExtraction,
     requestOpenFile,
+    routeFileName,
+    tabsHydrationVersion,
   ]);
   const designSystemActivityEvents = useMemo(
     () => designSystemProject ? latestDesignSystemActivityEvents(messages) : [],
