@@ -227,7 +227,7 @@ describe('ChatPane connect-repo CTA', () => {
     expect(screen.getByRole('button', { name: 'artifact.odCardBrandAssistConfirm' })).toBeTruthy();
     expect(screen.getByTestId('next-step-brand-action-brand-continue-extraction')).toBeTruthy();
     expect(screen.getByTestId('next-step-brand-action-brand-continue-ai-extraction').textContent)
-      .toContain('Continue with agent');
+      .toContain('nextStep.brandContinueAiExtractionTitle');
     expect(screen.queryByText('Refine extracted design system')).toBeNull();
     expect(screen.queryByText('Create with this design system')).toBeNull();
   });

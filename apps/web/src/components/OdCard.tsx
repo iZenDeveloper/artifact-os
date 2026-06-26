@@ -84,7 +84,7 @@ function writeRuleProposalDecision(key: string, decision: Exclude<RuleProposalDe
 }
 
 /** Outcome a brand-browser-assist confirm handler reports back to the card so it
- *  can show a done / error state. */
+ *  can show a completed / error state. */
 export interface BrandBrowserAssistResult {
   ok: boolean;
   /** `opened` means the Browser tab was focused/navigated; extraction still
@@ -508,7 +508,7 @@ function BrandBrowserAssistCard({
   const t = useT();
   const storageKey = useMemo(() => brandAssistStorageKey(card.brandId), [card.brandId]);
   const [done, setDone] = useState(() => readBrandAssistDone(storageKey));
-  const [status, setStatus] = useState<'idle' | 'working' | 'opened' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'working' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (done) {
@@ -529,15 +529,12 @@ function BrandBrowserAssistCard({
     try {
       // `{ ok: true, action: "opened" }` means the Browser tab was focused and
       // the user should clear verification before using the Continue next step.
-      // Plain `{ ok: true }` is kept for older handlers that completed extraction.
+      // Plain `{ ok: true }` is kept for older handlers. Either successful
+      // outcome resolves this prompt so the card does not look unclicked.
       const result = await onConfirm(card);
       if (!result || result.ok !== true) {
         setStatus('error');
         setErrorMsg((result && result.message) || null);
-        return;
-      }
-      if (result.action === 'opened') {
-        setStatus('opened');
         return;
       }
       writeBrandAssistDone(storageKey);
@@ -566,11 +563,6 @@ function BrandBrowserAssistCard({
       {status === 'error' ? (
         <p className={styles.ruleError} role="status">
           {errorMsg || t('artifact.odCardBrandAssistError')}
-        </p>
-      ) : null}
-      {status === 'opened' ? (
-        <p className={styles.ruleDescription} role="status">
-          {t('artifact.odCardBrandAssistBody')}
         </p>
       ) : null}
       <div className={styles.ruleActions}>

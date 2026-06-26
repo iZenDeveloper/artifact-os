@@ -131,7 +131,7 @@ describe('AssistantMessage next-step affordance', () => {
       />,
     );
     expect(screen.getByTestId('next-step-actions')).toBeTruthy();
-    expect(screen.getByText('Generate artifact')).toBeTruthy();
+    expect(screen.getByText(en['nextStep.projectGenerateArtifactTitle'])).toBeTruthy();
     fireEvent.click(screen.getByTestId('next-step-project-action-project-generate-artifact'));
     expect(h.onNextStepPromptAction).toHaveBeenCalledWith(PROJECT_GENERATE_ARTIFACT_PROMPT);
   });
@@ -173,8 +173,8 @@ describe('AssistantMessage next-step affordance', () => {
     );
 
     expect(screen.getByTestId('next-step-actions')).toBeTruthy();
-    expect(screen.getByText('Continue extraction')).toBeTruthy();
-    expect(screen.getByText('Continue with agent')).toBeTruthy();
+    expect(screen.getByText(en['nextStep.brandContinueExtractionTitle'])).toBeTruthy();
+    expect(screen.getByText(en['nextStep.brandContinueAiExtractionTitle'])).toBeTruthy();
     fireEvent.click(screen.getByTestId('next-step-brand-action-brand-continue-extraction'));
     expect(onContinueExtraction).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByTestId('next-step-brand-action-brand-continue-ai-extraction'));

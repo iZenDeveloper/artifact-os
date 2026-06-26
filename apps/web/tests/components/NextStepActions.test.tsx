@@ -98,8 +98,8 @@ describe('NextStepActions', () => {
 
     expect(screen.queryByText(AUTO_MATCH_TITLE)).toBeNull();
     expect(screen.queryByText(VISUAL_POLISH_TITLE)).toBeNull();
-    expect(screen.getByText('AI refine design system')).toBeTruthy();
-    expect(screen.getByText('Audit tokens & kit')).toBeTruthy();
+    expect(screen.getByText(en['nextStep.designSystemAiRefineTitle'])).toBeTruthy();
+    expect(screen.getByText(en['nextStep.designSystemAuditKitTitle'])).toBeTruthy();
 
     fireEvent.click(screen.getByTestId('next-step-design-system-action-design-system-ai-refine'));
     expect(onPromptAction).toHaveBeenCalledWith(expect.stringContaining('refine this design system in place'));
@@ -134,8 +134,8 @@ describe('NextStepActions', () => {
       onCreateDesign: undefined,
     });
 
-    expect(screen.getByText('Continue extraction')).toBeTruthy();
-    expect(screen.getByText('Continue with agent')).toBeTruthy();
+    expect(screen.getByText(en['nextStep.brandContinueExtractionTitle'])).toBeTruthy();
+    expect(screen.getByText(en['nextStep.brandContinueAiExtractionTitle'])).toBeTruthy();
     expect(screen.queryByText(en['nextStep.brandCreateDesignTitle'])).toBeNull();
     expect(screen.queryByText(en['nextStep.brandAiOptimizeTitle'])).toBeNull();
 
@@ -155,8 +155,8 @@ describe('NextStepActions', () => {
       onCreateDesign: vi.fn(),
     });
 
-    expect(screen.getByText('Continue with agent')).toBeTruthy();
-    expect(screen.queryByText('Continue extraction')).toBeNull();
+    expect(screen.getByText(en['nextStep.brandContinueAiExtractionTitle'])).toBeTruthy();
+    expect(screen.queryByText(en['nextStep.brandContinueExtractionTitle'])).toBeNull();
     expect(screen.queryByText(en['nextStep.brandAiOptimizeTitle'])).toBeNull();
     expect(screen.queryByText(en['nextStep.brandCreateDesignTitle'])).toBeNull();
 
@@ -172,8 +172,8 @@ describe('NextStepActions', () => {
       onPromptAction,
     });
 
-    expect(screen.getByText('Continue working')).toBeTruthy();
-    expect(screen.getByText('Generate artifact')).toBeTruthy();
+    expect(screen.getByText(en['nextStep.projectContinueTitle'])).toBeTruthy();
+    expect(screen.getByText(en['nextStep.projectGenerateArtifactTitle'])).toBeTruthy();
     fireEvent.click(screen.getByTestId('next-step-project-action-project-continue'));
     expect(onPromptAction).toHaveBeenCalledWith(PROJECT_CONTINUE_PROMPT);
     fireEvent.click(screen.getByTestId('next-step-project-action-project-generate-artifact'));

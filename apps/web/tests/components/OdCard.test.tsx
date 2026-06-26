@@ -16,7 +16,9 @@ const ASSIST_CARD: OdCardBrandBrowserAssist = {
 };
 
 function renderAssistCard(
-  onConfirm: (card: OdCardBrandBrowserAssist) => Promise<{ ok: boolean; message?: string }>,
+  onConfirm: (
+    card: OdCardBrandBrowserAssist,
+  ) => Promise<{ ok: boolean; action?: 'opened' | 'confirmed'; message?: string }>,
 ) {
   return render(
     <I18nProvider initial="en">
@@ -61,9 +63,27 @@ describe('OdCard brand browser assist', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open browser assist' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Browser assist confirmed')).toBeTruthy();
+      expect(screen.getByText('Browser opened')).toBeTruthy();
     });
     expect(onConfirm).toHaveBeenCalledWith(ASSIST_CARD);
+    expect(window.localStorage.getItem('od:brand-browser-assist-decision:brand-123')).toBe('done');
+  });
+
+  it('marks browser assist done when the handler opens or focuses the browser tab', async () => {
+    const onConfirm = vi.fn().mockResolvedValue({ ok: true, action: 'opened' });
+
+    renderAssistCard(onConfirm);
+    fireEvent.click(screen.getByRole('button', { name: 'Open browser assist' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Browser opened')).toBeTruthy();
+    });
+    expect(screen.queryByRole('button', { name: 'Open browser assist' })).toBeNull();
+    expect(
+      screen.queryByText(
+        'Open the brand site in the browser so Open Design can continue extracting this design system.',
+      ),
+    ).toBeNull();
     expect(window.localStorage.getItem('od:brand-browser-assist-decision:brand-123')).toBe('done');
   });
 
@@ -77,7 +97,7 @@ describe('OdCard brand browser assist', () => {
       expect(screen.getByRole('status').textContent).toContain('desktop app');
     });
     expect(screen.getByRole('button', { name: 'Open browser assist' })).toBeTruthy();
-    expect(screen.queryByText('Browser assist confirmed')).toBeNull();
+    expect(screen.queryByText('Browser opened')).toBeNull();
   });
 });
 

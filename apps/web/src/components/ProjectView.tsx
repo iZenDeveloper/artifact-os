@@ -779,12 +779,17 @@ function brandExtractionAllowsEditing(status: BrandStatus | null): boolean {
   return status === 'ready' || status === 'failed';
 }
 
+function normalizedBrandBrowserHost(parsed: URL): string {
+  const hostname = parsed.hostname.toLowerCase().replace(/^www\./, '');
+  return parsed.port ? `${hostname}:${parsed.port}` : hostname;
+}
+
 function browserExtractionUrlKey(value: string | null | undefined): string | null {
   const url = value?.trim();
   if (!url) return null;
   try {
     const parsed = new URL(url);
-    return `${parsed.origin}${parsed.pathname}${parsed.search}`;
+    return `${normalizedBrandBrowserHost(parsed)}${parsed.pathname}${parsed.search}`;
   } catch {
     return null;
   }
@@ -6497,7 +6502,6 @@ export function ProjectView({
     setBrandProgrammaticContinueStarting(true);
     setBrandExtractionStatusOverride({ brandId, status: 'extracting' });
     const brandPreviewFile = brandExtractionPreviewFileName(projectFiles);
-    requestOpenFile(brandPreviewFile);
     const brandExtractionSourceUrl =
       currentProject.metadata?.brandSourceUrl?.trim() ||
       brandBrowserAssist?.sourceUrl?.trim() ||
@@ -6539,6 +6543,7 @@ export function ProjectView({
 
     void (async () => {
       const snapshot = await readBrandBrowserSnapshot(BRAND_BROWSER_TAB_ID);
+      requestOpenFile(brandPreviewFile);
       if (
         snapshot.status === 'ready' &&
         brandBrowserSnapshotMatchesSource(snapshot.baseUrl, brandExtractionSourceUrl)

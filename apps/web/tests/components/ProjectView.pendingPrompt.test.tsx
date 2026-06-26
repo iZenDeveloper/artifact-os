@@ -628,6 +628,44 @@ describe('ProjectView pending prompt seeding', () => {
     });
   });
 
+  it('continues browser DOM extraction after a www redirect from the source URL', async () => {
+    const executeJavaScript = vi.fn()
+      .mockResolvedValueOnce('<html><head><title>The Economist</title></head><body><h1>The Economist</h1></body></html>')
+      .mockResolvedValueOnce('body { color: #e3120b; background: #ffffff; }');
+    brandBrowserBridgeMocks.getBrandBrowser.mockReturnValue({
+      isDesktopWebview: true,
+      getURL: () => 'https://www.economist.com/',
+      executeJavaScript,
+    });
+
+    renderProjectView(
+      {
+        ...project('brand-retry'),
+        metadata: {
+          kind: 'brand',
+          importedFrom: 'brand-extraction',
+          brandId: 'brand-retry',
+          brandSourceUrl: 'https://economist.com/',
+          brandDesignSystemId: 'user:brand-retry',
+        },
+      },
+    );
+
+    await waitFor(() => {
+      expect(chatPaneSpy.mock.calls.at(-1)?.[0].onContinueBrandExtraction).toBeTypeOf('function');
+    });
+    chatPaneSpy.mock.calls.at(-1)?.[0].onContinueBrandExtraction?.();
+
+    await waitFor(() => {
+      expect(mockedExtractBrandFromHtml).toHaveBeenCalledWith('brand-retry', {
+        html: '<html><head><title>The Economist</title></head><body><h1>The Economist</h1></body></html>',
+        css: 'body { color: #e3120b; background: #ffffff; }',
+        baseUrl: 'https://www.economist.com/',
+      });
+    });
+    expect(mockedContinueBrandExtraction).not.toHaveBeenCalled();
+  });
+
   it('falls back to programmatic retry when the Browser tab is on another origin', async () => {
     const executeJavaScript = vi.fn()
       .mockResolvedValueOnce('<html><head><title>Wrong</title></head><body><h1>Wrong</h1></body></html>')

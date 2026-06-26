@@ -36,14 +36,14 @@ export const DESIGN_SYSTEM_NEXT_STEP_ACTIONS = [
   {
     id: 'design-system-ai-refine',
     icon: 'sparkles' as IconName,
-    title: 'AI refine design system',
+    titleKey: 'nextStep.designSystemAiRefineTitle' as keyof Dict,
     prompt:
       'Use AI extraction to refine this design system in place. Read the current DESIGN.md, brand.json, source context, tokens, typography, palette, assets, and component kit previews. Re-measure any linked website or source files when available, then update the same design system id without creating a duplicate. Focus on stronger token roles, brand voice, component guidance, light/dark kit quality, and reusable implementation notes. Finish by summarizing what changed and which files were updated.',
   },
   {
     id: 'design-system-audit-kit',
     icon: 'blocks' as IconName,
-    title: 'Audit tokens & kit',
+    titleKey: 'nextStep.designSystemAuditKitTitle' as keyof Dict,
     prompt:
       'Audit this design system for readiness. Check DESIGN.md, brand.json, variables.css, theme.json, kit.html, kit.dark.html, generated artifacts, palette contrast, typography specimens, spacing/radius rules, and component coverage. Fix the highest-impact issues directly, keep the same registered design system id, and report remaining gaps before publishing or using it in other projects.',
   },
@@ -59,13 +59,13 @@ export const PROJECT_INCOMPLETE_NEXT_STEP_ACTIONS = [
   {
     id: 'project-continue',
     icon: 'refresh' as IconName,
-    title: 'Continue working',
+    titleKey: 'nextStep.projectContinueTitle' as keyof Dict,
     prompt: PROJECT_CONTINUE_PROMPT,
   },
   {
     id: 'project-generate-artifact',
     icon: 'plus' as IconName,
-    title: 'Generate artifact',
+    titleKey: 'nextStep.projectGenerateArtifactTitle' as keyof Dict,
     prompt: PROJECT_GENERATE_ARTIFACT_PROMPT,
   },
 ] as const;
@@ -94,15 +94,17 @@ export const BRAND_EXTRACTION_INCOMPLETE_NEXT_STEP_ACTIONS = [
   {
     id: 'brand-continue-extraction',
     icon: 'sparkles' as IconName,
-    title: 'Continue extraction',
-    description: 'After the Browser tab is past any verification, read it and keep filling the saved kit.',
+    titleKey: 'nextStep.brandContinueExtractionTitle' as keyof Dict,
+    descriptionKey: 'nextStep.brandContinueExtractionBody' as keyof Dict,
+    busyKey: 'nextStep.brandContinueExtractionBusy' as keyof Dict,
     prompt: BRAND_CONTINUE_EXTRACTION_PROMPT,
   },
   {
     id: 'brand-continue-ai-extraction',
     icon: 'sparkles' as IconName,
-    title: 'Continue with agent',
-    description: 'Use the selected agent to extract from the saved draft if the programmatic pass still cannot finish.',
+    titleKey: 'nextStep.brandContinueAiExtractionTitle' as keyof Dict,
+    descriptionKey: 'nextStep.brandContinueAiExtractionProgrammaticBody' as keyof Dict,
+    busyKey: 'nextStep.brandContinueAiExtractionBusy' as keyof Dict,
   },
 ] as const;
 
@@ -110,8 +112,9 @@ export const BRAND_AI_EXTRACTION_INCOMPLETE_NEXT_STEP_ACTIONS = [
   {
     id: 'brand-continue-ai-extraction',
     icon: 'sparkles' as IconName,
-    title: 'Continue with agent',
-    description: 'Resume the selected agent from the current brand scaffold and finish the same design system.',
+    titleKey: 'nextStep.brandContinueAiExtractionTitle' as keyof Dict,
+    descriptionKey: 'nextStep.brandContinueAiExtractionAiBody' as keyof Dict,
+    busyKey: 'nextStep.brandContinueAiExtractionBusy' as keyof Dict,
   },
 ] as const;
 
@@ -219,13 +222,15 @@ type Detail =
 
 function brandActionTitle(action: BrandExtractionAction, t: TranslateFn, busy: boolean): string {
   if ('busyKey' in action && busy) return t(action.busyKey);
-  if ('titleKey' in action) return t(action.titleKey);
-  return action.title;
+  return t(action.titleKey);
 }
 
 function brandActionDescription(action: BrandExtractionAction, t: TranslateFn): string {
-  if ('descriptionKey' in action) return t(action.descriptionKey);
-  return action.description;
+  return t(action.descriptionKey);
+}
+
+function promptActionTitle(action: PromptNextStepAction, t: TranslateFn): string {
+  return t(action.titleKey);
 }
 
 export function NextStepActions({
@@ -567,7 +572,7 @@ export function NextStepActions({
                   onClick={() => handlePromptAction(action)}
                 >
                   <Icon name={action.icon} size={14} className={styles.toolboxRowIcon} />
-                  <span className={styles.toolboxRowTitle}>{action.title}</span>
+                  <span className={styles.toolboxRowTitle}>{promptActionTitle(action, t)}</span>
                   <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
                 </button>
               ))
@@ -582,7 +587,7 @@ export function NextStepActions({
                   onClick={() => handlePromptAction(action)}
                 >
                   <Icon name={action.icon} size={14} className={styles.toolboxRowIcon} />
-                  <span className={styles.toolboxRowTitle}>{action.title}</span>
+                  <span className={styles.toolboxRowTitle}>{promptActionTitle(action, t)}</span>
                   <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
                 </button>
               ))
