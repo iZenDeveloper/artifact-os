@@ -869,11 +869,21 @@ function countRealSlides(slideSelector: string): number {
 }
 
 // Deck-only DOM prep (run only once we've decided this is a deck): hide presenter
-// chrome and freeze animations/transitions so each slide (and its reveal-on-show
-// inner elements, e.g. `.slide.visible .reveal`) reaches its final state.
+// chrome, switch any <deck-stage> runtime to authored (1:1) size, and freeze
+// animations/transitions so each slide (and its reveal-on-show inner elements,
+// e.g. `.slide.visible .reveal`) reaches its final state.
 function prepareDeckStage(hideSelector: string): void {
   document.querySelectorAll(hideSelector).forEach((el) => {
     (el as HTMLElement).style.setProperty("display", "none", "important");
+  });
+  // The repo's <deck-stage> runtime fits its canvas to the viewport with
+  // `transform: scale(...)` by default and documents that export must set the
+  // `noscale` attribute so the DOM is captured at the authored slide size. Set
+  // it here (no-op for plain `.slide` decks that have no <deck-stage>), or a
+  // deck whose authored canvas differs from the 1920x1080 capture viewport would
+  // be measured + captured at the preview-scaled size instead of 1:1.
+  document.querySelectorAll("deck-stage").forEach((el) => {
+    el.setAttribute("noscale", "");
   });
   const s = document.createElement("style");
   s.textContent =

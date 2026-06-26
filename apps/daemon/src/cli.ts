@@ -16,6 +16,7 @@ import { splitResearchSubcommand } from './research/cli-args.js';
 import { resolveDaemonUrl } from './daemon-url.js';
 import { requestJsonIpc } from '@open-design/sidecar';
 import { SIDECAR_ENV, SIDECAR_MESSAGES } from '@open-design/sidecar-proto';
+import { EXPORT_FORMATS, EXPORT_IMAGE_FORMATS } from '@open-design/contracts';
 import {
   AGENT_SLUGS,
   isAgentSlug,
@@ -337,11 +338,8 @@ const EXPORT_STRING_FLAGS = new Set([
   'daemon-url', 'project', 'format', 'out', 'output', 'image-format', 'title', 'file',
 ]);
 const EXPORT_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'deck']);
-const EXPORT_FORMATS = ['pdf', 'image', 'pptx'];
-// Mirrors EXPORT_IMAGE_FORMATS in packages/contracts. The desktop renderer
-// (Electron nativeImage) can only encode PNG/JPEG, so WebP is rejected here
-// with a clear error instead of silently downgrading to PNG.
-const EXPORT_IMAGE_FORMATS = ['png', 'jpeg'];
+// EXPORT_FORMATS / EXPORT_IMAGE_FORMATS are the shared contract DTO (single
+// source of truth for the web/daemon/CLI export surface), imported above.
 
 function printExportHelp() {
   console.log(`Usage:
@@ -390,11 +388,11 @@ async function runExport(args) {
     printExportHelp();
     process.exit(2);
   }
-  if (!EXPORT_FORMATS.includes(format)) {
+  if (!(EXPORT_FORMATS as readonly string[]).includes(format)) {
     console.error(`invalid --format: ${format} (expected ${EXPORT_FORMATS.join(' | ')})`);
     process.exit(2);
   }
-  if (flags['image-format'] && !EXPORT_IMAGE_FORMATS.includes(flags['image-format'])) {
+  if (flags['image-format'] && !(EXPORT_IMAGE_FORMATS as readonly string[]).includes(flags['image-format'])) {
     console.error(`invalid --image-format: ${flags['image-format']} (expected ${EXPORT_IMAGE_FORMATS.join(' | ')})`);
     process.exit(2);
   }

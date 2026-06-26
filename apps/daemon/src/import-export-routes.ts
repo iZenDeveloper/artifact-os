@@ -801,8 +801,12 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
       if (!isExportFormat(format)) {
         return sendApiError(res, 400, 'BAD_REQUEST', 'invalid export format');
       }
-      if (format === 'image') {
-        await handleScreenshotExport(res, 'image', req.params.id, {
+      // `image` and `pptx` both rasterize through the screenshot renderer (the
+      // `desktopArtifactExporter` below only handles vector `pdf`). pptx is
+      // deck-only — handleScreenshotExport forces the deck signal and rejects a
+      // non-deck artifact with 422.
+      if (format === 'image' || format === 'pptx') {
+        await handleScreenshotExport(res, format, req.params.id, {
           fileName,
           deck: deck === true,
           ...(typeof imageFormat === 'string' ? { imageFormat } : {}),
