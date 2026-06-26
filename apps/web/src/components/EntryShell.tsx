@@ -857,8 +857,21 @@ export function EntryShell({
         </span>
         <span className="use-everywhere-chip__label">{t('entry.useEverywhereTitle')}</span>
       </button>
+      <button
+        type="button"
+        className="entry-settings-chip od-tooltip"
+        onClick={() => onOpenSettings()}
+        data-tooltip={t('settings.title')}
+        data-tooltip-placement="right"
+        aria-label={t('settings.title')}
+        data-testid="entry-settings-button"
+      >
+        <span className="entry-settings-chip__icon" aria-hidden>
+          <Icon name="settings" size={13} />
+        </span>
+        <span className="entry-settings-chip__label">{t('settings.title')}</span>
+      </button>
       <UpdaterPopup />
-      {null /* demo: hide settings cog entry */}
     </>
   );
 
