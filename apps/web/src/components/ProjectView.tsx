@@ -77,6 +77,7 @@ import {
   trackArtifactHeaderClick,
   trackComposerBarClick,
   trackDesignSystemApplyResult,
+  trackDesignSystemEnrichClick,
   trackPageView,
   trackRunCreated,
   trackRunFinished,
@@ -260,6 +261,10 @@ type ProjectChatSendMeta = ChatSendMeta & {
    *  this send (e.g. 'resume_continue' from the resumable-failure Continue
    *  action). Behavior never depends on it; it only shapes PostHog props. */
   entryFrom?: ChatAnalyticsEntryFrom;
+  /** Marks this send as the AI-optimize (deep enrichment) run so the daemon
+   *  can emit design_system_enrich_result + flag the DS as ai_refined on
+   *  success (tracking spec C14/C15). Daemon mode only. */
+  dsEnrichment?: boolean;
 };
 
 export function mergeSavedPreviewComment(current: PreviewComment[], saved: PreviewComment): PreviewComment[] {
@@ -4657,6 +4662,7 @@ export function ProjectView({
           ...(sessionTurn
             ? { turnIndex: sessionTurn.turnIndex, isFirstRun: sessionTurn.isFirstRun }
             : {}),
+          ...(meta?.dsEnrichment ? { dsEnrichment: true } : {}),
           hasExistingArtifact,
           // This branch only runs in daemon (local-execution) mode, so the
           // runtime is the bundled AMR cloud agent or a local coding CLI —
@@ -6474,7 +6480,9 @@ export function ProjectView({
     autoSendAttachmentsRef.current = isAutoSend ? readAutoSendAttachments(project.id) : [];
   }
   const brandEnrichmentEligibleForProject =
-    projectIsProgrammaticBrandExtraction && !autoSendFirstMessageRef.current;
+    config.mode === 'daemon' &&
+    projectIsProgrammaticBrandExtraction &&
+    !autoSendFirstMessageRef.current;
   const [initialDraft, setInitialDraft] = useState<
     { projectId: string; value: string } | undefined
   >(
@@ -6666,9 +6674,16 @@ export function ProjectView({
   // skill bundle, refining the SAME registered design system in place. Shared by
   // the chat "Continue" affordance and the ready-toast "AI Optimize" nudge.
   const handleBrandEnrichment = useCallback(() => {
-    if (brandEnrichmentStarting) return;
+    if (brandEnrichmentStarting || config.mode !== 'daemon') return;
     const system = designSystemProject ?? activeDesignSystemSummary;
     const skillIds = installedBrandEnrichmentSkillIds(skills);
+    trackDesignSystemEnrichClick(analytics.track, {
+      page_name: 'design_system_project',
+      area: 'design_system_enrich',
+      element: 'ai_optimize',
+      design_system_id: projectDesignSystemId ?? undefined,
+      project_kind: 'design_system',
+    });
     setBrandEnrichmentStarting(true);
     void handleSend(
       buildBrandEnrichmentPrompt(brandEnrichmentPromptSeed || brandEnrichmentPromptSeedCache, {
@@ -6679,16 +6694,19 @@ export function ProjectView({
       }),
       [],
       [],
-      skillIds.length > 0 ? { skillIds } : undefined,
+      { ...(skillIds.length > 0 ? { skillIds } : {}), dsEnrichment: true },
     ).finally(() => setBrandEnrichmentStarting(false));
   }, [
     activeDesignSystemSummary,
+    analytics,
     brandEnrichmentPromptSeed,
     brandEnrichmentPromptSeedCache,
     brandEnrichmentStarting,
+    config.mode,
     designSystemProject,
     handleSend,
     currentProject.metadata,
+    projectDesignSystemId,
     projectFiles,
     skills,
   ]);

@@ -27,6 +27,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Textarea } from '@open-design/components';
+import type { DesignSystemEditClickProps } from '@open-design/contracts/analytics';
 import { useT } from '../i18n';
 import { openExternalUrl, projectRawUrl } from '../providers/registry';
 import { buildSrcdoc } from '../runtime/srcdoc';
@@ -278,6 +279,10 @@ export interface DesignKitViewProps {
   onDownload?: () => void;
   onImport?: () => void;
   onReset?: () => void;
+  onEditClick?: (
+    element: DesignSystemEditClickProps['element'],
+    module: DesignSystemEditClickProps['module'],
+  ) => void;
   uploading?: KitUploadModule | null;
   actionBusy?: string | null;
   onActionFeedback?: (tone: DesignKitActionFeedbackTone, message: string) => void;
@@ -306,6 +311,7 @@ function DesignKitViewInner({
   onDownload,
   onImport,
   onReset,
+  onEditClick,
   uploading,
   actionBusy,
   onActionFeedback,
@@ -618,6 +624,22 @@ function DesignKitViewInner({
     [t],
   );
 
+  function uploadElementForModule(module: KitUploadModule): DesignSystemEditClickProps['element'] {
+    return module === 'logo' ? 'logo_upload' : module === 'font' ? 'font_upload' : 'image_upload';
+  }
+
+  function uploadTrackingModule(module: KitUploadModule): DesignSystemEditClickProps['module'] {
+    return module === 'logo' ? 'logo' : module === 'font' ? 'typography' : 'images';
+  }
+
+  function designMdTrackingModule(module: DesignMdModuleSpec): DesignSystemEditClickProps['module'] {
+    if (module.id === 'typography') return 'typography';
+    if (module.id === 'palette') return 'palette';
+    if (module.id === 'imageryLayout') return 'images';
+    if (module.id === 'designSystem') return 'kit';
+    return 'design_md';
+  }
+
   function handleFile(module: KitUploadModule, event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -650,7 +672,10 @@ function DesignKitViewInner({
         ? /\.(otf|ttf|woff2?)$/i.test(f.name)
         : f.type.startsWith('image/') || /\.svg$/i.test(f.name),
     );
-    if (file) onUploadModule(module, file);
+    if (file) {
+      onEditClick?.(uploadElementForModule(module), uploadTrackingModule(module));
+      onUploadModule(module, file);
+    }
   }
 
   async function pasteImage(module: Exclude<KitUploadModule, 'font'>) {
@@ -662,6 +687,7 @@ function DesignKitViewInner({
         if (!imageType) continue;
         const blob = await item.getType(imageType);
         const ext = imageType.split('/')[1]?.replace('jpeg', 'jpg') || 'png';
+        onEditClick?.(uploadElementForModule(module), uploadTrackingModule(module));
         onActionFeedback?.('loading', t('ds.uploading'));
         onUploadModule(module, new File([blob], `clipboard-${module}-${Date.now()}.${ext}`, { type: imageType }));
         return;
@@ -673,6 +699,7 @@ function DesignKitViewInner({
 
   function openDesignMdEditor() {
     if (!designMd) return;
+    onEditClick?.('design_md_edit', 'design_md');
     setDesignMdTarget({ kind: 'all' });
     setDesignMdDraft(designMd.body);
     setDesignMdOpen(true);
@@ -680,6 +707,7 @@ function DesignKitViewInner({
 
   function openDesignMdModuleEditor(module: DesignMdModuleSpec) {
     if (!designMd) return;
+    onEditClick?.('design_md_edit', designMdTrackingModule(module));
     const slice = designMdModuleSlice(designMd.body, module);
     setDesignMdTarget({ kind: 'module', module });
     setDesignMdDraft(slice.text);
@@ -702,12 +730,14 @@ function DesignKitViewInner({
 
   async function copyDesignMd() {
     if (!designMd?.body) return;
+    onEditClick?.('design_md_copy', 'design_md');
     await copyDesignMdText(designMd.body);
   }
 
   async function copyDesignMdModule(module: DesignMdModuleSpec) {
     if (!designMd?.body) return;
     const slice = designMdModuleSlice(designMd.body, module);
+    onEditClick?.('design_md_copy', designMdTrackingModule(module));
     await copyDesignMdText(slice.text);
   }
 
@@ -730,9 +760,11 @@ function DesignKitViewInner({
       void copyDesignMd();
     } else if (key === 'u' && canUpload) {
       event.preventDefault();
+      onEditClick?.('logo_upload', 'logo');
       logoInputRef.current?.click();
     } else if (key === 'r' && onRefresh) {
       event.preventDefault();
+      onEditClick?.('kit_refresh', 'kit');
       onRefresh();
     } else if (
       (event.key === 'Delete' || event.key === 'Backspace') &&
@@ -741,6 +773,7 @@ function DesignKitViewInner({
       target.closest('[data-kit-logo-stage]')
     ) {
       event.preventDefault();
+      onEditClick?.('logo_delete', 'logo');
       void onDeleteLogo(activeLogo);
     }
   }
@@ -757,6 +790,7 @@ function DesignKitViewInner({
   function openColorEditor(index: number) {
     const color = colors[index];
     if (!color) return;
+    onEditClick?.('color_edit', 'palette');
     setColorEditor({
       index,
       label: color.name || color.role || `Color ${index + 1}`,
@@ -812,6 +846,7 @@ function DesignKitViewInner({
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+    onEditClick?.('design_md_upload', 'design_md');
     const text = await file.text();
     setDesignMdTarget({ kind: 'all' });
     setDesignMdDraft(text);
@@ -892,7 +927,10 @@ function DesignKitViewInner({
     return moduleActionButton(
       label,
       'upload',
-      () => (module === 'logo' ? logoInputRef : module === 'font' ? fontInputRef : imageInputRef).current?.click(),
+      () => {
+        onEditClick?.(uploadElementForModule(module), uploadTrackingModule(module));
+        (module === 'logo' ? logoInputRef : module === 'font' ? fontInputRef : imageInputRef).current?.click();
+      },
       Boolean(uploading || anyActionBusy),
       busy,
     );
@@ -908,7 +946,10 @@ function DesignKitViewInner({
             className={styles.uploadBtn}
             disabled={uploading === module || anyActionBusy}
             aria-busy={(uploading === module || actionBusy === `upload:${module}`) || undefined}
-            onClick={() => (module === 'logo' ? logoInputRef : module === 'font' ? fontInputRef : imageInputRef).current?.click()}
+            onClick={() => {
+              onEditClick?.(uploadElementForModule(module), uploadTrackingModule(module));
+              (module === 'logo' ? logoInputRef : module === 'font' ? fontInputRef : imageInputRef).current?.click();
+            }}
           >
             {uploading === module || actionBusy === `upload:${module}`
               ? t('ds.uploading')
@@ -1138,81 +1179,86 @@ function DesignKitViewInner({
             </section>
           ) : null}
 
-          <section
-            ref={logoSectionRef}
-            className={[
-              styles.section,
-              editFocusModule === 'logo' ? styles.sectionEditFocus : '',
-            ].filter(Boolean).join(' ')}
-            data-testid="design-kit-logo-section"
-            tabIndex={editFocusModule === 'logo' ? -1 : undefined}
-            aria-label={t('brandDetail.logo')}
-            onDragOver={handleModuleDragOver}
-            onDrop={(event) => handleModuleDrop('logo', event)}
-          >
-            <div className={styles.dsHead}>
-              <h3 className={styles.sectionTitle}>{t('brandDetail.logo')}</h3>
-              {editFocusModule === 'logo' ? (
-                <span className={styles.editFocusHint}>
-                  {t('ds.manualEditModuleHint', { module: t('brandDetail.logo') })}
-                </span>
-              ) : null}
-              {moduleActions(
-                <>
-                  {uploadAction('logo')}
-                  {canUpload ? moduleActionButton(t('ds.pasteImage'), 'copy', () => void pasteImage('logo'), Boolean(uploading || anyActionBusy)) : null}
-                  {activeLogoSrc && onDeleteLogo
-                    ? moduleActionButton(
-                        t('ds.deleteLogo'),
-                        'trash',
-                        () => void onDeleteLogo(activeLogo),
-                        Boolean(uploading || anyActionBusy),
-                        actionBusy === `delete-logo:${activeLogo}`,
-                      )
-                    : null}
-                </>,
-              )}
-            </div>
-            {activeLogoSrc ? (
-              <>
-                <button
-                  type="button"
-                  className={`${styles.logoStage} ${styles.logoStageButton}`}
-                  data-kit-logo-stage
-                  onClick={() => {
-                    setLightboxIndex(null);
-                    setLogoLightbox({ src: activeLogoSrc, caption: kit.name });
-                  }}
-                  aria-label={`${t('common.openPreview')}: ${kit.name}`}
-                >
-                  <img
-                    className={styles.logoStageImg}
-                    src={activeLogoSrc}
-                    alt={kit.name}
-                    onError={() => markBroken(activeLogoSrc)}
-                  />
-                </button>
-                {logoCandidates.length > 1 ? (
-                  <div className={styles.logoThumbs}>
-                    {logoCandidates.map((cand, i) => (
-                      <button
-                        key={cand}
-                        type="button"
-                        className={`${styles.logoThumb} ${i === activeLogo ? styles.logoThumbActive : ''}`}
-                        onClick={() => setActiveLogo(i)}
-                        aria-pressed={i === activeLogo}
-                      >
-                        <img src={cand} alt="" onError={() => markBroken(cand)} />
-                      </button>
-                    ))}
-                  </div>
+          {!compact ? (
+            <section
+              ref={logoSectionRef}
+              className={[
+                styles.section,
+                editFocusModule === 'logo' ? styles.sectionEditFocus : '',
+              ].filter(Boolean).join(' ')}
+              data-testid="design-kit-logo-section"
+              tabIndex={editFocusModule === 'logo' ? -1 : undefined}
+              aria-label={t('brandDetail.logo')}
+              onDragOver={handleModuleDragOver}
+              onDrop={(event) => handleModuleDrop('logo', event)}
+            >
+              <div className={styles.dsHead}>
+                <h3 className={styles.sectionTitle}>{t('brandDetail.logo')}</h3>
+                {editFocusModule === 'logo' ? (
+                  <span className={styles.editFocusHint}>
+                    {t('ds.manualEditModuleHint', { module: t('brandDetail.logo') })}
+                  </span>
                 ) : null}
-                {kit.logoNotes ? <p className={styles.logoNotes}>{kit.logoNotes}</p> : null}
-              </>
-            ) : (
-              emptyModule(t('ds.moduleEmptyLogo'), 'logo')
-            )}
-          </section>
+                {moduleActions(
+                  <>
+                    {uploadAction('logo')}
+                    {canUpload ? moduleActionButton(t('ds.pasteImage'), 'copy', () => void pasteImage('logo'), Boolean(uploading || anyActionBusy)) : null}
+                    {activeLogoSrc && onDeleteLogo
+                      ? moduleActionButton(
+                          t('ds.deleteLogo'),
+                          'trash',
+                          () => {
+                            onEditClick?.('logo_delete', 'logo');
+                            void onDeleteLogo(activeLogo);
+                          },
+                          Boolean(uploading || anyActionBusy),
+                          actionBusy === `delete-logo:${activeLogo}`,
+                        )
+                      : null}
+                  </>,
+                )}
+              </div>
+              {activeLogoSrc ? (
+                <>
+                  <button
+                    type="button"
+                    className={`${styles.logoStage} ${styles.logoStageButton}`}
+                    data-kit-logo-stage
+                    onClick={() => {
+                      setLightboxIndex(null);
+                      setLogoLightbox({ src: activeLogoSrc, caption: kit.name });
+                    }}
+                    aria-label={`${t('common.openPreview')}: ${kit.name}`}
+                  >
+                    <img
+                      className={styles.logoStageImg}
+                      src={activeLogoSrc}
+                      alt={kit.name}
+                      onError={() => markBroken(activeLogoSrc)}
+                    />
+                  </button>
+                  {logoCandidates.length > 1 ? (
+                    <div className={styles.logoThumbs}>
+                      {logoCandidates.map((cand, i) => (
+                        <button
+                          key={cand}
+                          type="button"
+                          className={`${styles.logoThumb} ${i === activeLogo ? styles.logoThumbActive : ''}`}
+                          onClick={() => setActiveLogo(i)}
+                          aria-pressed={i === activeLogo}
+                        >
+                          <img src={cand} alt="" onError={() => markBroken(cand)} />
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  {kit.logoNotes ? <p className={styles.logoNotes}>{kit.logoNotes}</p> : null}
+                </>
+              ) : (
+                emptyModule(t('ds.moduleEmptyLogo'), 'logo')
+              )}
+            </section>
+          ) : null}
 
           {fonts.length > 0 ? (
             <section
@@ -1453,7 +1499,10 @@ function DesignKitViewInner({
                             className={`${styles.shotDelete} ${
                               actionBusy === `delete-image:${sampleIndex}` ? styles.shotDeleteLoading : ''
                             }`}
-                            onClick={() => void onDeleteImage(sampleIndex)}
+                            onClick={() => {
+                              onEditClick?.('image_delete', 'images');
+                              void onDeleteImage(sampleIndex);
+                            }}
                             disabled={Boolean(uploading || anyActionBusy)}
                             aria-busy={(actionBusy === `delete-image:${sampleIndex}`) || undefined}
                             aria-label={t('ds.deleteImage', { caption: cap })}
@@ -1485,10 +1534,30 @@ function DesignKitViewInner({
                 {moduleActions(
                   <>
                     {designMdModuleActionButtons(designMdModules.designSystem)}
-                    {!stickyHeader && onRefresh ? moduleActionButton(t('ds.refresh'), 'refresh', onRefresh, anyActionBusy, actionBusy === 'refresh') : null}
-                    {!stickyHeader && onDownload ? moduleActionButton(t('ds.download'), 'download', onDownload, anyActionBusy, actionBusy === 'download') : null}
-                    {!stickyHeader && onImport ? moduleActionButton(t('ds.importFolder'), 'import', onImport, anyActionBusy, actionBusy === 'import') : null}
-                    {!stickyHeader && onReset ? moduleActionButton(t('ds.reset'), 'reload', onReset, anyActionBusy, actionBusy === 'reset') : null}
+                    {!stickyHeader && onRefresh
+                      ? moduleActionButton(t('ds.refresh'), 'refresh', () => {
+                          onEditClick?.('kit_refresh', 'kit');
+                          onRefresh();
+                        }, anyActionBusy, actionBusy === 'refresh')
+                      : null}
+                    {!stickyHeader && onDownload
+                      ? moduleActionButton(t('ds.download'), 'download', () => {
+                          onEditClick?.('kit_download', 'kit');
+                          onDownload();
+                        }, anyActionBusy, actionBusy === 'download')
+                      : null}
+                    {!stickyHeader && onImport
+                      ? moduleActionButton(t('ds.importFolder'), 'import', () => {
+                          onEditClick?.('kit_import', 'kit');
+                          onImport();
+                        }, anyActionBusy, actionBusy === 'import')
+                      : null}
+                    {!stickyHeader && onReset
+                      ? moduleActionButton(t('ds.reset'), 'reload', () => {
+                          onEditClick?.('kit_reset', 'kit');
+                          onReset();
+                        }, anyActionBusy, actionBusy === 'reset')
+                      : null}
                   </>,
                 )}
               </div>

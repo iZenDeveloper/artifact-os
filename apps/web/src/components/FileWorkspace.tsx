@@ -8,10 +8,11 @@ import {
   type ReactNode,
 } from 'react';
 import { Button } from '@open-design/components';
-import type { TrackingProjectKind } from '@open-design/contracts/analytics';
+import type { DesignSystemEditClickProps, TrackingProjectKind } from '@open-design/contracts/analytics';
 import { useAnalytics } from '../analytics/provider';
 import {
   trackFileManagerClick,
+  trackDesignSystemEditClick,
   trackFileUploadResult,
   trackPageView,
   trackTabLauncherClick,
@@ -86,6 +87,7 @@ import {
 import type { ChatSessionMode, WorkspaceContextItem } from '@open-design/contracts';
 import { createTerminal, killTerminal } from '../state/projects';
 import { navigate } from '../router';
+import { setPendingDesignSystemCreateEntry } from '../analytics/ds-create-entry';
 import type { QuestionForm } from '../artifacts/question-form';
 import { DesignFilesPanel, type DesignFilesNavState } from './DesignFilesPanel';
 import {
@@ -2313,6 +2315,7 @@ export function FileWorkspace({
                 area: 'file_manager',
                 element: 'create_design_system',
               });
+              setPendingDesignSystemCreateEntry('project_canvas');
               navigate({ kind: 'design-system-create' });
             }}
             onSelectFromLibrary={() => {
@@ -2563,6 +2566,7 @@ function DesignSystemProjectPanel({
   githubConnected?: boolean;
 }) {
   const t = useT();
+  const analytics = useAnalytics();
   const [reviewDecisions, setReviewDecisions] = useState<Record<string, DesignSystemReviewDecision>>({});
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [feedbackSection, setFeedbackSection] = useState<string | null>(null);
@@ -2603,6 +2607,21 @@ function DesignSystemProjectPanel({
   const initialDesignMdRef = useRef<string | null>(null);
   const initialBrandJsonRef = useRef<string | null>(null);
   const initialBrandJsonLoadedRef = useRef(false);
+  function emitDesignSystemProjectEditClick(
+    element: DesignSystemEditClickProps['element'],
+    module: DesignSystemEditClickProps['module'],
+  ) {
+    trackDesignSystemEditClick(analytics.track, {
+      page_name: 'design_system_project',
+      area: 'design_system_edit',
+      element,
+      module,
+      edit_surface: 'direct_module',
+      artifact_kind: 'design_system',
+      design_system_id: system.id,
+      project_id: projectId,
+    });
+  }
 
   const refreshKitDependencies = useCallback(async (options?: { finalizeBrand?: boolean }) => {
     if (options?.finalizeBrand && brandId) {
@@ -3251,7 +3270,10 @@ function DesignSystemProjectPanel({
       id: 'refresh',
       label: t('ds.refresh'),
       icon: 'refresh',
-      onClick: () => void refreshKit(),
+      onClick: () => {
+        emitDesignSystemProjectEditClick('kit_refresh', 'kit');
+        void refreshKit();
+      },
       disabled: !editable || Boolean(kitActionBusy) || statusBusy || defaultBusy,
       loading: kitActionBusy === 'refresh',
     },
@@ -3259,7 +3281,10 @@ function DesignSystemProjectPanel({
       id: 'download',
       label: t('dsManager.downloadTitle'),
       icon: 'download',
-      onClick: () => void downloadKit(),
+      onClick: () => {
+        emitDesignSystemProjectEditClick('kit_download', 'kit');
+        void downloadKit();
+      },
       disabled: !editable || Boolean(kitActionBusy) || statusBusy || defaultBusy,
       loading: kitActionBusy === 'download',
     },
@@ -3422,6 +3447,7 @@ function DesignSystemProjectPanel({
           onDeleteImage={editable ? (index) => void removeKitImage(index) : undefined}
           onRefresh={editable ? () => void refreshKit() : undefined}
           onDownload={editable ? () => void downloadKit() : undefined}
+          onEditClick={emitDesignSystemProjectEditClick}
           uploading={kitUploading}
           actionBusy={kitActionBusy}
           onActionFeedback={notifyKit}
