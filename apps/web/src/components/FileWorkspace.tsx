@@ -1511,6 +1511,7 @@ export function FileWorkspace({
   }
 
   function clearSketch(name: string) {
+    const scene = emptySketchScene(name);
     setSketches((curr) => ({
       ...curr,
       [name]: {
@@ -1525,11 +1526,12 @@ export function FileWorkspace({
           saving: false,
         }),
         items: [],
-        scene: emptySketchScene(name),
+        scene,
         dirty: true,
         discardRawItemsOnSave: true,
       } as SketchState,
     }));
+    queueSketchAutosave(name, scene);
   }
 
   async function saveSketch(

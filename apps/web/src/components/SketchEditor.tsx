@@ -14,7 +14,6 @@ import type {
   ExcalidrawProps,
 } from '@excalidraw/excalidraw/types';
 import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types';
-import { Button } from '@open-design/components';
 import { useI18n, type Locale } from '../i18n';
 import { Icon } from './Icon';
 import { readDefaultSketchToolColor } from './sketch-colors';
@@ -229,50 +228,56 @@ export function SketchEditor({
   const canSave = dirty || sketchSceneHasContent(scene) || legacyItems.length > 0 || hasPreservedRawItems;
   const canCancel = Boolean(onCancel);
 
-  const renderTopRightUI = useCallback(() => (
-    <div
-      className="sketch-excalidraw-actions"
-      onPointerDown={(event) => event.stopPropagation()}
-    >
-      <span className="sketch-name" title={fileName}>
-        {fileName}
-        {dirty ? ' *' : ''}
-      </span>
-      {onExportImage ? (
-        <Button
-          variant="ghost"
-          onClick={() => void handleExportImage()}
-          disabled={exporting || !sketchSceneHasContent(scene)}
-          aria-label={t('common.exportImage')}
-        >
-          <Icon name="download" size={14} />
-          {exporting ? t('fileViewer.exportImageSaving') : t('common.exportImage')}
-        </Button>
-      ) : null}
-      <Button variant="ghost" onClick={handleClear} disabled={!canClear}>
-        {t('sketch.clear')}
-      </Button>
-      {canCancel ? (
-        <Button variant="ghost" onClick={handleCancel}>
-          {t('sketch.close')}
-        </Button>
-      ) : null}
-      <Button
-        variant="primary"
-        onClick={handleSave}
+  const renderMainMenu = useCallback(() => (
+    <MainMenu>
+      <MainMenu.Item
+        data-testid="sketch-menu-save"
+        icon={showSaved ? <Icon name="check" size={16} /> : undefined}
+        onClick={() => void handleSave()}
         disabled={saving || !canSave}
         aria-label={saving ? t('sketch.saving') : showSaved ? t('sketch.saved') : t('common.save')}
       >
-        {saving ? t('sketch.saving') : showSaved ? <Icon name="check" size={14} /> : t('common.save')}
-      </Button>
-    </div>
+        {saving ? t('sketch.saving') : showSaved ? t('sketch.saved') : t('common.save')}
+      </MainMenu.Item>
+      {onExportImage ? (
+        <MainMenu.Item
+          data-testid="sketch-menu-export-image"
+          icon={<Icon name="download" size={16} />}
+          onClick={() => void handleExportImage()}
+          disabled={exporting || !sketchSceneHasContent(scene)}
+          aria-label={exporting ? t('fileViewer.exportImageSaving') : t('common.exportImage')}
+        >
+          {exporting ? t('fileViewer.exportImageSaving') : t('common.exportImage')}
+        </MainMenu.Item>
+      ) : null}
+      {canCancel ? (
+        <MainMenu.Item
+          data-testid="sketch-menu-close"
+          icon={<Icon name="close" size={16} />}
+          onClick={handleCancel}
+        >
+          {t('sketch.close')}
+        </MainMenu.Item>
+      ) : null}
+      <MainMenu.Separator />
+      <MainMenu.DefaultItems.SearchMenu />
+      <MainMenu.DefaultItems.Help />
+      <MainMenu.Item
+        data-testid="sketch-menu-clear"
+        icon={<Icon name="trash" size={16} />}
+        onClick={handleClear}
+        disabled={!canClear}
+      >
+        {t('sketch.clear')}
+      </MainMenu.Item>
+      <MainMenu.Separator />
+      <MainMenu.DefaultItems.ChangeCanvasBackground />
+    </MainMenu>
   ), [
-    canCancel,
     canClear,
     canSave,
-    dirty,
+    canCancel,
     exporting,
-    fileName,
     handleCancel,
     handleClear,
     handleExportImage,
@@ -292,7 +297,6 @@ export function SketchEditor({
           initialData={initialData}
           excalidrawAPI={handleExcalidrawAPI}
           onChange={handleChange}
-          renderTopRightUI={renderTopRightUI}
           langCode={excalidrawLangCode(locale)}
           theme={theme}
           detectScroll={false}
@@ -301,13 +305,7 @@ export function SketchEditor({
           name={fileName}
           UIOptions={excalidrawUIOptions}
         >
-          <MainMenu>
-            <MainMenu.DefaultItems.SearchMenu />
-            <MainMenu.DefaultItems.Help />
-            <MainMenu.DefaultItems.ClearCanvas />
-            <MainMenu.Separator />
-            <MainMenu.DefaultItems.ChangeCanvasBackground />
-          </MainMenu>
+          {renderMainMenu()}
         </Excalidraw>
       </div>
     </div>

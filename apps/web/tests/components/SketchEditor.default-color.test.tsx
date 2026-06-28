@@ -11,10 +11,11 @@ vi.mock('@excalidraw/excalidraw', async () => {
   const MainMenu = Object.assign(
     (props: Record<string, any>) => React.createElement('div', null, props.children),
     {
+      Item: ({ children, icon, ...props }: Record<string, any>) =>
+        React.createElement('button', { type: 'button', ...props }, icon, children),
       DefaultItems: {
         SearchMenu: () => null,
         Help: () => null,
-        ClearCanvas: () => null,
         ChangeCanvasBackground: () => null,
       },
       Separator: () => null,
@@ -29,7 +30,7 @@ vi.mock('@excalidraw/excalidraw', async () => {
           'data-testid': 'excalidraw',
           'data-stroke': initialData?.appState?.currentItemStrokeColor,
         },
-        props.renderTopRightUI?.(false, {}),
+        props.children,
       );
     },
     MainMenu,

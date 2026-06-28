@@ -16,7 +16,6 @@ import { projectSplitClassName, projectSplitStyle } from '../../src/components/P
 import {
   fetchProjectFileText,
   uploadProjectFiles,
-  writeProjectBase64File,
   writeProjectTextFile,
   fetchProjectFolders,
 } from '../../src/providers/registry';
@@ -61,11 +60,28 @@ vi.mock('../../src/components/workspace/TerminalViewer', () => ({
   ),
 }));
 
+const { excalidrawWorkspaceMock } = vi.hoisted(() => ({
+  excalidrawWorkspaceMock: {
+    lastProps: null as Record<string, any> | null,
+  },
+}));
+
 vi.mock('@excalidraw/excalidraw', async () => {
   const React = await import('react');
   const MainMenu = Object.assign(
     (props: Record<string, any>) => React.createElement('div', null, props.children),
     {
+      Item: ({ children, disabled, icon, onClick, ...rest }: Record<string, any>) => React.createElement(
+        'button',
+        {
+          ...rest,
+          type: 'button',
+          disabled,
+          onClick,
+        },
+        icon,
+        children,
+      ),
       DefaultItems: {
         SearchMenu: () => null,
         Help: () => null,
@@ -77,6 +93,7 @@ vi.mock('@excalidraw/excalidraw', async () => {
   );
   return {
     Excalidraw: (props: Record<string, any>) => {
+      excalidrawWorkspaceMock.lastProps = props;
       React.useEffect(() => {
         props.excalidrawAPI?.({
           getSceneElementsIncludingDeleted: () => [{ id: 'workspace-element', type: 'freedraw', isDeleted: false }],
@@ -89,6 +106,7 @@ vi.mock('@excalidraw/excalidraw', async () => {
         { 'data-testid': 'excalidraw' },
         React.createElement('canvas'),
         props.renderTopRightUI?.(false, {}),
+        props.children,
       );
     },
     MainMenu,
@@ -123,7 +141,6 @@ vi.mock('../../src/components/DesignFilesPanel', async () => {
 
 const mockedFetchProjectFileText = vi.mocked(fetchProjectFileText);
 const mockedUploadProjectFiles = vi.mocked(uploadProjectFiles);
-const mockedWriteProjectBase64File = vi.mocked(writeProjectBase64File);
 const mockedWriteProjectTextFile = vi.mocked(writeProjectTextFile);
 
 let root: Root | null = null;
@@ -146,6 +163,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  excalidrawWorkspaceMock.lastProps = null;
   if (root) {
     act(() => root?.unmount());
     root = null;
@@ -595,6 +613,51 @@ describe('FileWorkspace upload input', () => {
 
     await waitFor(() => expect(onUploadFiles).toHaveBeenCalledWith([fallbackFile]));
     expect(screen.queryByTestId('upload-error-banner')).toBeNull();
+  });
+
+  it('uploads files pasted from the clipboard in Design Files', () => {
+    const pastedFile = new File(['mock'], 'clipboard.png', { type: 'image/png' });
+    const onUploadFiles = vi.fn();
+    const onClearUploadError = vi.fn();
+    renderDesignFilesPanel({ onUploadFiles, onClearUploadError });
+
+    const event = new Event('paste', { bubbles: true, cancelable: true }) as ClipboardEvent;
+    Object.defineProperty(event, 'clipboardData', {
+      value: {
+        files: [pastedFile],
+        items: [],
+      },
+    });
+
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(onClearUploadError).toHaveBeenCalledTimes(1);
+    expect(onUploadFiles).toHaveBeenCalledWith([pastedFile]);
+  });
+
+  it('does not steal clipboard files from text inputs', () => {
+    const pastedFile = new File(['mock'], 'clipboard.png', { type: 'image/png' });
+    const onUploadFiles = vi.fn();
+    renderDesignFilesPanel({ onUploadFiles });
+    const textarea = document.createElement('textarea');
+    document.body.appendChild(textarea);
+
+    try {
+      const event = new Event('paste', { bubbles: true, cancelable: true }) as ClipboardEvent;
+      Object.defineProperty(event, 'clipboardData', {
+        value: {
+          files: [pastedFile],
+          items: [],
+        },
+      });
+      textarea.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(onUploadFiles).not.toHaveBeenCalled();
+    } finally {
+      textarea.remove();
+    }
   });
 
   it('shows a recoverable read error when a dragged entry disappears before import', async () => {
@@ -1726,6 +1789,80 @@ describe('FileWorkspace sketch save', () => {
     });
     expect(btn.textContent).not.toBe('Saving…');
     expect(btn.querySelector('svg')).not.toBeNull();
+  });
+
+  it('autosaves an empty sketch when clear happens before a pending sketch autosave', async () => {
+    const file: ProjectFile = {
+      name: 'test.sketch.json',
+      path: 'test.sketch.json',
+      type: 'file',
+      size: 100,
+      mtime: 1700000000,
+      kind: 'sketch',
+      mime: 'application/json',
+    };
+
+    mockedFetchProjectFileText.mockResolvedValue(
+      JSON.stringify({
+        type: 'excalidraw',
+        version: 2,
+        elements: [],
+        appState: { viewBackgroundColor: '#ffffff' },
+        files: {},
+      }),
+    );
+    mockedWriteProjectTextFile.mockResolvedValue(file);
+
+    render(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[file]}
+        liveArtifacts={[]}
+        onRefreshFiles={vi.fn()}
+        isDeck={false}
+        tabsState={{ tabs: ['test.sketch.json'], active: 'test.sketch.json' }}
+        onTabsStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('excalidraw')).toBeTruthy();
+    });
+
+    vi.useFakeTimers();
+    const props = excalidrawWorkspaceMock.lastProps;
+    if (!props?.onChange) throw new Error('expected Excalidraw onChange');
+
+    act(() => {
+      props.onChange(
+        [{ id: 'baseline', type: 'rectangle', isDeleted: false }],
+        { viewBackgroundColor: '#ffffff' },
+        {},
+      );
+      props.onChange(
+        [{ id: 'drawn-before-clear', type: 'rectangle', isDeleted: false }],
+        { viewBackgroundColor: '#ffffff' },
+        {},
+      );
+    });
+
+    const clearButton = screen.getByRole('button', { name: 'Clear' }) as HTMLButtonElement;
+    expect(clearButton.disabled).toBe(false);
+    act(() => {
+      fireEvent.click(clearButton);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(800);
+      await Promise.resolve();
+    });
+
+    expect(mockedWriteProjectTextFile).toHaveBeenCalledTimes(1);
+    const savedText = mockedWriteProjectTextFile.mock.calls[0]?.[2];
+    if (typeof savedText !== 'string') throw new Error('expected saved sketch JSON');
+    const saved = JSON.parse(savedText) as { elements?: unknown[] };
+    expect(saved.elements).toEqual([]);
   });
 });
 

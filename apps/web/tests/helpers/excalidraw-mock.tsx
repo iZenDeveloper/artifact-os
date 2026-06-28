@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
 interface ExcalidrawApi {
   getSceneElementsIncludingDeleted: () => unknown[];
@@ -15,7 +15,6 @@ interface ExcalidrawMockProps {
     files?: Record<string, unknown>;
   };
   langCode?: string;
-  renderTopRightUI?: (isMobile: boolean, appState: Record<string, unknown>) => ReactNode;
   theme?: string;
 }
 
@@ -24,7 +23,6 @@ export function Excalidraw({
   excalidrawAPI,
   initialData,
   langCode,
-  renderTopRightUI,
   theme,
 }: ExcalidrawMockProps) {
   useEffect(() => {
@@ -38,9 +36,21 @@ export function Excalidraw({
   return (
     <div data-testid="excalidraw" data-lang={langCode ?? ''} data-theme={theme ?? ''}>
       <canvas />
-      {renderTopRightUI?.(false, {})}
       {children}
     </div>
+  );
+}
+
+function MainMenuItem({
+  children,
+  icon,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { icon?: ReactNode }) {
+  return (
+    <button type="button" {...props}>
+      {icon}
+      {children}
+    </button>
   );
 }
 
@@ -49,10 +59,10 @@ export const MainMenu = Object.assign(
     <div data-testid="excalidraw-main-menu">{children}</div>
   ),
   {
+    Item: MainMenuItem,
     DefaultItems: {
       SearchMenu: () => null,
       Help: () => null,
-      ClearCanvas: () => null,
       ChangeCanvasBackground: () => null,
     },
     Separator: () => null,

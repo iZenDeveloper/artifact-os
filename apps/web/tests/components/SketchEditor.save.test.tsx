@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { SketchEditor } from '../../src/components/SketchEditor';
@@ -9,7 +9,7 @@ import { emptySketchScene, type ExcalidrawSketchScene } from '../../src/componen
 const mockData = vi.hoisted(() => ({
   excalidrawScene: {
     elements: [{ id: 'api-element', type: 'rectangle', isDeleted: false }],
-    appState: { viewBackgroundColor: '#ffffff' },
+    appState: { viewBackgroundColor: '#ffffff' } as Record<string, unknown>,
     files: {},
   },
   lastProps: null as Record<string, any> | null,
@@ -20,10 +20,11 @@ vi.mock('@excalidraw/excalidraw', async () => {
   const MainMenu = Object.assign(
     (props: Record<string, any>) => React.createElement('div', null, props.children),
     {
+      Item: ({ children, icon, ...props }: Record<string, any>) =>
+        React.createElement('button', { type: 'button', ...props }, icon, children),
       DefaultItems: {
         SearchMenu: () => null,
         Help: () => null,
-        ClearCanvas: () => null,
         ChangeCanvasBackground: () => null,
       },
       Separator: () => null,
@@ -46,7 +47,7 @@ vi.mock('@excalidraw/excalidraw', async () => {
           'data-lang': props.langCode,
           'data-theme': props.theme,
         },
-        props.renderTopRightUI?.(false, {}),
+        props.children,
       );
     },
     MainMenu,
@@ -104,7 +105,7 @@ function renderEditor(overrides: Partial<Parameters<typeof SketchEditor>[0]> = {
 }
 
 function saveButton(): HTMLButtonElement {
-  return document.querySelector('button.primary') as HTMLButtonElement;
+  return screen.getByTestId('sketch-menu-save') as HTMLButtonElement;
 }
 
 describe('SketchEditor save', () => {
@@ -190,7 +191,7 @@ describe('SketchEditor save', () => {
       collaborators: new Map([['socket-1', { username: 'stale' }]]),
       openMenu: 'canvas',
       pendingImageElementId: 'image-1',
-    };
+    } as Record<string, unknown> & { viewBackgroundColor: string };
     const onSave = vi.fn();
     renderEditor({ dirty: true, onSave });
     fireEvent.click(saveButton());
