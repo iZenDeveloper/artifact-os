@@ -54,12 +54,14 @@ sudo apt update && sudo apt install -y curl git
 
 > **Troubleshooting tip from the video:** if a later step throws a strange error, restart your Linux instance cleanly — from PowerShell run `wsl --shutdown`, then reopen Ubuntu. A fresh start clears most first-run hiccups.
 
-**3. Install Node 24.** The from-source build targets Node `~24`. The cleanest way to manage that inside WSL is `nvm`:
+**3. Install Node 24.** The from-source build targets Node `~24`. A clean Ubuntu has no `nvm` yet, so install it first, then use it to get Node 24:
 
 ```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+source ~/.bashrc            # load nvm into the current shell
 nvm install 24
 nvm use 24
-node --version   # should print v24.x
+node --version              # should print v24.x
 ```
 
 With Ubuntu set up and Node 24 active, you are ready to install Open Design.
@@ -87,13 +89,29 @@ When it finishes, the command **prints a local URL** — copy it and paste it in
 
 > **Important:** the port is **assigned dynamically** at launch — read the actual address the command prints. Do not assume a fixed port; the address may differ on your machine and between runs.
 
-### Option C — Install into your coding agent
+### Option C — Install into your coding agent (WSL)
 
-If you would rather skip the GUI entirely and call Open Design as a skill or MCP server inside your agent, run the one-line installer (works on macOS, Linux, and WSL):
+Prefer to skip the GUI and call Open Design as an MCP server inside your agent? On WSL there is **one extra step first**. Linux already ships `/usr/bin/od` (the octal-dump tool), which shadows Open Design's own `od` — so `od mcp install …` would otherwise fail with "file not found" for `mcp`/`install`. Add a small wrapper that points `od` at your clone and put it first on `PATH`:
+
+```bash
+mkdir -p ~/.local/bin
+cat > ~/.local/bin/od <<'EOF'
+#!/usr/bin/env bash
+repo="$HOME/open-design"     # your clone path from Option B
+cd "$repo" || exit 127
+exec corepack pnpm exec od "$@"
+EOF
+chmod +x ~/.local/bin/od
+export PATH="$HOME/.local/bin:$PATH"
+hash -r
+type -a od                   # Open Design's od should now win
+```
+
+Then wire it into your agent:
 
 ```bash
 od mcp install <agent>
-# od ships with Open Design; <agent> = claude | codex | cursor | copilot | gemini | opencode | …
+# <agent> = claude | codex | cursor | copilot | gemini | opencode | …
 ```
 
 Then, inside the agent, just ask: `Use open-design to generate a landing page with the Airbnb design system`.
