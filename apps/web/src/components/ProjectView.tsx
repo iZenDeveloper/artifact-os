@@ -51,6 +51,7 @@ import { useProjectFileEvents, type ProjectEvent } from '../providers/project-ev
 import { claimRunTurnIndex } from '../analytics/identity';
 import { useCoalescedCallback } from '../hooks/useCoalescedCallback';
 import {
+  type ByokMediaDefaults,
   type ResearchOptions,
 } from '@open-design/contracts';
 import {
@@ -753,6 +754,25 @@ function byokModelSeedForProtocol(
   const picked = projectMediaModelSeed(metadata, surface);
   if (!picked) return undefined;
   return mediaModelProviderId(picked) === protocol ? picked : undefined;
+}
+
+function byokMediaDefaultsForRun({
+  imageModel,
+  videoModel,
+  speechModel,
+  speechVoice,
+}: {
+  imageModel: string;
+  videoModel: string;
+  speechModel: string;
+  speechVoice: string;
+}): ByokMediaDefaults {
+  return {
+    ...(imageModel.trim() ? { imageModel: imageModel.trim() } : {}),
+    ...(videoModel.trim() ? { videoModel: videoModel.trim() } : {}),
+    ...(speechModel.trim() ? { speechModel: speechModel.trim() } : {}),
+    ...(speechVoice.trim() ? { speechVoice: speechVoice.trim() } : {}),
+  };
 }
 
 function projectEventToAgentEvent(evt: ProjectEvent): LiveArtifactEventItem['event'] | null {
@@ -4221,6 +4241,16 @@ export function ProjectView({
           ...(daemonByokOpenCode && byokOpenCodeProvider
             ? { byokProvider: byokOpenCodeProvider }
             : {}),
+          ...(daemonByokOpenCode
+            ? {
+                byokMediaDefaults: byokMediaDefaultsForRun({
+                  imageModel: byokImageModelOverride,
+                  videoModel: byokVideoModelOverride,
+                  speechModel: byokSpeechModelOverride,
+                  speechVoice: byokSpeechVoiceOverride,
+                }),
+              }
+            : {}),
           titleGeneration: isFirstTurn ? { enabled: true } : undefined,
           locale,
           ...(runAnalyticsHints ? { analyticsHints: runAnalyticsHints } : {}),
@@ -4336,20 +4366,12 @@ export function ProjectView({
           model: config.model,
           reasoning: null,
           ...(byokOpenCodeProvider ? { byokProvider: byokOpenCodeProvider } : {}),
-          byokMediaDefaults: {
-            ...(byokImageModelOverride.trim()
-              ? { imageModel: byokImageModelOverride.trim() }
-              : {}),
-            ...(byokVideoModelOverride.trim()
-              ? { videoModel: byokVideoModelOverride.trim() }
-              : {}),
-            ...(byokSpeechModelOverride.trim()
-              ? { speechModel: byokSpeechModelOverride.trim() }
-              : {}),
-            ...(byokSpeechVoiceOverride.trim()
-              ? { speechVoice: byokSpeechVoiceOverride.trim() }
-              : {}),
-          },
+          byokMediaDefaults: byokMediaDefaultsForRun({
+            imageModel: byokImageModelOverride,
+            videoModel: byokVideoModelOverride,
+            speechModel: byokSpeechModelOverride,
+            speechVoice: byokSpeechVoiceOverride,
+          }),
           titleGeneration: isFirstTurn ? { enabled: true } : undefined,
           locale,
           analyticsHints: {
