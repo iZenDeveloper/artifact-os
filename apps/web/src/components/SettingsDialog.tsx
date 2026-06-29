@@ -3746,7 +3746,7 @@ export function SettingsDialog({
                 <div
                   className="protocol-chips protocol-chips--providers"
                   role="tablist"
-                  aria-label={t('settings.quickFillProvider')}
+                  aria-label={t('settings.protocolAria')}
                 >
                   <div className="protocol-chip-group protocol-chip-group--providers">
                     <div className="protocol-chip-group-options">
@@ -3762,6 +3762,7 @@ export function SettingsDialog({
                             type="button"
                             role="tab"
                             aria-selected={active}
+                            aria-label={provider.title}
                             className={'protocol-chip protocol-chip--provider' + (active ? ' active' : '')}
                             title={`${provider.title} - ${statusLabel}`}
                             onClick={() => {
@@ -3786,7 +3787,6 @@ export function SettingsDialog({
                               aria-hidden
                             />
                             <span>{provider.title}</span>
-                            <VisuallyHidden>{statusLabel}</VisuallyHidden>
                           </button>
                         );
                       })}
