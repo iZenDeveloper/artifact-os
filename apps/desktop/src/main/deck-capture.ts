@@ -74,9 +74,10 @@ const SLIDE_MAX_PX = 8192;
 
 // Chrome the live deck adds (presenter overlays, the auto-managed progress bar,
 // nav hints) must not bleed into a captured slide. Mirrors the print-hide list
-// in design-templates/html-ppt/assets/runtime.js.
-const HIDE_CHROME_SELECTOR =
-  ".progress-bar, .notes-overlay, .overview, .notes, aside.notes, .speaker-notes, .deck-nav, .deck-hint, .deck-counter";
+// in design-templates/html-ppt/assets/runtime.js, but avoids bare `.notes` and
+// `.overview`: those class names are generic enough to be authored content.
+export const HIDE_CHROME_SELECTOR =
+  ".progress-bar, .notes-overlay, aside.notes, .speaker-notes, .deck-nav, .deck-hint, .deck-counter";
 
 // The slide-surface family, matching the print/export path in pdf-export.ts
 // (`.slide, [data-screen-label], .deck-slide, .ppt-slide`) — decks ship under
@@ -333,7 +334,7 @@ async function showDeckSlide(window: BrowserWindow, i: number, stage: Stage): Pr
     rect.h >= stage.h * 0.5;
   if (!onStage) {
     await window.webContents.executeJavaScript(
-      `(${restackActiveSlide.toString()})(${JSON.stringify(SLIDE_SELECTOR)}, ${i}, ${stage.w}, ${stage.h})`,
+      `(() => { const activeSlideCaptureOffsetTransform = ${activeSlideCaptureOffsetTransform.toString()}; return (${restackActiveSlide.toString()})(${JSON.stringify(SLIDE_SELECTOR)}, ${i}, ${stage.w}, ${stage.h}); })()`,
       true,
     );
     await nextFrames(window);
@@ -869,6 +870,10 @@ export function shouldCapturePageAsJpeg(
   return pageImageFormat === "jpeg" || paginate === true;
 }
 
+export function activeSlideCaptureOffsetTransform(rect: { x: number; y: number }): string {
+  return `translate(${-rect.x}px, ${-rect.y}px)`;
+}
+
 // Non-mutating: count the real slide surfaces (presenter clones excluded). Used
 // to decide page-vs-deck BEFORE any deck-only DOM mutation, so page-mode exports
 // keep the original document intact.
@@ -890,7 +895,6 @@ function showAllSlides(slideSelector: string): number {
     const el = node as HTMLElement;
     el.style.setProperty("opacity", "1", "important");
     el.style.setProperty("visibility", "visible", "important");
-    el.style.setProperty("transform", "none", "important");
     el.style.setProperty("position", "absolute", "important");
     el.style.setProperty("left", "0", "important");
     el.style.setProperty("top", "0", "important");
@@ -1236,6 +1240,7 @@ function positiveCssNumber(value: unknown): number | null {
 // Returns a Promise that resolves after the style change has settled for two
 // animation frames, so the caller can show + wait in a single round trip.
 function showSlide(slideSelector: string, index: number): Promise<{ x: number; y: number; w: number; h: number } | null> {
+  document.getElementById("__od_export_active_slide_capture")?.remove();
   const slides = Array.prototype.slice
     .call(document.querySelectorAll(slideSelector))
     .filter((el) => !(el as HTMLElement).closest(".mini-slide, .overview, .notes-overlay, .thumb"));
@@ -1250,7 +1255,6 @@ function showSlide(slideSelector: string, index: number): Promise<{ x: number; y
     el.style.animation = "none";
     el.style.opacity = on ? "1" : "0";
     el.style.visibility = on ? "visible" : "hidden";
-    el.style.transform = "none";
     el.style.pointerEvents = on ? "auto" : "none";
     el.style.zIndex = on ? "999" : "0";
     activeClasses.forEach((c) => el.classList.toggle(c, on));
@@ -1271,30 +1275,52 @@ function showSlide(slideSelector: string, index: number): Promise<{ x: number; y
   });
 }
 
-// Serialized into the page: forces the active slide into the top-left capture
-// viewport for decks that position it elsewhere (translated carousel strip).
-// Only used when showSlide reports the slide off-stage, so transform-scaled
-// fit-to-viewport decks (whose active slide is already at 0,0) are untouched —
-// clearing ancestor transforms here is safe because such off-stage decks do not
-// rely on an ancestor scale.
+// Serialized into the page: overlays a capture-only clone of the active slide in
+// the top-left viewport for decks that position the real slide elsewhere
+// (translated carousel strip). The real DOM tree is left intact: authored
+// transforms on the slide or its wrappers must continue to affect layout exactly
+// as they do in the preview.
 function restackActiveSlide(slideSelector: string, index: number, w: number, h: number): void {
+  document.getElementById("__od_export_active_slide_capture")?.remove();
   const slides = Array.prototype.slice
     .call(document.querySelectorAll(slideSelector))
     .filter((el) => !(el as HTMLElement).closest(".mini-slide, .overview, .notes-overlay, .thumb"));
   const el = slides[index] as HTMLElement | undefined;
   if (!el) return;
-  let node: HTMLElement | null = el.parentElement;
-  while (node && node !== document.documentElement) {
-    node.style.setProperty("transform", "none", "important");
-    node.style.setProperty("transition", "none", "important");
-    node = node.parentElement;
-  }
-  el.style.setProperty("position", "fixed", "important");
-  el.style.setProperty("left", "0", "important");
-  el.style.setProperty("top", "0", "important");
-  el.style.setProperty("margin", "0", "important");
-  el.style.setProperty("width", `${w}px`, "important");
-  el.style.setProperty("height", `${h}px`, "important");
-  el.style.setProperty("transform", "none", "important");
-  el.style.setProperty("z-index", "2147483647", "important");
+  const rect = el.getBoundingClientRect();
+  const layer = document.createElement("div");
+  layer.id = "__od_export_active_slide_capture";
+  layer.setAttribute("aria-hidden", "true");
+  layer.style.cssText = [
+    "position:fixed",
+    "left:0",
+    "top:0",
+    `width:${w}px`,
+    `height:${h}px`,
+    "margin:0",
+    "padding:0",
+    "overflow:hidden",
+    "z-index:2147483647",
+    "pointer-events:none",
+  ].join("!important;") + "!important";
+
+  const offset = document.createElement("div");
+  offset.style.cssText = [
+    "position:absolute",
+    "left:0",
+    "top:0",
+    `width:${w}px`,
+    `height:${h}px`,
+    `transform:${activeSlideCaptureOffsetTransform(rect)}`,
+    "transform-origin:top left",
+  ].join("!important;") + "!important";
+
+  const clone = el.cloneNode(true) as HTMLElement;
+  clone.style.setProperty("opacity", "1", "important");
+  clone.style.setProperty("visibility", "visible", "important");
+  clone.style.setProperty("pointer-events", "none", "important");
+  clone.style.setProperty("z-index", "2147483647", "important");
+  offset.appendChild(clone);
+  layer.appendChild(offset);
+  document.body.appendChild(layer);
 }

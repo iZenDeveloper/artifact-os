@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest';
 
 import {
+  HIDE_CHROME_SELECTOR,
+  activeSlideCaptureOffsetTransform,
   measureAuthoredSlideBox,
   paginateViewportBand,
   scrollStitchGeometry,
@@ -72,6 +74,22 @@ describe('shouldCapturePageAsJpeg', () => {
   test('non-paginated captures stay PNG unless explicitly requested', () => {
     expect(shouldCapturePageAsJpeg(undefined, false)).toBe(false);
     expect(shouldCapturePageAsJpeg('jpeg', false)).toBe(true);
+  });
+});
+
+describe('deck capture DOM prep', () => {
+  test('does not hide generic authored notes or overview content classes', () => {
+    expect(HIDE_CHROME_SELECTOR.split(/\s*,\s*/)).not.toContain('.notes');
+    expect(HIDE_CHROME_SELECTOR.split(/\s*,\s*/)).not.toContain('.overview');
+    expect(HIDE_CHROME_SELECTOR).toContain('.notes-overlay');
+    expect(HIDE_CHROME_SELECTOR).toContain('aside.notes');
+    expect(HIDE_CHROME_SELECTOR).toContain('.speaker-notes');
+  });
+
+  test('off-stage slide fallback offsets the capture clone instead of clearing transforms', () => {
+    expect(activeSlideCaptureOffsetTransform({ x: 3840, y: -120 })).toBe(
+      'translate(-3840px, 120px)',
+    );
   });
 });
 
