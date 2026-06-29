@@ -1900,6 +1900,7 @@ function renderProjectView(
   renderProject: Project = project,
   renderAgents: AgentInfo[] = [
     { id: 'agent-1', name: 'OpenCode', bin: 'opencode', available: true, models: [] },
+    { id: 'byok-opencode', name: 'BYOK OpenCode', bin: 'opencode', available: true, models: [] },
   ],
   handlers: {
     onModeChange?: (mode: 'daemon' | 'api') => void;

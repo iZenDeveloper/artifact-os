@@ -88,6 +88,7 @@ import {
 import {
   apiProtocolAgentId,
   apiProtocolModelLabel,
+  usesAnthropicProxy,
 } from '../utils/apiProtocol';
 import { playSound, showCompletionNotification } from '../utils/notifications';
 import { randomUUID } from '../utils/uuid';
@@ -161,11 +162,13 @@ import type {
 } from '../types';
 import {
   commentsToAttachments,
+  historyWithCommentAttachmentContext,
   mergeAttachedComments,
   mergePreviewCommentAttachments,
   queuedSlideNavTarget,
   removeAttachedComment,
 } from '../comments';
+import { historyWithApiAttachmentContext } from '../api-attachment-context';
 import { filterImplicitProducedFiles } from '../produced-files';
 import { AvatarMenu } from './AvatarMenu';
 import { EntrySettingsMenu } from './EntrySettingsMenu';
@@ -378,6 +381,8 @@ const MAX_CHAT_PANEL_WIDTH = 720;
 const COMMENT_INSPECTOR_PANEL_WIDTH = 320;
 const MIN_WORKSPACE_PANEL_WIDTH = 400;
 const SPLIT_RESIZE_HANDLE_WIDTH = 8;
+const BYOK_OPENCODE_UNAVAILABLE_MESSAGE =
+  'BYOK API runs require OpenCode. Install OpenCode, then rescan local agents in Settings before retrying.';
 const CHAT_PANEL_KEYBOARD_STEP = 16;
 const DESIGN_SYSTEM_AUDIT_AUTO_REPAIR_ATTEMPTS = 2;
 // Trailing-debounce window for the canonical (daemon + SQLite) tab-state write.
@@ -4159,6 +4164,10 @@ export function ProjectView({
         }
         const choice = effectiveSelectedAgentChoice;
         const daemonByokOpenCode = config.agentId === 'byok-opencode';
+        if (daemonByokOpenCode && !agentsById.get('byok-opencode')?.available) {
+          handlers.onError(new Error(BYOK_OPENCODE_UNAVAILABLE_MESSAGE));
+          return true;
+        }
         // v2 analytics: when the active project is a DS workspace
         // (created by `prepareCreatedDesignSystemProject`, identifiable
         // by `metadata.importedFrom === 'design-system'`), every run
@@ -4294,6 +4303,10 @@ export function ProjectView({
         });
         return true;
       } else {
+        if (!agentsById.get('byok-opencode')?.available) {
+          handlers.onError(new Error(BYOK_OPENCODE_UNAVAILABLE_MESSAGE));
+          return true;
+        }
         // Mirror the daemon chat-route memory hook for BYOK chats. The
         // CLI path runs `extractFromMessage` BEFORE composing the prompt
         // (so an explicit "remember: X" / "我是 X" marker in this turn's
@@ -4342,9 +4355,16 @@ export function ProjectView({
           }
         }
         pushEvent({ kind: 'status', label: 'requesting', detail: config.model });
+        const byokOpenCodeHistory = await historyWithApiAttachmentContext(
+          historyWithCommentAttachmentContext(nextHistory, userMsg.id),
+          userMsg.id,
+          project.id,
+          projectFiles,
+          { omitNativeImageAttachments: usesAnthropicProxy(config) },
+        );
         void streamViaDaemon({
           agentId: 'byok-opencode',
-          history: nextHistory,
+          history: byokOpenCodeHistory,
           signal: controller.signal,
           cancelSignal: cancelController.signal,
           handlers,

@@ -218,13 +218,24 @@ const project: Project = {
   updatedAt: 1,
 };
 
-function renderProjectView(renderProject: Project = project) {
+function renderProjectView(
+  renderProject: Project = project,
+  agents: AgentInfo[] = [
+    {
+      id: 'byok-opencode',
+      name: 'BYOK OpenCode',
+      bin: 'opencode',
+      available: true,
+      models: [],
+    } as AgentInfo,
+  ],
+) {
   return render(
     <ProjectView
       project={renderProject}
       routeFileName={null}
       config={config}
-      agents={[] as AgentInfo[]}
+      agents={agents}
       skills={[] as SkillSummary[]}
       designTemplates={[] as SkillSummary[]}
       designSystems={[] as DesignSystemSummary[]}
@@ -401,7 +412,7 @@ describe('ProjectView API empty response handling', () => {
     expect(screen.queryByText(/provider ended the request/i)).toBeNull();
   });
 
-  it('passes attached document paths to BYOK OpenCode runs', async () => {
+  it('passes attached document paths and preview context to BYOK OpenCode runs', async () => {
     chatPaneMockState.attachments = [
       { path: 'brief.docx', name: 'brief.docx', kind: 'file', size: 1024 },
     ];
@@ -443,11 +454,40 @@ describe('ProjectView API empty response handling', () => {
       agentId: 'byok-opencode',
       attachments: ['brief.docx'],
     }));
-    expect(mockedFetchProjectFilePreview).not.toHaveBeenCalled();
+    expect(mockedFetchProjectFilePreview).toHaveBeenCalledWith('project-1', 'brief.docx');
     expect(mockedFetchProjectFileText).not.toHaveBeenCalled();
     const userMessage = capturedHistory.at(-1);
     expect(userMessage?.role).toBe('user');
-    expect(userMessage?.content).toBe('Create a login page');
+    expect(userMessage?.content).toContain('Create a login page');
+    expect(userMessage?.content).toContain('<attached-project-files>');
+    expect(userMessage?.content).toContain('### Attachment 1: brief.docx');
+    expect(userMessage?.content).toContain('Hello world');
+    expect(userMessage?.content).toContain('Second line');
+  });
+
+  it('fails BYOK API sends before daemon routing when OpenCode is unavailable', async () => {
+    const fetchMock = vi.fn(async () => Response.json({}));
+    vi.stubGlobal('fetch', fetchMock);
+    renderProjectView(project, [
+      {
+        id: 'byok-opencode',
+        name: 'BYOK OpenCode',
+        bin: 'opencode',
+        available: false,
+        models: [],
+      } as AgentInfo,
+    ]);
+
+    await sendTestPrompt();
+
+    await waitFor(() =>
+      expect(screen.getAllByText(/BYOK API runs require OpenCode/i).length).toBeGreaterThan(0),
+    );
+    expect(mockedStreamViaDaemon).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/memory/extract',
+      expect.any(Object),
+    );
   });
 
   it('does not include saved project instructions in the BYOK system prompt', async () => {
