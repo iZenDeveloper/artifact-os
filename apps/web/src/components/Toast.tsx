@@ -10,7 +10,7 @@
 // explanation (e.g. Anthropic account-usage-cap reasons) can surface
 // the real upstream message alongside the daemon's category label.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Icon } from './Icon';
 
@@ -74,22 +74,39 @@ export function Toast({
   const effectiveTtl = code ? 0 : ttlMs;
   const [leaving, setLeaving] = useState(false);
 
+  // Callers pass `onDismiss={() => setToast(null)}` — a fresh closure on every
+  // parent render. If that closure sits in the auto-dismiss effect's dependency
+  // array, any parent re-render (e.g. a ticking "running 8.6s" elapsed counter
+  // during extraction) clears and re-arms the timers, so the deadline is pushed
+  // forward forever and the toast NEVER auto-dismisses. Hold the latest callback
+  // in a ref and key the timer effect only on the values that should actually
+  // re-arm it (message/details/code/ttl), keeping a stable identity for the
+  // timer so it counts down uninterrupted regardless of parent render churn.
+  const onDismissRef = useRef(onDismiss);
+  useEffect(() => {
+    onDismissRef.current = onDismiss;
+  }, [onDismiss]);
+
+  // `hasDismiss` is a stable boolean: re-arm only when the callback appears or
+  // disappears, not when its identity changes while staying defined.
+  const hasDismiss = !!onDismiss;
+
   useEffect(() => {
     // Re-entrant: a new message reuses the same mounted toast, so clear any
     // prior leaving state before re-arming the timers.
     setLeaving(false);
-    if (!onDismiss || !Number.isFinite(effectiveTtl) || effectiveTtl <= 0) return;
+    if (!hasDismiss || !Number.isFinite(effectiveTtl) || effectiveTtl <= 0) return;
     // Begin the fade-out EXIT_MS before the deadline so the exit animation
     // plays within the TTL window and onDismiss (which unmounts us) lands at
     // exactly effectiveTtl. Clamp the fade start to 0 for very short TTLs.
     const fadeAt = Math.max(0, effectiveTtl - EXIT_MS);
     const fadeId = window.setTimeout(() => setLeaving(true), fadeAt);
-    const dismissId = window.setTimeout(() => onDismiss(), effectiveTtl);
+    const dismissId = window.setTimeout(() => onDismissRef.current?.(), effectiveTtl);
     return () => {
       window.clearTimeout(fadeId);
       window.clearTimeout(dismissId);
     };
-  }, [message, details, code, effectiveTtl, onDismiss]);
+  }, [message, details, code, effectiveTtl, hasDismiss]);
 
   const iconName = TONE_ICON[tone];
 

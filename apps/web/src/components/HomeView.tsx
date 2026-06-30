@@ -234,6 +234,46 @@ const EMPTY_SKILLS: SkillSummary[] = [];
 const EMPTY_CONNECTORS: ConnectorDetail[] = [];
 const EMPTY_PROMPT_TEMPLATES: PromptTemplateSummary[] = [];
 
+// The Home composer lives inside EntryView, which App.tsx fully UNMOUNTS the
+// moment the user opens a project tab (the single `appMain` slot swaps
+// EntryView → ProjectView). Plain useState would therefore be discarded on
+// every tab switch, so a half-typed prompt and the chosen design system vanish
+// when the user steps away and comes back. Persist those two serializable,
+// user-visible fields to localStorage so they survive the unmount/remount,
+// mirroring ChatComposer's draft persistence. Object-valued selections (active
+// template, skill, staged files, working directory) are intentionally NOT
+// persisted here — they reference live catalogue records / File handles / a
+// desktop auth token that cannot round-trip through JSON safely.
+const HOME_COMPOSER_PROMPT_KEY = 'open-design:home-composer:prompt';
+const HOME_COMPOSER_DESIGN_SYSTEM_KEY = 'open-design:home-composer:design-system';
+
+function readHomeComposerDraft(key: string): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeHomeComposerDraft(key: string, value: string | null): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (value) window.localStorage.setItem(key, value);
+    else window.localStorage.removeItem(key);
+  } catch {
+    // Storage unavailable (private mode / quota exceeded) — degrade silently to
+    // in-memory-only state; the composer still works for this session.
+  }
+}
+
+// Drop the persisted draft once a run is actually created, so the just-sent
+// prompt and pick don't resurrect the next time the Home tab mounts.
+function clearHomeComposerDraft(): void {
+  writeHomeComposerDraft(HOME_COMPOSER_PROMPT_KEY, null);
+  writeHomeComposerDraft(HOME_COMPOSER_DESIGN_SYSTEM_KEY, null);
+}
+
 export function HomeView({
   isActive = true,
   projects,
@@ -309,10 +349,27 @@ export function HomeView({
   // Personal default and re-seeded if that resolves async, until the user picks
   // one explicitly (tracked by `designSystemTouchedRef` so a later default
   // change never clobbers an explicit selection).
+  // Read the persisted composer draft exactly once per mount (see the module
+  // note above). Restoring here is what makes the prompt + design-system pick
+  // survive a tab switch, since the whole view is torn down on every switch.
+  const restoredDraftRef = useRef<{
+    prompt: string;
+    designSystemId: string | null;
+  } | null>(null);
+  if (restoredDraftRef.current === null) {
+    restoredDraftRef.current = {
+      prompt: readHomeComposerDraft(HOME_COMPOSER_PROMPT_KEY) ?? '',
+      designSystemId: readHomeComposerDraft(HOME_COMPOSER_DESIGN_SYSTEM_KEY),
+    };
+  }
+  const restoredDraft = restoredDraftRef.current;
   const [designSystemId, setDesignSystemId] = useState<string | null>(() =>
+    restoredDraft.designSystemId ??
     homeDefaultDesignSystemId(designSystems, defaultDesignSystemId),
   );
-  const designSystemTouchedRef = useRef(false);
+  // A restored pick counts as user-touched so the async default re-seed effect
+  // below does not overwrite it once the catalogue resolves.
+  const designSystemTouchedRef = useRef(restoredDraft.designSystemId != null);
   // Global most-recently-used working directories, surfaced in the picker's
   // "Recent folders" submenu. Loaded from the daemon's app-config and bumped
   // whenever the user picks a folder.
@@ -335,8 +392,21 @@ export function HomeView({
   }, []);
   const [mcpServers, setMcpServers] = useState<McpServerConfig[]>([]);
   const [mcpLoading, setMcpLoading] = useState(true);
-  const [prompt, setPrompt] = useState('');
-  const [promptEditedByUser, setPromptEditedByUser] = useState(false);
+  const [prompt, setPrompt] = useState(() => restoredDraft.prompt);
+  // Treat a restored non-empty prompt as user-edited so the plugin/skill
+  // replacement guard still asks before clobbering it.
+  const [promptEditedByUser, setPromptEditedByUser] = useState(
+    () => restoredDraft.prompt.trim().length > 0,
+  );
+  // Persist the composer draft on every change so it survives the unmount that
+  // a tab switch triggers (see the module note above). Empty values clear the
+  // key rather than storing "".
+  useEffect(() => {
+    writeHomeComposerDraft(HOME_COMPOSER_PROMPT_KEY, prompt);
+  }, [prompt]);
+  useEffect(() => {
+    writeHomeComposerDraft(HOME_COMPOSER_DESIGN_SYSTEM_KEY, designSystemId);
+  }, [designSystemId]);
   const [figmaModalOpen, setFigmaModalOpen] = useState(false);
   const examplePromptInfoRef = useRef<ExamplePromptInfo | null>(null);
   const handleExamplePromptStatusChange = useCallback((info: ExamplePromptInfo | null) => {
@@ -1826,6 +1896,10 @@ export function HomeView({
       }
       // Create accepted — now it is safe to spend the one-shot marker.
       if (examplePromptToSend) localStorage.setItem(examplePromptKey, '1');
+      // The draft has become a real run; drop it synchronously (before the
+      // navigation unmounts us) so the sent prompt + pick don't reappear the
+      // next time the Home tab mounts.
+      clearHomeComposerDraft();
       // Only drop the staged contexts once the run actually started — a
       // rejected creation keeps them so the retry sends the same payload.
       setSelectedPluginContexts([]);

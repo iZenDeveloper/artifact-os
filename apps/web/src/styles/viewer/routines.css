@@ -245,6 +245,11 @@
   justify-content: center;
   width: 26px;
   height: 26px;
+  /* Reset the global `button { padding: 6px 12px }` primitive. With
+     box-sizing: border-box, that padding eats the entire 26px box (26 − 24
+     − 2px border = 0 content width), collapsing the inner SVG to zero width
+     so the glyph clips away and the disc reads as "no close icon". */
+  padding: 0;
   /* A solid surface disc (not a faint tint) so the close affordance lifts off
      light toast bodies — the pale success/error fills previously swallowed the
      low-opacity glyph, which read as "no close button". The tinted border +
@@ -267,6 +272,9 @@
   color: var(--bg, #fff);
 }
 .od-toast-close svg {
+  /* flex-shrink:0 so the glyph can never be crushed to 0 width by the
+     flex button even if the content box gets tight again. */
+  flex: 0 0 auto;
   width: 13px;
   height: 13px;
   stroke-width: 2.4;

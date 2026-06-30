@@ -2623,7 +2623,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                 data-tooltip={t('chat.stop')}
                 aria-label={t('chat.stop')}
               >
-                <Icon name="stop" size={13} />
+                <Icon name="stop" size={16} />
                 <span>{t('chat.stop')}</span>
               </button>
             ) : null}
@@ -2645,7 +2645,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                 title={t('chat.send')}
                 data-tooltip={t('chat.send')}
               >
-                <Icon name="send" size={13} />
+                <Icon name="send" size={16} />
                 <span>{t('chat.send')}</span>
               </button>
             ) : null}
