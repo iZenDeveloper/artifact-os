@@ -93,4 +93,38 @@ describe('project file version routes', () => {
     expect(rawResponse.status).toBe(200);
     expect(await rawResponse.text()).toBe('<html><body>recover me</body></html>');
   });
+
+  it('does not mix deleted HTML history into a recreated file at the same path', async () => {
+    const projectId = await createProject();
+    await writeProjectFile(projectId, 'brand.html', '<html><body>old file</body></html>');
+
+    const oldResponse = await fetch(`${baseUrl}/api/projects/${projectId}/files/brand.html/versions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ label: 'Deleted file checkpoint', source: 'manual' }),
+    });
+    expect(oldResponse.status).toBe(200);
+
+    const deleteResponse = await fetch(`${baseUrl}/api/projects/${projectId}/raw/brand.html`, {
+      method: 'DELETE',
+    });
+    expect(deleteResponse.status).toBe(200);
+
+    await writeProjectFile(projectId, 'brand.html', '<html><body>new file</body></html>');
+    const newResponse = await fetch(`${baseUrl}/api/projects/${projectId}/files/brand.html/versions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ label: 'Recreated file checkpoint', source: 'manual' }),
+    });
+    expect(newResponse.status).toBe(200);
+
+    const listResponse = await fetch(`${baseUrl}/api/projects/${projectId}/files/brand.html/versions`);
+    expect(listResponse.status).toBe(200);
+    const listed = (await listResponse.json()) as {
+      versions: Array<{ label: string; current: boolean }>;
+    };
+    expect(listed.versions.some((version) => version.label === 'Deleted file checkpoint')).toBe(false);
+    expect(listed.versions.some((version) => version.label === 'Recreated file checkpoint')).toBe(true);
+    expect(listed.versions.filter((version) => version.current)).toHaveLength(1);
+  });
 });

@@ -20,6 +20,7 @@ import {
   ensureCurrentProjectFileVersion,
   isProjectFileVersionPath,
   listProjectFileVersions,
+  markProjectFileVersionStoreDeleted,
   readProjectFileVersion,
   renameProjectFileVersionStore,
 } from '../../project-file-versions.js';
@@ -2982,6 +2983,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
       if (rejectInternalVersionPath(res, rawSplat)) return;
       const project = getProject(db, projectId);
       await deleteProjectFile(PROJECTS_DIR, projectId, rawSplat, project?.metadata);
+      await markProjectFileVersionStoreDeleted(PROJECTS_DIR, projectId, rawSplat, project?.metadata);
       /** @type {import('@open-design/contracts').DeleteProjectFileResponse} */
       const body = { ok: true };
       res.json(body);
@@ -3452,6 +3454,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
       if (rejectInternalVersionPath(res, req.params.name)) return;
       const delProject = getProject(db, req.params.id);
       await deleteProjectFile(PROJECTS_DIR, req.params.id, req.params.name, delProject?.metadata);
+      await markProjectFileVersionStoreDeleted(PROJECTS_DIR, req.params.id, req.params.name, delProject?.metadata);
       /** @type {import('@open-design/contracts').DeleteProjectFileResponse} */
       const body = { ok: true };
       res.json(body);

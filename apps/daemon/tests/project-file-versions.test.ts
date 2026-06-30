@@ -7,6 +7,7 @@ import {
   ensureCurrentProjectFileVersion,
   isProjectFileVersionPath,
   listProjectFileVersions,
+  markProjectFileVersionStoreDeleted,
   readProjectFileVersion,
   renameProjectFileVersionStore,
 } from '../src/project-file-versions.js';
@@ -221,6 +222,78 @@ describe('project file versions', () => {
       expect(firstRenamed?.id).toBe(initial.id);
       expect(renamed.every((version) => version.fileName === 'nested/bar.html')).toBe(true);
       expect(renamed.filter((version) => version.current)).toHaveLength(1);
+    });
+  });
+
+  it('rotates deleted history when an HTML path is recreated', async () => {
+    await withProject(async (projectsRoot, projectId) => {
+      const oldVersion = await createProjectFileVersion(
+        projectsRoot,
+        projectId,
+        'foo.html',
+        '<html><body>old file</body></html>',
+        { source: 'manual', promptSource: 'manual', label: 'Old deleted file' },
+      );
+      await markProjectFileVersionStoreDeleted(projectsRoot, projectId, 'foo.html');
+      await expect(listProjectFileVersions(projectsRoot, projectId, 'foo.html')).resolves.toHaveLength(1);
+
+      const newVersion = await createProjectFileVersion(
+        projectsRoot,
+        projectId,
+        'foo.html',
+        '<html><body>new file</body></html>',
+        { source: 'manual', promptSource: 'manual', label: 'New reused file' },
+      );
+
+      const versions = await listProjectFileVersions(projectsRoot, projectId, 'foo.html');
+      expect(versions).toHaveLength(1);
+      const current = versions[0];
+      expect(current).toBeDefined();
+      expect(current).toMatchObject({
+        id: newVersion.id,
+        label: 'New reused file',
+        version: 1,
+        current: true,
+      });
+      await expect(
+        readProjectFileVersion(projectsRoot, projectId, 'foo.html', oldVersion.id),
+      ).rejects.toThrow(/version not found/);
+    });
+  });
+
+  it('replaces deleted target history when renaming another HTML file into that path', async () => {
+    await withProject(async (projectsRoot, projectId) => {
+      await createProjectFileVersion(
+        projectsRoot,
+        projectId,
+        'target.html',
+        '<html><body>deleted target</body></html>',
+        { source: 'manual', promptSource: 'manual', label: 'Deleted target history' },
+      );
+      await markProjectFileVersionStoreDeleted(projectsRoot, projectId, 'target.html');
+      const sourceVersion = await createProjectFileVersion(
+        projectsRoot,
+        projectId,
+        'source.html',
+        '<html><body>source history</body></html>',
+        { source: 'manual', promptSource: 'manual', label: 'Source history' },
+      );
+
+      await renameProjectFileVersionStore(projectsRoot, projectId, 'source.html', 'target.html');
+
+      await expect(listProjectFileVersions(projectsRoot, projectId, 'source.html')).resolves.toHaveLength(0);
+      const versions = await listProjectFileVersions(projectsRoot, projectId, 'target.html');
+      expect(versions).toHaveLength(1);
+      const renamed = versions[0];
+      expect(renamed).toBeDefined();
+      expect(renamed).toMatchObject({
+        id: sourceVersion.id,
+        label: 'Source history',
+        fileName: 'target.html',
+        current: true,
+      });
+      const content = await readProjectFileVersion(projectsRoot, projectId, 'target.html', sourceVersion.id);
+      expect(content.content).toBe('<html><body>source history</body></html>');
     });
   });
 

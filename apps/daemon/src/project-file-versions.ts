@@ -34,6 +34,11 @@ interface VersionEntry {
   contentPath: string;
 }
 
+interface VersionManifestState {
+  entries: VersionEntry[];
+  deletedAt?: number;
+}
+
 interface CreateProjectFileVersionOptions {
   prompt?: string | null;
   promptSource?: VersionPromptSource;
@@ -52,6 +57,11 @@ function errorCode(err: unknown): string | undefined {
   return typeof err === 'object' && err !== null && 'code' in err
     ? String((err as { code?: unknown }).code)
     : undefined;
+}
+
+function isExistingTargetError(err: unknown): boolean {
+  const code = errorCode(err);
+  return code === 'EEXIST' || code === 'ENOTEMPTY';
 }
 
 function fileVersionKey(fileName: string): string {
@@ -199,28 +209,57 @@ function normalizeManifest(raw: unknown, fileName: string): VersionEntry[] {
   });
 }
 
+function normalizeManifestState(raw: unknown, fileName: string): VersionManifestState {
+  const state: VersionManifestState = { entries: normalizeManifest(raw, fileName) };
+  const deletedAt = raw && typeof raw === 'object'
+    ? Number((raw as { deletedAt?: unknown }).deletedAt)
+    : NaN;
+  if (Number.isFinite(deletedAt) && deletedAt > 0) {
+    state.deletedAt = deletedAt;
+  }
+  return state;
+}
+
 function assertProjectAvailable(projectsRoot: string, projectId: string, metadata?: unknown): void {
   resolveProjectDir(projectsRoot, projectId, metadata);
 }
 
-async function readVersionManifest(projectsRoot: string, projectId: string, fileName: string): Promise<VersionEntry[]> {
+async function readVersionManifestState(
+  projectsRoot: string,
+  projectId: string,
+  fileName: string,
+): Promise<VersionManifestState> {
   try {
     const raw = await readFile(path.join(versionRootFor(projectsRoot, projectId, fileName), VERSION_MANIFEST), 'utf8');
-    return normalizeManifest(JSON.parse(raw) as unknown, fileName);
+    return normalizeManifestState(JSON.parse(raw) as unknown, fileName);
   } catch (err) {
-    if (errorCode(err) === 'ENOENT') return [];
+    if (errorCode(err) === 'ENOENT') return { entries: [] };
     throw err;
   }
 }
 
-async function writeVersionManifest(projectsRoot: string, projectId: string, fileName: string, entries: VersionEntry[]): Promise<void> {
+async function readVersionManifest(projectsRoot: string, projectId: string, fileName: string): Promise<VersionEntry[]> {
+  return (await readVersionManifestState(projectsRoot, projectId, fileName)).entries;
+}
+
+async function writeVersionManifest(
+  projectsRoot: string,
+  projectId: string,
+  fileName: string,
+  entries: VersionEntry[],
+  options: { deletedAt?: number } = {},
+): Promise<void> {
   const root = versionRootFor(projectsRoot, projectId, fileName);
   await mkdir(root, { recursive: true });
-  await writeFile(path.join(root, VERSION_MANIFEST), JSON.stringify({
+  const manifest: { schemaVersion: number; fileName: string; entries: VersionEntry[]; deletedAt?: number } = {
     schemaVersion: 1,
     fileName,
     entries,
-  }, null, 2));
+  };
+  if (typeof options.deletedAt === 'number' && Number.isFinite(options.deletedAt)) {
+    manifest.deletedAt = options.deletedAt;
+  }
+  await writeFile(path.join(root, VERSION_MANIFEST), JSON.stringify(manifest, null, 2));
 }
 
 function publicVersion(entry: VersionEntry, currentId: string | null): ProjectFileVersion {
@@ -329,7 +368,16 @@ async function createProjectFileVersionUnlocked(
 ): Promise<ProjectFileVersion> {
   const root = versionRootFor(projectsRoot, projectId, safeName);
   await mkdir(root, { recursive: true });
-  const entries = await readVersionManifest(projectsRoot, projectId, safeName);
+  const state = await readVersionManifestState(projectsRoot, projectId, safeName);
+  const preserveDeletedHistory =
+    typeof options.restoreFromVersionId === 'string' &&
+    state.entries.some((entry) => entry.id === options.restoreFromVersionId);
+  let entries = state.entries;
+  if (state.deletedAt && !preserveDeletedHistory) {
+    await rm(root, { recursive: true, force: true });
+    await mkdir(root, { recursive: true });
+    entries = [];
+  }
   const restoredFrom = typeof options.restoreFromVersionId === 'string'
     ? entries.find((entry) => entry.id === options.restoreFromVersionId) ?? null
     : null;
@@ -363,6 +411,24 @@ async function createProjectFileVersionUnlocked(
   return publicVersion(entry, id);
 }
 
+export async function markProjectFileVersionStoreDeleted(
+  projectsRoot: string,
+  projectId: string,
+  fileName: string,
+  metadata?: unknown,
+): Promise<void> {
+  const safeName = validateUserFileName(fileName);
+  if (!/\.html?$/i.test(safeName)) return;
+  assertProjectAvailable(projectsRoot, projectId, metadata);
+  await withVersionFileLock(projectsRoot, projectId, safeName, async () => {
+    const state = await readVersionManifestState(projectsRoot, projectId, safeName);
+    if (state.entries.length === 0) return;
+    await writeVersionManifest(projectsRoot, projectId, safeName, state.entries, {
+      deletedAt: Date.now(),
+    });
+  });
+}
+
 export async function renameProjectFileVersionStore(
   projectsRoot: string,
   projectId: string,
@@ -386,19 +452,36 @@ export async function renameProjectFileVersionStore(
       throw err;
     }
 
-    const renamedEntries = (await readVersionManifest(projectsRoot, projectId, safeFrom))
-      .map((entry) => ({ ...entry, fileName: safeTo }));
+    const fromState = await readVersionManifestState(projectsRoot, projectId, safeFrom);
+    if (fromState.deletedAt) {
+      await rm(oldRoot, { recursive: true, force: true });
+      const toState = await readVersionManifestState(projectsRoot, projectId, safeTo);
+      if (toState.deletedAt) {
+        await rm(newRoot, { recursive: true, force: true });
+      }
+      return;
+    }
+
+    const renamedEntries = fromState.entries.map((entry) => ({ ...entry, fileName: safeTo }));
 
     try {
       await rename(oldRoot, newRoot);
       await writeVersionManifest(projectsRoot, projectId, safeTo, renamedEntries);
       return;
     } catch (err) {
-      if (errorCode(err) !== 'EEXIST') throw err;
+      if (!isExistingTargetError(err)) throw err;
+    }
+
+    const existingState = await readVersionManifestState(projectsRoot, projectId, safeTo);
+    if (existingState.deletedAt) {
+      await rm(newRoot, { recursive: true, force: true });
+      await rename(oldRoot, newRoot);
+      await writeVersionManifest(projectsRoot, projectId, safeTo, renamedEntries);
+      return;
     }
 
     await mkdir(newRoot, { recursive: true });
-    const existingEntries = await readVersionManifest(projectsRoot, projectId, safeTo);
+    const existingEntries = existingState.entries;
     const existingIds = new Set(existingEntries.map((entry) => entry.id));
     for (const entry of renamedEntries) {
       if (existingIds.has(entry.id)) continue;
@@ -429,14 +512,16 @@ export async function ensureCurrentProjectFileVersion(
   assertProjectAvailable(projectsRoot, projectId, metadata);
   const text = String(content ?? '');
   return withVersionFileLock(projectsRoot, projectId, safeName, async () => {
-    const entries = await readVersionManifest(projectsRoot, projectId, safeName);
-    const latest = entries.at(-1);
-    if (latest?.contentPath) {
-      try {
-        const prior = await readFile(path.join(versionRootFor(projectsRoot, projectId, safeName), latest.contentPath), 'utf8');
-        if (prior === text) return publicVersion(latest, latest.id);
-      } catch (err) {
-        if (errorCode(err) !== 'ENOENT') throw err;
+    const state = await readVersionManifestState(projectsRoot, projectId, safeName);
+    if (!state.deletedAt) {
+      const latest = state.entries.at(-1);
+      if (latest?.contentPath) {
+        try {
+          const prior = await readFile(path.join(versionRootFor(projectsRoot, projectId, safeName), latest.contentPath), 'utf8');
+          if (prior === text) return publicVersion(latest, latest.id);
+        } catch (err) {
+          if (errorCode(err) !== 'ENOENT') throw err;
+        }
       }
     }
     return createProjectFileVersionUnlocked(projectsRoot, projectId, safeName, text, options);
