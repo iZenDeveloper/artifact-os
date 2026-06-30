@@ -103,6 +103,54 @@ function setupDeckWithNativeSlideMessageHandler() {
   return { flushTimers, win, slides };
 }
 
+function setupDeckWithConstantNativeSlideMessageHandler() {
+  const bodyHtml = `
+    <section class="slide" style="display:block">Slide One</section>
+    <section class="slide" style="display:none">Slide Two</section>
+    <section class="slide" style="display:none">Slide Three</section>
+  `;
+  const srcdoc = buildSrcdoc(`<!doctype html><html><body>${bodyHtml}</body></html>`, {
+    deck: true,
+  });
+  const script = extractDeckBridgeScript(srcdoc);
+  const dom = new JSDOM(`<!doctype html><html><body>${bodyHtml}</body></html>`, {
+    runScripts: 'outside-only',
+    pretendToBeVisual: true,
+  });
+  const win = dom.window;
+  Object.defineProperty(win, 'parent', {
+    configurable: true,
+    value: { postMessage: vi.fn() },
+  });
+  const flushTimers = installQueuedTimers(win);
+
+  const evaluate = new win.Function(script);
+  evaluate.call(win);
+  flushTimers();
+
+  const slides = Array.from(win.document.querySelectorAll<HTMLElement>('.slide'));
+  const SLIDE_MESSAGE = 'od:slide';
+  function isSlideMessage(data: { type?: string } | null | undefined) {
+    return data?.type === SLIDE_MESSAGE;
+  }
+  function activeIndex() {
+    return Math.max(0, slides.findIndex((slide) => slide.style.display !== 'none'));
+  }
+  function render(active: number) {
+    slides.forEach((slide, index) => {
+      slide.style.display = index === active ? '' : 'none';
+    });
+  }
+  function onSlideMessage(event: MessageEvent) {
+    if (!isSlideMessage(event.data)) return;
+    if (event.data.action === 'next') render(Math.min(slides.length - 1, activeIndex() + 1));
+    if (event.data.action === 'prev') render(Math.max(0, activeIndex() - 1));
+  }
+  win.addEventListener('message', onSlideMessage);
+
+  return { flushTimers, win, slides };
+}
+
 describe('deck bridge - slide message text', () => {
   it('keeps host navigation active when content mentions the od:slide protocol without handling it', () => {
     const { flushTimers, win, slides } = setupDeckThatMentionsSlideMessages();
@@ -151,6 +199,22 @@ describe('deck bridge - slide message text', () => {
     expect(first.hidden).toBe(true);
     expect(second.hidden).toBe(false);
     expect(third.hidden).toBe(true);
+    win.close();
+  });
+
+  it('detects constant-based post-bridge slide handlers before applying fallback', () => {
+    const { flushTimers, win, slides } = setupDeckWithConstantNativeSlideMessageHandler();
+    const [first, second, third] = slides;
+    if (!first || !second || !third) throw new Error('expected three slides');
+
+    win.dispatchEvent(
+      new win.MessageEvent('message', { data: { type: 'od:slide', action: 'next' } }),
+    );
+    flushTimers();
+
+    expect(first.style.display).toBe('none');
+    expect(second.style.display).toBe('');
+    expect(third.style.display).toBe('none');
     win.close();
   });
 });

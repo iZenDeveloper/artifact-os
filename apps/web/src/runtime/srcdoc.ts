@@ -2407,7 +2407,8 @@ function injectDeckBridge(doc: string, initialSlideIndex = 0): string {
       var source = '';
       if (typeof listener === 'function') source = String(listener);
       else if (listener && typeof listener.handleEvent === 'function') source = String(listener.handleEvent);
-      return /\\bod:slide\\b/.test(source);
+      if (/\\bod:slide\\b/.test(source)) return true;
+      return /slide/i.test(source) && /message/i.test(source);
     } catch (_) {
       return false;
     }
