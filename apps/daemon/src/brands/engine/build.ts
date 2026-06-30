@@ -30,7 +30,7 @@ import { injectFontFaces, type FontFile } from "../fonts.js";
 import { prefetchBrand, type PrefetchResult } from "../prefetch.js";
 import type { BrandSystem, DesignTokens, SeedToken, ThemeAlgorithm } from "./types.js";
 import { deriveTokens } from "./derive.js";
-import { seedFromBrand, seedFromMaterial } from "./seed.js";
+import { seedFromBrand, seedFromMaterial, isDarkNativeBrand } from "./seed.js";
 import { tokensToJson, tokensToCssVars, tokensToThemeJson } from "./export.js";
 import { renderKitPage } from "./kit.js";
 import { renderArtifact, renderArtifactGallery, brandFontAssets } from "./artifacts/index.js";
@@ -123,7 +123,7 @@ Everything below is *derived* — no token here was hand-authored.
 | \`variables.css\` | \`:root{}\` + \`.dark{}\` CSS custom properties (\`--brand-*\`). |
 | \`variables.dark.css\` | Standalone \`:root{}\` for the dark theme. |
 | \`theme.json\` | antd \`ConfigProvider\` theme (token + algorithm). |
-| \`kit.html\` | Themed component showcase (light). |
+| \`kit.html\` | Themed component showcase (brand's primary appearance). |
 | \`kit.dark.html\` | Themed component showcase (dark). |
 | \`artifacts/landing.html\` | Full landing page (hero → features → pricing → FAQ → CTA). |
 | \`artifacts/deck.html\` | 9-slide 16:9 pitch deck with keyboard navigation. |
@@ -181,6 +181,14 @@ function assemble({ slug, brand, seed, extraFiles, fontFiles, fontsBase = "../" 
     compact: deriveTokens(seed, "compact"),
   };
 
+  // A dark-native brand (Vercel etc.) leads with its dark theme so the rendered
+  // products read as the brand actually looks. The light/dark token sets above
+  // are untouched — only which one drives the brand-representative outputs
+  // (component kit, artifacts, gallery, antd theme.json) changes. `kit.dark.html`
+  // stays the explicit dark reference regardless.
+  const primaryAlgorithm: ThemeAlgorithm = isDarkNativeBrand(brand) ? "dark" : "default";
+  const primary = themes[primaryAlgorithm];
+
   const files: Record<string, string> = {};
 
   // ── seed + raw tokens ──
@@ -198,7 +206,7 @@ function assemble({ slug, brand, seed, extraFiles, fontFiles, fontsBase = "../" 
   files["scripts/apply-design-tokens.mjs"] = applyDesignTokensScript();
 
   // ── antd ConfigProvider theme ──
-  files["theme.json"] = tokensToThemeJson(seed, "default");
+  files["theme.json"] = tokensToThemeJson(seed, primaryAlgorithm);
 
   // kit/index sit at the bundle root, artifacts one level deeper — each doc's
   // @font-face urls are relative to its own location.
@@ -207,9 +215,11 @@ function assemble({ slug, brand, seed, extraFiles, fontFiles, fontsBase = "../" 
     injectFontFaces(html, fontFiles ?? [], fontsPrefix(depth));
 
   // ── themed component kit ──
+  // kit.html follows the brand's primary appearance (dark for a dark-native
+  // brand); kit.dark.html is always the explicit dark reference.
   const fonts = brandFontAssets(brand);
   files["kit.html"] = withFonts(
-    renderKitPage(themes.default, {
+    renderKitPage(primary, {
       title: `${brand.name} — component kit`,
       brandName: brand.name,
       fontLinks: fonts.links,
@@ -229,14 +239,14 @@ function assemble({ slug, brand, seed, extraFiles, fontFiles, fontsBase = "../" 
 
   // ── artifacts (products) ──
   for (const kind of ARTIFACT_KINDS) {
-    files[`artifacts/${kind}.html`] = withFonts(renderArtifact(kind, brand, themes.default), 2);
+    files[`artifacts/${kind}.html`] = withFonts(renderArtifact(kind, brand, primary), 2);
   }
 
   // ── gallery / index ──
   // srcdoc previews are separate documents — each gets its own injection,
   // with urls resolved from the index's location (depth 1).
   files["index.html"] = withFonts(
-    buildIndexPage(slug, brand, themes.default, fontFiles, fontsPrefix(1)),
+    buildIndexPage(slug, brand, primary, fontFiles, fontsPrefix(1)),
     1,
   );
 
@@ -289,7 +299,7 @@ function buildIndexPage(
     v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
   const links = [
-    ["kit.html", "Component kit (light)"],
+    ["kit.html", "Component kit"],
     ["kit.dark.html", "Component kit (dark)"],
     ["artifacts/landing.html", "Landing page"],
     ["artifacts/email.html", "Email"],
