@@ -288,6 +288,7 @@ export async function startBrandExtraction(
   } = opts;
   const id = newBrandId(url);
   const projectId = brandProjectId(id);
+  const conversationId = randomId();
   const host = hostnameOf(url);
   const now = Date.now();
   const locale = normalizeBrandKitLocale(opts.locale);
@@ -300,6 +301,7 @@ export async function startBrandExtraction(
     updatedAt: now,
     status: 'extracting',
     projectId,
+    extractionConversationId: conversationId,
     locale,
     extractionAttemptId,
   };
@@ -374,7 +376,6 @@ export async function startBrandExtraction(
         console.warn(`[brand] failed to link draft design system to project for ${id}`, err);
       }
     }
-    const conversationId = randomId();
     insertConversation(db, {
       id: conversationId,
       projectId,

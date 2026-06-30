@@ -348,6 +348,9 @@ export interface Dict {
   'settings.amrCancelSignIn': string;
   'settings.amrAccountStatus': string;
   'settings.amrConsole': string;
+  'settings.amrBalance': string;
+  'settings.amrPlan': string;
+  'settings.amrUpgrade': string;
   'settings.amrLoginErrorCompact': string;
   'settings.apiSection': string;
   'settings.quickFillProvider': string;
@@ -3067,6 +3070,12 @@ export interface Dict {
   'fileViewer.exportImage': string;
   'fileViewer.exportPptxImages': string;
   'fileViewer.exportPptxEditable': string;
+  'fileViewer.exportPptxEditableHint': string;
+  'fileViewer.exportPptxModalSubtitle': string;
+  'fileViewer.exportPptxScreenshot': string;
+  'fileViewer.exportPptxScreenshotHint': string;
+  'fileViewer.exportPptxConfirm': string;
+  'fileViewer.exportPptxRecommended': string;
   'fileViewer.exportingProgress': string;
   'fileViewer.exportSlideProgress': string;
   'fileViewer.exportingElapsed': string;
