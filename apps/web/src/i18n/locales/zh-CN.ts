@@ -301,7 +301,7 @@ export const zhCN: Dict = {
   'settings.amrBalance': '余额',
   'settings.amrPlan': '套餐',
   'settings.amrUpgrade': '升级',
-  'settings.amrLoginErrorCompact': '登录失败。',
+  'settings.amrLoginErrorCompact': '云端登录暂时不可用，请稍后重试。',
   'settings.advanced': '高级设置',
   'settings.amrLogin': '登录',
   'settings.amrLogout': '登出',

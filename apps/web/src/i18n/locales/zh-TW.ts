@@ -301,7 +301,7 @@ export const zhTW: Dict = {
   'settings.amrBalance': '餘額',
   'settings.amrPlan': '方案',
   'settings.amrUpgrade': '升級',
-  'settings.amrLoginErrorCompact': 'Open Design 登入失敗。',
+  'settings.amrLoginErrorCompact': '雲端登入暫時無法使用，請稍後再試。',
   'settings.advanced': '進階',
   'settings.amrLogin': '登入',
   'settings.amrLogout': '登出',

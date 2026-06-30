@@ -1850,7 +1850,9 @@ function OnboardingView({
       }
       if (!loginResult.ok && !loginResult.alreadyRunning) {
         resolveAmrAuthTracking(analytics.track, 'failed', 'spawn_failed');
-        setAmrLoginError(loginResult.error || t('settings.amrLoginErrorCompact'));
+        // Never surface the raw daemon error (e.g. "vela binary not found…") to
+        // users — always show the friendly, de-jargoned cloud sign-in message.
+        setAmrLoginError(t('settings.amrLoginErrorCompact'));
         return;
       }
       if (await pollAmrLoginCompletion()) {
@@ -2292,6 +2294,9 @@ function OnboardingView({
                   setRuntime('local');
                   onModeChange('daemon');
                   void scanCliAgents({ preferExisting: true });
+                  // The cloud sign-in error belongs to the cloud path only;
+                  // clear it so it doesn't bleed onto the local CLI sub-page.
+                  setAmrLoginError(null);
                   setConnectExpanded('local');
                 }}
               >
@@ -2307,6 +2312,9 @@ function OnboardingView({
                   emitOnboardingClick('byok', 'select_runtime', { runtime_type: 'byok' });
                   setRuntime('byok');
                   onModeChange('api');
+                  // Same as the local path: drop the cloud sign-in error so it
+                  // doesn't follow the user onto the BYOK sub-page.
+                  setAmrLoginError(null);
                   setConnectExpanded('byok');
                 }}
               >
