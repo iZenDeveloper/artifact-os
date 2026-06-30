@@ -2552,6 +2552,7 @@ export const zhTW: Dict = {
   'nextStep.brandAiOptimizeBody': '啟動 agent 消耗模型 token，重新擷取來源內容，並就地更新這個設計系統。',
   'nextStep.brandCreateDesignTitle': '用此系統建立新設計',
   'nextStep.brandCreateDesignBody': '基於已擷取的顏色、字體、素材和設計規範建立一個新設計。',
+  'nextStep.brandCreateDesignPrompt': '用「{designSystem}」設計系統建立一個新設計。',
   'nextStep.brandContinueExtractionTitle': '繼續擷取',
   'nextStep.brandContinueExtractionBody': 'Browser 分頁完成驗證後，讀取目前頁面並繼續填充已儲存的設計系統。',
   'nextStep.brandContinueExtractionBusy': '正在繼續擷取...',

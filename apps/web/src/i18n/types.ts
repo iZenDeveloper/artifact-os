@@ -3327,6 +3327,7 @@ export interface Dict {
   'nextStep.brandAiOptimizeBody': string;
   'nextStep.brandCreateDesignTitle': string;
   'nextStep.brandCreateDesignBody': string;
+  'nextStep.brandCreateDesignPrompt': string;
   'nextStep.brandContinueExtractionTitle': string;
   'nextStep.brandContinueExtractionBody': string;
   'nextStep.brandContinueExtractionBusy': string;

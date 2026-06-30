@@ -2552,6 +2552,7 @@ export const zhCN: Dict = {
   'nextStep.brandAiOptimizeBody': '启动 agent 消耗模型 token，重新抽取来源内容，并原地更新这个设计系统。',
   'nextStep.brandCreateDesignTitle': '用此系统新建设计',
   'nextStep.brandCreateDesignBody': '基于已抽取的颜色、字体、素材和设计规范创建一个新设计。',
+  'nextStep.brandCreateDesignPrompt': '用「{designSystem}」设计系统创建一个新设计。',
   'nextStep.brandContinueExtractionTitle': '继续抽取',
   'nextStep.brandContinueExtractionBody': 'Browser 标签页完成验证后，读取当前页面并继续填充已保存的设计系统。',
   'nextStep.brandContinueExtractionBusy': '正在继续抽取...',

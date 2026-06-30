@@ -15,6 +15,7 @@ import {
   fidelityToTracking,
 } from '@open-design/contracts/analytics';
 import type { AmrModelsResponse, ChatSessionMode } from '@open-design/contracts';
+import { DEFAULT_UNSELECTED_SCENARIO_PLUGIN_ID } from '@open-design/contracts';
 import { EntryView } from './components/EntryView';
 import type { IntegrationTab } from './components/IntegrationsView';
 import { MarketplaceView } from './components/MarketplaceView';
@@ -1558,24 +1559,29 @@ function AppInner() {
 
   const handleCreateProjectFromDesignSystem = useCallback(
     async (designSystemId: string, designSystemTitle: string) => {
+      // "Create with this design system" must NOT assume a prototype. Route
+      // the click through the hidden default design router (od-default) —
+      // exactly like a free-form Home prompt — so the agent first asks (via
+      // the task-type question-form) what to build with this system instead
+      // of silently binding the web-prototype scenario + high-fidelity
+      // metadata. The preset prompt seeds the conversation and is auto-sent
+      // so the router surfaces the confirmation form immediately; `kind`
+      // stays the neutral 'other' so no surface-specific default leaks back
+      // in on the daemon side.
+      const presetPrompt = t('nextStep.brandCreateDesignPrompt', {
+        designSystem: designSystemTitle,
+      });
       await handleCreateProject({
         name: t('common.untitled'),
         skillId: null,
         designSystemId,
-        pluginId: 'example-web-prototype',
-        pluginInputs: {
-          artifactKind: 'web prototype',
-          fidelity: 'high-fidelity',
-          audience: 'product evaluators',
-          designSystem: designSystemTitle,
-          template: 'the bundled web prototype seed',
-        },
+        pluginId: DEFAULT_UNSELECTED_SCENARIO_PLUGIN_ID,
+        pluginInputs: { prompt: presetPrompt },
+        pendingPrompt: presetPrompt,
+        autoSendFirstMessage: true,
         conversationMode: 'design',
         metadata: {
-          kind: 'prototype',
-          fidelity: 'high-fidelity',
-          platform: 'responsive',
-          platformTargets: ['responsive'],
+          kind: 'other',
           nameSource: 'generated',
         },
       });

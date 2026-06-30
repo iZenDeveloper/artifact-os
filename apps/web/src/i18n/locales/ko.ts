@@ -2552,6 +2552,8 @@ export const ko: Dict = {
   'nextStep.brandAiOptimizeBody': 'Starts an agent pass that consumes model tokens, re-extracts the source, and updates this design system in place.',
   'nextStep.brandCreateDesignTitle': 'Create with this design system',
   'nextStep.brandCreateDesignBody': 'Start a new design using the extracted colors, type, assets, and system guidance.',
+  'nextStep.brandCreateDesignPrompt': 'Create a new design with the {designSystem} design system.',
+
   'nextStep.brandContinueExtractionTitle': 'Continue extraction',
   'nextStep.brandContinueExtractionBody': 'After the Browser tab is past any verification, read it and keep filling the saved kit.',
   'nextStep.brandContinueExtractionBusy': 'Continuing extraction...',
