@@ -40,11 +40,22 @@ vi.mock('../../src/components/DesignBrowserPanel', () => ({
     initialTitle,
     initialUrl,
     navigateRequest,
+    onPageSnapshotToast,
   }: {
     initialIconUrl?: string;
     initialTitle?: string;
     initialUrl?: string;
     navigateRequest?: { url: string; nonce: number };
+    onPageSnapshotToast?: (event: {
+      actionFileName?: string;
+      actionLabel?: string;
+      actionTarget?: 'design-files' | 'file';
+      elapsedSeconds?: number;
+      message: string;
+      status: 'loading' | 'success' | 'error' | 'canceled';
+      tabId: string;
+      ttlMs?: number;
+    }) => void;
   }) => (
     <div
       data-testid="design-browser-panel"
@@ -53,7 +64,24 @@ vi.mock('../../src/components/DesignBrowserPanel', () => ({
       data-initial-url={initialUrl ?? ''}
       data-navigate-url={navigateRequest?.url ?? ''}
       data-navigate-nonce={navigateRequest?.nonce ?? ''}
-    />
+    >
+      <button
+        type="button"
+        data-testid="emit-browser-snapshot-success"
+        onClick={() => onPageSnapshotToast?.({
+          actionFileName: 'browser-archive/example/manifest.json',
+          actionLabel: 'View Design Files',
+          actionTarget: 'design-files',
+          elapsedSeconds: 0,
+          message: 'Saved page snapshot (HTML + CSS).',
+          status: 'success',
+          tabId: '__browser__:1',
+          ttlMs: 8000,
+        })}
+      >
+        emit snapshot success
+      </button>
+    </div>
   ),
   labelFromUrl: (url: string) => {
     try {
@@ -745,6 +773,53 @@ describe('FileWorkspace launcher tab creation', () => {
       'New Terminal',
       'Side chat',
     ]);
+  });
+
+  it('opens Design Files from the browser snapshot toast action instead of the manifest file', async () => {
+    const onTabsStateChange = vi.fn();
+    const browserTab = {
+      id: '__browser__:1',
+      insertAfter: '__design_files__',
+      label: 'Browser',
+      title: 'Example',
+      url: 'https://example.com',
+    };
+
+    render(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[]}
+        liveArtifacts={[]}
+        onRefreshFiles={vi.fn()}
+        isDeck={false}
+        tabsState={{
+          tabs: [],
+          active: '__browser__:1',
+          browserTabs: [browserTab],
+        }}
+        onTabsStateChange={onTabsStateChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('emit-browser-snapshot-success'));
+    await screen.findByRole('button', { name: 'View Design Files' });
+    const toastAction = document.querySelector<HTMLButtonElement>('.od-toast-action');
+    if (!toastAction) throw new Error('Could not find browser snapshot toast action');
+    await act(async () => {
+      fireEvent.click(toastAction);
+    });
+
+    await waitFor(() => {
+      expect(onTabsStateChange).toHaveBeenCalledWith({
+        tabs: [],
+        active: DESIGN_FILES_TAB,
+        browserTabs: [browserTab],
+      });
+    });
+    expect(onTabsStateChange).not.toHaveBeenCalledWith(
+      expect.objectContaining({ active: 'browser-archive/example/manifest.json' }),
+    );
   });
 
   it('anchors a new browser after the visible tab tail', async () => {

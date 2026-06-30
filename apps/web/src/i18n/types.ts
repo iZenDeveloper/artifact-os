@@ -105,6 +105,7 @@ export interface Dict {
   'designBrowser.status.pageSnapshotUnsupported': string;
   'designBrowser.status.pageSnapshotFailed': string;
   'designBrowser.status.pageSnapshotSaved': string;
+  'designBrowser.status.viewDesignFiles': string;
   'designBrowser.status.downloadAssistHint': string;
   'designBrowser.status.desktopDataUnavailable': string;
   'designBrowser.status.browserDataCleared': string;
@@ -2317,6 +2318,12 @@ export interface Dict {
   'project.brandReadyEditManually': string;
   'project.brandReadyPreviewOpened': string;
   'project.metaFreeform': string;
+  'project.typePrototype': string;
+  'project.typeDeck': string;
+  'project.typeTemplate': string;
+  'project.typeImage': string;
+  'project.typeVideo': string;
+  'project.typeAudio': string;
   'project.customInstructions': string;
   'project.customInstructionsPlaceholder': string;
   'project.instructionsActive': string;

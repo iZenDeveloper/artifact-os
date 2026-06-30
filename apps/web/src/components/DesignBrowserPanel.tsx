@@ -182,12 +182,14 @@ type BrowserSavingAction = 'archive' | 'brief' | 'screenshot';
 type BrowserStatusMessage = string | {
   actionFileName?: string;
   actionLabel?: string;
+  actionTarget?: 'design-files' | 'file';
   message: string;
   source?: 'page-snapshot';
 };
 export interface BrowserPageSnapshotToastEvent {
   actionFileName?: string;
   actionLabel?: string;
+  actionTarget?: 'design-files' | 'file';
   elapsedSeconds?: number;
   message: string;
   onCancel?: () => void;
@@ -213,6 +215,7 @@ type WebviewElement = HTMLElement & {
   loadURL?(url: string): void | Promise<void>;
   reload(): void;
   reloadIgnoringCache(): void;
+  stop?(): void;
 };
 
 type WebviewNavigationEvent = Event & {
@@ -238,6 +241,7 @@ interface DesignBrowserPanelProps {
   projectId: string;
   resolvedDir?: string | null;
   onOpenFile: (name: string) => void;
+  onOpenDesignFiles?: () => void;
   onRefreshFiles: () => Promise<void> | void;
   onPageInfoChange?: (info: BrowserPageInfo) => void;
   previewComments?: PreviewComment[];
@@ -732,6 +736,7 @@ export function DesignBrowserPanel({
   projectId,
   resolvedDir,
   onOpenFile,
+  onOpenDesignFiles,
   onPageInfoChange,
   onRefreshFiles,
   previewComments = EMPTY_PREVIEW_COMMENTS,
@@ -1095,7 +1100,11 @@ export function DesignBrowserPanel({
     setSuggestionsOpen(false);
     setMenuOpen(true);
     setDownloadAttentionNonce(attentionRequest.nonce);
-    setStatusMessage(t('designBrowser.status.downloadAssistHint'));
+    if (pageSnapshotToastRef.current) {
+      setStatusMessage(null);
+    } else {
+      setStatusMessage(t('designBrowser.status.downloadAssistHint'));
+    }
   }, [attentionRequest, t]);
 
   const syncFromFallbackFrame = useCallback((frame: HTMLIFrameElement | null) => {
@@ -1547,6 +1556,11 @@ export function DesignBrowserPanel({
     setSavingAction('archive', true);
     setDownloadAttentionNonce(null);
     setMenuOpen(false);
+    // A page that never finishes loading (perpetual spinner) leaves the
+    // capture waiting forever. Halt the pending load first so we snapshot the
+    // DOM that already rendered instead of blocking on a load that may never
+    // settle — what the user would otherwise do by hand via the Stop button.
+    stopLoading();
     setStatusMessage({
       message: t('designBrowser.status.pageSnapshotStarted'),
       source: 'page-snapshot',
@@ -1609,15 +1623,20 @@ export function DesignBrowserPanel({
       if (options.openAfterSave !== false) onOpenFile(manifestFile);
       const message = t('designBrowser.status.pageSnapshotSaved');
       const elapsedSeconds = pageSnapshotRunElapsedSeconds(run);
+      const canOpenDesignFiles = Boolean(onOpenDesignFiles);
       setStatusMessage({
         actionFileName: manifestFile,
-        actionLabel: t('workspace.designFiles'),
+        actionLabel: canOpenDesignFiles
+          ? t('designBrowser.status.viewDesignFiles')
+          : t('workspace.designFiles'),
+        actionTarget: canOpenDesignFiles ? 'design-files' : 'file',
         message,
         source: 'page-snapshot',
       });
       emitPageSnapshotToast({
         actionFileName: manifestFile,
-        actionLabel: t('workspace.designFiles'),
+        actionLabel: t('designBrowser.status.viewDesignFiles'),
+        actionTarget: 'design-files',
         elapsedSeconds,
         message,
         status: 'success',
@@ -1731,6 +1750,21 @@ export function DesignBrowserPanel({
       setLoadUrl((url) => `${url}${url.includes('?') ? '&' : '?'}odReload=${Date.now()}`);
     }
     setMenuOpen(false);
+  }
+
+  // Halt any pending navigation/load, the way Chrome's address-bar X does. A
+  // page stuck mid-load (perpetual spinner) otherwise blocks the user from
+  // acting on what already rendered — and can wedge the snapshot capture below.
+  function stopLoading() {
+    if (!webviewNode) return;
+    try {
+      // <webview>.stop() throws if the guest hasn't attached yet; guard like
+      // reload() does.
+      webviewNode.stop?.();
+    } catch {
+      // Pre-dom-ready: nothing to stop.
+    }
+    setIsLoading(false);
   }
 
   async function cancelBrowserPicker() {
@@ -2083,12 +2117,11 @@ export function DesignBrowserPanel({
             <Icon name="chevron-right" size={16} />
           </IconTooltipButton>
           <IconTooltipButton
-            label={isLoading ? 'Loading...' : 'Reload'}
-            className={isLoading ? 'is-spinning' : ''}
+            label={isLoading ? 'Stop loading' : 'Reload'}
             disabled={isBlank}
-            onClick={() => reload(false)}
+            onClick={() => (isLoading ? stopLoading() : reload(false))}
           >
-            <Icon name="reload" size={15} />
+            <Icon name={isLoading ? 'close' : 'reload'} size={isLoading ? 16 : 15} />
           </IconTooltipButton>
           <BrowserViewportControls
             viewport={viewport}
@@ -2278,7 +2311,11 @@ export function DesignBrowserPanel({
               type="button"
               className="db-status-action"
               onClick={() => {
-                onOpenFile(statusAction.actionFileName ?? '');
+                if (statusAction.actionTarget === 'design-files' && onOpenDesignFiles) {
+                  onOpenDesignFiles();
+                } else {
+                  onOpenFile(statusAction.actionFileName ?? '');
+                }
                 setStatusMessage(null);
               }}
             >

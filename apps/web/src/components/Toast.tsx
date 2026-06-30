@@ -11,13 +11,12 @@
 // the real upstream message alongside the daemon's category label.
 
 import { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
 
 import { Icon } from './Icon';
-import { toastSlideUp } from '../motion';
 
 export interface ToastProps {
   message: string;
+  className?: string;
   details?: string | null;
   actionLabel?: string | null;
   actionAriaLabel?: string;
@@ -58,6 +57,7 @@ const TONE_ICON: Record<NonNullable<ToastProps['tone']>, 'check' | 'close' | 'sp
 
 export function Toast({
   message,
+  className,
   details,
   actionLabel,
   actionAriaLabel,
@@ -93,15 +93,18 @@ export function Toast({
 
   const iconName = TONE_ICON[tone];
 
+  // Animation is owned entirely by CSS (`.od-toast` `od-toast-in` on mount,
+  // `.leaving` `od-toast-out` on exit). A previous motion/react `<motion.div>`
+  // ran a SECOND entrance (opacity + scale 0.95→1) on top of the CSS keyframe,
+  // which read as a "flash then grow" pop-in; worse, motion writes an inline
+  // `transform`, clobbering the `translateX(-50%)` centering and leaving the
+  // toast off-centre. Keep this a plain div so the CSS keyframes are the single
+  // source of truth for both motion and centering.
   return (
-    <motion.div
-      className={`od-toast tone-${tone} placement-${placement}${leaving ? ' leaving' : ''}`}
+    <div
+      className={`od-toast tone-${tone} placement-${placement}${className ? ` ${className}` : ''}${leaving ? ' leaving' : ''}`}
       role={role}
       aria-live={role === 'alert' ? 'assertive' : 'polite'}
-      variants={toastSlideUp}
-      initial="hidden"
-      animate="visible"
-      exit="exit"
     >
       <div className="od-toast-body">
         {iconName ? (
@@ -145,6 +148,6 @@ export function Toast({
           Dismiss
         </button>
       ) : null}
-    </motion.div>
+    </div>
   );
 }

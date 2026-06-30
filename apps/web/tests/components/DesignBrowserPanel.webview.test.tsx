@@ -762,6 +762,25 @@ describe('DesignBrowserPanel <webview> navigation', () => {
     expect(webview.executeJavaScript).not.toHaveBeenCalled();
   });
 
+  it('does not show the bottom Download Page hint when the workspace owns snapshot toasts', async () => {
+    const attentionRequest = { action: 'download-page' as const, nonce: 1 };
+    render(
+      <DesignBrowserPanel
+        projectId="proj-webview-download-attention-parent-toast"
+        initialTitle="Example"
+        initialUrl="https://example.com"
+        attentionRequest={attentionRequest}
+        onOpenFile={() => {}}
+        onRefreshFiles={() => {}}
+        onPageSnapshotToast={() => {}}
+      />,
+    );
+
+    const downloadItem = await screen.findByRole('menuitem', { name: 'Download Page' });
+    expect(downloadItem.classList.contains('is-attention')).toBe(true);
+    expect(screen.queryByText(/click Download Page here/)).toBeNull();
+  });
+
   it('does not render saved browser comment markers in the external browser', async () => {
     const previewComments = [{
       id: 'comment-1',
@@ -828,5 +847,89 @@ describe('DesignBrowserPanel <webview> navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Screenshot' }));
 
     await waitFor(() => expect(capturePage).toHaveBeenCalledTimes(1));
+  });
+
+  it('turns the reload button into a stop control while the page is loading', () => {
+    const { container } = render(
+      <DesignBrowserPanel
+        projectId="proj-webview-stop-loading"
+        initialTitle="Example"
+        initialUrl="https://example.com"
+        onOpenFile={() => {}}
+        onRefreshFiles={() => {}}
+      />,
+    );
+    const webview = container.querySelector('webview.db-webview') as HTMLElement & {
+      stop?: ReturnType<typeof vi.fn>;
+    };
+    const stop = vi.fn();
+    webview.stop = stop;
+
+    // Idle: the control reloads.
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Stop loading' })).toBeNull();
+
+    // While loading, the same control becomes a Chrome-style stop affordance.
+    act(() => {
+      webview.dispatchEvent(new Event('did-start-loading'));
+    });
+    const stopButton = screen.getByRole('button', { name: 'Stop loading' });
+    expect(screen.queryByRole('button', { name: 'Reload' })).toBeNull();
+
+    fireEvent.click(stopButton);
+
+    // Clicking halts the in-flight navigation and returns to the reload control.
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeTruthy();
+  });
+
+  it('stops a stuck load before capturing the page snapshot', async () => {
+    vi.mocked(writeProjectTextFile).mockImplementation(async (_projectId, name) => ({
+      kind: 'code',
+      mime: 'application/json',
+      mtime: 1,
+      name,
+      size: 1,
+      type: 'file',
+    }));
+    const { container } = render(
+      <DesignBrowserPanel
+        projectId="proj-webview-download-stops-load"
+        initialTitle="Example"
+        initialUrl="https://example.com"
+        onOpenFile={() => {}}
+        onRefreshFiles={() => {}}
+      />,
+    );
+    const webview = container.querySelector('webview.db-webview') as HTMLElement & {
+      executeJavaScript?: ReturnType<typeof vi.fn>;
+      stop?: ReturnType<typeof vi.fn>;
+    };
+    const stop = vi.fn();
+    webview.stop = stop;
+    webview.executeJavaScript = vi.fn().mockResolvedValue({
+      title: 'Example',
+      url: 'https://example.com',
+      html: '<!doctype html><html><body>Example</body></html>',
+      css: '',
+      resources: [],
+    });
+
+    // The page is wedged mid-load (perpetual top-left spinner), which is exactly
+    // when Download Page would otherwise hang waiting on a load that never ends.
+    act(() => {
+      webview.dispatchEvent(new Event('did-start-loading'));
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Browser menu' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Download Page' }));
+
+    // The download halts the in-flight load first, then captures the current DOM.
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(webview.executeJavaScript).toHaveBeenCalledTimes(1);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Saved page snapshot/)).toBeTruthy();
+    });
   });
 });

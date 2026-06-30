@@ -434,6 +434,7 @@ type WorkspaceToastTone = 'default' | 'success' | 'error' | 'loading';
 
 interface WorkspaceActionToast {
   actionLabel?: string | null;
+  className?: string;
   details?: string | null;
   message: string;
   onAction?: () => void;
@@ -1073,15 +1074,21 @@ export function FileWorkspace({
       : event.actionLabel;
     const onAction = event.status === 'loading'
       ? event.onCancel
-      : event.actionFileName
+      : event.actionTarget === 'design-files'
         ? () => {
-            openFileRef.current(event.actionFileName!);
+            setPersistedActive(DESIGN_FILES_TAB);
             setBrowserSnapshotToast(null);
           }
-        : undefined;
+        : event.actionFileName
+          ? () => {
+              openFileRef.current(event.actionFileName!);
+              setBrowserSnapshotToast(null);
+            }
+          : undefined;
     setBrowserSnapshotToast({
       actionLabel,
       details,
+      className: 'od-toast-browser-snapshot',
       message: event.message,
       onAction,
       role: event.status === 'error' ? 'alert' : 'status',
@@ -2274,6 +2281,7 @@ export function FileWorkspace({
           message={browserSnapshotToast.message}
           details={browserSnapshotToast.details}
           actionLabel={browserSnapshotToast.actionLabel}
+          className={browserSnapshotToast.className}
           onAction={browserSnapshotToast.onAction}
           role={browserSnapshotToast.role}
           tone={browserSnapshotToast.tone}
@@ -2330,6 +2338,7 @@ export function FileWorkspace({
               onRequestBrowserUsePrompt={onRequestBrowserUsePrompt}
               onPageSnapshotToast={handleBrowserPageSnapshotToast}
               onRefreshFiles={onRefreshFiles}
+              onOpenDesignFiles={() => setPersistedActive(DESIGN_FILES_TAB)}
               onOpenFile={openFile}
               onPageInfoChange={(info) => updateBrowserTabInfo(browserTab.id, info)}
             />
