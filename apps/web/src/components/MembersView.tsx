@@ -98,7 +98,11 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
   }
 
   function sendInvites(rows: PendingInvite[]) {
+    // Each invite reserves a seat, so grow the team to cover it — used seats
+    // must never exceed the total (no "8/3"). Monthly total scales with it.
+    const nextUsed = members.length + pendingInvites.length + rows.length;
     setPendingInvites((prev) => [...prev, ...rows]);
+    setTeamSeats((current) => Math.max(current, nextUsed));
     setToast(`已向 ${rows.length} 位同事发送邀请邮件`);
   }
 
@@ -125,7 +129,8 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
   }
 
   function adjustTeamSeats(delta: number) {
-    setTeamSeats((current) => Math.max(MIN_TEAM_SEATS, current + delta));
+    const floor = Math.max(MIN_TEAM_SEATS, seatsUsed);
+    setTeamSeats((current) => Math.max(floor, current + delta));
   }
 
   function openSeatPurchase() {
@@ -188,7 +193,7 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
               <button
                 type="button"
                 onClick={() => adjustTeamSeats(-1)}
-                disabled={teamSeats <= MIN_TEAM_SEATS}
+                disabled={teamSeats <= Math.max(MIN_TEAM_SEATS, seatsUsed)}
                 aria-label="减少席位"
               >
                 -
