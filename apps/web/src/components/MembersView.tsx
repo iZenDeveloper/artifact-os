@@ -80,6 +80,9 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
   const seatsTotal = isSolo ? 1 : teamSeats;
   // tier.tokens is the per-seat monthly price (USD); team total = price × seats.
   const teamMonthlyTotal = teamTier.tokens * teamSeats;
+  // When buying seats (stepper "+" or an over-capacity invite), the floor must
+  // cover already-used seats plus any queued invites, and add at least one.
+  const seatPurchaseMin = Math.max(teamSeats + 1, seatsUsed + queuedInvites.length);
 
   function setRole(id: string, role: Role) {
     setRoles((prev) => ({ ...prev, [id]: role }));
@@ -92,17 +95,22 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
     if (isSolo) {
       setQueuedInvites(rows);
       setUpgradeOpen(true);
+      return;
+    }
+    // Team: every invite needs a seat. If the invites would exceed the
+    // purchased seats, buy more first — so "used > total" (4/3) can't happen;
+    // the queued invites are sent once the purchase confirms.
+    const wouldUse = members.length + pendingInvites.length + rows.length;
+    if (wouldUse > teamSeats) {
+      setQueuedInvites(rows);
+      setUpgradeOpen(true);
     } else {
       sendInvites(rows);
     }
   }
 
   function sendInvites(rows: PendingInvite[]) {
-    // Each invite reserves a seat, so grow the team to cover it — used seats
-    // must never exceed the total (no "8/3"). Monthly total scales with it.
-    const nextUsed = members.length + pendingInvites.length + rows.length;
     setPendingInvites((prev) => [...prev, ...rows]);
-    setTeamSeats((current) => Math.max(current, nextUsed));
     setToast(`已向 ${rows.length} 位同事发送邀请邮件`);
   }
 
@@ -339,8 +347,8 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
         open={upgradeOpen}
         onClose={() => setUpgradeOpen(false)}
         onConfirm={handleUpgradeConfirm}
-        initialSeatCount={isSolo ? teamSeats : teamSeats + 1}
-        minSeatCount={isSolo ? MIN_TEAM_SEATS : teamSeats + 1}
+        initialSeatCount={isSolo ? teamSeats : seatPurchaseMin}
+        minSeatCount={isSolo ? MIN_TEAM_SEATS : seatPurchaseMin}
         mode={isSolo ? 'upgrade' : 'seats'}
       />
       {confettiOn ? <Confetti /> : null}
