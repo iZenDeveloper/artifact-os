@@ -585,10 +585,18 @@
     border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
     color 160ms cubic-bezier(0.23, 1, 0.32, 1);
 }
-.media-provider-nav-item:hover {
+/* :not(:disabled) keeps these above the global `button:hover` rule in
+   primitives.css, which would otherwise paint a border on hover and wash
+   the active row's accent tint back to --bg-subtle. */
+.media-provider-nav-item:hover:not(:disabled) {
   background: var(--bg-subtle);
+  border-color: transparent;
 }
 .media-provider-nav-item.active {
+  background: color-mix(in srgb, var(--accent, #d46445) 9%, var(--bg-panel));
+  border-color: color-mix(in srgb, var(--accent, #d46445) 24%, var(--border));
+}
+.media-provider-nav-item.active:hover:not(:disabled) {
   background: color-mix(in srgb, var(--accent, #d46445) 9%, var(--bg-panel));
   border-color: color-mix(in srgb, var(--accent, #d46445) 24%, var(--border));
 }
@@ -751,20 +759,19 @@
   margin: 0 0 14px;
   max-width: 760px;
 }
-.media-provider-tabs {
-  max-width: 760px;
-  margin: 0 0 12px;
-}
 .protocol-chips--providers .protocol-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
-.media-provider-tabs .protocol-chip-group {
-  align-items: flex-start;
+.media-provider-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
-.media-provider-tabs .protocol-chip-group-label {
-  padding-top: 5px;
+.media-provider-nav-text {
+  min-width: 0;
 }
 .media-provider-chip-status {
   width: 6px;

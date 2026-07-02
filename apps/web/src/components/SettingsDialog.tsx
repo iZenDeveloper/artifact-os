@@ -6598,14 +6598,10 @@ function MediaProvidersSection({
           </button>
         </div>
       ) : null}
-      <div
-        className="protocol-chips protocol-chips--providers media-provider-tabs"
-        role="tablist"
-        aria-label="Media providers"
-      >
-        <div className="protocol-chip-group protocol-chip-group--providers">
-          <span className="protocol-chip-group-label">模型供应商</span>
-          <div className="protocol-chip-group-options">
+      <div className="media-provider-split">
+        <nav className="media-provider-nav" aria-label="Media providers">
+          <div className="media-provider-nav-group" role="tablist" aria-orientation="vertical">
+            <span className="media-provider-nav-title" aria-hidden>模型供应商</span>
             {availableProviders.map((provider) => {
               const active = activeProvider?.id === provider.id;
               const entry = cfg.mediaProviders?.[provider.id];
@@ -6618,22 +6614,22 @@ function MediaProvidersSection({
                   type="button"
                   role="tab"
                   aria-selected={active}
-                  className={'protocol-chip' + (active ? ' active' : '')}
+                  className={'media-provider-nav-item' + (active ? ' active' : '')}
                   title={`${provider.label} · ${statusLabel}`}
                   onClick={() => setActiveProviderId(provider.id)}
                 >
-                  <span
-                    className={`media-provider-chip-status${connected ? ' is-connected' : ' is-disconnected'}`}
-                    aria-hidden
-                  />
-                  <span>{provider.label}</span>
+                  <span className="media-provider-nav-text">
+                    <strong>{provider.label}</strong>
+                    <small>{providerCapabilityLabel(provider)}</small>
+                  </span>
+                  {connected ? <span className="media-provider-status-dot" aria-hidden /> : null}
                   <VisuallyHidden>{statusLabel}</VisuallyHidden>
                 </button>
               );
             })}
           </div>
-        </div>
-      </div>
+        </nav>
+        <div className="media-provider-pane">
       {activeProvider && activeEntry ? (
         <article className="media-provider-detail">
           <div className="media-provider-detail-head">
@@ -6819,6 +6815,8 @@ function MediaProvidersSection({
           </ul>
         </details>
       ) : null}
+        </div>
+      </div>
     </section>
   );
 }
