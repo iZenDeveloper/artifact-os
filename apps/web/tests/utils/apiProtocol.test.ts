@@ -27,6 +27,10 @@ describe('api protocol labels', () => {
     expect(agentModelDisplayName('claude', 'Claude Code', 'default')).toBe('Claude');
   });
 
+  it('labels OpenCode-backed BYOK protocol agent ids', () => {
+    expect(agentDisplayName('senseaudio-api')).toBe('SenseAudio API via OpenCode');
+  });
+
   it('normalizes Qoder local CLI ids, aliases, and executable paths', () => {
     expect(agentDisplayName('qoder')).toBe('Qoder');
     expect(exactAgentDisplayName('qodercli')).toBe('Qoder');
