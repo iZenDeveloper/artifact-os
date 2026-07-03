@@ -22,6 +22,7 @@ import {
   composeSystemPrompt,
   detectDeckIntentSignal,
   detectMediaIntentSignal,
+  detectPlatformIntentSignal,
   renderConnectedExternalMcpDirective,
   resolveExclusiveSurface,
 } from './prompts/system.js';
@@ -3382,6 +3383,7 @@ export async function startServer({
     byokMediaDefaults,
     freeformDeckSignal,
     mediaHintSignal,
+    platformHintSignal,
   }) => {
     const project =
       typeof projectId === 'string' && projectId
@@ -3945,6 +3947,7 @@ export async function startServer({
       userInstructions,
       freeformDeckSignal,
       mediaHintSignal,
+      platformHintSignal,
       // Rollout switch for the rewritten single-document core charter.
       // Default stays on the classic layered stack; flip per-daemon to A/B.
       promptCoreVariant: process.env.OD_PROMPT_CORE === 'slim' ? 'slim' : undefined,
@@ -4450,6 +4453,7 @@ export async function startServer({
         // maybe-deck framework injected.
         freeformDeckSignal: detectDeckIntentSignal(message, currentPrompt),
         mediaHintSignal: detectMediaIntentSignal(message, currentPrompt),
+        platformHintSignal: detectPlatformIntentSignal(message, currentPrompt),
       });
 
     run.designSystemId = designSystemSelection?.id ?? null;
