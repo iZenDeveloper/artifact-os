@@ -132,6 +132,7 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
       aria-label="Primary"
       aria-hidden={open ? undefined : true}
     >
+      <div className="entry-nav-rail__panel">
       <div className="entry-nav-rail__group">
         {cloudWorkspace ? (
           <div className="entry-nav-rail__account">
@@ -230,15 +231,7 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
             ) : null}
           </div>
         ) : (
-          <button
-            type="button"
-            className="entry-nav-rail__local-logo"
-            onClick={() => selectView('home')}
-            aria-label={brandLabel}
-            data-testid="entry-local-logo"
-          >
-            <img src="/brand-icon.svg" alt="" aria-hidden />
-          </button>
+          null
         )}
         <div className="entry-nav-rail__search" aria-hidden>
           <Icon name="search" size={14} />
@@ -264,7 +257,7 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
         </NavButton>
 
         {cloudWorkspace ? (
-          <>
+          <div className="entry-nav-rail__team-section">
             <div className="entry-nav-rail__team-wrap">
               <button
                 type="button"
@@ -356,41 +349,40 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
             >
               <Icon name="grid" size={18} />
             </NavButton>
-          </>
-        ) : null}
-{null /* demo: hide content-plan nav item */}
-        {cloudWorkspace && canManageWorkspace ? (
-          <>
-            <NavButton
-              active={view === 'members'}
-              ariaLabel="成员"
-              tooltip="成员"
-              onClick={() => selectView('members')}
-              testId="entry-nav-members"
-            >
-              <Icon name="share" size={18} />
-            </NavButton>
-            <NavButton
-              active={view === 'dashboard'}
-              ariaLabel="数据大盘"
-              tooltip="数据大盘"
-              onClick={() => selectView('dashboard')}
-              testId="entry-nav-dashboard"
-            >
-              <Icon name="kanban" size={18} />
-            </NavButton>
-            {canOwnWorkspace ? (
-              <NavButton
-                active={view === 'workspace-settings'}
-                ariaLabel="Workspace 设置"
-                tooltip="Workspace 设置"
-                onClick={() => selectView('workspace-settings')}
-                testId="entry-nav-workspace-settings"
-              >
-                <Icon name="settings" size={18} />
-              </NavButton>
+            {canManageWorkspace ? (
+              <>
+                <NavButton
+                  active={view === 'members'}
+                  ariaLabel="成员"
+                  tooltip="成员"
+                  onClick={() => selectView('members')}
+                  testId="entry-nav-members"
+                >
+                  <Icon name="share" size={18} />
+                </NavButton>
+                <NavButton
+                  active={view === 'dashboard'}
+                  ariaLabel="数据大盘"
+                  tooltip="数据大盘"
+                  onClick={() => selectView('dashboard')}
+                  testId="entry-nav-dashboard"
+                >
+                  <Icon name="kanban" size={18} />
+                </NavButton>
+                {canOwnWorkspace ? (
+                  <NavButton
+                    active={view === 'workspace-settings'}
+                    ariaLabel="Workspace 设置"
+                    tooltip="Workspace 设置"
+                    onClick={() => selectView('workspace-settings')}
+                    testId="entry-nav-workspace-settings"
+                  >
+                    <Icon name="settings" size={18} />
+                  </NavButton>
+                ) : null}
+              </>
             ) : null}
-          </>
+          </div>
         ) : null}
 
         {!cloudWorkspace ? (
@@ -422,6 +414,7 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
         <div className="entry-rail-actions">
           {footerExtra}
         </div>
+      </div>
       </div>
 
       <InviteDialog

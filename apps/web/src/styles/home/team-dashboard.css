@@ -12,23 +12,9 @@
   align-items: center;
 }
 
-.team-dashboard__subtitle {
-  margin: 5px 0 0;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.team-dashboard__access {
-  display: inline-flex;
-  align-items: center;
-  height: 24px;
-  padding: 0 9px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--bg-panel);
-  color: var(--text-muted);
-  font-size: 11.5px;
-  font-weight: 650;
+.team-dashboard .entry-section__title {
+  font-size: var(--font-size-20, 20px);
+  line-height: 1.25;
 }
 
 .team-dashboard__hero {
@@ -49,7 +35,7 @@
 .team-dashboard__hero h2 {
   margin: 0;
   color: var(--text-strong);
-  font-size: 16px;
+  font-size: var(--font-size-14, 14px);
   line-height: 1.25;
 }
 
@@ -123,14 +109,22 @@
 .team-dashboard__member-credit button {
   height: 34px;
   padding: 0 14px;
-  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border));
-  border-radius: 10px;
-  background: var(--accent);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-large, 8px);
+  background: var(--accent-strong);
   color: var(--accent-contrast);
   font: inherit;
   font-size: 12.5px;
   font-weight: 750;
   white-space: nowrap;
+}
+
+.team-dashboard__recharge-callout button:hover:not(:disabled),
+.team-dashboard__credit-row button:hover:not(:disabled),
+.team-dashboard__member-credit button:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--border-selected);
+  filter: none;
 }
 
 .team-dashboard__credit-card {
@@ -145,7 +139,7 @@
 
 .team-dashboard__credit-table {
   display: grid;
-  gap: 8px;
+  gap: 0;
 }
 
 .team-dashboard__credit-row {
@@ -153,10 +147,14 @@
   grid-template-columns: minmax(160px, 1fr) 96px 112px 76px auto;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--bg-panel);
+  padding: 14px 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.team-dashboard__credit-row + .team-dashboard__credit-row {
+  border-top: 1px solid var(--border-soft);
 }
 
 .team-dashboard__credit-row > div {
@@ -169,7 +167,7 @@
 .team-dashboard__credit-row strong,
 .team-dashboard__member-credit strong {
   color: var(--text-strong);
-  font-size: 13.5px;
+  font-size: var(--font-size-13, 13px);
   line-height: 1.2;
 }
 
@@ -188,16 +186,26 @@
   height: 24px;
   padding: 0 8px;
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, #10b981 10%, var(--bg-panel));
-  color: #047857;
+  background: var(--brand-soft);
+  color: var(--brand-text);
   font-size: 11px;
   font-style: normal;
   font-weight: 750;
 }
 
-.team-dashboard__credit-row em.is-low {
-  background: color-mix(in srgb, var(--accent) 12%, var(--bg-panel));
-  color: var(--accent);
+.team-dashboard__credit-row em.is-brand {
+  background: var(--brand-soft);
+  color: var(--brand-text);
+}
+
+.team-dashboard__credit-row em.is-muted {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.team-dashboard__credit-row em.is-critical {
+  background: var(--red-bg);
+  color: var(--red);
 }
 
 .team-dashboard__member-credit {
@@ -232,36 +240,39 @@
 
 .team-dashboard__metric-card {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-areas:
-    "icon label"
-    "value value"
-    "delta delta";
+    "icon label delta"
+    "value value value";
+  /* Center the content block vertically instead of top-packing it. */
+  align-content: center;
   gap: 10px 11px;
   min-height: 124px;
   padding: 15px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-panel);
-  transition: border-color 120ms var(--ease-out), box-shadow 120ms var(--ease-out);
+  transition: background-color 120ms var(--ease-out), border-color 120ms var(--ease-out), box-shadow 120ms var(--ease-out);
 }
 
 .team-dashboard__metric-card:hover {
+  background: var(--bg-app);
   border-color: var(--border-strong);
   box-shadow: 0 8px 22px color-mix(in srgb, var(--text) 4%, transparent);
 }
 
 .team-dashboard__metric-icon {
   grid-area: icon;
+  align-self: center;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
-  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg-panel));
-  color: var(--accent);
+  border: 0;
+  border-radius: var(--radius-large, 8px);
+  background: var(--accent-tint);
+  color: var(--text-strong);
 }
 
 .team-dashboard__metric-label {
@@ -284,11 +295,13 @@
 
 .team-dashboard__metric-delta {
   grid-area: delta;
+  align-self: center;
+  justify-self: end;
   width: fit-content;
   padding: 4px 8px;
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, #10b981 10%, var(--bg-panel));
-  color: #047857;
+  background: color-mix(in srgb, var(--brand) 8%, var(--bg-panel));
+  color: var(--brand-text);
   font-size: 11px;
   font-weight: 750;
 }
@@ -313,14 +326,8 @@
 .team-dashboard__token-head h2 {
   margin: 0;
   color: var(--text-strong);
-  font-size: 17px;
-  line-height: 1.2;
-}
-
-.team-dashboard__token-head p {
-  margin: 5px 0 0;
-  color: var(--text-muted);
-  font-size: 12.5px;
+  font-size: var(--font-size-14, 14px);
+  line-height: 1.25;
 }
 
 .team-dashboard__token-head > span {
@@ -339,24 +346,25 @@
 
 .team-dashboard__token-list {
   display: grid;
-  gap: 8px;
+  gap: 0;
+  border-top: 1px solid var(--border-soft);
 }
 
 .team-dashboard__token-row {
-  --member-rank-color: var(--accent);
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 11px;
-  row-gap: 8px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  padding: 13px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border-soft);
+  border-radius: 0;
   background: var(--bg-panel);
+  transition: background-color 120ms var(--ease-out), color 120ms var(--ease-out);
 }
 
 .team-dashboard__token-row:hover {
-  background: var(--bg-subtle);
+  background: var(--text-strong);
 }
 
 .team-dashboard__token-rank {
@@ -366,10 +374,16 @@
   width: 24px;
   height: 24px;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--member-rank-color) 14%, var(--bg-subtle));
-  color: var(--member-rank-color);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: 800;
+  transition: background-color 120ms var(--ease-out), color 120ms var(--ease-out);
+}
+
+.team-dashboard__token-row:hover .team-dashboard__token-rank {
+  background: var(--text-strong);
+  color: var(--bg);
 }
 
 .team-dashboard__token-person {
@@ -386,11 +400,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: color 120ms var(--ease-out);
 }
 
 .team-dashboard__token-person span {
   color: var(--text-soft);
   font-size: 11px;
+  transition: color 120ms var(--ease-out);
 }
 
 .team-dashboard__token-value {
@@ -398,21 +414,16 @@
   font-size: 13px;
   font-weight: 800;
   letter-spacing: -0.02em;
+  transition: color 120ms var(--ease-out);
 }
 
-.team-dashboard__token-bar {
-  grid-column: 2 / 4;
-  height: 4px;
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--member-rank-color) 10%, var(--bg-subtle));
-  overflow: hidden;
+.team-dashboard__token-row:hover .team-dashboard__token-person strong,
+.team-dashboard__token-row:hover .team-dashboard__token-value {
+  color: var(--bg);
 }
 
-.team-dashboard__token-bar span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--member-rank-color);
+.team-dashboard__token-row:hover .team-dashboard__token-person span {
+  color: color-mix(in srgb, var(--bg) 72%, transparent);
 }
 
 .team-dashboard__modal {
@@ -507,7 +518,7 @@
   gap: 12px;
   min-height: 38px;
   padding: 0 10px;
-  border-radius: 10px;
+  border-radius: var(--radius-large, 8px);
   background: var(--bg-panel);
 }
 
@@ -545,7 +556,7 @@
   height: 36px;
   padding: 0 16px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-large, 8px);
   background: var(--bg-panel);
   color: var(--text);
   font: inherit;

@@ -635,14 +635,14 @@ html[data-od-edit-mode] [data-od-runtime-id],
 html[data-od-edit-mode] [data-od-source-path] { outline: 1px dashed rgba(37, 99, 235, 0.35) !important; outline-offset: 3px !important; }
 html[data-od-edit-mode] [data-od-id]:hover,
 html[data-od-edit-mode] [data-od-runtime-id]:hover,
-html[data-od-edit-mode] [data-od-source-path]:hover { outline: 2px solid #2563eb !important; outline-offset: 3px !important; }
+html[data-od-edit-mode] [data-od-source-path]:hover { outline: 2px solid #1A74FF !important; outline-offset: 3px !important; }
 html[data-od-edit-mode] [data-od-edit-selected] {
-  outline: 2px solid #2563eb !important;
+  outline: 2px solid #1A74FF !important;
   outline-offset: 4px;
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16);
 }
 html[data-od-edit-mode] [data-od-editing="true"] {
-  outline: 2px solid #2563eb !important;
+  outline: 2px solid #1A74FF !important;
   outline-offset: 4px;
   background: rgba(37, 99, 235, 0.06);
   cursor: text !important;

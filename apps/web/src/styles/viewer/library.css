@@ -442,12 +442,12 @@
 
 /* --- CJK (Chinese / Japanese / Korean) Comfort Pass --- */
 :lang(zh), :lang(zh-CN), :lang(zh-TW), :lang(ja), :lang(ko) {
-  --sans: "Inter", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Hiragino Sans GB", "Source Han Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --sans: "Albert Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
 /* --- Arabic & Persian Comfort Pass --- */
 [dir="rtl"] {
-  --sans: "Cairo", "Inter", "Vazirmatn", "Noto Sans Arabic", "Segoe UI Arabic", "Tahoma", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --sans: "Albert Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
 /* Scope line-height increase to prose and chat to avoid breaking compact UI chrome */
@@ -664,7 +664,7 @@
 
 .library-search:focus {
   border-color: var(--selected);
-  box-shadow: 0 0 0 3px var(--selected-soft), var(--shadow-xs);
+  box-shadow: var(--shadow-xs);
 }
 
 .library-filters {

@@ -13,15 +13,16 @@
 .members__head {
   align-items: center;
 }
+
+.members .entry-section__title {
+  font-size: var(--font-size-20, 20px);
+  line-height: 1.25;
+}
+
 .members__head-text {
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-.members__subtitle {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-muted);
 }
 
 /* Primary "邀请同事" action — accent pill, matches recent-projects invite. */
@@ -42,7 +43,10 @@
   white-space: nowrap;
   transition: filter 0.15s cubic-bezier(0.23, 1, 0.32, 1);
 }
-.members__invite-btn:hover {
+.members__invite-btn:hover:not(:disabled) {
+  /* Re-assert the accent fill (see primitives.css global button:hover). */
+  background: var(--accent);
+  border-color: transparent;
   filter: brightness(1.05);
 }
 
@@ -181,7 +185,7 @@
   place-items: center;
   width: 28px;
   height: 28px;
-  border-radius: 10px;
+  border-radius: var(--radius-large, 8px);
   background: var(--accent);
   color: var(--accent-contrast);
 }
@@ -201,7 +205,7 @@
   height: 32px;
   padding: 0 12px;
   border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
-  border-radius: 9px;
+  border-radius: var(--radius-large, 8px);
   background: var(--accent);
   color: var(--accent-contrast);
   font: inherit;

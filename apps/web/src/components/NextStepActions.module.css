@@ -296,7 +296,7 @@
   padding: 7px 9px;
   margin-bottom: 8px;
   border: 1px solid var(--border-strong, var(--border));
-  border-radius: 10px;
+  border-radius: var(--radius-large, 8px);
   color: var(--text-muted);
   background: var(--bg-default);
 }

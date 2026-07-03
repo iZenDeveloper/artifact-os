@@ -1142,7 +1142,7 @@ const tooltipStyle = `
     bottom: calc(100% + 8px);
     transform: translateX(-50%) translateY(2px);
     padding: 4px 7px;
-    border-radius: 6px;
+    border-radius: var(--radius-medium, 4px);
     background: rgba(20,20,20,0.94);
     color: #fff;
     font-size: 11px;

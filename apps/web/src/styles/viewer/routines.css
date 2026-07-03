@@ -316,7 +316,6 @@
 .routines-project-select:focus {
   outline: none;
   border-color: var(--text);
-  box-shadow: 0 0 0 3px rgba(26, 25, 22, 0.08);
 }
 .routines-field textarea { resize: vertical; min-height: 80px; }
 
@@ -748,14 +747,14 @@
 /* Project page audit pass: one final rule set for the active project shell.
    Keep the outer panes flat; only controls and repeated items get radius. */
 .workspace-shell {
-  grid-template-rows: 34px minmax(0, 1fr);
+  grid-template-rows: 40px minmax(0, 1fr);
 }
 .workspace-shell .workspace-tabs-chrome.app-chrome-header {
-  --workspace-tabs-chrome-height: 34px;
+  --workspace-tabs-chrome-height: 40px;
   --workspace-tab-bar-bg: color-mix(in srgb, var(--bg-panel) 82%, var(--bg-subtle));
   --workspace-active-tab-border: color-mix(in srgb, var(--border-strong) 38%, transparent);
-  height: 34px;
-  min-height: 34px;
+  height: 40px;
+  min-height: 40px;
   padding: 0 8px 0 0;
   background: var(--workspace-tab-bar-bg);
   border-bottom: 0;
@@ -765,14 +764,14 @@
   align-self: stretch;
 }
 .workspace-shell .workspace-tabs-strip {
-  gap: 3px;
+  gap: 2px;
   align-items: center;
   padding-top: 0;
 }
 .workspace-shell .workspace-tab {
   width: 156px;
-  height: 26px;
-  min-height: 26px;
+  height: 32px;
+  min-height: 32px;
   /* Auto-shrink in the project shell: tabs sit at 156px when there's room and
      shrink toward --workspace-tab-min-width as more open, keeping the whole row
      visible without scrolling for as long as possible. flex-grow 0 stops a lone
@@ -783,9 +782,7 @@
   flex: 0 1 156px;
   grid-template-columns: minmax(0, 1fr) 22px;
   align-self: center;
-  /* Intentional compact-chrome value (26px tab); kept off the radius scale
-     and pinned by workspace-tabs-chrome.test.ts. */
-  border-radius: 7px;
+  border-radius: var(--radius-large, 8px);
   border: 1px solid transparent;
   background: transparent;
   box-shadow: none;
@@ -810,7 +807,8 @@
   background: var(--workspace-tab-bar-bg);
 }
 .workspace-shell .workspace-tab.is-active {
-  background: color-mix(in srgb, var(--bg-panel) 94%, var(--bg-subtle));
+  border-radius: var(--radius-pill, 999px);
+  background: #ffffff;
   border-color: var(--workspace-active-tab-border);
   box-shadow:
     0 1px 2px color-mix(in srgb, var(--text) 6%, transparent),
@@ -819,7 +817,7 @@
 }
 .workspace-shell .workspace-tab:not(.is-active):hover,
 .workspace-shell .workspace-tab:not(.is-active):focus-within {
-  border-radius: 7px;
+  border-radius: var(--radius-pill, 999px);
   background:
     linear-gradient(
       color-mix(in srgb, var(--bg-panel) 78%, transparent),
@@ -857,6 +855,11 @@
   gap: 5px;
   padding-inline: 9px 3px;
 }
+.workspace-shell .workspace-tab.is-pinned .workspace-tab__main {
+  width: 100%;
+  padding-inline: 0;
+  justify-content: center;
+}
 .workspace-shell .workspace-tab__close {
   position: relative;
   z-index: 2;
@@ -865,10 +868,16 @@
   font-size: 11.5px;
   font-weight: 540;
 }
+.workspace-shell .workspace-tab.is-active .workspace-tab__label {
+  font-size: var(--font-size-12, 12px);
+}
 .workspace-shell .workspace-tab__close {
   width: 18px;
   height: 18px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-circular, 50%);
+}
+.workspace-shell .workspace-tab__close:hover {
+  border-radius: var(--radius-circular, 50%);
 }
 .workspace-shell .workspace-tabs-new-btn,
 .workspace-shell .workspace-tabs-icon-btn {
@@ -1527,7 +1536,7 @@
      children below instead of horizontal padding here, so the shell's
      content-box width — which is what the shared label-collapse @container in
      chat.css measures — stays full and that breakpoint can remain generic. */
-  padding: 6px 0;
+  padding: 8px 0;
   border-color: var(--border);
   border-radius: var(--radius-md);
   box-shadow: none;
@@ -1596,6 +1605,9 @@
   padding-top: 0;
   border-top: none;
 }
+.chat-composer-fixed-layer .composer-row > * {
+  align-self: center;
+}
 .app .composer-row .icon-btn,
 .app .composer-import,
 .app .composer-research,
@@ -1622,18 +1634,41 @@
   box-sizing: border-box;
 }
 .app .composer-send {
-  height: 28px;
-  min-height: 28px;
-  min-width: 58px;
-  padding: 0 12px;
-  font-size: 12.5px;
-  font-weight: 600;
-  box-shadow: none;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: var(--radius-pill);
+  background: var(--text-strong);
+  border-color: var(--text-strong);
+  color: var(--bg);
+  font-size: var(--font-size-14);
+  font-weight: 650;
+  box-shadow: var(--shadow-xs);
 }
 .chat-composer-fixed-layer .composer-send {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: var(--radius-pill);
+  background: var(--text-strong);
+  border-color: var(--text-strong);
+  color: var(--bg);
+  font-size: var(--font-size-14);
+  font-weight: 650;
+  box-shadow: var(--shadow-xs);
+}
+.app .composer-send.stop,
+.chat-composer-fixed-layer .composer-send.stop {
+  width: auto;
+  min-width: 58px;
   height: 28px;
   min-height: 28px;
   padding: 0 12px;
+  border-radius: var(--radius-sm);
   font-size: 12.5px;
   font-weight: 600;
   box-shadow: none;
@@ -1653,6 +1688,32 @@
   height: 28px;
   min-height: 28px;
   box-sizing: border-box;
+}
+.app .composer-row .avatar-agent-trigger,
+.chat-composer-fixed-layer .composer-row .avatar-agent-trigger {
+  width: 22px;
+  min-width: 22px;
+  padding: 0;
+  display: inline-grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  justify-items: center;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.app .composer-row .avatar-agent-trigger:hover:not(:disabled),
+.app .composer-row .avatar-agent-trigger:focus-visible,
+.chat-composer-fixed-layer .composer-row .avatar-agent-trigger:hover:not(:disabled),
+.chat-composer-fixed-layer .composer-row .avatar-agent-trigger:focus-visible {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+}
+.app .composer-row .avatar-agent-trigger > svg:last-child,
+.chat-composer-fixed-layer .composer-row .avatar-agent-trigger > svg:last-child {
+  display: none;
 }
 .app .composer-send:disabled {
   background: var(--bg-subtle);
@@ -1845,6 +1906,7 @@
 }
 .app .ws-tabs-shell {
   padding: 6px 14px;
+  border-bottom: none;
 }
 .app .ws-focus-expand {
   width: 32px;
@@ -1853,22 +1915,40 @@
 }
 .app .ws-tabs-bar {
   gap: 6px;
+  height: auto;
+  min-height: 38px;
+  padding-block: 4px;
   scrollbar-width: none;
 }
 .app .ws-tabs-bar::-webkit-scrollbar {
   display: none;
 }
 .app .ws-tab {
+  box-sizing: border-box;
+  height: 30px;
   min-height: 30px;
   padding: 0 11px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-pill);
   border: 1px solid transparent;
+  line-height: 1;
   box-shadow: none;
+}
+/* Design Files tab keeps only its fill/text change on hover — no stroke (the
+   global `button:hover` border-strong rule would otherwise ring it). */
+.app .ws-tab.design-files-tab:hover {
+  border-color: transparent;
 }
 .app .ws-tab.active {
   background: var(--bg-subtle);
-  border-color: var(--border);
+  border-color: transparent;
   box-shadow: none;
+}
+.app .ws-tab.design-files-tab.active {
+  box-shadow: none;
+}
+/* Right-edge shadow only while tabs scroll beneath the sticky tab (overflow). */
+.app .ws-tabs-bar.is-overflowing .ws-tab.design-files-tab.active {
+  box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.12);
 }
 .app .ws-tab .tab-icon,
 .app .ws-tab.active .tab-icon {
@@ -2530,7 +2610,7 @@
   background: color-mix(in srgb, var(--accent) 18%, var(--bg-panel));
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent),
-    0 1px 2px rgba(180, 90, 59, 0.14);
+    0 1px 2px color-mix(in srgb, #87ea5c 14%, transparent);
   font-weight: 700;
 }
 .app .handoff-framework-chip.active:hover {

@@ -20,7 +20,9 @@
   appearance: none;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  /* Match the panel items' icon gap so the trigger label lines up with the
+     menu item labels below it (see `.panel` left offset). */
+  gap: 9px;
   padding: 4px 6px;
   border: 0;
   border-radius: var(--radius);
@@ -86,11 +88,14 @@
   background: var(--bg-subtle);
 }
 
-/* Downward panel — anchored to the trigger. */
+/* Downward panel — anchored to the trigger. The -9px left offset cancels the
+   panel's border(1) + padding(5) + item padding(9) = 15px content inset against
+   the trigger's 6px inset, so the menu items' icons/labels sit in the same
+   column as the trigger's icon/label instead of stepping ~9px to the right. */
 .panel {
   position: absolute;
   top: calc(100% + 6px);
-  left: 0;
+  left: -9px;
   z-index: 90;
   min-width: 200px;
   display: flex;

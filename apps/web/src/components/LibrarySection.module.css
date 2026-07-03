@@ -68,7 +68,7 @@
   height: 36px;
   padding: 0 12px 0 34px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--radius-large, 8px);
   background: var(--bg-panel);
   color: var(--text);
   font-size: 14px;
@@ -83,7 +83,7 @@
   height: 36px;
   padding: 0 32px 0 12px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--radius-large, 8px);
   background-color: var(--bg-panel);
   color: var(--text);
   font-size: 14px;
@@ -109,7 +109,7 @@
   padding: 3px;
   gap: 2px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--radius-large, 8px);
   background: var(--bg-panel);
 }
 .viewToggleBtn {
@@ -118,7 +118,7 @@
   gap: 6px;
   padding: 0 12px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-medium, 4px);
   background: none;
   color: var(--text-muted);
   font-size: 13px;
@@ -408,7 +408,7 @@
   height: 22px;
   padding: 0;
   border: 2px solid rgba(255, 255, 255, 0.95);
-  border-radius: 6px;
+  border-radius: var(--radius-medium, 4px);
   background: rgba(17, 24, 39, 0.35);
   color: #fff;
   cursor: pointer;
@@ -547,7 +547,7 @@
   margin: 0 0 16px;
   padding: 8px 12px;
   border: 1px solid var(--selected);
-  border-radius: 10px;
+  border-radius: var(--radius-large, 8px);
   background: color-mix(in srgb, var(--selected) 7%, var(--bg-panel));
 }
 .selectionCount {

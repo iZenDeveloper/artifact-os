@@ -202,7 +202,7 @@ function ElementPanel({ asset }: { asset: LibraryAsset }) {
     font: 'inherit',
     fontSize: 12,
     fontWeight: 600,
-    color: 'var(--accent, #2563eb)',
+    color: 'var(--accent, #1A74FF)',
     background: 'transparent',
     border: '1px solid var(--border, #e5e7eb)',
     borderRadius: 6,

@@ -1233,7 +1233,6 @@
 .prompt-template-edit-textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
 }
 .prompt-template-edit-empty {
   margin-top: 6px;
@@ -1284,6 +1283,11 @@
   --pet-accent: var(--accent);
 }
 .pet-overlay > * { pointer-events: auto; }
+/* Docked to the tab-bar line (top-anchored): the sprite perches on the line
+   and its speech bubble grows downward below it instead of upward. */
+.pet-overlay--docked {
+  flex-direction: column-reverse;
+}
 
 .pet-sprite {
   position: relative;

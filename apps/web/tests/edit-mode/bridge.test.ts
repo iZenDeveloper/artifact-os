@@ -418,7 +418,7 @@ describe('manual edit bridge target normalization', () => {
     const style = buildManualEditBridgeStyle();
 
     expect(style).toContain('outline: 1px dashed rgba(37, 99, 235, 0.35) !important');
-    expect(style).toContain('outline: 2px solid #2563eb !important');
+    expect(style).toContain('outline: 2px solid #1A74FF !important');
     expect(style).toContain('outline-offset: 3px !important');
   });
 

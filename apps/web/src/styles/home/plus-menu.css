@@ -27,6 +27,7 @@
   justify-content: center;
   background: transparent;
   border-color: transparent;
+  border-radius: var(--radius-circular, 50%);
 }
 .plus-menu__trigger:hover:not(:disabled) {
   background: var(--bg-subtle);
@@ -37,6 +38,10 @@
   color: var(--text);
 }
 .home-hero__input-card .plus-menu__trigger {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: var(--radius-circular, 50%);
   background: var(--bg-panel);
   border-color: var(--border);
   color: var(--text-muted);

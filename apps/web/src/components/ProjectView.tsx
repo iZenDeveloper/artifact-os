@@ -6815,6 +6815,7 @@ export function ProjectView({
               )}
               designSystemPicker={(
                 <DesignSystemPicker
+                  variant="icon"
                   designSystems={designSystems}
                   selectedId={projectDesignSystemId ?? null}
                   onChange={handleChangeDesignSystemId}

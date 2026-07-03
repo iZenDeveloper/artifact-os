@@ -214,9 +214,9 @@
 
 .previewName {
   margin: 0;
-  font-size: 22px;
+  font-size: var(--font-size-16, 16px);
   font-weight: 700;
-  line-height: 1.18;
+  line-height: 1.25;
   letter-spacing: 0;
   color: var(--text-strong);
   overflow-wrap: anywhere;
@@ -275,6 +275,16 @@
   /* Keep actions right-aligned whether they sit beside the identity column or
      wrap onto their own row beneath it. */
   margin-left: auto;
+}
+
+/* Design-system DETAIL view only: vertically center the action row (用 Agent
+   编辑 / 转为团队 / publish toggle / …) against the title block instead of
+   top-aligning it (the header is `align-items: flex-start`). This lines the
+   whole cluster up on the title's center line. Scoped by the detail's root
+   data-testid ("design-kit-view-<id>") so preview cards ("brand-preview-card")
+   and the preview modal are unaffected. */
+:global([data-testid^='design-kit-view-']) .previewActions {
+  align-self: center;
 }
 
 .previewHeadSticky .previewActions {
@@ -440,10 +450,11 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 18px;
+  padding: 0;
+  /* No fill — the section reads as a card purely through its standard outline. */
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  background: var(--bg-subtle);
+  background: transparent;
 }
 
 .sectionEditFocus {
@@ -1540,7 +1551,7 @@
 
 .compact .section {
   gap: 8px;
-  padding: 10px 11px;
+  padding: 0;
   border-radius: var(--radius);
 }
 

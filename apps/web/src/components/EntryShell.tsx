@@ -1152,9 +1152,6 @@ export function EntryShell({
           cloudWorkspace={cloudWorkspace}
         />
         <main className="entry-main entry-main--scroll" ref={entryMainScrollRef}>
-          <div className="entry-main__topbar">
-            {null /* demo: hide model switcher from topbar */}
-          </div>
           <div
             className={`entry-main__inner${
               view === 'home' ? '' : ' entry-main__inner--wide'
@@ -1245,7 +1242,6 @@ export function EntryShell({
                   designSystems={designSystems}
                   limit={1000}
                   heading="草稿"
-                  description="自己创建的项目，仅自己可见"
                   space="drafts"
                   onOpen={onOpenProject}
                   onDelete={onDeleteProject}
@@ -1269,7 +1265,6 @@ export function EntryShell({
                   designSystems={designSystems}
                   limit={1000}
                   heading="全部项目"
-                  description="团队所有人的项目"
                   space="team"
                   onOpen={onOpenProject}
                   onDelete={onDeleteProject}

@@ -5,7 +5,7 @@
   display: grid;
   grid-template-columns: minmax(280px, 1fr) minmax(0, 380px);
   min-height: 0;
-  background: var(--bg);
+  background: #fff;
 }
 .df-panel.no-preview { grid-template-columns: minmax(0, 1fr); }
 .df-reloading-overlay {
@@ -23,7 +23,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: var(--bg);
+  background: #fff;
   border-right: 1px solid var(--border);
   /* Query container so the toolbar can react to the *list column* width
      (which depends on the chat/preview split, not the viewport). */
@@ -62,7 +62,7 @@
   white-space: nowrap;
 }
 .df-breadcrumb-btn:hover { color: var(--text); background: var(--bg-subtle); }
-.df-breadcrumb-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.df-breadcrumb-btn:focus-visible { outline: var(--stroke-thin, 1px) solid var(--blue); outline-offset: 2px; }
 .df-breadcrumb-segment { display: inline-flex; align-items: center; min-width: 0; }
 .df-breadcrumb-sep { padding: 0 2px; color: var(--text-faint); font-size: 12px; user-select: none; }
 .df-breadcrumb-current {
@@ -560,7 +560,7 @@
   color: var(--text-muted);
   font-size: 13px;
   min-height: 320px;
-  background-color: var(--bg);
+  background-color: #fff;
   background-image:
     linear-gradient(to right, var(--border-soft) 1px, transparent 1px),
     linear-gradient(to bottom, var(--border-soft) 1px, transparent 1px);
@@ -613,26 +613,28 @@
   transition: background 120ms var(--ease-out), border-color 120ms var(--ease-out);
 }
 .df-empty-cta-primary {
-  background: var(--text-strong);
-  border-color: var(--text-strong);
-  color: var(--bg-panel);
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--text);
 }
 .df-empty-cta-secondary {
   background: var(--bg);
+  border-color: var(--border);
+  color: var(--text);
 }
 .df-empty-cta-tertiary {
-  background: transparent;
-  color: var(--text-muted);
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--text);
 }
 .df-empty-cta:hover {
-  background: var(--bg-subtle);
-  border-color: var(--border-strong);
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--text);
 }
 .df-empty-cta-primary:hover {
-  background: var(--text);
-  border-color: var(--text);
-}
-.df-empty-cta-tertiary:hover {
+  background: var(--bg);
+  border-color: var(--border);
   color: var(--text);
 }
 .df-empty-cta:focus-visible {
@@ -653,7 +655,7 @@
   flex-direction: column;
   justify-content: center;
   gap: 10px;
-  background: color-mix(in srgb, var(--accent) 3.5%, transparent);
+  background: #fff;
   border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 .df-drop-hint {
@@ -788,7 +790,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: var(--bg);
+  background: #fff;
   border-left: 1px solid var(--border);
   position: relative;
 }

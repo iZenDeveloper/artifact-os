@@ -20,7 +20,7 @@
   align-items: center;
   padding: 8px 14px;
   border-bottom: 1px solid var(--border);
-  background: var(--bg-panel);
+  background: #fff;
   font-size: 12.5px;
   color: var(--text-muted);
   gap: 8px;
@@ -381,13 +381,17 @@
 .viewer-tab {
   background: transparent;
   border: none;
-  padding: 4px 10px;
+  padding: 4px 12px;
   font-size: 12px;
-  border-radius: var(--radius-sm);
+  /* Capsule button — matches the opened file tab reading as a pill. */
+  border-radius: var(--radius-pill);
   color: var(--text-muted);
   white-space: nowrap;
 }
 .viewer-tab:hover:not(:disabled) { background: var(--bg-subtle); color: var(--text); }
+/* Active state reads identically to the opened file tab's active pill
+   (.ws-tab.active): same --bg-subtle fill and --border stroke (the border
+   color comes from the shared .viewer-tab rule in theater.css). */
 .viewer-tab.active {
   background: var(--bg-subtle);
   color: var(--text);
@@ -964,6 +968,9 @@
   z-index: 80;
   width: max-content;
   min-width: 144px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 2px);
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: var(--radius);

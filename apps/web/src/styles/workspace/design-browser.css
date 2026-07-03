@@ -32,8 +32,15 @@
 /* ---- Chrome bar ---------------------------------------------------------- */
 .db-chrome {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, auto) minmax(180px, 740px) max-content;
+  /* Flex with auto side margins on the address form: the nav / actions
+     clusters keep their content width (the Desktop switcher never gets
+     clipped), the form grows up to its cap, and any leftover space splits
+     equally on BOTH sides of the form — so the address bar always sits
+     centered with identical gaps to the left and right icon clusters.
+     (The previous grid put a greedy minmax(180px,740px) middle track first,
+     which starved the 1fr sides on narrow panels and shoved the form against
+     the truncated left cluster.) */
+  display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
@@ -48,6 +55,7 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
+  flex: 0 0 auto;
   min-width: 0;
   max-width: 100%;
 }
@@ -190,7 +198,13 @@
 .db-address-form {
   position: relative;
   height: 38px;
-  min-width: 0;
+  /* Flex child of .db-chrome: grow to the cap, then let the auto margins
+     split the leftover equally so the form stays centered between the two
+     icon clusters with identical spacing on both sides. */
+  flex: 1 1 auto;
+  min-width: 180px;
+  max-width: 740px;
+  margin-inline: auto;
   border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
   border-radius: var(--radius-md);
   background: var(--bg-panel);
@@ -212,7 +226,6 @@
 .db-address-form:focus-within {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
   background: var(--bg-panel);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 .db-site-icon {
   width: 16px;
@@ -470,7 +483,6 @@
 }
 .db-browser-use-search:focus-within {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 .db-browser-use-search input {
   min-width: 0;
@@ -737,9 +749,12 @@
 
 @container design-browser (max-width: 920px) {
   .db-chrome {
-    grid-template-columns: minmax(0, auto) minmax(150px, 560px) max-content;
     gap: 8px;
     padding-inline: 10px;
+  }
+  .db-address-form {
+    min-width: 150px;
+    max-width: 560px;
   }
   .db-action-save {
     display: none;
@@ -751,9 +766,12 @@
 
 @container design-browser (max-width: 760px) {
   .db-chrome {
-    grid-template-columns: minmax(0, auto) minmax(120px, 420px) max-content;
     gap: 6px;
     padding-inline: 8px;
+  }
+  .db-address-form {
+    min-width: 120px;
+    max-width: 420px;
   }
   .db-viewport-switcher .db-icon-btn {
     min-width: 46px;
@@ -770,8 +788,11 @@
 
 @container design-browser (max-width: 620px) {
   .db-chrome {
-    grid-template-columns: minmax(0, auto) minmax(88px, 1fr) auto;
     gap: 4px;
+  }
+  .db-address-form {
+    min-width: 88px;
+    max-width: none;
   }
   .db-nav {
     gap: 0;
@@ -961,7 +982,6 @@
 }
 .db-reference-search:focus-within {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 .db-reference-search-icon {
   display: inline-flex;
@@ -1203,7 +1223,13 @@
 
 @media (max-width: 720px) {
   .db-chrome {
-    grid-template-columns: minmax(0, 1fr);
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .db-address-form {
+    min-width: 0;
+    max-width: none;
+    margin-inline: 0;
   }
   .db-nav,
   .db-actions {

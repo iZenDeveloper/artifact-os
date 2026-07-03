@@ -145,7 +145,7 @@
   width: 100%;
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-large, 8px);
   overflow: hidden;
   background: var(--bg-subtle);
   cursor: zoom-in;
@@ -204,8 +204,8 @@
 }
 .glyph[data-kind='html'],
 .glyph[data-kind='text'] {
-  color: #2563eb;
-  background: linear-gradient(135deg, color-mix(in srgb, #2563eb 12%, var(--bg-panel)), var(--bg-subtle));
+  color: #1A74FF;
+  background: linear-gradient(135deg, color-mix(in srgb, #1A74FF 12%, var(--bg-panel)), var(--bg-subtle));
 }
 .ext {
   padding: 3px 7px;

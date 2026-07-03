@@ -1080,8 +1080,12 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
 
   return (
     <section className="home-hero" data-testid="home-hero">
+      <span className="home-hero__logo-wrap">
+        <img className="home-hero__logo" src="/logo-03.svg" alt="Open Design" />
+      </span>
       <h1 className="home-hero__title">{t('homeHero.title')}</h1>
 
+      <div className="home-hero__composer-card">
       <div
         className={`home-hero__input-card${
           authoringLayoutActive ? ' home-hero__input-card--compact-authoring' : ''
@@ -1127,18 +1131,20 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                           draggable={false}
                         />
                       ) : (
-                        <span className="home-hero__active-icon" aria-hidden>
-                          <Icon name={isImageFile(file) ? 'image' : 'file'} size={12} />
-                        </span>
+                        <>
+                          <span className="home-hero__active-icon" aria-hidden>
+                            <Icon name={isImageFile(file) ? 'image' : 'file'} size={12} />
+                          </span>
+                          <span className="home-hero__active-label">{file.name}</span>
+                          <span className="home-hero__active-meta">{formatFileSize(file.size)}</span>
+                        </>
                       )}
-                      <span className="home-hero__active-label">{file.name}</span>
-                      <span className="home-hero__active-meta">{formatFileSize(file.size)}</span>
                     </>
                   );
                   return (
                     <span
                       key={key}
-                      className="home-hero__active-chip home-hero__active-chip--context home-hero__active-chip--file"
+                      className={`home-hero__active-chip home-hero__active-chip--context home-hero__active-chip--file${previewUrl ? ' home-hero__active-chip--image-file' : ''}`}
                       title={`${file.name} · ${formatFileSize(file.size)}`}
                     >
                       <span className="home-hero__active-order" aria-label={`Attachment ${index + 1}`}>
@@ -1662,8 +1668,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
               aria-label={submitting ? t('chat.comments.sending') : t('homeHero.run')}
               aria-busy={submitting}
             >
-              <Icon name="send" size={13} />
-              <span>{submitting ? t('chat.comments.sending') : t('chat.send')}</span>
+              <Icon name={submitting ? 'spinner' : 'arrow-up'} size={17} />
             </button>
           </div>
         </div>
@@ -1716,9 +1721,13 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
           ) : null}
         </div>
       ) : null}
+      </div>
 
       {activeCreateChip ? null : (
-        <div className="home-hero__template-section" data-testid="home-hero-template-section">
+        <div
+          className={`home-hero__template-section${templatesExpanded ? ' is-expanded' : ''}`}
+          data-testid="home-hero-template-section"
+        >
           <div className="home-hero__template-bar">
             <button
               type="button"

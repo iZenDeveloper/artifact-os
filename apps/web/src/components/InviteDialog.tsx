@@ -2,9 +2,9 @@
 //
 // Opened from the team dropdown in the left rail and the "全部项目" team
 // header. Demo-only: all data is hard-coded Chinese mock content, no backend.
-// Canva-style two-column layout — form on the left, decorative art on the right.
+// Split invite dialog — form on the left, decorative art on the right.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Icon } from './Icon';
 
 export interface InviteRow {
@@ -26,15 +26,42 @@ interface Props {
 
 const TEAM_SIZE = 3;
 const DEFAULT_ROLE = '团队成员';
+const ROLE_OPTIONS = ['管理员', DEFAULT_ROLE, '查看者'];
 
 export function InviteDialog({ open, onClose, freePlan = false, onSubmit, canAssignRoles = true }: Props) {
   const [rows, setRows] = useState<InviteRow[]>([{ email: '', role: DEFAULT_ROLE }]);
   const [visibilityOpen, setVisibilityOpen] = useState(false);
+  const [openRoleIndex, setOpenRoleIndex] = useState<number | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const roleListboxId = useId();
 
   useEffect(() => {
     if (!open || canAssignRoles) return;
     setRows((prev) => prev.map((row) => ({ ...row, role: DEFAULT_ROLE })));
   }, [canAssignRoles, open]);
+
+  useEffect(() => {
+    if (!open) {
+      setOpenRoleIndex(null);
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      if (panelRef.current?.contains(event.target as Node)) return;
+      setOpenRoleIndex(null);
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpenRoleIndex(null);
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
 
   if (!open) return null;
 
@@ -46,6 +73,7 @@ export function InviteDialog({ open, onClose, freePlan = false, onSubmit, canAss
   }
   function removeRow(index: number) {
     setRows((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+    setOpenRoleIndex(null);
   }
 
   function handleConfirm() {
@@ -53,12 +81,13 @@ export function InviteDialog({ open, onClose, freePlan = false, onSubmit, canAss
     onClose();
     onSubmit?.(valid);
     setRows([{ email: '', role: DEFAULT_ROLE }]);
+    setOpenRoleIndex(null);
   }
 
   return (
     <div className="entry-invite" role="dialog" aria-modal="true" aria-label="邀请成员">
       <div className="entry-invite__backdrop" onClick={onClose} />
-      <div className="entry-invite__panel entry-invite__panel--split">
+      <div className="entry-invite__panel entry-invite__panel--split" ref={panelRef}>
         <button
           type="button"
           className="entry-invite__close"
@@ -92,17 +121,44 @@ export function InviteDialog({ open, onClose, freePlan = false, onSubmit, canAss
                 value={row.email}
                 onChange={(e) => updateRow(i, { email: e.target.value })}
               />
-              <select
-                className="entry-invite__role"
-                value={canAssignRoles ? row.role : DEFAULT_ROLE}
-                onChange={(e) => updateRow(i, { role: e.target.value })}
-                disabled={!canAssignRoles}
-                aria-label={canAssignRoles ? '分配角色' : '默认身份'}
-              >
-                <option value="管理员">管理员</option>
-                <option value={DEFAULT_ROLE}>团队成员</option>
-                <option value="查看者">查看者</option>
-              </select>
+              <div className="entry-invite__role-picker">
+                <button
+                  type="button"
+                  className="entry-invite__role"
+                  onClick={() => {
+                    if (!canAssignRoles) return;
+                    setOpenRoleIndex((current) => (current === i ? null : i));
+                  }}
+                  disabled={!canAssignRoles}
+                  aria-label={canAssignRoles ? '分配角色' : '默认身份'}
+                  aria-haspopup="listbox"
+                  aria-expanded={openRoleIndex === i}
+                  aria-controls={`${roleListboxId}-${i}`}
+                >
+                  <span>{canAssignRoles ? row.role : DEFAULT_ROLE}</span>
+                  <Icon name="chevron-down" size={16} />
+                </button>
+                {openRoleIndex === i ? (
+                  <div className="entry-invite__role-menu" id={`${roleListboxId}-${i}`} role="listbox">
+                    {ROLE_OPTIONS.map((role) => (
+                      <button
+                        type="button"
+                        key={role}
+                        className={`entry-invite__role-option${(canAssignRoles ? row.role : DEFAULT_ROLE) === role ? ' is-selected' : ''}`}
+                        role="option"
+                        aria-selected={(canAssignRoles ? row.role : DEFAULT_ROLE) === role}
+                        onClick={() => {
+                          updateRow(i, { role });
+                          setOpenRoleIndex(null);
+                        }}
+                      >
+                        <span>{role}</span>
+                        {(canAssignRoles ? row.role : DEFAULT_ROLE) === role ? <Icon name="check" size={16} /> : null}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
               {rows.length > 1 ? (
                 <button
                   type="button"

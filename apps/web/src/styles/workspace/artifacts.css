@@ -1025,12 +1025,13 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  width: min(420px, 100%);
+  width: fit-content;
   max-width: 100%;
 }
 .settings-general-select select {
-  width: 100%;
-  min-width: 0;
+  width: auto;
+  max-width: min(420px, 100%);
+  field-sizing: content;
   height: 48px;
   appearance: none;
   border: 0;
@@ -1049,7 +1050,7 @@
   background: color-mix(in srgb, var(--bg-subtle) 88%, var(--bg-panel));
 }
 .settings-general-select select:focus-visible {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: var(--selected);
 }
 .settings-general-select svg {
   position: absolute;
@@ -1123,7 +1124,7 @@
   min-height: 34px;
   padding: 0 14px;
   border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
-  border-radius: 10px;
+  border-radius: var(--radius-large, 8px);
   background: var(--bg-panel);
   color: var(--text);
   font: inherit;
@@ -1630,14 +1631,6 @@
     0 1px 0 color-mix(in srgb, var(--bg-panel) 88%, transparent) inset,
     0 10px 28px color-mix(in srgb, var(--text) 9%, transparent);
 }
-.agent-card.active::before {
-  content: '';
-  position: absolute;
-  inset: 12px auto 12px 0;
-  width: 4px;
-  border-radius: 0 999px 999px 0;
-  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 56%, var(--selected)));
-}
 .agent-card-installed.active .agent-card-main {
   background:
     linear-gradient(
@@ -2087,7 +2080,7 @@
   margin-top: 4px;
   padding: 8px 10px;
   border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
-  border-radius: 10px;
+  border-radius: var(--radius-large, 8px);
   background: color-mix(in srgb, var(--accent) 6%, transparent);
   text-align: left;
 }
@@ -2290,6 +2283,51 @@
   color: var(--blue);
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+.settings-section-byok .settings-byok-key-row {
+  align-items: center;
+  gap: var(--spacing-12);
+}
+.settings-section-byok .settings-byok-key-input-wrap {
+  position: relative;
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.settings-section-byok .settings-byok-key-input-wrap > input {
+  width: 100%;
+  padding-right: 56px;
+}
+.settings-section-byok .settings-byok-key-toggle {
+  position: absolute;
+  top: 50%;
+  right: var(--spacing-6);
+  width: auto;
+  height: 28px;
+  min-width: 42px;
+  padding: 0 var(--spacing-8);
+  border: 0;
+  border-radius: var(--radius-medium);
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  transform: translateY(-50%);
+}
+.settings-section-byok .settings-byok-key-toggle:hover:not(:disabled),
+.settings-section-byok .settings-byok-key-toggle:focus-visible {
+  background: var(--bg-subtle);
+  color: var(--text);
+  box-shadow: none;
+}
+.settings-section-byok .settings-byok-key-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-height: 28px;
+  white-space: nowrap;
 }
 .settings-section-byok .settings-byok-key-label,
 .settings-section-byok .settings-byok-field-label {

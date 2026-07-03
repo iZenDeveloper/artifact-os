@@ -471,7 +471,6 @@
 .plugin-inputs-form__input:focus {
   outline: none;
   border-color: var(--selected);
-  box-shadow: 0 0 0 3px var(--selected-soft);
   background: var(--bg-panel);
 }
 .plugin-inputs-form__input--textarea {
@@ -532,7 +531,6 @@ select.plugin-inputs-form__input {
 }
 .plugin-inputs-form__file-shell:focus-within {
   border-color: var(--selected);
-  box-shadow: 0 0 0 3px var(--selected-soft);
 }
 .plugin-inputs-form__input--file {
   position: absolute;
@@ -651,7 +649,6 @@ select.plugin-inputs-form__input {
 .composer-shell .plugin-inputs-form__input:focus {
   border-color: var(--selected);
   background-color: var(--bg-panel);
-  box-shadow: 0 0 0 3px var(--selected-soft);
 }
 .composer-shell .plugin-inputs-form__input--textarea {
   min-height: 70px;

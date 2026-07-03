@@ -155,7 +155,7 @@
   display: none;
 }
 .ds-setup-shell--embedded .ds-setup-form > h1 {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--sans);
   font-size: 27px;
   font-weight: 750;
   letter-spacing: 0;
@@ -217,7 +217,6 @@
 .ds-resource-inline input:focus,
 .ds-resource-inline input:focus-visible {
   border-color: color-mix(in srgb, var(--accent) 48%, var(--border));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
   outline: 0;
 }
 .ds-resource-section {
@@ -225,7 +224,7 @@
 }
 .ds-resource-section h2 {
   margin: 0 0 8px;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--sans);
   font-size: 19px;
   font-weight: 750;
   line-height: 1.2;
@@ -233,14 +232,14 @@
 .ds-resource-section h2 span,
 .ds-resource-section p {
   color: var(--text-muted);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--sans);
   font-size: 14px;
   font-weight: 400;
 }
 .ds-resource-card {
   margin-top: 12px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-large, 8px);
   background: color-mix(in srgb, var(--bg-panel) 98%, var(--bg-subtle) 2%);
   box-shadow: 0 14px 36px color-mix(in srgb, var(--shadow-color, #000) 5%, transparent), var(--shadow-xs);
   overflow: hidden;
@@ -405,7 +404,7 @@
   min-height: 26px;
   padding: 0 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-medium, 4px);
   background: transparent;
   color: var(--text-muted);
   font: inherit;
@@ -483,7 +482,7 @@
   min-height: 28px;
   padding: 0 12px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-medium, 4px);
   background: transparent;
   color: var(--ds-md-muted);
   font: inherit;
@@ -511,7 +510,7 @@
   min-height: 22px;
   align-items: center;
   padding: 2px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-medium, 4px);
   background: var(--ds-md-primary-bg);
   color: var(--ds-md-primary-active);
   font-size: 11px;
@@ -1332,7 +1331,7 @@ a.ds-source-link-open:focus-visible {
 .segmented {
   display: inline-flex;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-large, 8px);
   background: var(--bg-subtle);
   overflow: hidden;
 }
@@ -1494,7 +1493,7 @@ a.ds-source-link-open:focus-visible {
   overflow: hidden;
   padding: 4px 7px;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: var(--radius-large, 8px);
   background: var(--bg-panel);
   color: var(--text-muted);
   font: 11px/1.35 var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
@@ -1658,7 +1657,7 @@ a.ds-source-link-open:focus-visible {
   overflow: hidden;
   padding: 4px 7px;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: var(--radius-large, 8px);
   background: var(--bg-panel);
   color: var(--text);
   font: 11px/1.35 var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
@@ -2497,7 +2496,7 @@ a.ds-source-link-open:focus-visible {
   margin-top: 11px;
   margin-left: -9px;
   padding: 3px 8px 4px;
-  border-radius: 6px;
+  border-radius: var(--radius-medium, 4px);
   background: var(--collab-color);
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, #fff 18%, transparent),
@@ -2511,7 +2510,7 @@ a.ds-source-link-open:focus-visible {
   --collab-color: var(--accent);
   position: absolute;
   border: 2px solid var(--collab-color);
-  border-radius: 10px;
+  border-radius: var(--radius-large, 8px);
   box-shadow:
     0 0 0 1px color-mix(in srgb, #fff 80%, transparent),
     0 0 0 4px color-mix(in srgb, var(--collab-color) 12%, transparent);
@@ -2522,7 +2521,7 @@ a.ds-source-link-open:focus-visible {
   top: -29px;
   left: -2px;
   padding: 5px 8px 6px;
-  border-radius: 7px 7px 7px 2px;
+  border-radius: var(--radius-large, 8px) 7px 7px 2px;
   background: var(--collab-color);
   color: #fff;
   font-size: 11px;
@@ -2623,7 +2622,7 @@ a.ds-source-link-open:focus-visible {
   content: "";
   position: absolute;
   inset: 7px;
-  border-radius: 6px;
+  border-radius: var(--radius-medium, 4px);
   border: 1px solid color-mix(in srgb, var(--blue, #3b82f6) 18%, transparent);
   opacity: 0.7;
 }
@@ -2874,7 +2873,7 @@ a.ds-source-link-open:focus-visible {
   gap: 8px;
   min-height: 28px;
   padding: 4px 6px;
-  border-radius: 6px;
+  border-radius: var(--radius-medium, 4px);
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.25;

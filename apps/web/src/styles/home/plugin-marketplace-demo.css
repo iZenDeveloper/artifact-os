@@ -16,6 +16,16 @@
   padding: 30px 28px 72px;
 }
 
+/* 扩展 page: match the design-systems safe area. Design-systems fills the entry
+   inner (`.entry-main__inner--wide`, max-width 1600px, padding 16px 24px 64px)
+   via `.entry-section` with no extra cap; mirror that here instead of the narrow
+   980px centred column so both pages share identical content insets. */
+.plugin-marketplace {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 .plugin-marketplace__hero,
 .community-template-view__hero {
   display: flex;
@@ -23,6 +33,26 @@
   justify-content: space-between;
   gap: 18px;
   margin-bottom: 18px;
+}
+
+/* The 扩展 hero lost its description line, so it's just the title + the 新增
+   button — vertically center them against each other. */
+.plugin-marketplace__hero {
+  align-items: center;
+}
+
+.plugin-marketplace__hero .entry-section__title {
+  font-size: var(--font-size-20, 20px);
+  line-height: 1.25;
+}
+
+.community-template-view__hero {
+  align-items: center;
+}
+
+.community-template-view__hero .entry-section__title {
+  font-size: var(--font-size-20, 20px);
+  line-height: 1.25;
 }
 
 .community-template-view__registry-link {
@@ -67,7 +97,10 @@
   box-shadow: var(--shadow-xs);
 }
 
-.plugin-marketplace__create:hover {
+.plugin-marketplace__create:hover:not(:disabled) {
+  /* Re-assert the accent fill (see primitives.css global button:hover). */
+  background: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
   filter: brightness(0.98);
 }
 
@@ -87,7 +120,8 @@
   display: inline-flex;
   gap: 4px;
   padding: 3px;
-  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--text) 4%, transparent);
 }
 
@@ -96,7 +130,7 @@
   min-height: 30px;
   padding: 0 14px;
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--text-muted);
   font: inherit;
@@ -105,11 +139,24 @@
   cursor: pointer;
 }
 
+.plugin-marketplace__switch button:hover:not(:disabled) {
+  border-color: transparent;
+}
+
 .plugin-marketplace__switch button.is-active {
-  border-color: color-mix(in srgb, var(--accent) 18%, var(--border));
-  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
-  color: var(--accent);
+  border-color: transparent;
+  background: #fff;
+  color: var(--text-strong);
   box-shadow: 0 1px 2px color-mix(in srgb, #000 7%, transparent);
+}
+/* Scope tabs + category chips sit directly on the page (no grey track behind
+   them like the segmented switch), so a white fill reads as barely-there. Give
+   their selected state a neutral light-grey solid fill instead. */
+.plugin-marketplace__filters button.is-active,
+.plugin-marketplace__category-tags button.is-active {
+  border-color: transparent;
+  background: var(--bg-subtle);
+  color: var(--text-strong);
 }
 
 .plugin-marketplace__search,
@@ -132,20 +179,26 @@
 
 .plugin-marketplace__search input,
 .community-template-view__search input {
+  appearance: none;
   width: 100%;
+  padding: 0;
   border: 0;
   outline: 0;
   background: transparent;
+  box-shadow: none;
   color: var(--text);
   font: inherit;
   font-size: 14px;
 }
 
-.plugin-marketplace__mode-note {
-  margin: -2px 0 16px;
-  color: var(--text-muted);
-  font-size: 13px;
-  line-height: 1.45;
+.plugin-marketplace__search input:focus,
+.plugin-marketplace__search input:focus-visible,
+.community-template-view__search input:focus,
+.community-template-view__search input:focus-visible {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .plugin-marketplace__section-title,
@@ -299,10 +352,9 @@
 .plugin-marketplace__filter-block {
   display: grid;
   gap: 12px;
-  padding: 14px 0 0;
+  padding: 0;
   margin-bottom: 18px;
   border: 0;
-  border-top: 1px solid var(--accent);
   border-radius: 0;
   background: transparent;
 }
@@ -327,7 +379,7 @@
   min-height: 32px;
   padding: 0 12px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--text-muted);
   font: inherit;
@@ -338,14 +390,9 @@
 .plugin-marketplace__filters button:hover,
 .plugin-marketplace__category-tags button:hover {
   background: color-mix(in srgb, var(--text) 5%, transparent);
+  border-color: transparent;
+  box-shadow: none;
   color: var(--text);
-}
-
-.plugin-marketplace__filters button.is-active,
-.plugin-marketplace__category-tags button.is-active {
-  border-color: color-mix(in srgb, var(--accent) 16%, var(--border));
-  background: color-mix(in srgb, var(--accent) 9%, var(--bg));
-  color: var(--accent);
 }
 
 .plugin-marketplace__category-tags {
@@ -358,7 +405,7 @@
 .plugin-marketplace__category-tags button {
   min-height: 26px;
   padding: 0 10px;
-  border-color: var(--border);
+  border-color: transparent;
   border-radius: 999px;
   font-size: 12px;
 }
@@ -378,8 +425,8 @@
 
 .plugin-marketplace__category h2 {
   margin: 0 0 14px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+  border-bottom: 0;
   font-size: 15px;
   font-weight: 650;
   color: var(--text-strong);
@@ -553,7 +600,7 @@
   min-height: 32px;
   padding: 0 9px;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--radius-large, 8px);
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -606,14 +653,6 @@
   line-height: 1.2;
 }
 
-.plugin-marketplace__create-head p {
-  margin: 7px 0 0;
-  max-width: 52ch;
-  color: var(--text-muted);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
 .plugin-marketplace__create-head > button {
   appearance: none;
   display: inline-grid;
@@ -621,7 +660,7 @@
   width: 32px;
   height: 32px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-large, 8px);
   background: var(--bg-panel);
   color: var(--text-muted);
   cursor: pointer;
@@ -630,29 +669,32 @@
 .plugin-marketplace__create-tabs {
   display: inline-flex;
   gap: 4px;
-  padding: 4px;
+  padding: 3px;
   margin: 16px 22px 0;
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--text) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text) 4%, transparent);
 }
 
 .plugin-marketplace__create-tabs button {
   appearance: none;
   min-height: 30px;
   padding: 0 14px;
-  border: 0;
-  border-radius: 9px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--text-muted);
   font: inherit;
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .plugin-marketplace__create-tabs button.is-active {
-  background: var(--bg-panel);
+  border-color: transparent;
+  background: #fff;
   color: var(--text-strong);
-  box-shadow: var(--shadow-xs);
+  box-shadow: 0 1px 2px color-mix(in srgb, #000 7%, transparent);
 }
 
 .plugin-marketplace__create-options,
@@ -664,24 +706,13 @@
 
 .plugin-marketplace__create-options article {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--bg-panel) 64%, var(--bg));
-}
-
-.plugin-marketplace__create-option-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
-  color: var(--text-strong);
 }
 
 .plugin-marketplace__create-options h3 {
@@ -710,6 +741,19 @@
   font-weight: 600;
 }
 
+.plugin-marketplace__url-import-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--spacing-10);
+}
+
+.plugin-marketplace__folder-action-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-10);
+}
+
 .plugin-marketplace__create-options input,
 .plugin-marketplace__skill-form input,
 .plugin-marketplace__skill-form textarea {
@@ -731,6 +775,8 @@
 }
 
 .plugin-marketplace__create-options article > button,
+.plugin-marketplace__url-import-row button,
+.plugin-marketplace__folder-action-row > button:not(.plugin-marketplace__folder-pick),
 .plugin-marketplace__skill-form > button {
   appearance: none;
   min-height: 34px;
@@ -753,7 +799,7 @@
   min-height: 34px;
   padding: 0 11px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-large, 8px);
   background: var(--bg);
   color: var(--text);
   font: inherit;
@@ -958,7 +1004,7 @@
 
 .plugin-suite-detail__command strong {
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-medium, 4px);
   background: color-mix(in srgb, var(--green, #16a34a) 9%, transparent);
   color: color-mix(in srgb, var(--green, #16a34a) 78%, var(--text-strong));
   font-size: 16px;
@@ -1216,7 +1262,7 @@
   min-height: 32px;
   padding: 0 12px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--radius-large, 8px);
   background: var(--bg-panel);
   color: var(--text);
   font: inherit;
@@ -1229,6 +1275,15 @@
   border-color: transparent;
   background: var(--accent);
   color: var(--accent-contrast, #fff);
+}
+
+.community-template-card__foot button:hover:not(:disabled) {
+  /* Keep the accent fill on hover so the label stays visible — the global
+     button:hover in primitives.css would otherwise repaint to --bg-subtle and
+     wash the light-on-dark label away. */
+  background: var(--accent);
+  border-color: transparent;
+  filter: brightness(1.08);
 }
 
 .community-template-view__section-head span {
@@ -1353,16 +1408,6 @@
   user-select: none;
 }
 
-.community-template-card__head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--text) 2%, var(--bg));
-}
-
 .community-template-card__foot {
   display: flex;
   align-items: center;
@@ -1381,22 +1426,6 @@
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.community-template-card__status {
-  flex: 0 0 auto;
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: #37d39a;
-}
-
-.community-template-card h3 {
-  margin: 0;
-  color: var(--text-strong);
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: 0;
 }
 
 .community-template-thumb {
@@ -1446,7 +1475,7 @@
 
 .community-template-thumb__grid span {
   height: 42px;
-  border-radius: 6px;
+  border-radius: var(--radius-medium, 4px);
   background: color-mix(in srgb, var(--template-accent) 14%, var(--bg-panel));
 }
 

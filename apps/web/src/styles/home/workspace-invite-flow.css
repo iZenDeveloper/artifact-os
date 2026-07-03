@@ -79,7 +79,7 @@
   width: 30px;
   height: 30px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-large, 8px);
   background: var(--bg-panel);
   color: var(--text-strong);
   font-size: 10px;
@@ -261,7 +261,7 @@
   width: 32px;
   height: 32px;
   flex: 0 0 auto;
-  border-radius: 10px;
+  border-radius: var(--radius-large, 8px);
   background: #e8ecdf;
   color: var(--invite-moss);
 }

@@ -159,7 +159,7 @@
 }
 .deploy-result-block.protected,
 .deploy-result-block.failed {
-  border-color: color-mix(in srgb, #c96442 38%, var(--border));
+  border-color: color-mix(in srgb, #87ea5c 38%, var(--border));
 }
 .deploy-result-summary {
   display: flex;
@@ -210,8 +210,8 @@
 .deploy-result-link-state.protected,
 .deploy-result-link-state.failed {
   color: #a34828;
-  background: color-mix(in srgb, #c96442 14%, transparent);
-  border: 1px solid color-mix(in srgb, #c96442 30%, var(--border));
+  background: color-mix(in srgb, #87ea5c 14%, transparent);
+  border: 1px solid color-mix(in srgb, #87ea5c 30%, var(--border));
 }
 .deploy-result-label {
   font-size: 12px;
@@ -938,9 +938,9 @@
 .qf-card:hover { border-color: var(--border-strong); }
 .qf-card:active { transform: translateY(1px); }
 .qf-card-on {
-  border-color: var(--accent, #c96442);
-  background: color-mix(in oklch, var(--accent, #c96442) 4%, var(--bg));
-  box-shadow: 0 0 0 1px var(--accent, #c96442) inset;
+  border-color: var(--accent, #87ea5c);
+  background: color-mix(in oklch, var(--accent, #87ea5c) 4%, var(--bg));
+  box-shadow: 0 0 0 1px var(--accent, #87ea5c) inset;
 }
 .qf-card-disabled { cursor: not-allowed; opacity: 0.6; }
 .qf-card-head {
@@ -962,7 +962,7 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 2px 6px;
-  background: var(--accent, #c96442);
+  background: var(--accent, #87ea5c);
   color: #fff;
   border-radius: var(--radius-pill);
   flex-shrink: 0;
@@ -1446,7 +1446,7 @@
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--radius-large, 8px);
   background: var(--bg-panel);
   color: var(--text-muted);
   cursor: pointer;
@@ -1891,13 +1891,13 @@
 }
 .design-spec-pre code { font: inherit; color: inherit; background: transparent; }
 .design-spec-line { display: inline; }
-.design-spec-line.is-h1 { color: #2563eb; font-weight: 700; }
+.design-spec-line.is-h1 { color: #1A74FF; font-weight: 700; }
 .design-spec-line.is-h2 { color: #0891b2; font-weight: 700; }
 .design-spec-line.is-h3 { color: #0d9488; font-weight: 600; }
 .design-spec-line.is-h4 { color: #16a34a; font-weight: 600; }
 .design-spec-line.is-quote { color: #6b7280; font-style: italic; }
 .design-spec-line.is-list { color: var(--text); }
-.design-spec-line.is-table { color: #7c3aed; }
+.design-spec-line.is-table { color: #353535; }
 .design-spec-line.is-fence { color: #dc2626; }
 .design-spec-line.is-blank { color: var(--text-muted); }
 .md-tk-bold { font-weight: 700; color: var(--text); }
@@ -1991,7 +1991,6 @@
 .examples-search input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .examples-search .search-icon {
   position: absolute;
@@ -2353,7 +2352,6 @@ body.entry-resizing { cursor: col-resize; user-select: none; }
 }
 .chat-history-search:focus-within {
   border-color: color-mix(in srgb, var(--accent) 58%, var(--border));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .chat-history-search svg {
   width: 11px;
@@ -2453,7 +2451,9 @@ body.entry-resizing { cursor: col-resize; user-select: none; }
   align-items: center;
   gap: 6px;
   min-height: 32px;
-  padding: 4px 7px;
+  /* Tighter left inset so the title sits closer to the card edge (aligns with
+     the menu header); right keeps room for the meta + hover delete button. */
+  padding: 4px 6px 4px 4px;
   border-radius: var(--radius);
   background: transparent;
   border: 1px solid transparent;

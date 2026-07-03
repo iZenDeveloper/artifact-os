@@ -2432,6 +2432,7 @@ function AppInner() {
           pet={config.pet?.enabled ? config.pet : undefined}
           taskCenter={petTaskCenter}
           onOpenProject={handleOpenProject}
+          dockLine
         />
       )}
       <TooltipLayer />

@@ -3,7 +3,6 @@
 // UC-10: owner/admin-visible workspace data overview. Demo-only data for
 // product review; no backend calls yet.
 
-import type { CSSProperties } from 'react';
 import { Icon } from './Icon';
 
 const DASHBOARD_STATS = [
@@ -13,10 +12,10 @@ const DASHBOARD_STATS = [
 ] as const;
 
 const TOKEN_RANKING = [
-  { name: '琼羽（你）', role: 'Owner', tokens: '1.42M', share: 100, color: '#c65b3a' },
-  { name: '张伟', role: 'Manager', tokens: '980K', share: 69, color: '#f97316' },
-  { name: '李娜', role: 'Editor', tokens: '640K', share: 45, color: '#6366f1' },
-  { name: '王芳', role: 'Reviewer', tokens: '420K', share: 30, color: '#10b981' },
+  { name: '琼羽（你）', role: 'Owner', tokens: '1.42M' },
+  { name: '张伟', role: 'Manager', tokens: '980K' },
+  { name: '李娜', role: 'Editor', tokens: '640K' },
+  { name: '王芳', role: 'Reviewer', tokens: '420K' },
 ] as const;
 
 const MEMBER_CREDITS = [
@@ -37,16 +36,18 @@ type TeamDashboardViewProps = {
 };
 
 export function TeamDashboardView({ isAdmin = true, isTeamPlan = false, onAutoRecharge }: TeamDashboardViewProps) {
+  function creditStatusClass(status: string) {
+    if (status === '需续额') return 'is-critical';
+    if (status === '偏低') return 'is-muted';
+    return 'is-brand';
+  }
+
   return (
     <div className="entry-section team-dashboard">
       <header className="entry-section__head team-dashboard__head">
         <div>
           <h1 className="entry-section__title">数据大盘</h1>
-          <p className="team-dashboard__subtitle">
-            {isAdmin ? 'Owner / Manager 可见 · Nexu 团队最近 30 天' : 'Member 视角 · 仅查看自己的额度状态'}
-          </p>
         </div>
-        <span className="team-dashboard__access">UC-10</span>
       </header>
 
       {isTeamPlan && isAdmin ? (
@@ -62,7 +63,7 @@ export function TeamDashboardView({ isAdmin = true, isTeamPlan = false, onAutoRe
         </section>
       ) : null}
 
-      <section className="team-dashboard__hero" aria-label="UC-10 数据大盘">
+      <section className="team-dashboard__hero" aria-label="数据大盘">
         <div className="team-dashboard__hero-copy">
           <h2>Nexu 团队</h2>
           <p>汇总团队产出、Design System 沉淀、活跃协作和 token 消耗结构。</p>
@@ -78,11 +79,6 @@ export function TeamDashboardView({ isAdmin = true, isTeamPlan = false, onAutoRe
         <div className="team-dashboard__token-head">
           <div>
             <h2>{isAdmin ? '团队成员额度' : '我的额度'}</h2>
-            <p>
-              {isAdmin
-                ? '查看每位成员的剩余额度，并为额度不足的成员续额。'
-                : '当前额度不足时，请联系 Owner 或 Manager 帮你提升额度。'}
-            </p>
           </div>
           <span>{isAdmin ? 'Admin' : 'Member'}</span>
         </div>
@@ -102,7 +98,7 @@ export function TeamDashboardView({ isAdmin = true, isTeamPlan = false, onAutoRe
                   <span>本周期已用</span>
                   <strong>{member.used}</strong>
                 </div>
-                <em className={member.status === '需续额' ? 'is-low' : undefined}>{member.status}</em>
+                <em className={creditStatusClass(member.status)}>{member.status}</em>
                 <button
                   type="button"
                   onClick={() => onAutoRecharge?.({ kind: 'member', name: member.name, role: member.role })}
@@ -138,27 +134,19 @@ export function TeamDashboardView({ isAdmin = true, isTeamPlan = false, onAutoRe
         <div className="team-dashboard__token-head">
           <div>
             <h2>Token 消耗排名</h2>
-            <p>按最近 30 天团队协作与 Agent 任务消耗统计。</p>
           </div>
           <span>Top 4</span>
         </div>
 
         <div className="team-dashboard__token-list">
           {TOKEN_RANKING.map((person, index) => (
-            <div
-              className="team-dashboard__token-row"
-              key={person.name}
-              style={{ '--member-rank-color': person.color } as CSSProperties}
-            >
+            <div className="team-dashboard__token-row" key={person.name}>
               <span className="team-dashboard__token-rank">{index + 1}</span>
               <div className="team-dashboard__token-person">
                 <strong>{person.name}</strong>
                 <span>{person.role}</span>
               </div>
               <span className="team-dashboard__token-value">{person.tokens}</span>
-              <span className="team-dashboard__token-bar" aria-hidden>
-                <span style={{ width: `${person.share}%` }} />
-              </span>
             </div>
           ))}
         </div>

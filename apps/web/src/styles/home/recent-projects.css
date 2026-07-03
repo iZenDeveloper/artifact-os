@@ -5,6 +5,7 @@
    ============================================================ */
 .recent-projects__move-remind {
   display: inline-flex;
+  flex-direction: row;
   align-items: center;
   gap: 8px;
   align-self: flex-start;
@@ -12,8 +13,14 @@
   color: var(--text-muted);
   cursor: pointer;
 }
+.modal-confirm .recent-projects__move-remind {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+}
 .recent-projects__move-remind input {
   flex: 0 0 auto;
+  width: auto;
   margin: 0;
   cursor: pointer;
 }
@@ -30,15 +37,16 @@
   gap: 12px;
 }
 .recent-projects__title-block {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-8);
   min-width: 0;
 }
 .recent-projects__description {
   margin: 0;
   color: var(--text-muted);
-  font-size: 13px;
-  line-height: 1.35;
+  font-size: 12px;
+  line-height: 1.2;
 }
 .recent-projects__title {
   margin: 0;
@@ -76,29 +84,54 @@
 .recent-projects__row {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
+  gap: var(--spacing-12);
+}
+.recent-projects__row--grid {
+  /* Fixed 5-across grid: each card is exactly 1/5 of the module width and the
+     row's right edge aligns with the header/filters. The card gap stays on the
+     base row rule; extra items wrap downward. */
+  grid-auto-flow: row;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-auto-rows: auto;
+  align-items: stretch;
+}
+.recent-projects__row--grid .recent-projects__card {
+  min-height: 0;
+}
+.recent-projects__row--grid .recent-projects__card-thumb {
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 108px;
+  margin-top: 0;
+}
+.recent-projects__row--grid .recent-projects__card-meta {
+  flex: 0 0 auto;
 }
 .recent-projects__card {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-panel);
   text-align: left;
-  overflow: visible;
+  overflow: hidden;
   transition: border-color 120ms var(--ease-out), box-shadow 120ms var(--ease-out), transform 120ms var(--ease-out);
+}
+.recent-projects__card.is-menu-open {
+  overflow: visible;
 }
 .recent-projects__card-main {
   appearance: none;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   width: 100%;
+  height: 100%;
   min-width: 0;
-  padding: 0;
+  padding: var(--spacing-8);
   border: 0;
   border-radius: inherit;
   background: transparent;
@@ -107,6 +140,15 @@
   font: inherit;
   text-align: left;
   overflow: hidden;
+}
+.recent-projects__row--grid .recent-projects__card-main {
+  align-items: stretch;
+  justify-content: flex-start;
+  height: auto;
+  min-height: 0;
+  padding-block-start: var(--spacing-8);
+  padding-block-end: var(--spacing-16);
+  padding-inline: var(--spacing-8);
 }
 .recent-projects__card:hover {
   border-color: var(--border-strong);
@@ -135,12 +177,13 @@
 }
 .recent-projects__card-thumb {
   aspect-ratio: 16 / 9;
-  background: linear-gradient(135deg, var(--accent-tint) 0%, var(--bg-subtle) 100%);
+  background: linear-gradient(135deg, var(--bg-subtle) 0%, var(--bg-panel) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
+  border-radius: var(--radius-medium);
   /* Container for the HTML preview iframe's responsive scale (below): the
    * iframe renders at a fixed desktop design width and is scaled by the
    * card's own width so the page reads as a faithful thumbnail instead of
@@ -215,19 +258,28 @@
   font-family: var(--serif);
   font-size: 32px;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--text-soft);
   letter-spacing: -0.02em;
 }
 .recent-projects__card-meta {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px 12px;
+  gap: var(--spacing-8);
+  width: 100%;
+  margin-top: var(--spacing-8);
+  padding: 0;
   min-width: 0;
+}
+.recent-projects__card-name-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 0;
 }
 .recent-projects__card-name {
   font-size: 13px;
   font-weight: 500;
+  line-height: 1.25;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -239,7 +291,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--spacing-8);
   min-width: 0;
 }
 .recent-projects__card-footer .design-card-tag-row {
@@ -247,7 +299,7 @@
   margin: 0;
 }
 .recent-projects__card-time {
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--text-muted);
   display: flex;
   align-items: center;
@@ -355,12 +407,13 @@
   appearance: none;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 8px;
   width: 100%;
   min-height: 34px;
   padding: 0 10px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-large, 8px);
   background: transparent;
   color: var(--text);
   cursor: pointer;
@@ -467,30 +520,59 @@
 .recent-projects__controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-8);
 }
 .recent-projects__select-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
+  gap: var(--spacing-6);
+  height: 28px;
+  padding: 0 var(--spacing-12);
+  border: var(--stroke-thin) solid var(--border);
   border-radius: var(--radius-pill);
-  background: var(--bg-panel);
+  background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--font-size-13);
   font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
+  transition:
+    background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    color var(--duration-ultra-fast) var(--curve-easy-ease),
+    transform var(--duration-faster) var(--curve-easy-ease);
 }
 .recent-projects__select-toggle:hover {
-  border-color: var(--border-strong);
+  border-color: var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-strong);
+}
+.recent-projects__select-toggle:active {
+  background: var(--bg-muted);
+  transform: translateY(1px);
+}
+.recent-projects__select-toggle:focus-visible {
+  outline: var(--stroke-thin) solid var(--blue);
+  outline-offset: 2px;
+}
+.recent-projects__select-toggle:disabled {
+  border-color: transparent;
+  background: var(--bg-subtle);
+  color: var(--text-faint);
+  cursor: not-allowed;
+  transform: none;
+}
+.recent-projects__select-toggle:disabled .od-icon,
+.recent-projects__select-toggle:disabled svg {
+  color: var(--text-faint);
 }
 .recent-projects__select-toggle.is-active {
-  border-color: var(--accent-soft);
-  background: var(--accent-tint);
-  color: var(--accent);
+  border-color: var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-strong);
 }
 .recent-projects__bulkbar {
   display: flex;
@@ -500,7 +582,7 @@
   min-height: 44px;
   padding: 8px 10px 8px 14px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-pill);
   background: var(--bg-panel);
   box-shadow: var(--shadow-xs);
 }
@@ -523,9 +605,9 @@
   align-items: center;
   gap: 6px;
   height: 30px;
-  padding: 0 10px;
+  padding: 0 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   background: var(--bg-panel);
   color: var(--text);
   font: inherit;
@@ -577,56 +659,108 @@
 }
 .recent-projects__view {
   display: flex;
-  gap: 4px;
+  gap: var(--spacing-6);
 }
 .recent-projects__view-btn {
   appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel);
+  border: var(--stroke-thin) solid var(--border);
+  border-radius: var(--radius-circular);
+  background: transparent;
   color: var(--text-muted);
+  font-size: var(--font-size-13);
   cursor: pointer;
-  transition: color 120ms var(--ease-out), border-color 120ms var(--ease-out), background-color 120ms var(--ease-out);
+  transition:
+    color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    transform var(--duration-faster) var(--curve-easy-ease);
 }
 .recent-projects__view-btn:hover {
-  color: var(--text);
-  border-color: var(--border-strong);
+  background: var(--bg-subtle);
+  color: var(--text-strong);
+  border-color: var(--border);
+}
+.recent-projects__view-btn:active {
+  background: var(--bg-muted);
+  transform: translateY(1px);
+}
+.recent-projects__view-btn:focus-visible {
+  outline: var(--stroke-thin) solid var(--blue);
+  outline-offset: 2px;
 }
 .recent-projects__view-btn.is-active {
-  color: var(--accent);
-  border-color: var(--accent-soft);
-  background: var(--accent-tint);
+  color: var(--text-strong);
+  border-color: var(--border);
+  background: var(--bg-subtle);
+}
+.recent-projects__view-btn:disabled {
+  border-color: transparent;
+  background: var(--bg-subtle);
+  color: var(--text-faint);
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* List view — one card per row, thumbnail left + meta inline. */
 .recent-projects__row--list {
   grid-template-columns: 1fr;
+  grid-auto-flow: row;
+  grid-auto-columns: auto;
+  grid-template-rows: none;
+  overflow: visible;
+  padding-bottom: 0;
+  scroll-snap-type: none;
   gap: 8px;
+}
+.recent-projects__row--list .recent-projects__card {
+  min-height: 68px;
 }
 .recent-projects__row--list .recent-projects__card-main {
   flex-direction: row;
   align-items: center;
   gap: 14px;
+  min-height: 68px;
+  padding: 8px 48px 8px 10px;
 }
 .recent-projects__row--list .recent-projects__card-thumb {
-  width: 96px;
-  flex: 0 0 96px;
-  aspect-ratio: 16 / 10;
+  width: 128px;
+  height: 52px;
+  flex: 0 0 128px;
+  min-height: 52px;
+  aspect-ratio: auto;
   border-radius: var(--radius-sm);
-  margin: 8px 0 8px 8px;
+  margin: 0;
 }
 .recent-projects__row--list .recent-projects__card-meta {
-  padding: 8px 14px 8px 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 18px;
+  padding: 0;
   flex: 1;
 }
+.recent-projects__row--list .recent-projects__card-name-row {
+  min-width: 0;
+}
+.recent-projects__row--list .recent-projects__card-footer {
+  display: contents;
+}
+.recent-projects__row--list .recent-projects__card-time {
+  grid-column: 1;
+  min-width: 0;
+}
+.recent-projects__row--list .design-card-tag-row {
+  grid-column: 2;
+  justify-self: end;
+}
 .recent-projects__row--list .recent-projects__card-glyph {
-  font-size: 20px;
+  font-size: 22px;
 }
 
 /* Canva-style "Recently used" heading + right-side filter controls. */
@@ -641,20 +775,52 @@
 .recent-projects__filter {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
+  justify-content: center;
+  gap: var(--spacing-6);
+  height: 28px;
+  padding: 0 var(--spacing-12);
+  border: var(--stroke-thin) solid var(--border);
   border-radius: var(--radius-pill);
-  background: var(--bg-panel);
+  background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--font-size-13);
   font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
+  transition:
+    background-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    border-color var(--duration-ultra-fast) var(--curve-easy-ease),
+    color var(--duration-ultra-fast) var(--curve-easy-ease),
+    transform var(--duration-faster) var(--curve-easy-ease);
 }
 .recent-projects__filter:hover {
-  border-color: var(--border-strong);
+  border-color: var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-strong);
+}
+.recent-projects__filter:hover svg {
+  color: var(--text-strong);
+}
+.recent-projects__filter:active {
+  background: var(--bg-muted);
+  transform: translateY(1px);
+}
+.recent-projects__filter:focus-visible {
+  outline: var(--stroke-thin) solid var(--blue);
+  outline-offset: 2px;
+}
+.recent-projects__filter:disabled {
+  border-color: transparent;
+  background: var(--bg-subtle);
+  color: var(--text-faint);
+  cursor: not-allowed;
+  transform: none;
+}
+.recent-projects__filter:disabled .od-icon,
+.recent-projects__filter:disabled svg {
+  color: var(--text-faint);
 }
 .recent-projects__filter svg {
   color: var(--text-soft);
@@ -671,6 +837,11 @@
   background: var(--bg-panel);
   box-shadow: var(--shadow-md);
 }
+.recent-projects__filter-wrap:first-of-type .recent-projects__filter-menu,
+.recent-projects__filter-wrap:nth-of-type(2) .recent-projects__filter-menu {
+  left: 0;
+  right: auto;
+}
 .recent-projects__filter-menu {
   display: grid;
   gap: 2px;
@@ -681,7 +852,7 @@
   align-items: center;
   width: 100%;
   height: 30px;
-  padding: 0 9px;
+  padding: 0 10px;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -689,6 +860,7 @@
   font: inherit;
   font-size: 13px;
   text-align: left;
+  justify-content: flex-start;
   cursor: pointer;
 }
 .recent-projects__filter-menu button:hover,
@@ -715,15 +887,18 @@
   cursor: pointer;
   transition: filter 0.15s cubic-bezier(0.23, 1, 0.32, 1);
 }
-.recent-projects__invite:hover {
+.recent-projects__invite:hover:not(:disabled) {
+  /* Re-assert the accent fill (see primitives.css global button:hover). */
+  background: var(--accent);
+  border-color: transparent;
   filter: brightness(1.05);
 }
 
 /* Shared badge on the thumbnail + creator avatar in the meta row. Private projects stay unbadged. */
 .recent-projects__card-badge {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 10px;
+  left: 10px;
   z-index: 2;
   display: inline-flex;
   align-items: center;
@@ -731,10 +906,31 @@
   height: 20px;
   padding: 0 7px;
   border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  border: var(--stroke-thin) solid color-mix(in srgb, var(--green) 24%, transparent);
+  background: color-mix(in srgb, var(--green) 10%, var(--bg-panel));
+  color: color-mix(in srgb, var(--green) 72%, var(--text-strong));
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 650;
+}
+/* Title + inline shared badge. In list view the thumbnail is only 96px wide,
+   so the overlay badge is dropped from the thumb and rendered inline here
+   instead of covering the glyph. */
+.recent-projects__card-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.recent-projects__card-name-row .recent-projects__card-name {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.recent-projects__card-badge--inline {
+  position: static;
+  top: auto;
+  left: auto;
+  flex: 0 0 auto;
+  height: 18px;
 }
 .recent-projects__card-owner {
   width: 16px;
