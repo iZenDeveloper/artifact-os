@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { Button, Input, Select } from '@open-design/components';
 import { APP_CHROME_FILE_ACTIONS_ID, APP_CHROME_FILE_ACTIONS_SELECTOR } from './AppChromeHeader';
@@ -104,6 +104,7 @@ import { buildReactComponentSrcdoc } from '../runtime/react-component';
 import { shouldConsumeSlideNav } from '../runtime/slide-nav';
 import { findHtmlEntriesReferencing } from '../runtime/jsx-module-refs';
 import { buildLazySrcdocTransport, buildSrcdoc, canActivateSrcDocTransport } from '../runtime/srcdoc';
+import { DeckThumbnailRail } from './DeckThumbnailRail';
 import {
   buildSpeakerNotesPresenterHtml,
   extractSpeakerNotesFromHtml,
@@ -1188,7 +1189,12 @@ interface Props {
   slideNavRequest?: { slideIndex: number; nonce: number } | null;
 }
 
-export function FileViewer({
+// Memoized so FileWorkspace-local state churn (tab drag hover, closing a
+// NEIGHBORING tab, launcher toggles) skips this whole subtree — the live
+// preview iframes below are the most expensive thing on screen. Relies on
+// FileWorkspace passing identity-stable props (see the activeFile* memos
+// there).
+export const FileViewer = memo(function FileViewer({
   projectId,
   projectKind,
   file,
@@ -1305,7 +1311,7 @@ export function FileViewer({
     return <DocumentPreviewViewer projectId={projectId} file={file} />;
   }
   return <BinaryViewer projectId={projectId} file={file} />;
-}
+});
 
 export function LiveArtifactViewer({
   projectId,
@@ -6408,18 +6414,33 @@ function HtmlViewer({
     }) : ''),
     [source, inTabPresent, effectiveDeck, projectId, file.name, previewStateKey],
   );
-  // Skipped entirely while the rail is collapsed: the rail unmounts its
-  // iframes, so there is no reason to keep N per-slide documents current.
-  const deckThumbnailSrcDocs = useMemo(() => {
-    if (!source || !effectiveDeck || deckSlideTotal <= 0 || deckThumbnailsCollapsed) return [];
-    return Array.from({ length: deckSlideTotal }, (_, index) => buildSrcdoc(source, {
+  // Per-slide thumbnail documents are built lazily by DeckThumbnailRail, one
+  // slide at a time and only for thumbnails near the rail viewport. This
+  // callback's identity is the rail's srcdoc cache key: a new deck source
+  // mints a new builder and only the mounted thumbnails rebuild.
+  // `freezeMotion` settles deck animations at their final frame so N
+  // miniature documents don't keep the compositor rasterizing forever.
+  const buildDeckThumbnailSrcDoc = useCallback(
+    (index: number) => buildSrcdoc(source ?? '', {
       deck: true,
       baseHref: projectRawUrl(projectId, baseDirFor(file.name)),
       initialSlideIndex: index,
       hideDeckChrome: true,
       previewFocusGuard: true,
-    }));
-  }, [source, effectiveDeck, deckSlideTotal, deckThumbnailsCollapsed, projectId, file.name]);
+      freezeMotion: true,
+    }),
+    [source, projectId, file.name],
+  );
+  // Stable thunk so HtmlViewer's frequent re-renders (slide state, streaming
+  // edits) never invalidate the memoized rail; the ref always calls the
+  // freshest goToSlide closure.
+  const goToSlideRef = useRef<(index: number) => void>(() => {});
+  useEffect(() => {
+    goToSlideRef.current = goToSlide;
+  });
+  const handleDeckThumbnailSelect = useCallback((index: number) => {
+    goToSlideRef.current(index);
+  }, []);
   const lazySrcDocTransport = useMemo(() => buildLazySrcdocTransport(), []);
   const [srcDocTransportResetKey, setSrcDocTransportResetKey] = useState(0);
   const [srcDocShellReady, setSrcDocShellReady] = useState(false);
@@ -8658,11 +8679,6 @@ function HtmlViewer({
     });
   }
 
-  function selectMode(nextMode: 'preview' | 'source') {
-    if (nextMode === 'source') setDrawOverlayOpen(false);
-    setMode(nextMode);
-  }
-
   function activateBoard(nextTool?: BoardTool) {
     setMode('preview');
     setBoardMode(true);
@@ -9599,8 +9615,8 @@ function HtmlViewer({
   };
   const boardAvailable = mode === 'preview' && source !== null;
   const showPreviewToolbarControls = mode === 'preview';
-  // Independent of deckThumbnailSrcDocs so a collapsed rail (which skips
-  // building the per-slide documents) still renders its frame and toggle.
+  // Independent of the rail's lazy per-slide documents so a collapsed rail
+  // (which unmounts DeckThumbnailRail entirely) still renders its toggle.
   const showDeckThumbnailRail = effectiveDeck && source !== null && deckSlideTotal > 0 && !manualEditMode;
   const showDeckFloatingNav = effectiveDeck && deckSlideTotal > 0 && !manualEditMode;
   const deckNavTotal = Math.max(deckSlideTotal, activeDeckSlideIndex + 1, 1);
@@ -9990,31 +10006,6 @@ function HtmlViewer({
           >
             <Icon name="reload" size={14} />
           </button>
-          <div className="viewer-tabs viewer-mode-tabs" role="tablist" aria-label="View mode">
-            {([
-              ['preview', t('fileViewer.preview'), 'eye-line'],
-              ['source', t('fileViewer.source'), 'code-line'],
-            ] as const).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                className={`viewer-tab od-tooltip ${mode === id ? 'active' : ''}`}
-                aria-label={label}
-                aria-selected={mode === id}
-                title={label}
-                data-tooltip={label}
-                data-tooltip-placement="bottom"
-                onClick={() => {
-                  fireArtifactToolbarClick(id);
-                  selectMode(id);
-                }}
-              >
-                <RemixIcon name={id === 'preview' ? 'eye-line' : 'code-line'} size={14} className="viewer-tab-icon" />
-                <span className="viewer-tab-label">{label}</span>
-              </button>
-            ))}
-          </div>
           {versioningAvailable ? (
             <button
               type="button"
@@ -10213,26 +10204,6 @@ function HtmlViewer({
             </button>
             {toolbarMoreOpen ? (
               <div className="viewer-toolbar-more-menu" role="menu">
-                {([
-                  ['preview', t('fileViewer.preview'), 'eye-line'],
-                  ['source', t('fileViewer.source'), 'code-line'],
-                ] as const).map(([id, label, icon]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    className={`viewer-toolbar-more-item${mode === id ? ' active' : ''}`}
-                    role="menuitem"
-                    onClick={() => {
-                      fireArtifactToolbarClick(id);
-                      selectMode(id);
-                      setToolbarMoreOpen(false);
-                    }}
-                  >
-                    <RemixIcon name={icon} size={15} />
-                    <span>{label}</span>
-                    {mode === id ? <Icon name="check" size={13} /> : null}
-                  </button>
-                ))}
                 {versioningAvailable ? (
                   <button
                     type="button"
@@ -10762,7 +10733,14 @@ function HtmlViewer({
         </>)}
       <div className="viewer-body" ref={previewBodyRef}>
         {source === null ? (
-          <div className="viewer-empty">{t('fileViewer.loading')}</div>
+          <div
+            className="viewer-loading"
+            role="status"
+            aria-busy="true"
+            aria-label={t('fileViewer.loading')}
+          >
+            <span className="viewer-loading-canvas" aria-hidden="true" />
+          </div>
         ) : mode === 'preview' ? (
           <div
             className={`${manualEditMode ? 'manual-edit-workspace' : commentPreviewLayoutClass} preview-viewport preview-viewport-${previewViewport}${drawOverlayOpen ? ' preview-draw-active' : ''}`}
@@ -10773,41 +10751,13 @@ function HtmlViewer({
             {manualEditPanel}
             {manualEditHoverAffordance}
             {showDeckThumbnailRail && !deckThumbnailsCollapsed ? (
-              <aside
-                className="deck-thumbnail-rail"
-                aria-label="Slides"
-              >
-                <div className="deck-thumbnail-list">
-                    {deckThumbnailSrcDocs.map((thumbSrcDoc, index) => {
-                      const active = index === activeDeckSlideIndex;
-                      const slideLabel = t('fileViewer.speakerNotesSlide', {
-                        current: index + 1,
-                        total: deckNavTotal,
-                      });
-                      return (
-                        <button
-                          key={index}
-                          type="button"
-                          className={`deck-thumbnail-button${active ? ' active' : ''}`}
-                          aria-current={active ? 'true' : undefined}
-                          title={slideLabel}
-                          onClick={() => goToSlide(index)}
-                        >
-                          <span className="deck-thumbnail-number">{index + 1}</span>
-                          <span className="deck-thumbnail-frame" aria-hidden="true">
-                            <iframe
-                              title={slideLabel}
-                              sandbox="allow-scripts allow-downloads"
-                              srcDoc={thumbSrcDoc}
-                              loading="lazy"
-                              tabIndex={-1}
-                            />
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-              </aside>
+              <DeckThumbnailRail
+                count={deckSlideTotal}
+                activeIndex={activeDeckSlideIndex}
+                labelTotal={deckNavTotal}
+                buildThumbSrcDoc={buildDeckThumbnailSrcDoc}
+                onSelect={handleDeckThumbnailSelect}
+              />
             ) : null}
             <div
               className={manualEditMode ? 'manual-edit-canvas' : 'comment-preview-canvas'}

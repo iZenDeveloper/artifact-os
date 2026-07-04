@@ -877,12 +877,15 @@
     0 0 0 3px color-mix(in srgb, var(--accent) 26%, transparent),
     0 6px 18px rgba(0, 0, 0, 0.5);
 }
+/* 200%/scale(0.5) keeps thumbnails 2× supersampled (crisp on retina) while
+   rasterizing a quarter of the pixels the previous 400%/scale(0.25) did —
+   per mounted thumbnail, and the rail can hold many at once. */
 .deck-thumbnail-frame iframe {
   display: block;
-  width: 400%;
-  height: 400%;
+  width: 200%;
+  height: 200%;
   border: 0;
-  transform: scale(0.25);
+  transform: scale(0.5);
   transform-origin: top left;
   pointer-events: none;
   background: #000;
@@ -998,17 +1001,28 @@
   background: var(--bg-panel);
   color: var(--text);
   padding: 0;
+  /* Mounted only while a deck is in preview, so this fires exactly when the
+     panel appears; reuses the shared entrance keyframe (entrance.css). */
+  animation: od-fade-slide-up 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
-/* One hairline only: the panel's top border marks the stage/notes boundary,
-   so the head draws no second divider — label and notes read as one block,
-   matching the claude.ai reference. */
+@media (prefers-reduced-motion: reduce) {
+  .speaker-notes-panel {
+    animation: none;
+  }
+}
+/* The title row is bracketed by two hairlines — the panel's top border above
+   and the head's own bottom border below — so "Speaker notes" reads as a
+   distinct, layered band above the notes body, matching the claude.ai
+   reference. The row stays short (compact padding, low min-height) so it
+   frames the notes rather than competing with them. */
 .speaker-notes-panel-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 40px;
-  padding: 6px 16px 0;
+  min-height: 34px;
+  padding: 7px 16px;
+  border-bottom: 1px solid var(--border);
 }
 .speaker-notes-panel-title {
   display: inline-flex;
@@ -1022,7 +1036,7 @@
 }
 .speaker-notes-panel-meta {
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 400;
   text-transform: none;
   letter-spacing: 0;
 }
@@ -1075,18 +1089,20 @@
   transform: translateX(14px);
   background: #fff;
 }
-/* Preview and editor share the exact same box (position, height, padding) so
-   toggling Edit swaps the read-only text for a textarea in place — no size,
-   padding, or typography shift, i.e. no jitter. */
+/* Preview and editor share one fixed box (position, height, padding), so the
+   notes area is exactly the same height on every slide regardless of how much
+   text a slide carries — long notes scroll inside it, empty slides never
+   collapse it, and the deck stage above never jitters as you page through.
+   Toggling Edit swaps the read-only text for a textarea in place with no size,
+   padding, or typography shift. */
 .speaker-notes-preview,
 .speaker-notes-editor {
   position: relative;
-  min-height: 118px;
-  max-height: 180px;
-  padding: 8px 16px 14px;
+  height: 140px;
+  padding: 10px 16px 14px;
 }
 .speaker-notes-preview {
-  overflow: auto;
+  overflow-y: auto;
   white-space: pre-wrap;
   color: var(--text);
   font-size: 13px;
@@ -1105,16 +1121,16 @@
    so entering edit mode reads as the same notes turning editable in place. */
 .speaker-notes-editor textarea {
   display: block;
+  box-sizing: border-box;
   width: 100%;
-  min-height: 118px;
-  max-height: 180px;
-  resize: vertical;
+  height: 100%;
+  resize: none;
   border: 0;
   border-radius: 0;
   margin: 0;
   background: transparent;
   color: var(--text);
-  padding: 8px 16px 14px;
+  padding: 10px 16px 14px;
   font-family: inherit;
   font-size: 13px;
   line-height: 1.55;

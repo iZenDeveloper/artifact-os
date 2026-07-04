@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -21,6 +22,7 @@ import {
 } from '../analytics/events';
 import { deriveUploadCohort } from '../analytics/upload-tracking';
 import { useI18n, useT } from '../i18n';
+import { useStableHandler } from '../lib/use-stable-handler';
 import { isMacPlatform } from '../utils/platform';
 import {
   deleteProjectFile,
@@ -366,6 +368,10 @@ function shouldKeepCurrentSketchState(
 export const DESIGN_FILES_TAB = '__design_files__';
 export const DESIGN_SYSTEM_TAB = '__design_system__';
 const QUESTIONS_TAB = '__questions__';
+
+// Module-level default so a caller that omits `previewComments` doesn't mint
+// a fresh [] every render — that identity feeds the memoized FileViewer.
+const NO_PREVIEW_COMMENTS: PreviewComment[] = [];
 const BROWSER_TAB_PREFIX = '__browser__:';
 // Keep at most this many embedded-browser `<webview>`s mounted at once. Each is
 // a full out-of-process Chromium guest (timers, JS, network, a GPU surface), so
@@ -1216,7 +1222,7 @@ export function FileWorkspace({
   designSystemActivityEvents = [],
   tabsState,
   onTabsStateChange,
-  previewComments = [],
+  previewComments = NO_PREVIEW_COMMENTS,
   onSavePreviewComment,
   onRemovePreviewComment,
   onSendBoardCommentAttachments,
@@ -2905,6 +2911,36 @@ export function FileWorkspace({
     return liveArtifactEntries.find((entry) => entry.tabId === activeTab) ?? null;
   }, [activeTab, liveArtifactEntries]);
 
+  // Identity-stable props for the memoized FileViewer. Without these, every
+  // FileWorkspace state change (closing an adjacent tab, drag hover, launcher
+  // toggles) would hand FileViewer fresh object/function identities and drag
+  // the whole viewer subtree — live iframes included — through a re-render.
+  const activeFilePreviewComments = useMemo(
+    () => previewComments.filter((comment) => comment.filePath === activeFile?.name),
+    [previewComments, activeFile?.name],
+  );
+  const activeFileShareRequest = useMemo(
+    () => (shareRequest && shareRequest.name === activeFile?.name
+      ? { nonce: shareRequest.nonce }
+      : null),
+    [shareRequest, activeFile?.name],
+  );
+  const activeFileDownloadRequest = useMemo(
+    () => (downloadRequest && downloadRequest.name === activeFile?.name
+      ? { nonce: downloadRequest.nonce }
+      : null),
+    [downloadRequest, activeFile?.name],
+  );
+  const activeFileSlideNavRequest = useMemo(
+    () => deliverableSlideNavForActiveFile(
+      slideNavRequest,
+      activeFile?.name,
+      slideNavDeliverableNonce,
+    ),
+    [slideNavRequest, activeFile?.name, slideNavDeliverableNonce],
+  );
+  const stableOpenFileReplacing = useStableHandler(openFileReplacing);
+
   const activeWorkspaceContext = useMemo<WorkspaceContextItem | null>(() => {
     if (activeTab === DESIGN_SYSTEM_TAB && designSystemProject) {
       return {
@@ -3036,6 +3072,89 @@ export function FileWorkspace({
     }
     return ids;
   }, [designSystemProject, showQuestionsTab, visibleOrderedWorkspaceTabs]);
+
+  // Per-tab handler sets with stable identities. Tab is memoized; the inline
+  // closures the strip map used to create handed every Tab fresh props on
+  // each FileWorkspace render, turning the memo into a no-op. Handlers
+  // delegate through a post-commit ref (see useStableHandler for the timing
+  // contract) so they always execute against the latest committed state.
+  const tabItemActions = {
+    activate(key: string) {
+      if (isBrowserTabId(key)) {
+        setPersistedActive(key);
+        return;
+      }
+      const sketchEntry = sketches[key];
+      if (sketchEntry && !sketchEntry.persisted) activatePending(key);
+      else setPersistedActive(key);
+    },
+    close(key: string) {
+      if (isBrowserTabId(key)) closeBrowserTab(key);
+      else closeTab(key);
+    },
+    dragStart(key: string, event: ReactDragEvent<HTMLDivElement>) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', key);
+      draggedTabNameRef.current = key;
+      setDraggedTabName(key);
+    },
+    dragOver(key: string, event: ReactDragEvent<HTMLDivElement>) {
+      const currentDraggedName = draggedTabNameRef.current ?? draggedTabName;
+      if (!currentDraggedName || currentDraggedName === key) return;
+      if (!persistedTabs.includes(currentDraggedName)) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      const edge = tabDropEdgeFromEvent(event);
+      setDragOverTab((current) =>
+        current?.name === key && current.edge === edge
+          ? current
+          : { name: key, edge },
+      );
+    },
+    dragLeave(key: string) {
+      setDragOverTab((current) => (current?.name === key ? null : current));
+    },
+    drop(key: string, event: ReactDragEvent<HTMLDivElement>) {
+      event.preventDefault();
+      const draggedName = draggedTabNameRef.current || draggedTabName;
+      if (draggedName) {
+        reorderPersistedTab(draggedName, key, tabDropEdgeFromEvent(event));
+      }
+      clearTabDragState();
+    },
+    dragEnd() {
+      clearTabDragState();
+    },
+  };
+  const tabItemActionsRef = useRef(tabItemActions);
+  useEffect(() => {
+    tabItemActionsRef.current = tabItemActions;
+  });
+  const tabHandlersByKeyRef = useRef(new Map<string, WorkspaceTabItemHandlers>());
+  function tabHandlersFor(key: string): WorkspaceTabItemHandlers {
+    const map = tabHandlersByKeyRef.current;
+    let handlers = map.get(key);
+    if (!handlers) {
+      handlers = {
+        onActivate: () => tabItemActionsRef.current.activate(key),
+        onClose: () => tabItemActionsRef.current.close(key),
+        onDragStart: (event) => tabItemActionsRef.current.dragStart(key, event),
+        onDragOver: (event) => tabItemActionsRef.current.dragOver(key, event),
+        onDragLeave: () => tabItemActionsRef.current.dragLeave(key),
+        onDrop: (event) => tabItemActionsRef.current.drop(key, event),
+        onDragEnd: () => tabItemActionsRef.current.dragEnd(),
+      };
+      map.set(key, handlers);
+    }
+    return handlers;
+  }
+  useEffect(() => {
+    const alive = new Set(workspaceTabIds);
+    const map = tabHandlersByKeyRef.current;
+    for (const key of [...map.keys()]) {
+      if (!alive.has(key)) map.delete(key);
+    }
+  }, [workspaceTabIds]);
 
   const workspaceContexts = useMemo<WorkspaceContextItem[]>(() => {
     const out: WorkspaceContextItem[] = [];
@@ -3410,14 +3529,15 @@ export function FileWorkspace({
               const browserTitle = browserUrl
                 ? browserTab.title?.trim() || labelFromUrl(browserUrl)
                 : browserTab.label;
+              const browserHandlers = tabHandlersFor(browserTab.id);
               return (
                 <Tab
                   key={browserTab.id}
                   label={browserTitle}
                   title={browserUrl ? `${browserTitle}\n${browserUrl}` : browserTitle}
                   active={activeTab === browserTab.id}
-                  onActivate={() => setPersistedActive(browserTab.id)}
-                  onClose={() => closeBrowserTab(browserTab.id)}
+                  onActivate={browserHandlers.onActivate}
+                  onClose={browserHandlers.onClose}
                   kind="browser"
                 />
               );
@@ -3426,7 +3546,6 @@ export function FileWorkspace({
             const sketchEntry = sketches[name];
             const dirtyMark =
               sketchEntry && (sketchEntry.dirty || !sketchEntry.persisted) ? ' •' : '';
-            const isPending = sketchEntry && !sketchEntry.persisted;
             const onDisk = visibleFiles.find((f) => f.name === name);
             const liveArtifact = liveArtifactEntries.find((entry) => entry.tabId === name);
             const kind = liveArtifact ? 'live-artifact' : onDisk?.kind ?? (isSketchName(name) ? 'sketch' : 'text');
@@ -3455,16 +3574,15 @@ export function FileWorkspace({
               : isSideChat
                 ? 'comment'
                 : undefined;
+            const handlers = tabHandlersFor(name);
             return (
               <Tab
                 key={name}
                 label={label}
                 iconNameOverride={iconNameOverride}
                 active={activeTab === name}
-                onActivate={() =>
-                  isPending ? activatePending(name) : setPersistedActive(name)
-                }
-                onClose={() => closeTab(name)}
+                onActivate={handlers.onActivate}
+                onClose={handlers.onClose}
                 kind={kind}
                 liveArtifact={liveArtifact}
                 draggable={persistedTabs.includes(name)}
@@ -3474,37 +3592,11 @@ export function FileWorkspace({
                     ? dragOverTab.edge
                     : null
                 }
-                onDragStart={(event) => {
-                  event.dataTransfer.effectAllowed = 'move';
-                  event.dataTransfer.setData('text/plain', name);
-                  draggedTabNameRef.current = name;
-                  setDraggedTabName(name);
-                }}
-                onDragOver={(event) => {
-                  const currentDraggedName = draggedTabNameRef.current ?? draggedTabName;
-                  if (!currentDraggedName || currentDraggedName === name) return;
-                  if (!persistedTabs.includes(currentDraggedName)) return;
-                  event.preventDefault();
-                  event.dataTransfer.dropEffect = 'move';
-                  const edge = tabDropEdgeFromEvent(event);
-                  setDragOverTab((current) =>
-                    current?.name === name && current.edge === edge
-                      ? current
-                      : { name, edge },
-                  );
-                }}
-                onDragLeave={() => {
-                  setDragOverTab((current) => (current?.name === name ? null : current));
-                }}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  const draggedName = draggedTabNameRef.current || draggedTabName;
-                  if (draggedName) {
-                    reorderPersistedTab(draggedName, name, tabDropEdgeFromEvent(event));
-                  }
-                  clearTabDragState();
-                }}
-                onDragEnd={clearTabDragState}
+                onDragStart={handlers.onDragStart}
+                onDragOver={handlers.onDragOver}
+                onDragLeave={handlers.onDragLeave}
+                onDrop={handlers.onDrop}
+                onDragEnd={handlers.onDragEnd}
               />
             );
           })}
@@ -3828,7 +3920,7 @@ export function FileWorkspace({
             streaming={streaming}
             commentQueueOnSend={commentQueueOnSend}
             commentSendDisabled={commentSendDisabled}
-            previewComments={previewComments.filter((comment) => comment.filePath === activeFile.name)}
+            previewComments={activeFilePreviewComments}
             onSavePreviewComment={onSavePreviewComment}
             onRemovePreviewComment={onRemovePreviewComment}
             onSendBoardCommentAttachments={onSendBoardCommentAttachments}
@@ -3836,24 +3928,12 @@ export function FileWorkspace({
               activeFile.name === 'brand.html' ? onBrandExtractionStopRequest : undefined
             }
             onFileSaved={onRefreshFiles}
-            onOpenFileReplacing={openFileReplacing}
+            onOpenFileReplacing={stableOpenFileReplacing}
             commentPortalId={commentPortalId}
             onCommentModeChange={onCommentModeChange}
-            shareRequest={
-              shareRequest && shareRequest.name === activeFile.name
-                ? { nonce: shareRequest.nonce }
-                : null
-            }
-            downloadRequest={
-              downloadRequest && downloadRequest.name === activeFile.name
-                ? { nonce: downloadRequest.nonce }
-                : null
-            }
-            slideNavRequest={deliverableSlideNavForActiveFile(
-              slideNavRequest,
-              activeFile.name,
-              slideNavDeliverableNonce,
-            )}
+            shareRequest={activeFileShareRequest}
+            downloadRequest={activeFileDownloadRequest}
+            slideNavRequest={activeFileSlideNavRequest}
           />
         ) : (
           <div className="viewer-empty">
@@ -7391,7 +7471,22 @@ function PageCreatorDialog({
   return typeof document !== 'undefined' ? createPortal(dialog, document.body) : dialog;
 }
 
-function Tab({
+// Stable per-key handler bundle produced by FileWorkspace's tabHandlersFor.
+// Identity stability is the contract: Tab below is memoized, so these must
+// not be re-created per render.
+interface WorkspaceTabItemHandlers {
+  onActivate: () => void;
+  onClose: () => void;
+  onDragStart: (event: ReactDragEvent<HTMLDivElement>) => void;
+  onDragOver: (event: ReactDragEvent<HTMLDivElement>) => void;
+  onDragLeave: () => void;
+  onDrop: (event: ReactDragEvent<HTMLDivElement>) => void;
+  onDragEnd: () => void;
+}
+
+// Memoized: the strip re-renders on every FileWorkspace state change, but an
+// individual tab only changes when its own label/active/drag props do.
+const Tab = memo(function Tab({
   label,
   meta,
   title,
@@ -7502,7 +7597,7 @@ function Tab({
       ) : null}
     </div>
   );
-}
+});
 
 function tabDropEdgeFromEvent(event: ReactDragEvent<HTMLDivElement>): TabDropEdge {
   const rect = event.currentTarget.getBoundingClientRect();

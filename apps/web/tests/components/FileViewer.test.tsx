@@ -1378,7 +1378,7 @@ describe('FileViewer SVG artifacts', () => {
     expect(srcDocFrame?.srcdoc).toContain('data-od-sandbox-shim');
   });
 
-  it('reactivates the srcDoc transport after switching source back to preview', async () => {
+  it('keeps srcDoc HTML previews in preview-only mode', async () => {
     const file = baseFile({
       name: 'page.html',
       path: 'page.html',
@@ -1403,17 +1403,9 @@ describe('FileViewer SVG artifacts', () => {
       />,
     );
 
+    expect(screen.queryByRole('tab', { name: 'Code' })).toBeNull();
+    expect(screen.queryByRole('tab', { name: 'Preview' })).toBeNull();
     fireEvent.click(screen.getByTestId('manual-edit-mode-toggle'));
-
-    await waitFor(() => {
-      const activeFrame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
-      expect(activeFrame.getAttribute('data-od-render-mode')).toBe('srcdoc');
-    });
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Code' }));
-    expect(screen.queryByTestId('artifact-preview-frame')).toBeNull();
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Preview' }));
 
     await waitFor(() => {
       const activeFrame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
@@ -1745,7 +1737,7 @@ describe('FileViewer SVG artifacts', () => {
     expect(markup).toContain('data-od-render-mode="url-load" data-od-active="false"');
   });
 
-  it('keeps HTML deck source reachable from the viewer mode tabs', async () => {
+  it('renders HTML decks in preview-only mode without thumbnail deck chrome', async () => {
     const file = baseFile({
       name: 'deck.html',
       path: 'deck.html',
@@ -1771,11 +1763,21 @@ describe('FileViewer SVG artifacts', () => {
       />,
     );
 
-    expect(container.querySelector('.viewer-tabs')).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: 'Code' })).toBeNull();
+    expect(screen.queryByRole('tab', { name: 'Preview' })).toBeNull();
     expect(container.querySelector('.deck-nav')).toBeNull();
     expect(container.querySelector('.deck-thumbnail-toolbar-toggle')).toBeTruthy();
     expect(container.querySelector('.deck-thumbnail-rail .deck-thumbnail-toggle')).toBeNull();
     expect(container.querySelector('.deck-floating-nav')).toBeTruthy();
+    const thumbnailFrames = Array.from(
+      container.querySelectorAll('.deck-thumbnail-frame iframe'),
+    ) as HTMLIFrameElement[];
+    expect(thumbnailFrames.length).toBeGreaterThan(0);
+    for (const frame of thumbnailFrames) {
+      expect(frame.srcdoc).toContain('data-od-deck-chrome-hidden');
+      expect(frame.srcdoc).toContain('.deck-floating-nav');
+      expect(frame.srcdoc).toContain('[role="navigation"][aria-label*="Deck"]');
+    }
     const notesSwitch = screen.getByRole('switch', { name: /edit/i });
     expect(notesSwitch.closest('label')).toBeNull();
     fireEvent.click(container.querySelector('.deck-thumbnail-toolbar-toggle')!);
@@ -1784,11 +1786,7 @@ describe('FileViewer SVG artifacts', () => {
     expect(screen.queryByRole('button', { name: 'Manual' })).toBeNull();
     expect(container.querySelector('.viewer-viewport-switcher')).toBeTruthy();
     expect(screen.queryByTestId('palette-tweaks-toggle')).toBeNull();
-    fireEvent.click(screen.getByRole('tab', { name: 'Code' }));
-    expect(screen.getByRole('tab', { name: 'Code' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.queryByTestId('artifact-preview-frame')).toBeNull();
-    fireEvent.click(screen.getByRole('tab', { name: 'Preview' }));
-    expect(screen.getByRole('tab', { name: 'Preview' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByTestId('artifact-preview-frame')).toBeTruthy();
   });
 
   it('shows Cloudflare Pages as a deploy action without requiring a project name input', async () => {

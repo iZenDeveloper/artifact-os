@@ -103,15 +103,18 @@
   display: none;
 }
 .viewer-viewport-switcher {
-  width: 32px;
+  width: 30px;
 }
 .viewer-viewport-trigger {
   justify-content: center;
-  width: 32px;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
   padding: 0;
 }
 .viewer-viewport-trigger > span,
-.viewer-viewport-trigger > svg:last-child {
+.viewer-viewport-trigger > svg:last-child,
+.viewer-viewport-trigger > .ri-arrow-down-s-line {
   display: none;
 }
 .viewer-toolbar-more {
@@ -588,6 +591,42 @@
   position: relative;
   background: var(--bg);
   overflow: auto;
+}
+/* Initial-load skeleton for the HTML preview: a quiet shimmering canvas
+   placeholder instead of a bare "Loading…" line, so a large deck reads as
+   arriving rather than stalled. Owned by FileViewer's source===null branch. */
+.viewer-loading {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  animation: od-fade-in 250ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.viewer-loading-canvas {
+  display: block;
+  width: min(720px, 86%);
+  aspect-ratio: 16 / 10;
+  max-height: 76%;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: linear-gradient(
+    100deg,
+    var(--bg-subtle) 40%,
+    color-mix(in srgb, var(--bg-subtle) 55%, var(--bg-panel)) 50%,
+    var(--bg-subtle) 60%
+  );
+  background-size: 200% 100%;
+  animation: od-viewer-loading-shimmer 1.4s linear infinite;
+}
+@keyframes od-viewer-loading-shimmer {
+  from { background-position: 130% 0; }
+  to { background-position: -70% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .viewer-loading-canvas {
+    animation: none;
+  }
 }
 .live-artifact-refresh-notice {
   position: sticky;
@@ -1102,11 +1141,13 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  width: 32px;
+  width: 30px;
 }
 .viewer-viewport-trigger {
-  width: 32px;
-  min-height: 26px;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
   justify-content: center;
   gap: 0;
   padding: 0;
@@ -1119,6 +1160,14 @@
 }
 .viewer-viewport-trigger > svg {
   flex: 0 0 auto;
+}
+.viewer-viewport-trigger > .viewer-viewport-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
 }
 .viewer-viewport-trigger > span {
   flex: 1 1 auto;

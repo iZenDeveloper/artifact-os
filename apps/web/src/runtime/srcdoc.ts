@@ -35,6 +35,14 @@ export type SrcdocOptions = {
   paletteBridge?: boolean;
   initialPalette?: string | null;
   previewFocusGuard?: boolean;
+  /**
+   * Force every CSS animation/transition to complete instantly so the
+   * document settles at its final visual state and stops repainting. Meant
+   * for static miniatures (deck thumbnail rail): a looping deck animation in
+   * N thumbnail iframes otherwise keeps N compositor layers rasterizing
+   * forever.
+   */
+  freezeMotion?: boolean;
 };
 
 /**
@@ -263,9 +271,10 @@ export function buildSrcdoc(
   const withBase = options.baseHref ? injectBaseHref(withSourcePaths, options.baseHref) : withSourcePaths;
   const withShim = injectSandboxShim(withBase);
   const withFocusGuard = options.previewFocusGuard ? injectPreviewFocusGuard(withShim) : withShim;
+  const withMotionFreeze = options.freezeMotion ? injectMotionFreeze(withFocusGuard) : withFocusGuard;
   const withDeckChrome = options.deck && options.hideDeckChrome
-    ? injectDeckChromeHiding(withFocusGuard)
-    : withFocusGuard;
+    ? injectDeckChromeHiding(withMotionFreeze)
+    : withMotionFreeze;
   const withDeck = options.deck
     ? injectDeckBridge(withDeckChrome, {
         initialSlideIndex: options.initialSlideIndex,
@@ -2043,14 +2052,42 @@ html[data-od-inspect-mode] body iframe { pointer-events: none !important; }
 // the scaled stage lands ~1000px off-screen and the user sees a mostly-
 // black preview with a sliver of slide content in the top-left. Skip the
 // override whenever the framework's marker id is present.
+// Near-zero durations (not `animation-play-state: paused`) are deliberate:
+// pausing an entry animation at t=0 leaves `fill-mode: both` content stuck
+// invisible, while collapsing the duration lets every animation run to its
+// final keyframe immediately — the thumbnail shows the slide's settled state
+// and the compositor never re-rasterizes the frame again.
+function injectMotionFreeze(doc: string): string {
+  return injectBeforeHeadEnd(doc, `<style data-od-motion-freeze>
+*, *::before, *::after {
+  animation-duration: 0.001s !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001s !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
+</style>`);
+}
+
 function injectDeckChromeHiding(doc: string): string {
   return injectBeforeHeadEnd(doc, `<style data-od-deck-chrome-hidden>
 .deck-counter,
 .deck-hint,
 .deck-nav,
+.deck-floating-nav,
+.deck-floating-reset,
+.deck-controls,
 .slide-nav,
 .slides-nav,
+.slide-controls,
+.slide-counter,
 .presentation-nav,
+.presentation-controls,
+[role="navigation"][aria-label*="Deck"],
+[role="navigation"][aria-label*="deck"],
+[role="navigation"][aria-label*="Slide"],
+[role="navigation"][aria-label*="slide"],
 [data-deck-nav],
 [data-slide-nav] {
   display: none !important;

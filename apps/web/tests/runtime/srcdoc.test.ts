@@ -27,6 +27,19 @@ describe('buildSrcdoc', () => {
     expect(doc).toContain('var initialSlideIndex = 0;');
   });
 
+  it('injects the motion-freeze style only when freezeMotion is set', () => {
+    const frozen = buildSrcdoc(deckHtml, { deck: true, freezeMotion: true });
+    expect(frozen).toContain('data-od-motion-freeze');
+    // End-state, not paused-at-t0: entry animations with fill-mode both must
+    // land on their final keyframe or thumbnails render as blank frames.
+    expect(frozen).toContain('animation-duration: 0.001s !important');
+    expect(frozen).toContain('animation-iteration-count: 1 !important');
+    expect(frozen).toContain('transition-duration: 0.001s !important');
+
+    const normal = buildSrcdoc(deckHtml, { deck: true });
+    expect(normal).not.toContain('data-od-motion-freeze');
+  });
+
   it('injects the snapshot bridge used by draw annotations', () => {
     const srcdoc = buildSrcdoc('<main style="color:red">Hero</main>');
 

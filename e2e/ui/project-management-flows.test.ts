@@ -1014,7 +1014,7 @@ test('[P1] project detail workspace keeps design file tabs and preview controls 
   await createProject(page, 'Workspace preview structure');
   await expectWorkspaceReady(page);
 
-  const uploadedName = await uploadTinyHtml(page, 'workspace-preview.html', '<!doctype html><html><body><main><h1>Workspace Preview Structure</h1><p>Preview and code tabs stay visible.</p></main></body></html>');
+  const uploadedName = await uploadTinyHtml(page, 'workspace-preview.html', '<!doctype html><html><body><main><h1>Workspace Preview Structure</h1><p>Preview stays visible.</p></main></body></html>');
 
   const fileTab = tabBySuffix(page, uploadedName);
   await expect(fileTab).toBeVisible();
@@ -1023,23 +1023,13 @@ test('[P1] project detail workspace keeps design file tabs and preview controls 
 
   await openUploadedHtmlArtifactPreview(page, uploadedName);
 
-  const viewModeTabs = page.getByRole('tablist', { name: 'View mode' });
-  await expect(viewModeTabs.getByRole('tab', { name: 'Preview' })).toBeVisible();
-  await expect(viewModeTabs.getByRole('tab', { name: 'Code' })).toBeVisible();
+  await expect(page.getByRole('tablist', { name: 'View mode' })).toHaveCount(0);
   await expect(artifactPreview(page)).toBeVisible();
   await expect(
     artifactPreviewFrame(page).getByRole('heading', { name: 'Workspace Preview Structure' }),
   ).toBeVisible();
   await expect(page.getByRole('button', { name: /Preview viewport/i })).toBeVisible();
-
-  await viewModeTabs.getByRole('tab', { name: 'Code' }).click();
-  const sourceViewer = page.locator('pre.viewer-source');
-  await expect(sourceViewer).toBeVisible();
-  await expect(sourceViewer).toContainText('Workspace Preview Structure');
-  await expect(sourceViewer).toContainText('<!doctype html>');
-
-  await viewModeTabs.getByRole('tab', { name: 'Preview' }).click();
-  await expect(artifactPreview(page)).toBeVisible();
+  await expect(page.locator('pre.viewer-source')).toHaveCount(0);
 });
 
 test('[P1] project detail assistant completion actions support copy, fork, and feedback', async ({ page }) => {
