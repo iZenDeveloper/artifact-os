@@ -58,8 +58,16 @@ function onboardingPersonProperties(
           od_source_resolution: 'onboarding',
         }
       : {}),
-    od_onboarding_at: now.toISOString(),
+    od_onboarding_at: onboardingCompletedAt(profile, now),
   };
+}
+
+function onboardingCompletedAt(profile: OnboardingProfile, fallback: Date): string {
+  if (profile.completedAt) {
+    const completedAt = Date.parse(profile.completedAt);
+    if (Number.isFinite(completedAt)) return new Date(completedAt).toISOString();
+  }
+  return fallback.toISOString();
 }
 
 function amrEntryPersonProperties(
