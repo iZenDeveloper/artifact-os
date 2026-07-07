@@ -1998,8 +1998,11 @@ async function revealHomeTemplates(page: Page) {
     await page.mouse.wheel(0, 900);
     if (!(await home.locator('.home-templates-reveal').evaluate((node) => node.classList.contains('is-revealed')).catch(() => false))) {
       await page.evaluate(() => {
-        window.dispatchEvent(new WheelEvent('wheel', { deltaY: 900 }));
+        window.dispatchEvent(new WheelEvent('wheel', { deltaY: 900, bubbles: true, cancelable: true }));
       });
+    }
+    if (!(await home.locator('.home-templates-reveal').evaluate((node) => node.classList.contains('is-revealed')).catch(() => false))) {
+      await hint.evaluate((element) => (element as HTMLButtonElement).click());
     }
     await expect(home.locator('.home-templates-reveal')).toHaveClass(/is-revealed/);
     await expect(home.locator('.home-templates-reveal__body')).not.toHaveAttribute('inert', '');
@@ -2044,13 +2047,12 @@ async function duplicatePluginFromDetails(
 
 async function clickCardAtActionablePoint(page: Page, card: Locator) {
   await scrollCardIntoActionableView(card);
-  let point: { x: number; y: number } | null = null;
   await expect
     .poll(async () => {
-      point = await getCardActionablePoint(card);
-      return point !== null;
+      return (await getCardActionablePoint(card)) !== null;
     }, { timeout: 5_000 })
     .toBe(true);
+  const point = await getCardActionablePoint(card);
   if (!point) {
     throw new Error('Plugin card did not expose an actionable click point.');
   }

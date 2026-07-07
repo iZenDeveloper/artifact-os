@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test';
+import type { Locator } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 /**
@@ -21,13 +22,16 @@ export async function ensureRailOpen(page: Page): Promise<void> {
 
 export async function openNewProjectModal(page: Page): Promise<void> {
   if (await page.getByTestId('new-project-panel').isVisible().catch(() => false)) return;
+  await ensureRailOpen(page);
   const railCreateButton = page.getByTestId('entry-nav-new-project');
   if (await railCreateButton.isVisible().catch(() => false)) {
-    await railCreateButton.scrollIntoViewIfNeeded();
-    await railCreateButton.click();
-    await expect(page.getByTestId('new-project-modal')).toBeVisible();
-    await expect(page.getByTestId('new-project-panel')).toBeVisible();
-    return;
+    const point = await getActionablePoint(railCreateButton);
+    if (point) {
+      await page.mouse.click(point.x, point.y);
+      await expect(page.getByTestId('new-project-modal')).toBeVisible();
+      await expect(page.getByTestId('new-project-panel')).toBeVisible();
+      return;
+    }
   }
 
   const projectsNav = page.getByTestId('entry-nav-projects');
@@ -47,4 +51,21 @@ export async function openNewProjectModal(page: Page): Promise<void> {
   await createButton.click();
   await expect(page.getByTestId('new-project-modal')).toBeVisible();
   await expect(page.getByTestId('new-project-panel')).toBeVisible();
+}
+
+async function getActionablePoint(locator: Locator): Promise<{ x: number; y: number } | null> {
+  return locator.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const point = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    if (
+      point.x < 0 ||
+      point.y < 0 ||
+      point.x > window.innerWidth ||
+      point.y > window.innerHeight
+    ) {
+      return null;
+    }
+    const hit = document.elementFromPoint(point.x, point.y);
+    return hit && element.contains(hit) ? point : null;
+  }).catch(() => null);
 }
