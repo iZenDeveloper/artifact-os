@@ -1,9 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
-  clearPendingOnboardingEntry,
-  consumePendingOnboardingEntry,
-  stashPendingOnboardingEntry,
+  consumeOnboardingEntryForProject,
+  stashOnboardingEntryForProject,
 } from '../src/onboarding/onboarding-entry';
 
 function createStorageStub() {
@@ -18,7 +17,7 @@ function createStorageStub() {
   };
 }
 
-describe('pending onboarding entry (session hand-off)', () => {
+describe('onboarding entry (id-keyed session hand-off)', () => {
   beforeEach(() => {
     (globalThis as unknown as { window: unknown }).window = {
       sessionStorage: createStorageStub(),
@@ -28,13 +27,13 @@ describe('pending onboarding entry (session hand-off)', () => {
     delete (globalThis as unknown as { window?: unknown }).window;
   });
 
-  it('round-trips a stashed entry', () => {
-    stashPendingOnboardingEntry({
+  it('round-trips a stashed entry for its project id', () => {
+    stashOnboardingEntryForProject('proj-1', {
       source: 'home_recommendation',
       productType: 'product_ui',
       recommendationId: 'product_ui_prototype',
     });
-    expect(consumePendingOnboardingEntry()).toEqual({
+    expect(consumeOnboardingEntryForProject('proj-1')).toEqual({
       source: 'home_recommendation',
       productType: 'product_ui',
       recommendationId: 'product_ui_prototype',
@@ -42,14 +41,14 @@ describe('pending onboarding entry (session hand-off)', () => {
   });
 
   it('carries the survey answers when present', () => {
-    stashPendingOnboardingEntry({
+    stashOnboardingEntryForProject('proj-1', {
       source: 'home_recommendation',
       productType: 'marketing',
       recommendationId: 'marketing_landing',
       role: 'growth',
       useCases: ['landing', 'ads'],
     });
-    expect(consumePendingOnboardingEntry()).toEqual({
+    expect(consumeOnboardingEntryForProject('proj-1')).toEqual({
       source: 'home_recommendation',
       productType: 'marketing',
       recommendationId: 'marketing_landing',
@@ -59,36 +58,56 @@ describe('pending onboarding entry (session hand-off)', () => {
   });
 
   it('is read-once — a second consume returns null', () => {
-    stashPendingOnboardingEntry({
+    stashOnboardingEntryForProject('proj-1', {
       source: 'home_recommendation',
       productType: 'marketing',
       recommendationId: 'marketing_landing',
     });
-    expect(consumePendingOnboardingEntry()).not.toBeNull();
-    expect(consumePendingOnboardingEntry()).toBeNull();
+    expect(consumeOnboardingEntryForProject('proj-1')).not.toBeNull();
+    expect(consumeOnboardingEntryForProject('proj-1')).toBeNull();
   });
 
-  it('returns null when nothing was stashed', () => {
-    expect(consumePendingOnboardingEntry()).toBeNull();
+  it('returns null when nothing was stashed for that id', () => {
+    expect(consumeOnboardingEntryForProject('proj-1')).toBeNull();
   });
 
-  it('clears a stashed entry so a later consume returns null (failed create)', () => {
-    stashPendingOnboardingEntry({
+  // The race the id-keyed slot fixes (PR #5111 review): clicking "进入 Studio"
+  // and then opening an UNRELATED project before the recommended one finished
+  // creating must not let that unrelated project steal the personalized context.
+  // The entry is keyed by the created project id, so a concurrent mount for a
+  // different id consumes nothing, and the intended project still gets it.
+  it('is isolated per project id — a concurrent unrelated project cannot steal it', () => {
+    stashOnboardingEntryForProject('recommended-proj', {
       source: 'home_recommendation',
       productType: 'product_ui',
       recommendationId: 'product_ui_prototype',
     });
-    clearPendingOnboardingEntry();
-    expect(consumePendingOnboardingEntry()).toBeNull();
-  });
-
-  it('clearing when nothing is stashed is a harmless no-op', () => {
-    expect(() => clearPendingOnboardingEntry()).not.toThrow();
-    expect(consumePendingOnboardingEntry()).toBeNull();
+    // An unrelated project mounts first (mid-create navigation) and reads its
+    // own key — nothing there.
+    expect(consumeOnboardingEntryForProject('other-proj')).toBeNull();
+    // The recommendation-started project still finds its context intact.
+    expect(consumeOnboardingEntryForProject('recommended-proj')).toMatchObject({
+      source: 'home_recommendation',
+      recommendationId: 'product_ui_prototype',
+    });
   });
 
   it('ignores a malformed stored value', () => {
-    window.sessionStorage.setItem('open-design:pending-onboarding-entry', '{"source":"nope"}');
-    expect(consumePendingOnboardingEntry()).toBeNull();
+    window.sessionStorage.setItem(
+      'open-design:onboarding-entry:proj-1',
+      '{"source":"nope"}',
+    );
+    expect(consumeOnboardingEntryForProject('proj-1')).toBeNull();
+  });
+
+  it('treats a missing project id as a no-op', () => {
+    expect(() =>
+      stashOnboardingEntryForProject('', {
+        source: 'home_recommendation',
+        productType: 'general',
+        recommendationId: 'general_menu',
+      }),
+    ).not.toThrow();
+    expect(consumeOnboardingEntryForProject('')).toBeNull();
   });
 });

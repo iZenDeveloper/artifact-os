@@ -233,9 +233,10 @@ import type { SettingsSection } from './SettingsDialog';
 import { Toast } from './Toast';
 import { FirstArtifactHint } from './FirstArtifactHint';
 import {
-  consumePendingOnboardingEntry,
+  consumeOnboardingEntryForProject,
   type OnboardingEntry,
 } from '../onboarding/onboarding-entry';
+import { producedPreviewableArtifact } from '../onboarding/first-generation';
 import { sentPrefilledPrompt } from '../onboarding/first-prompt';
 import { BrandReadyPrompt } from './BrandReadyPrompt';
 import { useDesignMdState } from '../hooks/useDesignMdState';
@@ -1336,7 +1337,7 @@ export function ProjectView({
   const onboardingSeedPromptRef = useRef('');
   if (!onboardingEntryInitRef.current) {
     onboardingEntryInitRef.current = true;
-    onboardingEntryRef.current = consumePendingOnboardingEntry();
+    onboardingEntryRef.current = consumeOnboardingEntryForProject(project.id);
     onboardingSeedPromptRef.current = (project.pendingPrompt ?? '').trim();
   }
   const onboardingFirstPromptSentRef = useRef(false);
@@ -5231,22 +5232,6 @@ export function ProjectView({
             cancelController,
           );
           if (ownsCurrentRun) updateConversationLatestRun(finalRunStatus ?? 'succeeded', endedAt);
-          // Completion half of the onboarding funnel: the first successful
-          // generation in a recommendation-started project. Fires once.
-          if (
-            ownsCurrentRun &&
-            onboardingEntryRef.current &&
-            !onboardingFirstGenDoneRef.current &&
-            finalRunStatus === 'succeeded'
-          ) {
-            onboardingFirstGenDoneRef.current = true;
-            const entry = onboardingEntryRef.current;
-            trackOnboardingFirstGenerationCompleted(analytics.track, {
-              entry_source: entry.source,
-              product_type: entry.productType,
-              recommendation_id: entry.recommendationId,
-            });
-          }
           // Refetch the file list directly (rather than just bumping the
           // refresh signal) so we can diff against the pre-turn snapshot
           // and attach the new files to the assistant message as download
@@ -5278,6 +5263,27 @@ export function ProjectView({
                 }
               }
               const produced = computeProducedFiles(beforeFileNames, nextFiles) ?? [];
+              // Completion half of the onboarding funnel: the first generation
+              // in a recommendation-started project that actually produced a
+              // previewable artifact. Gated on the same artifact-producing
+              // condition as the first-artifact hint (a produced `.html`), so a
+              // `succeeded` run that returned only text or a clarifying question
+              // does NOT count. Fires once.
+              if (
+                ownsCurrentRun &&
+                onboardingEntryRef.current &&
+                !onboardingFirstGenDoneRef.current &&
+                finalRunStatus === 'succeeded' &&
+                producedPreviewableArtifact(produced)
+              ) {
+                onboardingFirstGenDoneRef.current = true;
+                const entry = onboardingEntryRef.current;
+                trackOnboardingFirstGenerationCompleted(analytics.track, {
+                  entry_source: entry.source,
+                  product_type: entry.productType,
+                  recommendation_id: entry.recommendationId,
+                });
+              }
               const traceObjectFiles = computeTraceObjectFiles(
                 beforeFileNames,
                 nextFiles,

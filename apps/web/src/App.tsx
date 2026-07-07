@@ -10,6 +10,10 @@ import { deriveUploadCohort } from './analytics/upload-tracking';
 import { setPendingDesignSystemCreateEntry } from './analytics/ds-create-entry';
 import { detectClientType } from './analytics/identity';
 import {
+  stashOnboardingEntryForProject,
+  type OnboardingEntry,
+} from './onboarding/onboarding-entry';
+import {
   deriveConfigureGlobals,
   projectKindFromMetadataToTracking,
   fidelityToTracking,
@@ -136,6 +140,7 @@ type AppCreateProjectInput = Omit<CreateInput, 'metadata'> & {
   pendingFiles?: File[];
   userWorkingDirToken?: string;
   linkedDirs?: string[] | null;
+  onboardingEntry?: OnboardingEntry;
 };
 
 const APP_CONFIG_CHANGED_EVENT = 'open-design:app-config-changed';
@@ -1561,6 +1566,15 @@ function AppInner() {
           /* sessionStorage may be unavailable (e.g. SSR / private mode); fall
              back to manual send. */
         }
+      }
+      // Home recommendation handoff: now that the project exists and its id is
+      // known, stash the onboarding entry keyed by that id. Studio consumes it
+      // by the same id on mount. Keying by id (instead of a single global slot
+      // written before create) removes the race where opening an unrelated
+      // project mid-create could steal the personalized funnel context, and
+      // means a failed/aborted create leaves nothing behind.
+      if (input.onboardingEntry) {
+        stashOnboardingEntryForProject(result.project.id, input.onboardingEntry);
       }
       const project = result.appliedPluginSnapshotId
         ? {

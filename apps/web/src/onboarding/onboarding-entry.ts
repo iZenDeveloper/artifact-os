@@ -5,11 +5,19 @@
 // — first prompt sent, first generation completed — fire later, in Studio,
 // where that context isn't otherwise available. Rather than persist role /
 // use-case / product_type to the project (the onboarding spec §9.2 forbids
-// 落库), we hand the context across the Home→Studio navigation through a single
-// sessionStorage slot: Home stashes it right before creating the project, and
-// the next Studio to mount consumes it (read-once). It is intentionally lost on
-// refresh — the first-prompt / first-generation moment happens in the same
-// session immediately after the click.
+// 落库), we hand the context across the Home→Studio navigation through
+// sessionStorage.
+//
+// The slot is keyed by the CREATED project id, not a single global slot. The id
+// is only known after the create request succeeds, so the stash happens in the
+// create success path (`App.handleCreateProject`) once the target project is
+// known, and the next Studio to mount for THAT project consumes it (read-once).
+// Keying by id removes the race the single global slot had: clicking "进入
+// Studio" and then opening an unrelated project before the recommended one
+// finished creating could let the unrelated project steal the personalized
+// context. It is intentionally lost on refresh — the first-prompt /
+// first-generation moment happens in the same session immediately after the
+// click.
 
 import type { ProductType } from './recommendation';
 
@@ -24,35 +32,39 @@ export interface OnboardingEntry {
   useCases?: string[];
 }
 
-const STORAGE_KEY = 'open-design:pending-onboarding-entry';
+const KEY_PREFIX = 'open-design:onboarding-entry:';
 
-export function stashPendingOnboardingEntry(entry: OnboardingEntry): void {
+function keyForProject(projectId: string): string {
+  return `${KEY_PREFIX}${projectId}`;
+}
+
+// Stash the entry for a specific created project. Called from the create
+// success path, where the project id is finally known — never before, so an
+// unrelated project mount cannot consume it.
+export function stashOnboardingEntryForProject(
+  projectId: string,
+  entry: OnboardingEntry,
+): void {
+  if (!projectId) return;
   try {
-    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(entry));
+    window.sessionStorage.setItem(keyForProject(projectId), JSON.stringify(entry));
   } catch {
     // Storage-denied contexts just lose the funnel attribution — never throw.
   }
 }
 
-// Drop a stashed entry that was never consumed. Called when the project
-// create/navigation the entry was stashed for did not succeed, so a later
-// unrelated project mount cannot consume the stale slot and mis-attribute
-// itself as recommendation-started.
-export function clearPendingOnboardingEntry(): void {
+// Read and remove the entry for a specific project. Returns null when none is
+// set (the common case: any project not started from a recommendation, or a
+// concurrent project whose own key was never written).
+export function consumeOnboardingEntryForProject(
+  projectId: string,
+): OnboardingEntry | null {
+  if (!projectId) return null;
+  const key = keyForProject(projectId);
   try {
-    window.sessionStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // Nothing to clean up in a storage-denied context.
-  }
-}
-
-// Read and remove the pending entry. Returns null when none is set (the common
-// case: any project not started from a recommendation).
-export function consumePendingOnboardingEntry(): OnboardingEntry | null {
-  try {
-    const raw = window.sessionStorage.getItem(STORAGE_KEY);
+    const raw = window.sessionStorage.getItem(key);
     if (!raw) return null;
-    window.sessionStorage.removeItem(STORAGE_KEY);
+    window.sessionStorage.removeItem(key);
     const parsed = JSON.parse(raw) as Partial<OnboardingEntry>;
     if (
       parsed &&

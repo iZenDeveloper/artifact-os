@@ -109,6 +109,7 @@ import { localizePluginDescription } from './plugins-home/localization';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
 import { RecommendedStartRegion } from './RecommendedStartRegion';
 import type { Recommendation } from '../onboarding/recommendation';
+import type { OnboardingEntry } from '../onboarding/onboarding-entry';
 import { AnimatePresence } from 'motion/react';
 
 export interface ActivePlugin {
@@ -242,6 +243,7 @@ interface Props {
     name: string;
     prompt: string;
     metadata: ProjectMetadata;
+    onboardingEntry: OnboardingEntry;
   }) => boolean | void | Promise<boolean | void>;
   onRecommendationDismiss?: () => void;
   executionSwitcher?: ReactNode;

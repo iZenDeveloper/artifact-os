@@ -12,10 +12,7 @@ import {
   type ProductType,
   type Recommendation,
 } from '../onboarding/recommendation';
-import {
-  clearPendingOnboardingEntry,
-  stashPendingOnboardingEntry,
-} from '../onboarding/onboarding-entry';
+import type { OnboardingEntry } from '../onboarding/onboarding-entry';
 import { starterCopyFor } from '../onboarding/starter-copy';
 import { Icon } from './Icon';
 import styles from './RecommendedStartRegion.module.css';
@@ -34,13 +31,15 @@ const PRODUCT_KIND: Record<ProductType, ProjectMetadata['kind']> = {
 interface Props {
   recommendation: Recommendation;
   // Open Studio with the recommended first request pre-filled (not auto-sent).
-  // Resolves `false` (or throws) when the project create/navigation failed, so
-  // the onboarding handoff can drop its pending entry instead of leaving it for
-  // an unrelated later project to consume.
+  // The onboarding entry rides along so the create success path can stash it
+  // keyed by the created project id — the funnel context is only handed off
+  // after (and for) the project that actually gets created, so a concurrent
+  // navigation can never steal it.
   onStart: (input: {
     name: string;
     prompt: string;
     metadata: ProjectMetadata;
+    onboardingEntry: OnboardingEntry;
   }) => boolean | void | Promise<boolean | void>;
   // Abandon the recommendation for the generic entry ("浏览全部类型").
   onDismiss: () => void;
@@ -101,34 +100,27 @@ export function RecommendedStartRegion({ recommendation, onStart, onDismiss }: P
     });
   }
 
-  async function handleEnter() {
+  function handleEnter() {
     fireClick('enter_studio', current.id);
-    // Hand the entry context across to Studio (session-only) so the
+    // Hand the entry context to the create pipeline (session-only) so the
     // first-prompt / first-generation funnel events can attribute back to this
-    // recommendation without persisting anything.
-    stashPendingOnboardingEntry({
+    // recommendation without persisting anything. The create success path
+    // stashes it keyed by the created project id; nothing is written to
+    // sessionStorage here, so a failed/aborted create leaves no stale slot and
+    // a concurrent unrelated project mount cannot mis-attribute itself.
+    const onboardingEntry: OnboardingEntry = {
       source: 'home_recommendation',
       productType: current.productType,
       recommendationId: current.id,
       ...(recommendation.role ? { role: recommendation.role } : {}),
       ...(recommendation.useCases.length > 0 ? { useCases: recommendation.useCases } : {}),
+    };
+    void onStart({
+      name: projectNameFromPrompt(firstPrompt, t('home.recommendation.defaultProjectName')),
+      prompt: firstPrompt,
+      metadata: { kind: PRODUCT_KIND[current.productType], nameSource: 'prompt' },
+      onboardingEntry,
     });
-    // Only a successful create → navigate reaches the Studio mount that
-    // consumes this entry. If the create fails or is aborted, drop the stashed
-    // slot so it can't be picked up by a later unrelated project mount and
-    // mis-attributed as recommendation-started.
-    let started = false;
-    try {
-      started =
-        (await onStart({
-          name: projectNameFromPrompt(firstPrompt, t('home.recommendation.defaultProjectName')),
-          prompt: firstPrompt,
-          metadata: { kind: PRODUCT_KIND[current.productType], nameSource: 'prompt' },
-        })) !== false;
-    } catch {
-      started = false;
-    }
-    if (!started) clearPendingOnboardingEntry();
   }
 
   function handleChange() {

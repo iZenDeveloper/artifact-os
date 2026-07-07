@@ -110,6 +110,7 @@ import {
   buildRecommendation,
   type Recommendation,
 } from '../onboarding/recommendation';
+import type { OnboardingEntry } from '../onboarding/onboarding-entry';
 import { ONBOARDING_ARTIFACT_CHIP_IDS } from './home-hero/chips';
 import { homeHeroChipLabel } from './home-hero/chip-labels';
 import type { PluginUseAction } from './plugins-home/useActions';
@@ -242,6 +243,7 @@ type EntryCreateProjectInput = Omit<CreateInput, 'metadata'> & {
   pendingFiles?: File[];
   userWorkingDirToken?: string;
   linkedDirs?: string[] | null;
+  onboardingEntry?: OnboardingEntry;
 };
 
 function defaultPluginIdForMetadata(metadata: ProjectMetadata): string | null {
@@ -751,14 +753,16 @@ export function EntryShell({
     name: string;
     prompt: string;
     metadata: ProjectMetadata;
+    onboardingEntry: OnboardingEntry;
   }): Promise<boolean> {
     const pluginId = defaultPluginIdForMetadata(input.metadata);
     // Create FIRST, then tear down the recommendation only once it actually
     // opened. Dismissing up-front turned a transient create/navigation failure
     // into an onboarding dead-end: the user dropped back to generic Home with
     // no way to retry the starter they just picked. On failure we keep the
-    // recommendation mounted (and RecommendedStartRegion clears its pending
-    // entry off the same result). A thrown create is treated as a failure.
+    // recommendation mounted. The onboarding entry rides along so the create
+    // success path stashes it keyed by the created project id — nothing is
+    // written on failure. A thrown create is treated as a failure.
     let ok = false;
     try {
       ok =
@@ -770,6 +774,7 @@ export function EntryShell({
           pendingPrompt: input.prompt,
           ...(pluginId ? { pluginId } : {}),
           autoSendFirstMessage: false,
+          onboardingEntry: input.onboardingEntry,
         })) !== false;
     } catch {
       ok = false;
