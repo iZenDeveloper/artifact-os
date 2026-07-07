@@ -12,9 +12,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const FIRST_SESSION_KEY = 'open-design:analytics.first_session_id';
 
+const posthogState = vi.hoisted(() => ({ initShouldThrow: false }));
+
 vi.mock('posthog-js', () => {
   const stub = {
     init: (_key: string, config: { loaded?: (i: unknown) => void }) => {
+      if (posthogState.initShouldThrow) throw new Error('posthog init failed');
       config.loaded?.(stub);
       return stub;
     },
@@ -79,6 +82,7 @@ describe('first-analytics-session pin is consent-gated', () => {
       configurable: true,
     });
     captureEnabled = false;
+    posthogState.initShouldThrow = false;
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
       const url =
         typeof input === 'string'
@@ -141,6 +145,25 @@ describe('first-analytics-session pin is consent-gated', () => {
     expect(await getAnalyticsClient(ctx)).not.toBeNull();
     // This session is pinned as the install's first analytics session.
     expect(window.localStorage.getItem(FIRST_SESSION_KEY)).toBe(firstSessionId);
+    expect(isFirstSession()).toBe(true);
+  });
+
+  it('does not pin when config is enabled but client init fails', async () => {
+    const { getAnalyticsClient } = await import('../src/analytics/client');
+    const { isFirstSession } = await import('../src/analytics/identity');
+    captureEnabled = true;
+    posthogState.initShouldThrow = true;
+    // Init throws → getAnalyticsClient collapses to null, and no analytics
+    // session was ever captured, so the first-session marker must NOT advance.
+    expect(await getAnalyticsClient(ctx)).toBeNull();
+    await Promise.resolve();
+    expect(window.localStorage.getItem(FIRST_SESSION_KEY)).toBeNull();
+    // A later boot that DOES init is still the real first analytics session.
+    vi.resetModules();
+    posthogState.initShouldThrow = false;
+    const { getAnalyticsClient: getAnalyticsClientRetry } = await import('../src/analytics/client');
+    expect(await getAnalyticsClientRetry(ctx)).not.toBeNull();
+    expect(window.localStorage.getItem(FIRST_SESSION_KEY)).not.toBeNull();
     expect(isFirstSession()).toBe(true);
   });
 });
