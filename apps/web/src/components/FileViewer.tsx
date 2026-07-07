@@ -6640,7 +6640,11 @@ function HtmlViewer({
     // when the mode closes (interactivePreviewModeActive flips) and applies
     // the now-current URL in one pass.
     if (interactivePreviewModeActive) return;
-    const nextSrc = `${effectiveBasePreviewSrcUrl}&fr=${filesRefreshKey}`;
+    if (needsPowered && useUrlLoadPreview && !powered.resolved) return;
+    const refreshBasePreviewSrcUrl = usePoweredPreview && powered.url
+      ? powered.url
+      : effectiveBasePreviewSrcUrl;
+    const nextSrc = `${refreshBasePreviewSrcUrl}&fr=${filesRefreshKey}`;
     const timeout = window.setTimeout(() => {
       if (useUrlLoadPreview && urlPreviewIframeRef.current?.contentWindow) {
         urlPreviewIframeRef.current.contentWindow.location.replace(nextSrc);
@@ -6649,7 +6653,16 @@ function HtmlViewer({
       }
     }, 180);
     return () => window.clearTimeout(timeout);
-  }, [effectiveBasePreviewSrcUrl, filesRefreshKey, useUrlLoadPreview, interactivePreviewModeActive]);
+  }, [
+    effectiveBasePreviewSrcUrl,
+    filesRefreshKey,
+    useUrlLoadPreview,
+    interactivePreviewModeActive,
+    needsPowered,
+    powered.resolved,
+    powered.url,
+    usePoweredPreview,
+  ]);
 
   useEffect(() => {
     setInlinedSource(null);

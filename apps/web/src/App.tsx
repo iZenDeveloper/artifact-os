@@ -65,7 +65,7 @@ import {
   type VelaLoginStatus,
 } from './providers/daemon';
 import { AMR_LOGIN_STATUS_EVENT } from './components/amrLoginPolling';
-import { navigate, useRoute } from './router';
+import { goBack, navigate, useRoute } from './router';
 import {
   fetchDaemonConfig,
   DEFAULT_PET,
@@ -1875,7 +1875,7 @@ function AppInner() {
 
   const handleBack = useCallback(() => {
     const currentProjectId = route.kind === 'project' ? route.projectId : null;
-    navigate({ kind: 'home', view: 'projects' });
+    goBack({ kind: 'home', view: 'projects' });
     if (currentProjectId && typeof window !== 'undefined') {
       window.setTimeout(() => {
         iframeKeepAlivePool.evictProject(currentProjectId, { includeActive: true });

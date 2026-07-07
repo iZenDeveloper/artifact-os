@@ -740,7 +740,7 @@ describe('App project creation routing', () => {
         'Fresh project',
       );
     });
-    expect(window.location.pathname).toBe('/projects');
+    expect(window.location.pathname).toBe('/');
     expect(screen.queryByTestId('entry-project-project-existing')).toBeNull();
   });
 

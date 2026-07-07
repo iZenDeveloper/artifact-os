@@ -222,6 +222,7 @@ describe('GET /api/projects/:id/raw/* range request route', () => {
   afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
 
   const rawUrl = (name: string) => `${baseUrl}/api/projects/${projectId}/raw/${name}`;
+  const poweredUrl = (name: string) => `${baseUrl}/api/projects/${projectId}/powered/${name}`;
 
   it('advertises Accept-Ranges: bytes for a video file with no Range header', async () => {
     const res = await fetch(rawUrl('clip.mp4'));
@@ -388,6 +389,37 @@ describe('GET /api/projects/:id/raw/* range request route', () => {
     expect(html).not.toContain('href="/assets/app.css"');
     expect(html).toContain('src="dist/assets/app.js"');
     expect(html).toContain('href="dist/assets/app.css"');
+  });
+
+  it('does not expose powered preview project files to foreign browser origins through CORS', async () => {
+    const browserOrigin = new URL(baseUrl);
+    browserOrigin.hostname = browserOrigin.hostname === '127.0.0.1'
+      ? 'localhost'
+      : '127.0.0.1';
+
+    const res = await fetch(poweredUrl('page.html'), {
+      headers: { Origin: browserOrigin.origin },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('document-isolation-policy')).toBe('isolate-and-credentialless');
+    expect(res.headers.get('access-control-allow-origin')).toBeNull();
+    expect(await res.text()).toBe('<html/>');
+
+    const foreign = await fetch(poweredUrl('page.html'), {
+      headers: { Origin: 'https://foreign.example' },
+    });
+    expect(foreign.status).toBe(403);
+    expect(foreign.headers.get('access-control-allow-origin')).toBeNull();
+
+    const preflight = await fetch(poweredUrl('page.html'), {
+      method: 'OPTIONS',
+      headers: {
+        Origin: browserOrigin.origin,
+        'Access-Control-Request-Method': 'GET',
+      },
+    });
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers.get('access-control-allow-origin')).toBeNull();
   });
 
   it('injects scroll and selection URL preview bridges together', async () => {

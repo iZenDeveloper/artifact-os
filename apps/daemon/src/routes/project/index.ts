@@ -2443,11 +2443,9 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
     // Let cross-origin-isolated contexts embed these bytes (the doc + its
     // worker/wasm/asset subresources under the same /powered prefix).
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    // The powered document runs at a real (non-null) loopback origin that is
-    // cross-origin to the app, so its own fetch()es of sibling assets are
-    // cross-origin requests; ACAO:* keeps them working. No credentials are
-    // used on these local reads.
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // No CORS headers: powered documents and their relative subresources load
+    // from the same /powered loopback origin. Foreign browser origins must not
+    // get read access to project files by adding an Origin header.
     res.removeHeader('Content-Security-Policy');
   }
 
@@ -3218,13 +3216,10 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
     }
   });
 
-  // Cross-origin preflight for powered previews. The powered iframe runs at a
-  // loopback origin cross-origin to the app, so subresource fetches from it are
-  // real CORS requests; a bare GET needs no preflight but custom headers might.
+  // Explicitly do not grant CORS for powered previews. Same-origin subresource
+  // reads under the powered loopback URL do not preflight; foreign preflights
+  // should complete without ACAO so browsers block the read.
   app.options(/^\/api\/projects\/([^/]+)\/powered\/(.+)$/u, (_req, res) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Range');
     res.sendStatus(204);
   });
 
