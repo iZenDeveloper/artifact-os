@@ -64,6 +64,8 @@ export function resolveMacPaths(config: ToolPackConfig): MacPaths {
     installApplicationsRoot,
     installedAppPath,
     latestMacYmlPath: join(namespaceRoot, "zip", "latest-mac.yml"),
+    launcherBinaryPath: join(namespaceRoot, "launcher-bin", "od-launcher"),
+    launcherHookConfigPath: join(namespaceRoot, "launcher-hook.json"),
     mountPoint: join(namespaceRoot, "mount"),
     packagedMainPrebundleMetaPath: join(namespaceRoot, MAC_PREBUNDLE_META_DIR_NAME, "packaged-main.meta.json"),
     packagedMainPrebundlePath: join(namespaceRoot, "assembled", MAC_PREBUNDLED_PACKAGED_MAIN_RELATIVE_PATH),

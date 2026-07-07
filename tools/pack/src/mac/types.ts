@@ -28,6 +28,8 @@ export type MacPaths = {
   installApplicationsRoot: string;
   installedAppPath: string;
   latestMacYmlPath: string;
+  launcherBinaryPath: string;
+  launcherHookConfigPath: string;
   mountPoint: string;
   packagedMainPrebundleMetaPath: string;
   packagedMainPrebundlePath: string;

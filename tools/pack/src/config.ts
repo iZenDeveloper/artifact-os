@@ -68,6 +68,12 @@ export type ToolPackRoots = {
 export type ToolPackConfig = {
   appVersion?: string;
   containerized: boolean;
+  /**
+   * Opt-in: embed the Go fossil launcher at the bundle executable slot (mac only
+   * for now) via the afterPack insertion hook. Off by default so existing builds
+   * are byte-identical; enabled with OD_PACK_EMBED_LAUNCHER=1.
+   */
+  embedLauncher?: boolean;
   electronBuilderCliPath: string;
   electronDistPath: string;
   electronVersion: string;
@@ -323,6 +329,7 @@ export function resolveToolPackConfig(
   return {
     appVersion,
     containerized: options.containerized === true,
+    embedLauncher: process.env.OD_PACK_EMBED_LAUNCHER === "1",
     electronBuilderCliPath: resolveElectronBuilderCliPath(),
     electronDistPath: resolveElectronDistPath(WORKSPACE_ROOT),
     electronVersion: resolveElectronVersion(WORKSPACE_ROOT),

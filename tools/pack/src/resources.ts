@@ -36,6 +36,8 @@ export const macResources = {
   iconPng: join(resourcesRoot, "mac", "icon.png"),
   notarizeHook: join(resourcesRoot, "mac", "notarize.cjs"),
   webStandaloneAfterPackHook: join(resourcesRoot, "web-standalone-after-pack.cjs"),
+  launcherAfterPackHook: join(resourcesRoot, "launcher-after-pack.cjs"),
+  packagedAfterPackHook: join(resourcesRoot, "packaged-after-pack.cjs"),
 } as const;
 
 export const winResources = {

@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 
 import type { ToolPackConfig } from "../config.js";
 import { domToPptxBundleResource } from "../dom-to-pptx-resource.js";
+import { buildLauncherBinary } from "../launcher-build.js";
 import { macResources } from "../resources.js";
 import { electronBuilderVersionForAppVersion } from "../versions.js";
 import { execFileAsync } from "./commands.js";
@@ -64,6 +65,28 @@ async function writeWebStandaloneHookConfig(config: ToolPackConfig, paths: MacPa
   return paths.webStandaloneHookConfigPath;
 }
 
+// prepareLauncherInsertion builds the Go fossil launcher binary and writes the
+// afterPack hook config so the combined orchestrator drops it into the bundle's
+// executable slot. Opt-in via config.embedLauncher; returns the hook config path.
+async function prepareLauncherInsertion(config: ToolPackConfig, paths: MacPaths, packagedVersion: string): Promise<string> {
+  await buildLauncherBinary({
+    outPath: paths.launcherBinaryPath,
+    selfVersion: packagedVersion,
+    workspaceRoot: config.workspaceRoot,
+  });
+  await mkdir(dirname(paths.launcherHookConfigPath), { recursive: true });
+  await writeFile(
+    paths.launcherHookConfigPath,
+    `${JSON.stringify(
+      { adhocSign: !config.signed, launcherBinaryPath: paths.launcherBinaryPath, relocatedName: "od-electron", version: 1 },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+  return paths.launcherHookConfigPath;
+}
+
 export function resolveElectronBuilderTargets(to: MacBuildOutput): ElectronBuilderTarget[] {
   switch (to) {
     case "app":
@@ -89,10 +112,15 @@ export async function runElectronBuilder(
   const webStandaloneHookConfigPath = config.webOutputMode === "standalone"
     ? await writeWebStandaloneHookConfig(config, paths)
     : null;
+  const launcherHookConfigPath = config.embedLauncher
+    ? await prepareLauncherInsertion(config, paths, packagedVersion)
+    : null;
   const builderConfig = {
     appId: identity.appId,
     artifactName: `${PRODUCT_NAME}-${namespaceToken}.\${ext}`,
-    afterPack: webStandaloneHookConfigPath == null ? undefined : macResources.webStandaloneAfterPackHook,
+    afterPack: launcherHookConfigPath != null
+      ? macResources.packagedAfterPackHook
+      : webStandaloneHookConfigPath == null ? undefined : macResources.webStandaloneAfterPackHook,
     afterSign: config.signed && config.macNotarize ? macResources.notarizeHook : undefined,
     asar: ELECTRON_BUILDER_ASAR,
     buildDependenciesFromSource: false,
@@ -163,6 +191,7 @@ export async function runElectronBuilder(
       ...process.env,
       ...(config.signed ? {} : { CSC_IDENTITY_AUTO_DISCOVERY: "false" }),
       ...(webStandaloneHookConfigPath == null ? {} : { [WEB_STANDALONE_HOOK_CONFIG_ENV]: webStandaloneHookConfigPath }),
+      ...(launcherHookConfigPath == null ? {} : { OD_TOOLS_PACK_LAUNCHER_HOOK_CONFIG: launcherHookConfigPath }),
     },
   });
 }
