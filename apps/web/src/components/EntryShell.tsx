@@ -206,6 +206,8 @@ function writeLocalModeTipDismissed(dismissed: boolean): void {
 
 const DISCORD_URL = 'https://discord.gg/mHAjSMV6gz';
 const X_URL = 'https://x.com/OpenDesignHQ';
+const CONTACT_EMAIL = 'contact@open.design';
+const CONTACT_EMAIL_URL = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('Open Design 反馈')}&body=${encodeURIComponent('你好 Open Design 团队，\n\n我想反馈：\n\n')}`;
 const ONBOARDING_DROPDOWN_OPEN_EVENT = 'open-design:onboarding-dropdown-open';
 
 // The topbar chips (GitHub star, model switcher, Use everywhere)
@@ -881,6 +883,19 @@ export function EntryShell({
       >
         <span className="entry-x-badge__icon" aria-hidden>X</span>
         <span className="entry-x-badge__label">@OpenDesignHQ</span>
+      </a>
+      <a
+        className="entry-mail-badge od-tooltip"
+        href={CONTACT_EMAIL_URL}
+        aria-label="给 Open Design 发邮件"
+        data-tooltip="给 Open Design 发邮件"
+        data-tooltip-placement="right"
+        data-testid="entry-mail-badge"
+      >
+        <span className="entry-mail-badge__icon" aria-hidden>
+          <Icon name="mail" size={13} />
+        </span>
+        <span className="entry-mail-badge__label">邮件</span>
       </a>
       <button
         type="button"

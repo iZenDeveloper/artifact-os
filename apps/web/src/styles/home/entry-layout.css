@@ -229,7 +229,7 @@
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   width: 100%;
   max-width: calc(100% - 18px);
   padding: 0 0 4px;
@@ -241,6 +241,7 @@
 }
 .entry-rail-actions .entry-star-badge,
 .entry-rail-actions .entry-discord-badge,
+.entry-rail-actions .entry-mail-badge,
 .entry-rail-actions .use-everywhere-chip,
 .entry-rail-actions .entry-settings-chip {
   justify-content: center;
@@ -4128,6 +4129,7 @@
 .entry-rail-actions .entry-star-badge,
 .entry-rail-actions .entry-discord-badge,
 .entry-rail-actions .entry-x-badge,
+.entry-rail-actions .entry-mail-badge,
 .entry-rail-actions .use-everywhere-chip,
 .entry-rail-actions .entry-settings-chip {
   height: 29px;
@@ -4144,15 +4146,17 @@
 }
 .entry-rail-actions .entry-discord-badge,
 .entry-rail-actions .entry-x-badge,
+.entry-rail-actions .entry-mail-badge,
 .entry-rail-actions .entry-settings-chip {
-  flex: 0 0 30px;
-  width: 30px;
+  flex: 0 0 26px;
+  width: 26px;
   padding: 0;
 }
 .entry-rail-actions .entry-discord-badge__label,
 .entry-rail-actions .entry-discord-badge__sep,
 .entry-rail-actions .entry-discord-badge__online,
 .entry-rail-actions .entry-x-badge__label,
+.entry-rail-actions .entry-mail-badge__label,
 .entry-rail-actions .entry-star-badge__label,
 .entry-rail-actions .entry-star-badge__sep,
 .entry-rail-actions .entry-settings-chip__label,
@@ -4161,12 +4165,14 @@
 }
 .entry-rail-actions .entry-discord-badge__icon,
 .entry-rail-actions .entry-x-badge__icon,
+.entry-rail-actions .entry-mail-badge__icon,
 .entry-rail-actions .entry-settings-chip__icon {
   margin: 0;
 }
 .entry-rail-actions .entry-star-badge:hover,
 .entry-rail-actions .entry-discord-badge:hover,
 .entry-rail-actions .entry-x-badge:hover,
+.entry-rail-actions .entry-mail-badge:hover,
 .entry-rail-actions .use-everywhere-chip:hover,
 .entry-rail-actions .entry-settings-chip:hover {
   border-color: transparent;
@@ -4305,6 +4311,44 @@
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0;
+}
+
+.entry-mail-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-xs);
+  transition: background-color 120ms var(--ease-out), border-color 120ms var(--ease-out),
+    color 120ms var(--ease-out), transform 120ms var(--ease-out);
+  white-space: nowrap;
+}
+.entry-mail-badge:hover {
+  background: var(--bg-subtle);
+  border-color: var(--border-strong);
+  color: var(--text-strong);
+}
+.entry-mail-badge:active {
+  transform: scale(0.98);
+}
+.entry-mail-badge:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.entry-mail-badge__icon {
+  flex: 0 0 auto;
+  color: var(--text-strong);
 }
 
 .entry-settings-chip {
