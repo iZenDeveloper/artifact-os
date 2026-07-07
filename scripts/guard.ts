@@ -131,6 +131,8 @@ const residualAllowedExactPaths = new Set([
   "tools/pack/resources/web-standalone-after-pack.cjs",
   // electron-builder hook path; places the Go launcher in the mac bundle exec slot.
   "tools/pack/resources/launcher-after-pack.cjs",
+  // electron-builder hook path; combined afterPack orchestrator (launcher + web-standalone).
+  "tools/pack/resources/packaged-after-pack.cjs",
 ]);
 
 const residualAllowedPathPrefixes = [
