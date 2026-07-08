@@ -33,6 +33,7 @@ import {
   trackPresentPopoverClick,
   trackShareOptionPopoverClick,
 } from '../analytics/events';
+import { recordFirstLoopStep } from '../onboarding/first-loop';
 import { MarkdownRenderer, artifactRendererRegistry } from '../artifacts/renderer-registry';
 import { renderMarkdownToSafeHtml } from '../artifacts/markdown';
 import {
@@ -5455,6 +5456,9 @@ function HtmlViewer({
       },
       { requestId },
     );
+    // Onboarding first-loop 交付 step (spec §8.3), scoped to this project —
+    // a no-op unless the project was started from the Home recommendation.
+    recordFirstLoopStep(analytics.track, 'delivered', projectId);
     const started = performance.now();
     const finish = (result: 'success' | 'failed' | 'cancelled', errorCode?: string) => {
       trackArtifactExportResult(
@@ -8193,6 +8197,8 @@ function HtmlViewer({
       },
       { requestId },
     );
+    // Onboarding first-loop 交付 step (spec §8.3), scoped to this project.
+    recordFirstLoopStep(analytics.track, 'delivered', projectId);
     const defaultName =
       file.name.replace(/\.html?$/i, '') || t('fileViewer.templateNameDefault');
     setTemplateName(defaultName);
@@ -9170,6 +9176,8 @@ function HtmlViewer({
       },
       { requestId },
     );
+    // Onboarding first-loop 交付 step (spec §8.3), scoped to this project.
+    recordFirstLoopStep(analytics.track, 'delivered', projectId);
     setImageExportError(null);
     imageExportSnapshotDataUrlRef.current = null;
     // Just open the modal. Rendering happens on Save, after the user picks a
