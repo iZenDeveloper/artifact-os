@@ -6,6 +6,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PrivacyConsentModal } from '../../src/components/PrivacyConsentModal';
 import { I18nProvider } from '../../src/i18n';
 
+const analyticsTrack = vi.hoisted(() => vi.fn());
+
+vi.mock('../../src/analytics/provider', () => ({
+  useAnalytics: () => ({
+    track: analyticsTrack,
+  }),
+}));
+
 const PRIVACY_POLICY_HREF = 'https://github.com/nexu-io/open-design/blob/main/PRIVACY.md';
 
 function renderModal(overrides?: { onShare?: () => void; onDecline?: () => void }) {
@@ -20,7 +28,10 @@ function renderModal(overrides?: { onShare?: () => void; onDecline?: () => void 
 }
 
 describe('PrivacyConsentModal', () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
 
   it('renders explicit share and decline choices', () => {
     const { container } = renderModal();
@@ -61,5 +72,12 @@ describe('PrivacyConsentModal', () => {
     fireEvent.click(screen.getByRole('button', { name: "Don't share" }));
     expect(onDecline).toHaveBeenCalledTimes(1);
     expect(onShare).not.toHaveBeenCalled();
+  });
+
+  it('does not track the decline click before opt-out is persisted', () => {
+    const { onDecline } = renderModal();
+    fireEvent.click(screen.getByRole('button', { name: "Don't share" }));
+    expect(onDecline).toHaveBeenCalledTimes(1);
+    expect(analyticsTrack).not.toHaveBeenCalled();
   });
 });

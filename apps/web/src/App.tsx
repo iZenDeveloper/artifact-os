@@ -2519,9 +2519,10 @@ function AppInner() {
         <PrivacyConsentModal
           onShare={() => {
             // The banner owns only the privacy decision; it does not drive
-            // navigation. Choosing Share keeps the existing metrics/content
-            // telemetry surface enabled, including downstream trace objects.
-            const installationId = generateInstallationIdSafe();
+            // navigation. Choosing Share keeps the current anonymous identity
+            // when one already exists and enables the telemetry surface.
+            const installationId =
+              latestPersistedConfigRef.current.installationId ?? generateInstallationIdSafe();
             void handleConfigPersist({
               ...latestPersistedConfigRef.current,
               installationId,

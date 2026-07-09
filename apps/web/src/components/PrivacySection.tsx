@@ -48,7 +48,7 @@ export function PrivacySection({ cfg, setCfg }: Props): JSX.Element {
   function shareUsage(): void {
     setCfg((c) => ({
       ...c,
-      installationId: generateInstallationId(),
+      installationId: c.installationId ?? generateInstallationId(),
       privacyDecisionAt: Date.now(),
       telemetry: { metrics: true, content: true },
     }));

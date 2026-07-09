@@ -85,6 +85,29 @@ describe('PrivacySection', () => {
     expect(screen.getByText(/Sharing usage data helps us understand/i)).toBeTruthy();
   });
 
+  it('preserves an existing installation id when the settings share choice is clicked', () => {
+    const randomUUID = vi.fn(() => 'inst-new');
+    vi.stubGlobal('crypto', { randomUUID });
+
+    render(
+      <Harness
+        initial={{
+          ...baseConfig,
+          installationId: 'inst-existing',
+          privacyDecisionAt: 1778244000000,
+          telemetry: { metrics: true, content: true },
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+
+    expect((screen.getByLabelText('Anonymous ID') as HTMLInputElement).value).toBe(
+      'inst-existing',
+    );
+    expect(randomUUID).not.toHaveBeenCalled();
+  });
+
   it('shows the decline choice and telemetry toggles as off when sharing is disabled', () => {
     render(
       <Harness

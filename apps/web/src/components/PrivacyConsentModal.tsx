@@ -71,11 +71,6 @@ export function PrivacyConsentModal({ onShare, onDecline }: Props): JSX.Element 
           type="button"
           className="privacy-consent-action"
           onClick={() => {
-            trackPrivacyModalClick(analytics.track, {
-              page_name: 'home',
-              area: 'privacy_modal',
-              element: 'no',
-            });
             onDecline();
           }}
         >

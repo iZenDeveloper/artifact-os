@@ -301,6 +301,35 @@ describe('App connectors settings flows', () => {
     });
   });
 
+  it('preserves an existing installation id when the first-run banner share choice is clicked', async () => {
+    const randomUUID = vi.fn(() => 'inst-new');
+    vi.stubGlobal('crypto', { randomUUID });
+    mockedLoadConfig.mockReturnValue({
+      ...baseConfig,
+      installationId: 'inst-existing',
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mockedSyncConfigToDaemon).toHaveBeenCalled();
+    });
+    mockedSyncConfigToDaemon.mockClear();
+    fireEvent.click(await screen.findByRole('button', { name: 'Share' }));
+
+    await waitFor(() => {
+      expect(mockedSyncConfigToDaemon).toHaveBeenCalledWith(
+        expect.objectContaining({
+          installationId: 'inst-existing',
+          privacyDecisionAt: expect.any(Number),
+          telemetry: { metrics: true, content: true },
+        }),
+        expect.objectContaining({ throwOnError: true }),
+      );
+    });
+    expect(randomUUID).not.toHaveBeenCalled();
+  });
+
   it('turns telemetry off when the first-run banner decline choice is clicked', async () => {
     render(<App />);
 
