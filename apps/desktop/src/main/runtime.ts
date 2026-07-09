@@ -1069,10 +1069,13 @@ function createRendererCrashHtml(ctx: RendererCrashScreenContext): string {
     <meta charset="utf-8" />
     <title>Open Design</title>
     <style>
+      /* Palette mirrors the app's neutral design tokens (apps/web tokens.css):
+         warm off-white + near-black, no accent color — matching the black/white
+         onboarding rather than a stray blue. */
       :root { color-scheme: light dark; }
       html, body {
-        background: #f2f4f5;
-        color: #2b3238;
+        background: #faf9f7;
+        color: #1a1916;
         height: 100%;
         margin: 0;
         overflow: hidden;
@@ -1096,7 +1099,7 @@ function createRendererCrashHtml(ctx: RendererCrashScreenContext): string {
         margin: 0 0 10px;
       }
       .body {
-        color: #5b636a;
+        color: #57534d;
         font-size: 14px;
         line-height: 1.55;
         margin: 0 0 6px;
@@ -1119,38 +1122,42 @@ function createRendererCrashHtml(ctx: RendererCrashScreenContext): string {
           border-color 200ms cubic-bezier(0.23, 1, 0.32, 1);
       }
       button:disabled { cursor: default; opacity: 0.6; }
-      .primary { background: #2b6cb0; color: #fff; }
-      .primary:hover { background: #2c5f96; }
-      .secondary { background: transparent; color: #2b3238; border-color: rgba(122, 131, 138, 0.4); }
-      .secondary:hover { border-color: rgba(122, 131, 138, 0.7); }
+      /* Monochrome primary: near-black on the warm off-white. */
+      .primary { background: #1a1916; color: #faf9f7; }
+      .primary:hover { background: #0d0c0a; }
+      .secondary { background: transparent; color: #1a1916; border-color: rgba(26, 25, 22, 0.2); }
+      .secondary:hover { border-color: rgba(26, 25, 22, 0.36); }
       .status {
-        color: #8a929a;
+        color: #8f8b84;
         font-size: 12px;
         line-height: 1.5;
         margin: 12px 0 0;
         min-height: 16px;
       }
       .email {
-        color: #8a929a;
+        color: #8f8b84;
         font-size: 13px;
         line-height: 1.5;
         margin: 14px 0 0;
       }
-      .email a { color: #2b6cb0; text-decoration: none; }
-      .email a:hover { text-decoration: underline; }
+      .email a { color: #1a1916; text-decoration: underline; text-underline-offset: 2px; }
       .hint {
-        color: #8a929a;
+        color: #8f8b84;
         font-size: 13px;
         line-height: 1.5;
         margin: 16px 0 0;
       }
       @media (prefers-color-scheme: dark) {
-        html, body { background: #1c2024; color: #e6e9ec; }
-        .body { color: #aeb6bd; }
-        .hint, .status, .email { color: #7c848b; }
-        .email a { color: #6ea8e0; }
-        .secondary { color: #e6e9ec; border-color: rgba(174, 182, 189, 0.35); }
-        .secondary:hover { border-color: rgba(174, 182, 189, 0.6); }
+        html, body { background: #1a1917; color: #e8e4dc; }
+        .body { color: #9a9690; }
+        .hint, .status, .email { color: #6e6b65; }
+        /* Dark inverts the monochrome pair — a near-black button would vanish
+           against the dark bg, so use a light button with dark text. */
+        .primary { background: #e8e4dc; color: #1a1917; }
+        .primary:hover { background: #f2ede4; }
+        .secondary { color: #e8e4dc; border-color: rgba(232, 228, 220, 0.28); }
+        .secondary:hover { border-color: rgba(232, 228, 220, 0.5); }
+        .email a { color: #e8e4dc; }
       }
     </style>
   </head>
