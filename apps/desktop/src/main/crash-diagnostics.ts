@@ -1,3 +1,4 @@
+import { mkdirSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
@@ -19,10 +20,17 @@ import { app, crashReporter } from "electron";
  */
 export function setUpDesktopCrashReporter(crashDumpsDir: string): void {
   try {
+    // MUST create the dir first: app.setPath("crashDumps", …) throws when the
+    // target does not exist, and on a fresh runtime `logs/desktop/crashes` won't
+    // exist yet. Without this the setPath throws, we fall back to Electron's
+    // default crashDumps location, and the daemon export (which only scans
+    // <logs/desktop>/crashes) misses the minidump for exactly the first crash
+    // loop this is meant to root-cause.
+    mkdirSync(crashDumpsDir, { recursive: true });
     app.setPath("crashDumps", crashDumpsDir);
   } catch {
-    // setPath can throw on some platforms/timings; fall back to Electron's default
-    // crashDumps location rather than failing startup.
+    // setPath can still throw on some platforms/timings; fall back to Electron's
+    // default crashDumps location rather than failing startup.
   }
   try {
     crashReporter.start({ uploadToServer: false, compress: false });
