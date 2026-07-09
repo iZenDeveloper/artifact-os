@@ -1721,8 +1721,8 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       const deleteMany = db.transaction((ids: string[]) => {
         for (const id of ids) dbDeleteProject(db, id);
       });
+      for (const id of projectIds) await removeProjectDir(PROJECTS_DIR, id);
       deleteMany(projectIds);
-      for (const id of projectIds) await removeProjectDir(PROJECTS_DIR, id).catch(() => {});
       res.json({ ok: true, deletedProjectIds: projectIds });
     } catch (err: any) {
       sendApiError(res, 400, 'BAD_REQUEST', String(err));

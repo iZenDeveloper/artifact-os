@@ -1,7 +1,9 @@
+import express from 'express';
 import type http from 'node:http';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { startServer } from '../../src/server.js';
+import { registerProjectRoutes } from '../../src/routes/project/index.js';
 
 describe('workspace project routes', () => {
   let server: http.Server;
@@ -230,6 +232,35 @@ describe('workspace project routes', () => {
     expect(otherRemains.status).toBe(200);
   });
 
+  it('fails batch-delete when project directory cleanup fails', async () => {
+    const projectId = `workspace-delete-cleanup-fails-${Date.now()}`;
+    const dbDeleteProject = vi.fn();
+    const removeProjectDir = vi.fn(async () => {
+      throw new Error('cleanup failed');
+    });
+    const app = express();
+    app.use(express.json());
+    registerProjectRoutes(app, workspaceProjectRouteDeps({
+      workspaceId,
+      projectId,
+      dbDeleteProject,
+      removeProjectDir,
+    }));
+    const routeServer = await listen(app);
+    try {
+      const deleteResp = await fetch(`${routeServer.url}/api/workspaces/${workspaceId}/projects/batch-delete`, {
+        method: 'POST',
+        headers: headers('member-cleanup-fail'),
+        body: JSON.stringify({ projectIds: [projectId] }),
+      });
+      expect(deleteResp.status).toBe(400);
+      expect(removeProjectDir).toHaveBeenCalledWith('projects', projectId);
+      expect(dbDeleteProject).not.toHaveBeenCalled();
+    } finally {
+      await close(routeServer.server);
+    }
+  });
+
   it('blocks moving frozen team projects back to personal', async () => {
     const projectId = `workspace-frozen-${Date.now()}`;
     await createProject(projectId, 'Frozen project');
@@ -291,3 +322,128 @@ describe('workspace project routes', () => {
     expect(moveResp.status).toBe(403);
   });
 });
+
+function workspaceProjectRouteDeps({
+  workspaceId,
+  projectId,
+  dbDeleteProject,
+  removeProjectDir,
+}: {
+  workspaceId: string;
+  projectId: string;
+  dbDeleteProject: ReturnType<typeof vi.fn>;
+  removeProjectDir: ReturnType<typeof vi.fn>;
+}) {
+  const now = 1;
+  const project = {
+    id: projectId,
+    name: 'Cleanup failure project',
+    skillId: null,
+    designSystemId: null,
+    pendingPrompt: null,
+    metadataJson: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const workspaceRow = {
+    ...project,
+    workspaceProjectId: projectId,
+    workspaceId,
+    workspaceVisibility: 'personal',
+    resourceState: 'active',
+    createdByWorkspaceMemberId: 'member-cleanup-fail',
+    updatedByWorkspaceMemberId: 'member-cleanup-fail',
+    resourceHubResourceId: null,
+    cloudTombstonedAt: null,
+    syncState: 'local_only',
+    workspaceVersion: 1,
+    workspaceCreatedAt: now,
+    workspaceUpdatedAt: now,
+  };
+  const noop = vi.fn();
+  return {
+    db: {
+      transaction: (fn: (ids: string[]) => void) => fn,
+    },
+    design: {},
+    http: {
+      createSseResponse: noop,
+      sendApiError: (res: any, status: number, code: string, message: string) =>
+        res.status(status).json({ error: { code, message } }),
+    },
+    paths: {
+      DESIGN_SYSTEMS_DIR: '',
+      PROJECTS_DIR: 'projects',
+      SKILLS_DIR: '',
+      BRANDS_DIR: '',
+      USER_DESIGN_SYSTEMS_DIR: '',
+    },
+    projectStore: {
+      insertProject: noop,
+      validateLinkedDirs: () => ({ dirs: [] }),
+      getProject: () => project,
+      updateProject: noop,
+      dbDeleteProject,
+      removeProjectDir,
+      ensureWorkspaceProject: () => workspaceRow,
+      getWorkspaceProject: () => workspaceRow,
+      listWorkspaceProjects: () => [workspaceRow],
+      updateWorkspaceProject: noop,
+    },
+    projectFiles: {
+      writeProjectFile: noop,
+      readProjectFile: noop,
+      ensureProject: noop,
+      listFiles: () => [],
+      listTabs: () => [],
+      setTabs: noop,
+      resolveProjectDir: () => '',
+    },
+    conversations: { insertConversation: noop },
+    templates: {
+      getTemplate: noop,
+      listTemplates: () => [],
+      deleteTemplate: noop,
+      insertTemplate: noop,
+      findTemplateByNameAndProject: noop,
+      updateTemplate: noop,
+    },
+    status: {
+      listLatestProjectRunStatuses: () => new Map(),
+      listProjectsAwaitingInput: () => new Set(),
+      normalizeProjectDisplayStatus: (status: string) => status,
+      composeProjectDisplayStatus: (status: unknown) => status,
+      listProjects: () => [],
+    },
+    events: {
+      subscribeFileEvents: noop,
+      activeProjectEventSinks: new Map(),
+    },
+    ids: { randomId: () => 'id' },
+    telemetry: { reportFinalizedMessage: noop },
+    appConfig: { readAppConfig: noop, writeAppConfig: noop },
+    agents: {},
+    validation: {
+      validateProjectDesignSystemId: async () => ({ ok: true, id: null }),
+      validateProjectSkillId: async () => ({ ok: true, id: null }),
+    },
+    collabSync: { requestTeamShare: noop },
+  } as unknown as Parameters<typeof registerProjectRoutes>[1];
+}
+
+async function listen(app: express.Express): Promise<{ server: http.Server; url: string }> {
+  const server = app.listen(0);
+  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('server did not bind to a TCP port');
+  return {
+    server,
+    url: `http://127.0.0.1:${address.port}`,
+  };
+}
+
+async function close(server: http.Server): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    server.close((err) => (err ? reject(err) : resolve()));
+  });
+}
