@@ -897,7 +897,12 @@ export function EntryShell({
                 </span>
               </button>
             </div>
-            <UpdaterPopup />
+            <UpdaterPopup
+              allowSilentUpdates={config.allowSilentUpdates}
+              onAllowSilentUpdatesChange={(allowSilentUpdates) =>
+                onConfigPersist({ ...config, allowSilentUpdates })
+              }
+            />
             <WhatsNewPopup active={view === 'home'} />
             {avatarMenu}
           </div>

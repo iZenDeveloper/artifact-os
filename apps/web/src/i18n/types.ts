@@ -513,6 +513,8 @@ export interface Dict {
   'settings.runtimePackaged': string;
   'settings.runtimeDevelopment': string;
   'settings.versionUnavailable': string;
+  'settings.allowSilentUpdates': string;
+  'settings.allowSilentUpdatesDesc': string;
   'settings.installLatest': string;
   'settings.alreadyLatest': string;
   'settings.updateCheck': string;
@@ -932,6 +934,7 @@ export interface Dict {
   'updater.installerOpenBody': string;
   'updater.installerOpened': string;
   'updater.later': string;
+  'updater.allowSilentUpdates': string;
   'updater.openFailedFallback': string;
   'updater.installRestart': string;
   'updater.installingRestart': string;

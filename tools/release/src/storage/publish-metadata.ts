@@ -87,10 +87,10 @@ const targetDefs: TargetDef[] = [
   { enableEnv: "ENABLE_LINUX_X64", label: "Linux x64", legacyKey: "linux", resultEnv: "LINUX_X64_RESULT", target: "linux_x64" },
 ];
 
-// Optional per-release "what's new" highlights forwarded verbatim into
-// metadata.json so the packaged app can show a post-update card. Content is
-// keyed by the stable base version at tools/release/whats-new/<base>.json
-// (override the path with RELEASE_WHATS_NEW_PATH). A missing file is the
+// Optional per-release "what's new" highlights forwarded into metadata.json so
+// the packaged app can show a post-update card. Content is keyed by the stable
+// base version at tools/release/whats-new/<base>.md, with the legacy JSON
+// shape still accepted for fixtures/manual overrides. A missing file is the
 // normal quiet case; a present-but-malformed file fails the publish loudly so
 // broken highlights never ship silently.
 // Publish-time mirror of the daemon's readHttpsUrl (apps/daemon/src/services/
@@ -109,11 +109,68 @@ function assertHttpsUrl(value: unknown, label: string, path: string): void {
   if (parsed.protocol !== "https:") throw new Error(message);
 }
 
-function readWhatsNewBlock(baseVersion: string): Record<string, unknown> | null {
-  const path = optional("RELEASE_WHATS_NEW_PATH", join(process.cwd(), "tools", "release", "whats-new", `${baseVersion}.json`));
-  if (!existsSync(path)) return null;
+function findWhatsNewPath(baseVersion: string): string | null {
+  const override = optional("RELEASE_WHATS_NEW_PATH");
+  if (override.length > 0) return override;
+  for (const candidate of [
+    join(process.cwd(), "tools", "release", "whats-new", `${baseVersion}.md`),
+    join(process.cwd(), "tools", "release", "whats-new", `${baseVersion}.json`),
+  ]) {
+    if (existsSync(candidate)) return candidate;
+  }
+  return null;
+}
 
+function stripMarkdownInline(value: string): string {
+  return value
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[`*_~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function markdownHeadingText(line: string): string | null {
+  const match = /^#{1,6}\s+(.+?)\s*#*\s*$/.exec(line.trim());
+  return match?.[1] == null ? null : stripMarkdownInline(match[1]);
+}
+
+function summarizeMarkdownBody(lines: string[], titleLineIndex: number): string {
+  const bodyLines: string[] = [];
+  let started = false;
+  for (const line of lines.slice(titleLineIndex + 1)) {
+    const trimmed = line.trim();
+    if (trimmed.length === 0) {
+      if (started) break;
+      continue;
+    }
+    if (started && /^#{1,6}\s+/.test(trimmed)) break;
+    const withoutListMarker = trimmed.replace(/^[-*+]\s+/, "").replace(/^\d+\.\s+/, "");
+    bodyLines.push(stripMarkdownInline(withoutListMarker));
+    started = true;
+    if (bodyLines.length >= 3) break;
+  }
+  return bodyLines.join(" ").trim();
+}
+
+function parseMarkdownWhatsNew(path: string): Record<string, unknown> {
+  const raw = readFileSync(path, "utf8").replace(/^\uFEFF/u, "");
+  const lines = raw.replace(/\r\n?/g, "\n").split("\n");
+  const titleLineIndex = lines.findIndex((line) => line.trim().length > 0);
+  if (titleLineIndex < 0) {
+    throw new Error(`whats-new release note is empty: ${path}`);
+  }
+  const firstLine = lines[titleLineIndex] ?? "";
+  const title = markdownHeadingText(firstLine) ?? stripMarkdownInline(firstLine);
+  const body = summarizeMarkdownBody(lines, titleLineIndex) || title;
+  if (title.length === 0 || body.length === 0) {
+    throw new Error(`whats-new release note requires a title and body: ${path}`);
+  }
+  return { title, body };
+}
+
+function parseJsonWhatsNew(path: string): Record<string, unknown> {
   const parsed = JSON.parse(readFileSync(path, "utf8")) as unknown;
+
   if (typeof parsed !== "object" || parsed == null || Array.isArray(parsed)) {
     throw new Error(`whats-new file must be a JSON object: ${path}`);
   }
@@ -148,6 +205,16 @@ function readWhatsNewBlock(baseVersion: string): Record<string, unknown> | null 
       }
     }
   }
+  return block;
+}
+
+function readWhatsNewBlock(baseVersion: string): Record<string, unknown> | null {
+  const path = findWhatsNewPath(baseVersion);
+  if (path == null || !existsSync(path)) return null;
+
+  const block = path.endsWith(".json")
+    ? parseJsonWhatsNew(path)
+    : parseMarkdownWhatsNew(path);
   console.log(`including whats-new highlights from ${path}`);
   return block;
 }

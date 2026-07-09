@@ -1,36 +1,29 @@
 # Release "what's new" highlights
 
-Optional per-release highlights for the post-update card the app shows on the
-home surface after updating. `publish-metadata` looks for
-`tools/release/whats-new/<baseVersion>.json` (e.g. `0.13.0.json`) and, when
-present, forwards it verbatim as the `whatsNew` field of the published
-`metadata.json`. No file means no highlights: the app falls back to generic
-"Open Design has been updated" copy that links to the release notes.
+Optional per-release notes for the post-update card the app shows on the home
+surface after updating. `publish-metadata` looks for
+`tools/release/whats-new/<baseVersion>.md` (for example `0.14.1.md`) and, when
+present, extracts:
 
-Shape (`title` and `body` required, everything else optional):
+- `title`: the first Markdown heading, or the first non-empty line.
+- `body`: the first following paragraph or short bullet list.
 
-```json
-{
-  "title": "Design system import, editor and Claude Code sync",
-  "body": "New design system import, higher shared limits, more connected apps.",
-  "imageUrl": "https://releases.open-design.ai/assets/whats-new/0.13.0.png",
-  "linkUrl": "https://github.com/nexu-io/open-design/releases/tag/open-design-v0.13.0",
-  "locales": {
-    "zh-CN": {
-      "title": "设计系统导入、编辑器与 Claude Code 同步",
-      "body": "新增设计系统导入、更高的共享额度、更多互联应用。"
-    }
-  }
-}
+No file means no highlights: the app falls back to generic "Open Design has
+been updated" copy that links to the release notes. Without an explicit
+`linkUrl`, the card links to the GitHub release (stable) or the releases index
+(other channels).
+
+Example:
+
+```markdown
+# Faster packaged updates
+
+- Payload updates can apply on startup when the user allows silent updates.
+- The home screen still shows a lightweight What's New card after restart.
 ```
 
-- `imageUrl` / `linkUrl` must be HTTPS; malformed files fail the publish.
-- `locales` keys match the web app locale ids (`apps/web/src/i18n/locales/`);
-  missing locales fall back to the top-level copy. Locale entries are
-  validated the same way as the top level: `title`/`body` (when present) must
-  be non-empty strings and `linkUrl` (when present) must be HTTPS.
-- Without `linkUrl` the card links to the GitHub release (stable) or the
-  releases index (other channels).
-- The card only shows when the published feed version matches the running app
-  version, so highlights written for `0.13.0` never appear on `0.13.1`.
-- `RELEASE_WHATS_NEW_PATH` overrides the lookup path for tests and fixtures.
+`RELEASE_WHATS_NEW_PATH` overrides the lookup path for tests and fixtures.
+Legacy JSON files at `tools/release/whats-new/<baseVersion>.json` are still
+accepted for compatibility with the original #5071 fixture shape. JSON
+`imageUrl` / `linkUrl` values must be HTTPS, and malformed JSON files fail the
+publish.
