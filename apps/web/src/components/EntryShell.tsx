@@ -150,6 +150,11 @@ import {
   notifyAmrLoginStatusChanged,
 } from './amrLoginPolling';
 import { closeAmrActivationWindowBestEffort } from './AmrLoginPill';
+import {
+  amrLoginFailureForOutcome,
+  amrLoginFailureForSpawn,
+  amrLoginReasonText,
+} from '../runtime/amr-login-failure';
 import { smoothScrollToTop } from '../utils/smoothScrollToTop';
 import { summarizeProjectNameFromPrompt } from '../utils/projectName';
 import { LIBRARY_UI_VISIBLE } from '../features/libraryUi';
@@ -1336,7 +1341,21 @@ function OnboardingView({
     let cancelled = false;
     void fetchVelaLoginStatus()
       .then((next) => {
-        if (!cancelled && next) setAmrStatus(next);
+        if (cancelled || !next) return;
+        setAmrStatus(next);
+        // Surface the daemon's persisted classified failure on the onboarding
+        // mount fetch so a reload after a failed sign-in keeps the specific
+        // reason instead of resetting to the plain sign-in CTA (issue #426).
+        // Assign unconditionally in the terminal signed-out/not-signing-in
+        // state so a clean read (daemon restart drops the in-memory
+        // lastVelaLoginExit) also CLEARS a previously shown reason.
+        if (!next.loggedIn && !next.loginInFlight) {
+          setAmrLoginError(
+            next.lastLoginFailure
+              ? amrLoginReasonText(t, next.lastLoginFailure)
+              : null,
+          );
+        }
       })
       .finally(() => {
         if (!cancelled) setAmrStatusResolved(true);
@@ -1344,7 +1363,7 @@ function OnboardingView({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (runtime === 'amr') return;
@@ -1905,7 +1924,9 @@ function OnboardingView({
       }
       if (!loginResult.ok && !loginResult.alreadyRunning) {
         resolveAmrAuthTracking(analytics.track, 'failed', 'spawn_failed');
-        setAmrLoginError(loginResult.error || t('settings.amrLoginErrorCompact'));
+        setAmrLoginError(
+          amrLoginReasonText(t, amrLoginFailureForSpawn(loginResult)),
+        );
         return;
       }
       if (await pollAmrLoginCompletion()) {
@@ -1962,7 +1983,9 @@ function OnboardingView({
         } else {
           resolveAmrAuthTracking(analytics.track, 'failed', 'login_stopped');
         }
-        setAmrLoginError(t('settings.amrLoginErrorCompact'));
+        setAmrLoginError(
+          amrLoginReasonText(t, amrLoginFailureForOutcome(outcome, nextStatus)),
+        );
         return false;
       }
     }
