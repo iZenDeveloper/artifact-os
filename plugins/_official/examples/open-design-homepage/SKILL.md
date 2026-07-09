@@ -26,4 +26,4 @@ It is here to demonstrate the **visual ceiling** Open Design targets for interac
 
 ## Using it
 
-Open `example.html` in the preview to explore the live, interactive result. Everything is local — there are no network calls, CDN scripts, or external fonts. To adapt the aesthetic (typography, 3D treatment, sticker collage, scroll motion) into your own build, study the structure here and recreate it with your preferred React Three Fiber / Next.js setup.
+Open `example.html` in the preview to explore the live, interactive result. All content is bundled locally — fonts, imagery, and 3D geometry ship in `assets/`, so there are no CDN scripts or external fonts. The one runtime network request is the Draco decoder, fetched from Google's `gstatic` CDN on demand (the same pattern the other WebGL examples use for their libraries). To adapt the aesthetic (typography, 3D treatment, sticker collage, scroll motion) into your own build, study the structure here and recreate it with your preferred React Three Fiber / Next.js setup.
