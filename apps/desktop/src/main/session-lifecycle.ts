@@ -2,19 +2,29 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 /**
+ * A prior run's abnormal exit, carried across launches until its telemetry has
+ * actually been acked. Persisting it (rather than holding it only in memory)
+ * means a failed report — e.g. the daemon isn't reachable yet — retries on the
+ * next launch instead of losing the signal this whole mechanism exists to catch.
+ */
+export interface DesktopCrashSummary {
+  sessionId: string;
+  version: string | null;
+  startedAt: string;
+}
+
+/**
  * Persisted marker for one desktop run.
  *
- *  - `reachedRunning` flips true once the app is actually up (window + runtime),
- *    so a bootstrap failure BEFORE that (already covered by
- *    `packaged_runtime_failed`) is never mistaken for a runtime crash.
+ *  - `reachedRunning` flips true once the window is actually revealed, so a
+ *    bootstrap failure BEFORE that (already covered by `packaged_runtime_failed`)
+ *    isn't mistaken for a runtime crash.
  *  - `clean` flips true on a graceful quit.
+ *  - `unreportedCrash` holds a prior abnormal exit until its report is acked.
  *
- * A previous run counts as an abnormal "runtime 闪退" only when it
- * `reachedRunning` but never went `clean` — the app was up, then the whole
- * process died without a graceful shutdown (main-process crash, OS kill,
- * force-quit after a hang, power loss). That class reaches no other telemetry:
- * a dead process can't report itself, and renderer/startup crashes are separate
- * events.
+ * A run counts as an abnormal "runtime 闪退" when it `reachedRunning` but never
+ * went `clean` — the app was up, then the process died without a graceful
+ * shutdown. That class reaches no other telemetry.
  */
 export interface DesktopSessionState {
   sessionId: string;
@@ -22,6 +32,7 @@ export interface DesktopSessionState {
   startedAt: string;
   reachedRunning: boolean;
   clean: boolean;
+  unreportedCrash?: DesktopCrashSummary | null;
 }
 
 function defaultRead(path: string): string {
@@ -36,12 +47,17 @@ function defaultWrite(path: string, data: string): void {
 function parseState(raw: string): DesktopSessionState | null {
   const parsed = JSON.parse(raw) as Partial<DesktopSessionState>;
   if (parsed == null || typeof parsed.sessionId !== "string") return null;
+  const uc = parsed.unreportedCrash;
   return {
     sessionId: parsed.sessionId,
     version: typeof parsed.version === "string" ? parsed.version : null,
     startedAt: typeof parsed.startedAt === "string" ? parsed.startedAt : "",
     reachedRunning: parsed.reachedRunning === true,
     clean: parsed.clean === true,
+    unreportedCrash:
+      uc != null && typeof uc.sessionId === "string"
+        ? { sessionId: uc.sessionId, version: typeof uc.version === "string" ? uc.version : null, startedAt: typeof uc.startedAt === "string" ? uc.startedAt : "" }
+        : null,
   };
 }
 
@@ -56,28 +72,32 @@ export interface BeginDesktopSessionDeps {
 }
 
 /**
- * Read the previous run's marker, then write a fresh marker for this run
- * (`reachedRunning: false`, `clean: false`). Returns the previous state ONLY
- * when it ended as an abnormal RUNTIME exit — it had reached running and never
- * went clean. Overwriting the marker here means the previous state is reported
- * at most once. Best-effort: any fs/parse failure yields no signal and never
- * throws — this must not be able to block startup.
+ * Read the previous run's marker, carry forward any not-yet-reported abnormal
+ * exit, then write a fresh marker for this run. Returns the crash to report
+ * (this launch's newly-detected one, or an earlier one whose report never
+ * acked). The returned summary is ALSO persisted in the new marker's
+ * `unreportedCrash`, so it survives a failed report and is retried next launch;
+ * `clearReportedCrash` removes it once the report succeeds. Best-effort — never
+ * throws.
  */
 export function beginDesktopSession(
   deps: BeginDesktopSessionDeps,
-): { previousUncleanSession: DesktopSessionState | null } {
+): { previousUncleanSession: DesktopCrashSummary | null } {
   const read = deps.readFile ?? defaultRead;
   const write = deps.writeFile ?? defaultWrite;
 
-  let previousUncleanSession: DesktopSessionState | null = null;
+  let crashToReport: DesktopCrashSummary | null = null;
   try {
-    const previous = parseState(read(deps.stateFilePath));
-    if (previous != null && previous.reachedRunning && !previous.clean) {
-      previousUncleanSession = previous;
+    const prev = parseState(read(deps.stateFilePath));
+    if (prev != null) {
+      if (prev.reachedRunning && !prev.clean) {
+        crashToReport = { sessionId: prev.sessionId, version: prev.version, startedAt: prev.startedAt };
+      } else if (prev.unreportedCrash != null) {
+        crashToReport = prev.unreportedCrash;
+      }
     }
   } catch {
-    // No marker (first run), unreadable, or a run that never reached running —
-    // not a runtime-crash signal.
+    // No marker (first run), unreadable, or a run that never reached running.
   }
 
   const state: DesktopSessionState = {
@@ -86,14 +106,14 @@ export function beginDesktopSession(
     startedAt: deps.now().toISOString(),
     reachedRunning: false,
     clean: false,
+    unreportedCrash: crashToReport,
   };
   try {
     write(deps.stateFilePath, JSON.stringify(state));
   } catch {
-    // Best-effort: without a marker we simply won't detect a crash of THIS run
-    // next time — never a reason to fail startup.
+    // Best-effort.
   }
-  return { previousUncleanSession };
+  return { previousUncleanSession: crashToReport };
 }
 
 function updateState(
@@ -112,7 +132,7 @@ function updateState(
 }
 
 /**
- * Flip this run's marker to `reachedRunning: true` once the app is actually up.
+ * Flip this run's marker to `reachedRunning: true` once the window is revealed.
  * Only after this does a subsequent dirty marker count as a runtime crash.
  */
 export function markDesktopSessionRunning(deps: {
@@ -133,4 +153,16 @@ export function endDesktopSessionCleanly(deps: {
   writeFile?: (path: string, data: string) => void;
 }): void {
   updateState(deps.stateFilePath, { clean: true }, deps.readFile ?? defaultRead, deps.writeFile ?? defaultWrite);
+}
+
+/**
+ * Clear the carried-forward `unreportedCrash` once its telemetry has been acked,
+ * so it isn't reported again next launch.
+ */
+export function clearReportedCrash(deps: {
+  stateFilePath: string;
+  readFile?: (path: string) => string;
+  writeFile?: (path: string, data: string) => void;
+}): void {
+  updateState(deps.stateFilePath, { unreportedCrash: null }, deps.readFile ?? defaultRead, deps.writeFile ?? defaultWrite);
 }

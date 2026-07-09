@@ -39,7 +39,7 @@ import {
 import { readProcessStamp } from "@open-design/platform";
 
 import { createDesktopRuntime, type DesktopRuntime } from "./runtime.js";
-import { beginDesktopSession, endDesktopSessionCleanly, markDesktopSessionRunning } from "./session-lifecycle.js";
+import { beginDesktopSession, clearReportedCrash, endDesktopSessionCleanly, markDesktopSessionRunning } from "./session-lifecycle.js";
 import { attachDesktopProcessErrorFilter } from "./uncaught-exception.js";
 import { createDesktopUpdater, createDesktopUpdaterScheduler, type DesktopUpdaterScheduler } from "./updater.js";
 import {
@@ -231,16 +231,18 @@ async function reportDesktopObservabilityEvent(
   discoverBaseUrl: () => Promise<string>,
   event: string,
   properties: Record<string, unknown>,
-): Promise<void> {
+): Promise<boolean> {
   try {
     const baseUrl = await discoverBaseUrl();
-    await fetch(new URL("/api/observability/event", baseUrl).toString(), {
+    const res = await fetch(new URL("/api/observability/event", baseUrl).toString(), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ event, properties }),
     });
+    return res.ok;
   } catch {
     // best-effort observability, never a failure path
+    return false;
   }
 }
 
@@ -888,6 +890,10 @@ export async function runDesktopMain(
       previous_session_id: previousUncleanSession.sessionId,
       previous_started_at: previousUncleanSession.startedAt,
       current_version: app.getVersion(),
+    }).then((reported) => {
+      // Only drop the carried-forward crash once the daemon acked it; a failed
+      // report is retried on the next launch (it stays in unreportedCrash).
+      if (reported) clearReportedCrash({ stateFilePath: sessionStatePath });
     });
   }
   // GPU / utility child-process crashes: the window keeps running but degraded

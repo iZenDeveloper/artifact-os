@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   beginDesktopSession,
+  clearReportedCrash,
   endDesktopSessionCleanly,
   markDesktopSessionRunning,
   type DesktopSessionState,
@@ -21,77 +22,76 @@ function makeStore(initial?: string) {
       files.set(p, d);
     },
     state: () => JSON.parse(files.get("state.json")!) as DesktopSessionState,
-    raw: () => files.get("state.json"),
   };
 }
 
 const FIXED = new Date("2026-07-09T12:00:00.000Z");
+const io = (store: ReturnType<typeof makeStore>) => ({ readFile: store.readFile, writeFile: store.writeFile });
 
 function begin(store: ReturnType<typeof makeStore>, sessionId: string, version = "0.14.0") {
-  return beginDesktopSession({
-    stateFilePath: "state.json",
-    sessionId,
-    version,
-    now: () => FIXED,
-    readFile: store.readFile,
-    writeFile: store.writeFile,
-  });
+  return beginDesktopSession({ stateFilePath: "state.json", sessionId, version, now: () => FIXED, ...io(store) });
 }
-const running = (store: ReturnType<typeof makeStore>) =>
-  markDesktopSessionRunning({ stateFilePath: "state.json", readFile: store.readFile, writeFile: store.writeFile });
-const quit = (store: ReturnType<typeof makeStore>) =>
-  endDesktopSessionCleanly({ stateFilePath: "state.json", readFile: store.readFile, writeFile: store.writeFile });
+const running = (s: ReturnType<typeof makeStore>) => markDesktopSessionRunning({ stateFilePath: "state.json", ...io(s) });
+const quit = (s: ReturnType<typeof makeStore>) => endDesktopSessionCleanly({ stateFilePath: "state.json", ...io(s) });
+const clear = (s: ReturnType<typeof makeStore>) => clearReportedCrash({ stateFilePath: "state.json", ...io(s) });
 
 describe("desktop session lifecycle", () => {
   test("first run reports nothing and writes a not-yet-running marker", () => {
     const store = makeStore();
     expect(begin(store, "s1").previousUncleanSession).toBeNull();
-    expect(store.state()).toMatchObject({ sessionId: "s1", reachedRunning: false, clean: false });
+    expect(store.state()).toMatchObject({ sessionId: "s1", reachedRunning: false, clean: false, unreportedCrash: null });
   });
 
-  test("a previous run that reached running and never went clean is a runtime crash", () => {
-    const store = makeStore(
-      JSON.stringify({ sessionId: "prev", version: "0.13.0", startedAt: "t0", reachedRunning: true, clean: false }),
-    );
-    expect(begin(store, "s2").previousUncleanSession).toMatchObject({ sessionId: "prev", reachedRunning: true });
-  });
-
-  test("a previous run that never reached running is NOT reported (startup failure, not a crash)", () => {
-    const store = makeStore(
-      JSON.stringify({ sessionId: "prev", version: "0.13.0", startedAt: "t0", reachedRunning: false, clean: false }),
-    );
-    expect(begin(store, "s3").previousUncleanSession).toBeNull();
-  });
-
-  test("a previous clean exit is not reported", () => {
-    const store = makeStore(
-      JSON.stringify({ sessionId: "prev", version: "0.13.0", startedAt: "t0", reachedRunning: true, clean: true }),
-    );
-    expect(begin(store, "s4").previousUncleanSession).toBeNull();
-  });
-
-  test("markDesktopSessionRunning then a graceful quit → next launch reports nothing", () => {
+  test("reached-running then crashed → next launch reports it and persists it as unreportedCrash", () => {
     const store = makeStore();
     begin(store, "a");
     running(store);
-    expect(store.state().reachedRunning).toBe(true);
+    // 'a' crashes (no clean). Next launch:
+    const { previousUncleanSession } = begin(store, "b");
+    expect(previousUncleanSession).toMatchObject({ sessionId: "a", version: "0.14.0" });
+    // ...and it's persisted so a failed report can retry.
+    expect(store.state().unreportedCrash).toMatchObject({ sessionId: "a" });
+  });
+
+  test("never reached running → not reported (startup failure, not a crash)", () => {
+    const store = makeStore();
+    begin(store, "a"); // no markDesktopSessionRunning
+    expect(begin(store, "b").previousUncleanSession).toBeNull();
+  });
+
+  test("graceful quit → next launch reports nothing", () => {
+    const store = makeStore();
+    begin(store, "a");
+    running(store);
     quit(store);
     expect(store.state().clean).toBe(true);
     expect(begin(store, "b").previousUncleanSession).toBeNull();
   });
 
-  test("reached running then crashed (no clean) → next launch reports it", () => {
+  test("a failed report retries next launch; clearReportedCrash stops it", () => {
     const store = makeStore();
     begin(store, "a");
     running(store);
-    // 'a' crashes — no endDesktopSessionCleanly.
+    // 'a' crashed; 'b' launches and detects it but the report FAILS (never cleared).
     expect(begin(store, "b").previousUncleanSession?.sessionId).toBe("a");
+    running(store); // b runs fine
+    // 'b' quits cleanly, but a's crash was never reported → 'c' still retries it.
+    quit(store);
+    expect(begin(store, "c").previousUncleanSession?.sessionId).toBe("a");
+    // Now the report succeeds → clear it → 'd' reports nothing.
+    clear(store);
+    expect(begin(store, "d").previousUncleanSession).toBeNull();
   });
 
-  test("bootstrap failure before running is not reported next launch", () => {
+  test("markRunning and clean preserve a carried-forward unreportedCrash", () => {
     const store = makeStore();
-    begin(store, "a"); // never calls markDesktopSessionRunning (crashed during bootstrap)
-    expect(begin(store, "b").previousUncleanSession).toBeNull();
+    begin(store, "a");
+    running(store);
+    begin(store, "b"); // carries a's crash into b's marker
+    running(store); // must not drop unreportedCrash
+    expect(store.state().unreportedCrash).toMatchObject({ sessionId: "a" });
+    quit(store); // must not drop it either
+    expect(store.state().unreportedCrash).toMatchObject({ sessionId: "a" });
   });
 
   test("never throws on a corrupt marker and still stamps this run", () => {
