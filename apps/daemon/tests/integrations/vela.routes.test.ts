@@ -34,6 +34,7 @@ import {
   readVelaCredentialRevision,
   velaLiveAccountCacheKey,
 } from '../../src/integrations/vela.js';
+import { getRememberedLiveModels, rememberLiveModels } from '../../src/runtimes/models.js';
 
 interface StartedServer {
   url: string;
@@ -381,6 +382,26 @@ describe('GET /api/integrations/vela/wallet', () => {
     expect(warmed.body.models).toEqual([
       { id: 'deepseek-v4-flash', label: 'deepseek-v4-flash', enabled: false },
     ]);
+    rememberLiveModels(
+      'amr',
+      [
+        {
+          id: 'deepseek-v4-flash',
+          label: 'deepseek-v4-flash',
+          enabled: false,
+          default: true,
+        },
+      ],
+      'local',
+    );
+    expect(getRememberedLiveModels('amr', 'local')).toEqual([
+      {
+        id: 'deepseek-v4-flash',
+        label: 'deepseek-v4-flash',
+        enabled: false,
+        default: true,
+      },
+    ]);
 
     process.env.FAKE_VELA_BILLING_TIER = 'pro';
     const upgradedStatus = await getJson<{ account?: { plan?: string } }>(
@@ -388,6 +409,7 @@ describe('GET /api/integrations/vela/wallet', () => {
     );
     expect(upgradedStatus.status).toBe(200);
     expect(upgradedStatus.body.account?.plan).toBe('pro');
+    expect(getRememberedLiveModels('amr', 'local')).toEqual([]);
 
     const afterPlanChange = await getJson<{
       source: 'preset' | 'remote';

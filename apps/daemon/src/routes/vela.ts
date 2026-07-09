@@ -24,6 +24,7 @@ import {
   peekVelaLiveAccount,
   readVelaCredentialRevision,
   readVelaLoginStatus,
+  resolveAmrProfile,
   setVelaLiveAccount,
   shouldRefreshVelaLiveAccount,
   velaLiveAccountCacheKey,
@@ -41,6 +42,7 @@ import {
   fetchVelaPresetModels,
   fetchVelaRemoteModelsWithRetry,
 } from '../runtimes/defs/amr.js';
+import { clearRememberedLiveModels } from '../runtimes/models.js';
 
 const AMR_API_PROXY_PREFIX = '/api/integrations/vela/api-proxy';
 const AMR_API_UPSTREAM_ORIGIN = 'https://amr-api.open-design.ai';
@@ -184,6 +186,11 @@ export function registerVelaRoutes(app: Express, deps: RegisterVelaRoutesDeps): 
     return resolveAmrModelProbeForEnv(configuredEnv);
   }
 
+  function invalidateAmrModelCaches(probe: AmrModelProbe): void {
+    amrModelLoadingCache.invalidate(probe.cacheKey);
+    clearRememberedLiveModels('amr', resolveAmrProfile(probe.env));
+  }
+
   // Single-flight the live billing fetch per credential revision. Treating
   // `peekVelaLiveAccount(key) === null` as the cold signal (rather than the
   // refresh throttle) means a concurrent second /status that arrives during the
@@ -214,7 +221,7 @@ export function registerVelaRoutes(app: Express, deps: RegisterVelaRoutesDeps): 
         inFlightVelaAccountInvalidations.has(accountCacheKey) &&
         (!previousAccount || previousAccount.plan !== account.plan)
       ) {
-        amrModelLoadingCache.invalidate(probe.cacheKey);
+        invalidateAmrModelCaches(probe);
       }
       setVelaLiveAccount(accountCacheKey, account);
       return account;
@@ -314,7 +321,7 @@ export function registerVelaRoutes(app: Express, deps: RegisterVelaRoutesDeps): 
       if (refresh) {
         try {
           const modelProbe = resolveAmrModelProbeForEnv(configuredEnv);
-          amrModelLoadingCache.invalidate(modelProbe.cacheKey);
+          invalidateAmrModelCaches(modelProbe);
         } catch (err) {
           console.warn('[amr] model cache invalidation after wallet refresh failed', err);
         }
@@ -447,6 +454,7 @@ export function registerVelaRoutes(app: Express, deps: RegisterVelaRoutesDeps): 
       // (now signed-out) account's billing data.
       clearAllVelaLiveAccounts();
       clearVelaWalletSnapshotCache();
+      clearRememberedLiveModels('amr');
       delete env.VELA_RUNTIME_KEY;
       delete env.VELA_LINK_URL;
       const agentCliEnv = { ...(appConfig.agentCliEnv ?? {}) };

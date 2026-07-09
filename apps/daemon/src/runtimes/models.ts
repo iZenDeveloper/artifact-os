@@ -33,6 +33,24 @@ export function rememberLiveModels(agentId: string, models: RuntimeModelOption[]
   liveModelOrder.set(key, remembered);
 }
 
+export function clearRememberedLiveModels(agentId: string, scope?: string | null): void {
+  const trimmedScope = typeof scope === 'string' ? scope.trim() : '';
+  if (trimmedScope) {
+    const key = liveModelCacheKey(agentId, trimmedScope);
+    liveModelCache.delete(key);
+    liveModelOrder.delete(key);
+    return;
+  }
+
+  const scopedPrefix = `${agentId}\0`;
+  for (const key of liveModelCache.keys()) {
+    if (key === agentId || key.startsWith(scopedPrefix)) liveModelCache.delete(key);
+  }
+  for (const key of liveModelOrder.keys()) {
+    if (key === agentId || key.startsWith(scopedPrefix)) liveModelOrder.delete(key);
+  }
+}
+
 export function resolveDefaultModelFromOptions(
   models: RuntimeModelOption[],
 ): string | null {

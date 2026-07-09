@@ -3,6 +3,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  clearRememberedLiveModels,
+  getRememberedLiveModels,
   isKnownModel,
   rememberLiveModels,
   sanitizeCustomModel,
@@ -69,6 +71,32 @@ describe('rememberLiveModels', () => {
     const def = defWith('alpha-remember-nonarray', []);
     expect(() => rememberLiveModels(def.id, undefined as never)).not.toThrow();
     expect(isKnownModel(def, 'anything')).toBe(false);
+  });
+
+  it('clears remembered model metadata for a scoped agent list', () => {
+    const def = defWith('alpha-remember-clear-scoped', []);
+    rememberLiveModels(def.id, [{ id: 'a', label: 'a', enabled: false, default: true }], 'prod');
+    rememberLiveModels(def.id, [{ id: 'b', label: 'b', enabled: true }], 'local');
+
+    clearRememberedLiveModels(def.id, 'prod');
+
+    expect(getRememberedLiveModels(def.id, 'prod')).toEqual([]);
+    expect(getRememberedLiveModels(def.id, 'local')).toEqual([
+      { id: 'b', label: 'b', enabled: true },
+    ]);
+    expect(isKnownModel(def, 'a', 'prod')).toBe(false);
+    expect(isKnownModel(def, 'b', 'local')).toBe(true);
+  });
+
+  it('clears all remembered scopes for an agent when no scope is supplied', () => {
+    const def = defWith('alpha-remember-clear-all', []);
+    rememberLiveModels(def.id, [{ id: 'a', label: 'a' }]);
+    rememberLiveModels(def.id, [{ id: 'b', label: 'b' }], 'local');
+
+    clearRememberedLiveModels(def.id);
+
+    expect(getRememberedLiveModels(def.id)).toEqual([]);
+    expect(getRememberedLiveModels(def.id, 'local')).toEqual([]);
   });
 });
 
