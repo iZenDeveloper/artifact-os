@@ -74,11 +74,15 @@ import {
   type ConnectionTestResponse,
   type ParsedBaseUrl,
   type ProviderTestRequest,
+  INTERNAL_IP_BLOCKED_SENTINEL,
 } from '@open-design/contracts/api/connectionTest';
 import { googleGenerateContentUrl } from './integrations/google-models.js';
 import { resolveAmrProfile } from './integrations/vela.js';
 
-export { validateBaseUrl } from '@open-design/contracts/api/connectionTest';
+export {
+  validateBaseUrl,
+  INTERNAL_IP_BLOCKED_SENTINEL,
+} from '@open-design/contracts/api/connectionTest';
 
 // DNS-aware companion to `validateBaseUrl`. The contracts-side check only
 // inspects the literal hostname string, so a public DNS name pointing at
@@ -145,7 +149,7 @@ export async function validateBaseUrlResolved(
     // space is still blocked.
     if (isAllowlistedInternalHost(ip, options.allowedInternalHosts)) continue;
     if (isBlockedExternalApiHostname(ip)) {
-      return { error: 'Internal IPs blocked', forbidden: true };
+      return { error: INTERNAL_IP_BLOCKED_SENTINEL, forbidden: true };
     }
   }
 
