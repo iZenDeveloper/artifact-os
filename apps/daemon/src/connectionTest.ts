@@ -1880,12 +1880,9 @@ function attachAgentStreamHandlers(
       child,
       prompt,
       cwd,
-      // Same substitution as the chat-run path in server.ts — adapters whose
-      // CLI rejects the synthetic 'default' (e.g. AMR / vela, which forces
-      // session/set_model before session/prompt) need the def's first
-      // concrete fallback id here too, otherwise Test connection deadlocks
-      // on the same `session/set_model must be called before session/prompt`
-      // error the chat-run path already handles.
+      // Same substitution as the chat-run path in server.ts: omitted models can
+      // resolve to a concrete fallback, while an explicit 'default' is preserved
+      // so ACP runtimes can use their upstream configured default.
       model: resolveModelForAgent(def as never, model ?? null, modelEnv, liveModelScope),
       mcpServers: [],
       send,

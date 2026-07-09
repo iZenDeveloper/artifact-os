@@ -33,9 +33,10 @@ const OPENCODE_MODEL_PRICE_PROVIDER_PRIORITY = [
 //
 // Model wiring notes:
 //
-//   1. vela rejects `session/prompt` until `session/set_model` has been
-//      called, so AMR cannot accept the synthetic `default` model id —
-//      attachAcpSession skips set_model whenever model === 'default'.
+//   1. A concrete AMR model selection is applied through ACP
+//      `session/set_model`. The synthetic `default` model id intentionally
+//      skips that call so vela/OpenCode can use the account's configured
+//      upstream default.
 //
 //   2. Vela 0.0.1 exposes the current link-supported catalog through
 //      `vela models`, but that command prints public ids such as
@@ -592,9 +593,8 @@ export const amrAgentDef = {
   // surfaces the live Vela catalog instead.
   supportsCustomModel: false,
   supportsImagePaths: true,
-  // Daemon-process env override for emergency operator pinning. Normal UI
-  // selection comes from the live `vela models` catalog and is preflighted
-  // before spawn.
+  // Daemon-process env override for emergency operator pinning when no model
+  // was selected. Explicit UI selections, including `default`, win.
   defaultModelEnvVar: 'VELA_DEFAULT_MODEL',
   // Vela/OpenCode can spend extended stretches silent while the upstream
   // provider is still working. Keep the outer chat watchdog aligned with the

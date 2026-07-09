@@ -11,7 +11,7 @@ export const DEFAULT_MODEL_OPTION: RuntimeModelOption = {
 // trust any value present in the static fallback. A model that's neither
 // gets rejected so a stale or hostile value can't smuggle arbitrary flags.
 const liveModelCache = new Map<string, Set<string>>();
-const liveModelOrder = new Map<string, string[]>();
+const liveModelOrder = new Map<string, RuntimeModelOption[]>();
 
 function liveModelCacheKey(agentId: string, scope?: string | null): string {
   const trimmedScope = typeof scope === 'string' ? scope.trim() : '';
@@ -20,24 +20,17 @@ function liveModelCacheKey(agentId: string, scope?: string | null): string {
 
 export function rememberLiveModels(agentId: string, models: RuntimeModelOption[], scope?: string | null) {
   if (!Array.isArray(models)) return;
-  const orderedModels = [...models].sort((a, b) => {
-    const aDisabled = a?.enabled === false;
-    const bDisabled = b?.enabled === false;
-    if (aDisabled !== bDisabled) return aDisabled ? 1 : -1;
-    const aDefault = a?.default === true;
-    const bDefault = b?.default === true;
-    if (aDefault !== bDefault) return aDefault ? -1 : 1;
-    return 0;
-  });
-  const ids = orderedModels
-    .map((m) => m && m.id)
-    .filter((id) => typeof id === 'string');
+  const remembered = models.filter(
+    (model): model is RuntimeModelOption =>
+      model != null && typeof model.id === 'string',
+  );
+  const ids = remembered.map((model) => model.id);
   const key = liveModelCacheKey(agentId, scope);
   liveModelCache.set(
     key,
     new Set(ids),
   );
-  liveModelOrder.set(key, ids);
+  liveModelOrder.set(key, remembered);
 }
 
 export function resolveDefaultModelFromOptions(
@@ -49,8 +42,7 @@ export function resolveDefaultModelFromOptions(
 }
 
 export function getRememberedLiveModels(agentId: string, scope?: string | null): RuntimeModelOption[] {
-  const ids = liveModelOrder.get(liveModelCacheKey(agentId, scope)) ?? [];
-  return ids.map((id) => ({ id, label: id }));
+  return liveModelOrder.get(liveModelCacheKey(agentId, scope)) ?? [];
 }
 
 export function preferFreshLiveModels(
@@ -74,14 +66,12 @@ export function isKnownModel(
   return false;
 }
 
-// Some adapters reject the synthetic `'default'` model id (e.g. AMR / vela,
-// which requires an explicit `session/set_model` before `session/prompt`).
-// Those defs declare it by omitting DEFAULT_MODEL_OPTION from
-// `fallbackModels` entirely. When the chat run produces a null or 'default'
-// model for one of those adapters, prefer the first model from the live list
-// last surfaced to the UI, then fall back to the def's first concrete fallback
-// id so the spawn layer always has a real model to forward.
-// Defs that DO list 'default' (the common case) are left untouched.
+// Some adapters omit the synthetic `'default'` option from `fallbackModels`
+// because they only accept concrete ids for explicit model selection. When a
+// chat run has no model at all, prefer the first model from the live list last
+// surfaced to the UI, then fall back to the def's first concrete fallback id.
+// An explicit `'default'` choice is preserved so ACP runtimes can leave model
+// selection to the upstream session's own configured default.
 export function resolveModelForAgent(
   def: RuntimeAgentDef,
   resolved: string | null,
@@ -89,6 +79,7 @@ export function resolveModelForAgent(
   liveModelScope?: string | null,
 ): string | null {
   if (resolved && resolved !== 'default') return resolved;
+  if (resolved === 'default') return resolved;
   // Daemon-process env override (e.g. VELA_DEFAULT_MODEL for AMR). Lets an
   // operator pin a different fallback id without a code change when the
   // hardcoded default goes away upstream.

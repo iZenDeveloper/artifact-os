@@ -48,6 +48,8 @@
  *   FAKE_VELA_REQUIRE_SET_MODEL  – strict gate (default on); set to '0' to
  *                                   accept session/prompt without prior
  *                                   session/set_model (legacy behaviour)
+ *   FAKE_VELA_LOG_SET_MODEL      – when set to '1', include session/set_model
+ *                                   entries in FAKE_VELA_INVOCATION_LOG
  */
 
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -246,6 +248,9 @@ function handleMessage(msg) {
       const next = typeof params?.modelId === 'string' ? params.modelId.trim() : '';
       const sessionId = typeof params?.sessionId === 'string' ? params.sessionId : SESSION_ID;
       if (next) currentModelId = next;
+      if (env.FAKE_VELA_LOG_SET_MODEL === '1') {
+        logInvocation(`set_model:${next || '<empty>'}`);
+      }
       sessionsWithModel.add(sessionId);
       writeResult(id, {});
       return;
