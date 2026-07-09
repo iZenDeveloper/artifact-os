@@ -118,4 +118,20 @@ describe("renderer crash-loop breaker wiring", () => {
     expect(runtimeSource).toContain("rendererCrashLoop.isOpen()");
     expect(runtimeSource).toContain("rearmIfCooledDown(");
   });
+
+  test("recovery actively clears caches before the retry reload", () => {
+    // A passive reload alone can't escape a corrupt-cache crash, so the re-arm
+    // path clears the HTTP + V8 code caches (non-destructive) first.
+    expect(runtimeSource).toContain("session.clearCache()");
+    expect(runtimeSource).toContain("clearCodeCaches(");
+  });
+
+  test("breaker open and recovery attempts are observable via logs + bounded telemetry", () => {
+    // A wedged device must be diagnosable: one warn on open, one info per
+    // recovery attempt, and a bounded recovery-attempt analytics signal.
+    expect(runtimeSource).toContain("crash-loop breaker OPEN");
+    expect(runtimeSource).toContain("attempting recovery reload");
+    expect(runtimeSource).toContain('reason: "recovery-attempt"');
+    expect(runtimeSource).toContain("recovery_attempt:");
+  });
 });

@@ -1605,7 +1605,16 @@ function checkOptionsFromHost(options: unknown): { autoDownload?: boolean } | un
 
 async function reportRendererCrash(
   options: DesktopRuntimeOptions,
-  properties: { reason: string; exit_code: number | null; loop_tripped?: boolean },
+  properties: {
+    reason: string;
+    exit_code: number | null;
+    loop_tripped?: boolean;
+    // Set on the bounded "recovery-attempt" signal (reason === "recovery-attempt"):
+    // the Nth time the breaker re-armed and tried to actively recover this
+    // session. Lets triage see chronic loopers (index keeps climbing) apart from
+    // devices that recovered (no further recovery-attempt events).
+    recovery_attempt?: number;
+  },
 ): Promise<void> {
   try {
     // discoverDaemonUrl returns the real http://127.0.0.1:<port> URL the
@@ -1627,6 +1636,8 @@ async function reportRendererCrash(
           // Marks the single crash that tripped the loop breaker, so a crash
           // loop is one flagged event instead of thousands of anonymous ones.
           loop_tripped: properties.loop_tripped ?? false,
+          // Present on the bounded recovery-attempt signal; null on real crashes.
+          recovery_attempt: properties.recovery_attempt ?? null,
         },
       }),
     });
@@ -1874,6 +1885,11 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // 0.14.0 machine logged 26k renderer-crash events in a day). When it opens we
   // park on a recoverable error screen and re-arm after a quiet cooldown.
   const rendererCrashLoop = new RendererCrashLoopBreaker();
+  // Monotonic per session: how many times the breaker re-armed and actively
+  // tried to recover (cache clear + reload). Not reset on a successful load, so
+  // a chronic looper's index keeps climbing while a recovered device simply
+  // stops emitting recovery-attempt events.
+  let rendererRecoveryAttempts = 0;
 
   const consoleEntries: DesktopConsoleEntry[] = [];
   const petWindow = createDesktopPetWindow(preloadPath, options.osLocale);
@@ -1988,8 +2004,14 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       // Breaker open: stop the poll loop from cycling a deterministic crash.
       // Show the recoverable error screen once (on the opening crash) instead
       // of reloading into another blank window; the loop re-arms after the
-      // cooldown so a transient fault still self-heals.
-      if (outcome.justOpened) void showRendererCrashScreen();
+      // cooldown, clears caches, and attempts an active recovery reload.
+      if (outcome.justOpened) {
+        console.warn(
+          "[open-design desktop] renderer crash-loop breaker OPEN — parking; will attempt recovery after cooldown",
+          { reason: details.reason, exitCode: details.exitCode },
+        );
+        void showRendererCrashScreen();
+      }
       return;
     }
     // A crash / OOM / OS kill of a backgrounded renderer leaves the window
@@ -2382,9 +2404,28 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     try {
       // Crash-loop breaker open: park on the crash screen instead of reloading a
       // deterministically-crashing renderer. Re-arm once the cooldown has
-      // elapsed with no further crash, then fall through for one reload attempt.
+      // elapsed with no further crash, then actively recover — clear the HTTP +
+      // V8 code caches (the most common recoverable cause is a corrupt cached
+      // bundle / shader, and this is non-destructive: no cookies or storage) and
+      // fall through for one reload attempt.
       if (rendererCrashLoop.isOpen()) {
         if (rendererCrashLoop.rearmIfCooledDown(Date.now())) {
+          rendererRecoveryAttempts += 1;
+          console.info(
+            "[open-design desktop] renderer crash-loop cooldown elapsed — clearing caches and attempting recovery reload",
+            { attempt: rendererRecoveryAttempts },
+          );
+          try {
+            await window.webContents.session.clearCache();
+            await window.webContents.session.clearCodeCaches({});
+          } catch {
+            // Best-effort: a failed cache clear must not block the reload attempt.
+          }
+          void reportRendererCrash(options, {
+            reason: "recovery-attempt",
+            exit_code: null,
+            recovery_attempt: rendererRecoveryAttempts,
+          });
           rendererFailed = true;
         } else {
           schedule(RUNNING_POLL_MS);
