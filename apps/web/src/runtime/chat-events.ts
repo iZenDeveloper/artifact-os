@@ -29,14 +29,28 @@ export function appendErrorStatusEvent(
   code?: string,
   failure?: RunFailureClassificationFields,
 ): ChatMessage {
-  if (!detail) return message;
+  if (!detail.trim()) return message;
   const events = message.events ?? [];
-  const last = events[events.length - 1];
+  const lastIndex = events.length - 1;
+  const last = events[lastIndex];
   if (last?.kind === 'status' && last.label === 'error' && last.detail === detail) {
-    return message;
-  }
-  if (!detail?.trim()) {
-    return message;
+    // The same terminal error is already recorded, but a later pass can bring
+    // the finalize-time classification the first pass lacked — e.g. a reload
+    // reads the daemon-persisted `error` frame, then the run finishes and
+    // `onError` fires with `code` / `failureCategory` / `failureDetail`
+    // attached. Merge those into the existing event instead of dropping them,
+    // so the specific quota / CLI / long-tail card survives; no-op only when
+    // the new pass adds nothing.
+    const merged = {
+      ...last,
+      ...(code ? { code } : {}),
+      ...(failure?.failureCategory ? { failureCategory: failure.failureCategory } : {}),
+      ...(failure?.failureDetail ? { failureDetail: failure.failureDetail } : {}),
+    };
+    if (JSON.stringify(merged) === JSON.stringify(last)) return message;
+    const nextEvents = events.slice();
+    nextEvents[lastIndex] = merged;
+    return { ...message, events: nextEvents };
   }
   return {
     ...message,

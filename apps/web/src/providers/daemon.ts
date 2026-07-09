@@ -1179,6 +1179,13 @@ async function consumeDaemonRun({
           exitSignal = status.signal ?? null;
           serverDeclaredSuccess = status.status === 'succeeded';
           if (status.resumable === true) endResumable = true;
+          // Carry the daemon failure classification off this terminal status
+          // too — this error-frame-then-status recovery path breaks before the
+          // SSE `end` frame, so without it markErrorRunFailure() below stamps
+          // null and the specific failureDetail card degrades to the generic
+          // run-error UI on reconnect.
+          if (status.failureCategory) endFailureCategory = status.failureCategory;
+          if (status.failureDetail) endFailureDetail = status.failureDetail;
           onRunStatus?.(endStatus);
           break;
         }
