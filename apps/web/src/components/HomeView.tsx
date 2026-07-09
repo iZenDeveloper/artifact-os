@@ -2130,7 +2130,7 @@ export function HomeView({
           onDuplicate={(record) => void duplicateExamplePlugin(record)}
           onOpenDetails={handleCommunityOpenDetails}
           onBrowseRegistry={onBrowseRegistry}
-          preferDefaultFacet={false}
+          preferDefaultFacet
           cardLayout="gallery"
         />
       </HomeTemplatesReveal>

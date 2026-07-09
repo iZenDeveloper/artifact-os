@@ -3,7 +3,7 @@
 // The Home starter grid is organized around the artifact a user wants
 // to make first:
 //
-//   Prototype · Live Artifact · Slides · Image · Video · HyperFrames · Audio
+//   Slides · Prototype · Live Artifact · Image · Video · HyperFrames · Audio
 //
 // Prototype, Slides, Image, and Video have enough bundled templates to
 // deserve a second row. Those child buckets follow the Feishu prompt
@@ -140,6 +140,12 @@ function isLiveArtifactPlugin(record: InstalledPluginRecord): boolean {
 // intents and the app's artifact product types.
 const PRIMARY_CATEGORIES: readonly CategoryDef[] = [
   {
+    slug: 'deck',
+    label: 'Slides',
+    starterPrompt: 'Create an Open Design plugin that generates a polished slide deck from a narrative brief.',
+    test: byMode('deck'),
+  },
+  {
     slug: 'prototype',
     label: 'Prototype',
     starterPrompt: 'Create an Open Design plugin that generates an interactive prototype from a product brief.',
@@ -150,12 +156,6 @@ const PRIMARY_CATEGORIES: readonly CategoryDef[] = [
     label: 'Live Artifact',
     starterPrompt: 'Create an Open Design plugin that generates a live artifact with refreshable, data-aware UI.',
     test: isLiveArtifactPlugin,
-  },
-  {
-    slug: 'deck',
-    label: 'Slides',
-    starterPrompt: 'Create an Open Design plugin that generates a polished slide deck from a narrative brief.',
-    test: byMode('deck'),
   },
   {
     slug: 'image',
@@ -689,7 +689,7 @@ export function filterByQuery(
 // Smart default selection. Lead with the first artifact kind in the
 // Home creation flow while keeping all prototype scenes visible.
 export const PREFERRED_DEFAULT_SELECTION: FacetSelection = {
-  category: 'prototype',
+  category: 'deck',
   subcategory: null,
 };
 
