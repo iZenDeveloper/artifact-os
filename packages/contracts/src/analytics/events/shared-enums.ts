@@ -64,6 +64,7 @@ export type TrackingAmrEntrySource =
   | 'handoff_amr_website'
   | 'chat_error_authorize_retry'
   | 'chat_error_recharge'
+  | 'chat_error_upgrade'
   | 'chat_balance_gate_upgrade'
   | 'home_balance_gate_upgrade'
   | 'chat_low_balance_warn_recharge'
@@ -418,4 +419,3 @@ export type TrackingFileSizeBucket =
   | '1_10mb'
   | '10_100mb'
   | '100mb_plus';
-
