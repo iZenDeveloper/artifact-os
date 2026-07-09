@@ -424,6 +424,61 @@ describe("tools-release local channel prepare validation", () => {
     }
   });
 
+  it("allows release-dryrun branches to run stable prepublish validation without prerelease metadata", async () => {
+    const packagedVersion = await readPackagedVersion();
+    const server = await startMetadataServer({});
+    const ghRoot = await mkdtemp(join(tmpdir(), "od-tools-release-gh-"));
+
+    try {
+      const fakeGh = await writeFakeGhScript(ghRoot);
+      const releaseNotesRoot = await writeReleaseNotesRoot(ghRoot, packagedVersion);
+      const stable = await runPrepare("stable", {
+        GITHUB_REF_NAME: `release-dryrun/v${packagedVersion}`,
+        GITHUB_REPOSITORY: "nexu-io/open-design",
+        GITHUB_SHA: "0123456789abcdef0123456789abcdef01234567",
+        OPEN_DESIGN_RELEASE_NOTES_ROOT: releaseNotesRoot,
+        OPEN_DESIGN_GH_NODE_SCRIPT: fakeGh,
+        OPEN_DESIGN_RELEASE_DRY_RUN: "prepublish",
+        OPEN_DESIGN_RELEASES_PUBLIC_ORIGIN: server.origin,
+        OPEN_DESIGN_STABLE_PRERELEASE_VERSION: "",
+      });
+
+      expect(stable.stdout).toContain("release-dryrun branch: skipping prerelease metadata validation for prepublish dry-run");
+      expect(stable.stdout).toContain("[release-stable] state source: release-dryrun branch (prerelease gate skipped)");
+      expect(stable.outputs.branch).toBe(`release-dryrun/v${packagedVersion}`);
+      expect(stable.outputs.dry_run).toBe("true");
+      expect(stable.outputs.dry_run_mode).toBe("prepublish");
+      expect(stable.outputs.github_release_enabled).toBe("false");
+      expect(stable.outputs.publish_side_effects_enabled).toBe("false");
+      expect(stable.outputs.run_prepublish_jobs).toBe("true");
+    } finally {
+      await server.close();
+      await rm(ghRoot, { force: true, recursive: true });
+    }
+  });
+
+  it("rejects release-dryrun branches outside stable prepublish validation", async () => {
+    const packagedVersion = await readPackagedVersion();
+    const ghRoot = await mkdtemp(join(tmpdir(), "od-tools-release-gh-"));
+
+    try {
+      const fakeGh = await writeFakeGhScript(ghRoot);
+      const releaseNotesRoot = await writeReleaseNotesRoot(ghRoot, packagedVersion);
+      await expect(runPrepare("stable", {
+        GITHUB_REF_NAME: `release-dryrun/v${packagedVersion}`,
+        GITHUB_REPOSITORY: "nexu-io/open-design",
+        GITHUB_SHA: "0123456789abcdef0123456789abcdef01234567",
+        OPEN_DESIGN_RELEASE_NOTES_ROOT: releaseNotesRoot,
+        OPEN_DESIGN_GH_NODE_SCRIPT: fakeGh,
+        OPEN_DESIGN_RELEASE_DRY_RUN: "false",
+        OPEN_DESIGN_RELEASES_PUBLIC_ORIGIN: "https://releases.example.test",
+        OPEN_DESIGN_STABLE_PRERELEASE_VERSION: "",
+      })).rejects.toThrow(/release-dryrun\/vX\.Y\.Z branches are only valid with OPEN_DESIGN_RELEASE_DRY_RUN=prepublish/);
+    } finally {
+      await rm(ghRoot, { force: true, recursive: true });
+    }
+  });
+
   it("prepares stable publish controls when dry-run is false", async () => {
     const packagedVersion = await readPackagedVersion();
     const prereleaseVersion = `${packagedVersion}-prerelease.2`;
@@ -506,7 +561,7 @@ describe("tools-release local channel prepare validation", () => {
     }
   });
 
-  it("requires stable promotion to run from the release version branch", async () => {
+  it("requires stable promotion to run from a release version branch", async () => {
     const packagedVersion = await readPackagedVersion();
     const prereleaseVersion = `${packagedVersion}-prerelease.2`;
     const objects: Record<string, unknown> = {};
@@ -524,7 +579,7 @@ describe("tools-release local channel prepare validation", () => {
         OPEN_DESIGN_RELEASE_DRY_RUN: "metadata",
         OPEN_DESIGN_RELEASES_PUBLIC_ORIGIN: server.origin,
         OPEN_DESIGN_STABLE_PRERELEASE_VERSION: prereleaseVersion,
-      })).rejects.toThrow(/requires GITHUB_REF_NAME to be release\/vX\.Y\.Z; got main/);
+      })).rejects.toThrow(/requires GITHUB_REF_NAME to be release\/vX\.Y\.Z or release-dryrun\/vX\.Y\.Z; got main/);
     } finally {
       await server.close();
       await rm(ghRoot, { force: true, recursive: true });

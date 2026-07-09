@@ -4,9 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       prerelease_version:
-        description: "Exact validated prerelease version to promote, for example 0.5.1-prerelease.3."
-        required: true
+        description: "Exact validated prerelease version to promote, for example 0.5.1-prerelease.3. Optional only for release-dryrun/vX.Y.Z prepublish validation."
+        required: false
         type: string
+        default: ""
       dry_run:
         description: "Release mode. metadata stops after promotion metadata; prepublish runs build/smoke/report/plan without publishing; publish performs the stable release."
         required: false
@@ -17,7 +18,7 @@ on:
           - publish
         default: metadata
       ref:
-        description: "Stable release branch to build, for example release/v0.5.1. Empty builds the dispatch ref, which must also be release/vX.Y.Z."
+        description: "Stable release branch to build, for example release/v0.5.1. Prepublish-only validation may use release-dryrun/v0.5.1. Empty builds the dispatch ref."
         required: false
         type: string
         default: ""
@@ -43,16 +44,17 @@ on:
   workflow_call:
     inputs:
       prerelease_version:
-        description: "Exact validated prerelease version to promote."
-        required: true
+        description: "Exact validated prerelease version to promote. Optional only for release-dryrun/vX.Y.Z prepublish validation."
+        required: false
         type: string
+        default: ""
       dry_run:
         description: "Release mode: metadata, prepublish, or publish. The legacy false value is also accepted for callers."
         required: false
         type: string
         default: "metadata"
       ref:
-        description: "Stable release branch to build. Empty builds the caller's ref, which must also be release/vX.Y.Z."
+        description: "Stable release branch to build. Empty builds the caller's ref. Prepublish-only validation may use release-dryrun/vX.Y.Z."
         required: false
         type: string
         default: ""

@@ -1251,11 +1251,13 @@ process.stdin.on("end", () => {
 
     expect(workflow).not.toContain("OPEN_DESIGN_STABLE_VERSION:");
     expect(workflow).not.toContain("inputs.release_version");
-    expect(workflow).toContain("Stable release branch to build, for example release/v0.5.1.");
+    expect(workflow).toContain("Prepublish-only validation may use release-dryrun/v0.5.1.");
 
     expect(script).toContain("const stableReleaseBranchPattern = /^release\\/v(\\d+\\.\\d+\\.\\d+)$/;");
+    expect(script).toContain("const stableDryRunBranchPattern = /^release-dryrun\\/v(\\d+\\.\\d+\\.\\d+)$/;");
     expect(script).toContain("function resolveStableBaseVersion");
-    expect(script).toContain("release-stable requires GITHUB_REF_NAME to be release/vX.Y.Z");
+    expect(script).toContain("release-stable requires GITHUB_REF_NAME to be release/vX.Y.Z or release-dryrun/vX.Y.Z");
+    expect(script).toContain("release-dryrun/vX.Y.Z branches are only valid with OPEN_DESIGN_RELEASE_DRY_RUN=prepublish");
     expect(script).toContain("function resolvePrereleaseBaseVersion");
     expect(script).toContain(
       '${stableBaseVersion.source ?? "release base"} version ${stableBaseVersion.value} must match apps/packaged/package.json version',
@@ -1268,7 +1270,7 @@ process.stdin.on("end", () => {
       OPEN_DESIGN_STABLE_VERSION: "",
     });
 
-    expect(output).toContain("release-stable requires GITHUB_REF_NAME to be release/vX.Y.Z; got main");
+    expect(output).toContain("release-stable requires GITHUB_REF_NAME to be release/vX.Y.Z or release-dryrun/vX.Y.Z; got main");
   });
 
   it("[P2] ignores explicit stable version inputs in favor of the release branch gate", async () => {
@@ -1277,7 +1279,7 @@ process.stdin.on("end", () => {
       OPEN_DESIGN_STABLE_VERSION: "0.10.1",
     });
 
-    expect(output).toContain("release-stable requires GITHUB_REF_NAME to be release/vX.Y.Z; got main");
+    expect(output).toContain("release-stable requires GITHUB_REF_NAME to be release/vX.Y.Z or release-dryrun/vX.Y.Z; got main");
   });
 
   it("[P2] reads beta metadata.json written with releaseVersion/releaseNumber field names", async () => {
@@ -1571,6 +1573,45 @@ process.stdin.on("end", () => {
       expect(result.stdout).toContain("[release-stable] channel: stable");
       expect(result.stdout).toContain("[release-stable] dry run: true");
       expect(result.stdout).toContain(`[release-stable] version tag: open-design-v${baseVersion}`);
+    } finally {
+      await fixture.close();
+      await rm(runnerTemp, { force: true, recursive: true });
+    }
+  });
+
+  it("[P2] allows release-dryrun stable prepublish validation without prerelease metadata", async () => {
+    const baseVersion = await readPackagedVersion();
+    const fixture = await startStablePrereleaseMetadataServer({});
+    const runnerTemp = await mkdtemp(join(tmpdir(), "od-release-stable-dryrun-"));
+
+    try {
+      await mkdir(join(runnerTemp, "bin"), { recursive: true });
+      const releaseNotesRoot = await writeReleaseNotesRoot(runnerTemp, baseVersion);
+      await writeFakeGhBin(join(runnerTemp, "bin"), []);
+      const fakePath = `${join(runnerTemp, "bin")}${delimiter}${process.env.PATH ?? ""}`;
+
+      const result = await execFileAsync(process.execPath, ["--experimental-strip-types", releaseStableScriptPath], {
+        cwd: workspaceRoot,
+        env: {
+          ...process.env,
+          GITHUB_REF_NAME: `release-dryrun/v${baseVersion}`,
+          GITHUB_REPOSITORY: "nexu-io/open-design",
+          GITHUB_SHA: "0123456789abcdef0123456789abcdef01234567",
+          NODE_TLS_REJECT_UNAUTHORIZED: "0",
+          OPEN_DESIGN_RELEASE_CHANNEL: "stable",
+          OPEN_DESIGN_RELEASE_DRY_RUN: "prepublish",
+          OPEN_DESIGN_RELEASE_NOTES_ROOT: releaseNotesRoot,
+          OPEN_DESIGN_RELEASES_PUBLIC_ORIGIN: fixture.origin,
+          OPEN_DESIGN_GH_NODE_SCRIPT: join(runnerTemp, "bin", "gh"),
+          OPEN_DESIGN_STABLE_PRERELEASE_VERSION: "",
+          Path: fakePath,
+          PATH: fakePath,
+        },
+      });
+
+      expect(result.stdout).toContain("release-dryrun branch: skipping prerelease metadata validation for prepublish dry-run");
+      expect(result.stdout).toContain("[release-stable] state source: release-dryrun branch (prerelease gate skipped)");
+      expect(result.stdout).toContain("[release-stable] dry run mode: prepublish");
     } finally {
       await fixture.close();
       await rm(runnerTemp, { force: true, recursive: true });

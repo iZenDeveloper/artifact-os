@@ -20,7 +20,10 @@ import { assertStableReleaseNotes } from "../release-notes.ts";
 const execFile = promisify(execFileCallback);
 
 const stableReleaseBranchPattern = /^release\/v(\d+\.\d+\.\d+)$/;
+const stableDryRunBranchPattern = /^release-dryrun\/v(\d+\.\d+\.\d+)$/;
 const stableTagPattern = /^open-design-v(\d+\.\d+\.\d+)$/;
+
+type StableBranchKind = "release" | "release-dryrun";
 
 type GitHubRelease = {
   draft?: boolean;
@@ -30,6 +33,7 @@ type GitHubRelease = {
 };
 
 type ParsedStableVersion = {
+  branchKind?: StableBranchKind;
   parsed: ReleaseBaseVersionTuple;
   source?: string;
   value: string;
@@ -112,7 +116,22 @@ function parseReleaseBranchVersion(branch: string): ParsedStableVersion | null {
   }
 
   return {
+    branchKind: "release",
     parsed: parseReleaseBaseVersion(branchMatch[1]) ?? fail(`invalid release branch version: ${branchMatch[1]}`),
+    source: "GITHUB_REF_NAME",
+    value: branchMatch[1],
+  } satisfies ParsedStableVersion;
+}
+
+function parseStableDryRunBranchVersion(branch: string): ParsedStableVersion | null {
+  const branchMatch = stableDryRunBranchPattern.exec(branch);
+  if (branchMatch?.[1] == null) {
+    return null;
+  }
+
+  return {
+    branchKind: "release-dryrun",
+    parsed: parseReleaseBaseVersion(branchMatch[1]) ?? fail(`invalid release dry-run branch version: ${branchMatch[1]}`),
     source: "GITHUB_REF_NAME",
     value: branchMatch[1],
   } satisfies ParsedStableVersion;
@@ -136,10 +155,19 @@ function resolvePrereleaseBaseVersion(branch: string, inputValue: string | undef
   fail("release-prerelease requires either a release/vX.Y.Z branch or OPEN_DESIGN_STABLE_VERSION");
 }
 
-function resolveStableBaseVersion(branch: string): ParsedStableVersion {
+function resolveStableBaseVersion(branch: string, dryRunMode: StableDryRunMode): ParsedStableVersion {
   const branchVersion = parseReleaseBranchVersion(branch);
   if (branchVersion == null) {
-    fail(`release-stable requires GITHUB_REF_NAME to be release/vX.Y.Z; got ${branch.length > 0 ? branch : "(empty)"}`);
+    const dryRunBranchVersion = parseStableDryRunBranchVersion(branch);
+    if (dryRunBranchVersion == null) {
+      fail(
+        `release-stable requires GITHUB_REF_NAME to be release/vX.Y.Z or release-dryrun/vX.Y.Z; got ${branch.length > 0 ? branch : "(empty)"}`,
+      );
+    }
+    if (dryRunMode !== "prepublish") {
+      fail("release-dryrun/vX.Y.Z branches are only valid with OPEN_DESIGN_RELEASE_DRY_RUN=prepublish");
+    }
+    return dryRunBranchVersion;
   }
   return branchVersion;
 }
@@ -557,8 +585,9 @@ const commit = process.env.GITHUB_SHA ?? "";
 const branch = process.env.GITHUB_REF_NAME ?? "";
 const stableBaseVersion =
   channel === "stable"
-    ? resolveStableBaseVersion(branch)
+    ? resolveStableBaseVersion(branch, stableDryRunMode)
     : resolvePrereleaseBaseVersion(branch, process.env.OPEN_DESIGN_STABLE_VERSION);
+const stableDryRunBranch = channel === "stable" && stableBaseVersion.branchKind === "release-dryrun";
 const packagedParsed = stableBaseVersion.parsed;
 if (stableBaseVersion.value !== packagedVersion) {
   fail(
@@ -638,6 +667,9 @@ if (channel === "prerelease") {
   releaseVersion = formatReleaseVersion("prerelease", packagedVersion, nextPrereleaseNumber);
   releaseName = `Open Design Prerelease ${releaseVersion}`;
   log(`latest prerelease: ${latestPrerelease.prereleaseVersion}`);
+} else if (stableDryRunBranch) {
+  stateSource = "release-dryrun branch (prerelease gate skipped)";
+  log("release-dryrun branch: skipping prerelease metadata validation for prepublish dry-run");
 } else {
   const stablePrerelease = await validateStablePrereleaseMetadata({
     branch: `release/v${stableBaseVersion.value}`,
