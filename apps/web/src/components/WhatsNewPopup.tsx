@@ -180,19 +180,21 @@ export function WhatsNewPopup({ active }: { active: boolean }) {
             </Button>
           </div>
           <div className={styles.content}>
-            <p className={styles.body}>{card.body}</p>
+            <div className={styles.main}>
+              <p className={styles.body}>{card.body}</p>
+              <div className={styles.actions}>
+                <Button
+                  data-testid="whats-new-cta"
+                  variant="subtle"
+                  onClick={openLink}
+                >
+                  {t('whatsNew.cta')}
+                </Button>
+              </div>
+            </div>
             {card.imageUrl != null ? (
               <img alt="" className={styles.image} src={card.imageUrl} />
             ) : null}
-          </div>
-          <div className={styles.actions}>
-            <Button
-              data-testid="whats-new-cta"
-              variant="primary"
-              onClick={openLink}
-            >
-              {t('whatsNew.cta')}
-            </Button>
           </div>
         </motion.section>
       ) : null}
