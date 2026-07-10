@@ -212,8 +212,16 @@ describe('POST /api/provider/models', () => {
       );
       return jsonResponse({
         data: [
-          { id: 'gpt-4o-mini', object: 'model' },
-          { id: 'gpt-4o', object: 'model' },
+          {
+            id: 'gpt-4o-mini',
+            object: 'model',
+            metadata: { cost: 'low', capability: 'standard' },
+          },
+          {
+            id: 'gpt-4o',
+            object: 'model',
+            metadata: { cost: 'medium', capability: 'advanced' },
+          },
           { id: 'gpt-4o', object: 'model' },
           { id: 'wan2-1-14b-t2v-250225', object: 'model' },
           { id: 'text-embedding-3-large', object: 'model' },
@@ -238,8 +246,16 @@ describe('POST /api/provider/models', () => {
       ok: true,
       kind: 'success',
       models: [
-        { id: 'gpt-4o', label: 'gpt-4o' },
-        { id: 'gpt-4o-mini', label: 'gpt-4o-mini' },
+        {
+          id: 'gpt-4o',
+          label: 'gpt-4o',
+          metadata: { cost: 'medium', capability: 'advanced' },
+        },
+        {
+          id: 'gpt-4o-mini',
+          label: 'gpt-4o-mini',
+          metadata: { cost: 'low', capability: 'standard' },
+        },
       ],
     });
   });

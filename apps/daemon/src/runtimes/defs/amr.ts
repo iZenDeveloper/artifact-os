@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execAgentFile } from './shared.js';
+import type { ModelCapability, ModelCost, ModelMetadata } from '@open-design/contracts';
 import type { RuntimeAgentDef, RuntimeModelOption } from '../types.js';
 
 const AMR_MODELS_TIMEOUT_MS = 10_000;
@@ -169,11 +170,13 @@ function withVelaModelPriceFields(
   const isDefault = extractOptionalBoolean(item, ['default']);
   const inputPriceUsdPerMillion = extractInputPriceUsdPerMillion(item);
   const outputPriceUsdPerMillion = extractOutputPriceUsdPerMillion(item);
+  const metadata = extractModelMetadata(item);
   if (
     enabled === undefined &&
     isDefault === undefined &&
     inputPriceUsdPerMillion === undefined &&
-    outputPriceUsdPerMillion === undefined
+    outputPriceUsdPerMillion === undefined &&
+    metadata === null
   ) {
     return model;
   }
@@ -183,7 +186,37 @@ function withVelaModelPriceFields(
     ...(isDefault === undefined ? {} : { default: isDefault }),
     ...(inputPriceUsdPerMillion === undefined ? {} : { inputPriceUsdPerMillion }),
     ...(outputPriceUsdPerMillion === undefined ? {} : { outputPriceUsdPerMillion }),
+    ...(metadata === null ? {} : { metadata }),
   };
+}
+
+function extractModelMetadata(item: unknown): ModelMetadata | null {
+  if (!isRecord(item)) return null;
+  const metadata = isRecord(item.metadata) ? item.metadata : item;
+  const cost = parseModelCost(metadata.cost);
+  const capability = parseModelCapability(metadata.capability);
+  if (!cost && !capability) return null;
+  return {
+    ...(cost ? { cost } : {}),
+    ...(capability ? { capability } : {}),
+  };
+}
+
+function parseModelCost(value: unknown): ModelCost | null {
+  return value === 'low' ||
+    value === 'medium' ||
+    value === 'high' ||
+    value === 'very_high'
+    ? value
+    : null;
+}
+
+function parseModelCapability(value: unknown): ModelCapability | null {
+  return value === 'standard' ||
+    value === 'advanced' ||
+    value === 'best_quality'
+    ? value
+    : null;
 }
 
 function extractOptionalBoolean(
