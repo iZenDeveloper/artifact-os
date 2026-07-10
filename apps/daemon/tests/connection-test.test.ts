@@ -216,11 +216,13 @@ describe('POST /api/provider/models', () => {
             id: 'gpt-4o-mini',
             object: 'model',
             metadata: { cost: 'low', capability: 'standard' },
+            enabled: false,
           },
           {
             id: 'gpt-4o',
             object: 'model',
             metadata: { cost: 'medium', capability: 'advanced' },
+            default: true,
           },
           { id: 'gpt-4o', object: 'model' },
           { id: 'wan2-1-14b-t2v-250225', object: 'model' },
@@ -242,7 +244,12 @@ describe('POST /api/provider/models', () => {
     });
 
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toMatchObject({
+    const body = (await res.json()) as {
+      ok: boolean;
+      kind: string;
+      models?: Array<Record<string, unknown>>;
+    };
+    expect(body).toMatchObject({
       ok: true,
       kind: 'success',
       models: [
@@ -258,6 +265,10 @@ describe('POST /api/provider/models', () => {
         },
       ],
     });
+    expect(body.models?.[0]?.enabled).toBeUndefined();
+    expect(body.models?.[0]?.default).toBeUndefined();
+    expect(body.models?.[1]?.enabled).toBeUndefined();
+    expect(body.models?.[1]?.default).toBeUndefined();
   });
 
   it('routes provider model discovery through the live proxy dispatcher', async () => {

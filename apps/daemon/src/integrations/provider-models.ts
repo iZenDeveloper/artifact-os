@@ -132,15 +132,13 @@ function extractOpenAiModels(data: unknown): ProviderModelOption[] {
 
 function openAiModelOption(item: unknown): ProviderModelOption | null {
   if (!item || typeof item !== 'object') return null;
-  const obj = item as { id?: unknown; metadata?: unknown; default?: unknown; enabled?: unknown };
+  const obj = item as { id?: unknown; metadata?: unknown };
   const id = typeof obj?.id === 'string' ? obj.id : '';
   if (!id || !isOpenAiChatModelId(id)) return null;
   const metadata = extractModelMetadata(obj.metadata);
   return {
     id,
     label: id,
-    ...(typeof obj.enabled === 'boolean' ? { enabled: obj.enabled } : {}),
-    ...(typeof obj.default === 'boolean' ? { default: obj.default } : {}),
     ...(metadata ? { metadata } : {}),
   };
 }
