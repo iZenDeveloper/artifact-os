@@ -238,6 +238,14 @@ export interface UpdateIndicatorClickProps {
   app_version_after?: string;
 }
 
+export interface WhatsNewPopupClickProps {
+  page_name: 'home';
+  area: 'whats_new_popup';
+  element: 'see_whats_new' | 'dismiss';
+  action: 'open_link' | 'dismiss';
+  app_version: string;
+}
+
 export interface NewProjectModalTabClickProps {
   page_name: 'home';
   area: 'new_project_modal';
@@ -1487,6 +1495,7 @@ export type UiClickProps =
   | HomeRecommendationClickProps
   | StudioOnboardingHintClickProps
   | UpdateIndicatorClickProps
+  | WhatsNewPopupClickProps
   | NewProjectModalTabClickProps
   | NewProjectModalElementClickProps
   | PluginReplacementModalClickProps
