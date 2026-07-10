@@ -75,8 +75,8 @@ export function createResourceHubPublishAdapter(
   }
 
   return {
-    async publish({ projectId }) {
-      const principal = await getPrincipal(projectId);
+    async publish({ projectId, principal: inputPrincipal }) {
+      const principal = inputPrincipal ?? await getPrincipal(projectId);
       if (!principal) return null; // no team identity → nothing to publish
       const packed = await packTree(await resolveProjectDir(projectId));
       const resourceId = await ensureResourceId(principal, projectId);
@@ -86,8 +86,8 @@ export function createResourceHubPublishAdapter(
       return { version: version.version };
     },
 
-    async syncLatest({ projectId }) {
-      const principal = await getPrincipal(projectId);
+    async syncLatest({ projectId, principal: inputPrincipal }) {
+      const principal = inputPrincipal ?? await getPrincipal(projectId);
       if (!principal) return null;
       const resourceId = resourceIdFor(projectId);
       let ref;
@@ -103,8 +103,8 @@ export function createResourceHubPublishAdapter(
     },
 
     // Member pull: fetch + safely land the published tree into the local copy.
-    async pull({ projectId }) {
-      const principal = await getPrincipal(projectId);
+    async pull({ projectId, principal: inputPrincipal }) {
+      const principal = inputPrincipal ?? await getPrincipal(projectId);
       if (!principal) return; // no team identity → nothing to pull
       await materializeRef(client, principal, resourceIdFor(projectId), PUBLISHED_REF, await resolvePullDir(projectId));
     },

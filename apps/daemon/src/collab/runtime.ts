@@ -123,8 +123,17 @@ function selectResourcePublishAdapter(
 export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): CollabRuntime {
   const workspaceContext = options.workspaceContext ?? createWorkspaceContextProviderFromEnv();
   const sharePrincipals = new Map<string, Map<string, ResourceHubPrincipal>>();
-  const scopedProjectKey = (projectId: string, principal: ResourceHubPrincipal) => `${principal.teamId}:${projectId}`;
+  const SCOPED_PROJECT_SEPARATOR = '\u0000';
+  const scopedProjectKey = (projectId: string, principal: ResourceHubPrincipal) =>
+    `${principal.teamId}${SCOPED_PROJECT_SEPARATOR}${projectId}`;
   const principalsForProject = (projectId: string) => [...(sharePrincipals.get(projectId)?.values() ?? [])];
+  function parseScopedProjectKey(key: string) {
+    const separatorIndex = key.indexOf(SCOPED_PROJECT_SEPARATOR);
+    if (separatorIndex < 0) return { projectId: key, principal: null };
+    const teamId = key.slice(0, separatorIndex);
+    const projectId = key.slice(separatorIndex + SCOPED_PROJECT_SEPARATOR.length);
+    return { projectId, principal: sharePrincipals.get(projectId)?.get(teamId) ?? null };
+  }
   const getProjectPrincipal = async (projectId?: string) => {
     if (projectId) {
       const principal = principalsForProject(projectId)[0];
@@ -137,10 +146,38 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
   // signed-in identity drives both. Transport precedence: an explicit adapter →
   // the `vela resource` CLI transport when opted in (OD_RESOURCE_TRANSPORT=vela-cli)
   // → the in-process hub SDK adapter → the local stub.
-  const adapter =
+  const baseAdapter =
     options.adapter ??
     selectResourcePublishAdapter(options.resolveProjectDir, workspaceContext, getProjectPrincipal) ??
     createStubResourcePublishAdapter();
+  const schedulerAdapter: ResourcePublishAdapter = {
+    async publish({ projectId: key, reason }) {
+      const { projectId, principal } = parseScopedProjectKey(key);
+      return baseAdapter.publish({
+        projectId,
+        reason,
+        ...(principal ? { principal } : {}),
+      });
+    },
+  };
+  if (baseAdapter.syncLatest) {
+    schedulerAdapter.syncLatest = ({ projectId: key }) => {
+      const { projectId, principal } = parseScopedProjectKey(key);
+      return baseAdapter.syncLatest!({
+        projectId,
+        ...(principal ? { principal } : {}),
+      });
+    };
+  }
+  if (baseAdapter.pull) {
+    schedulerAdapter.pull = ({ projectId: key }) => {
+      const { projectId, principal } = parseScopedProjectKey(key);
+      return baseAdapter.pull!({
+        projectId,
+        ...(principal ? { principal } : {}),
+      });
+    };
+  }
   const published = new Map<string, number>();
   const syncStates = new Map<string, ProjectSyncState>();
   // projectId → the member who shared it (the single writer). Members compare
@@ -149,8 +186,9 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
   async function markTeamProject(
     projectId: string,
     syncState: 'pending_upload' | 'synced' | 'failed',
+    principal?: ResourceHubPrincipal | null,
   ) {
-    const principals = principalsForProject(projectId);
+    const principals = principal ? [principal] : principalsForProject(projectId);
     const targets = principals.length > 0 ? principals : [await getProjectPrincipal(projectId)].filter((principal): principal is ResourceHubPrincipal => Boolean(principal));
     for (const principal of targets) {
       await options.teamProjectCatalog?.upsert(
@@ -166,9 +204,10 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
   function markTeamProjectSoon(
     projectId: string,
     syncState: 'pending_upload' | 'synced' | 'failed',
+    principal?: ResourceHubPrincipal | null,
   ) {
-    void markTeamProject(projectId, syncState).catch((error) => {
-      const principals = principalsForProject(projectId);
+    void markTeamProject(projectId, syncState, principal).catch((error) => {
+      const principals = principal ? [principal] : principalsForProject(projectId);
       if (principals.length === 0) {
         options.onError?.({ projectId, error, principal: null });
         return;
@@ -181,31 +220,23 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
   // assigning an explicit `undefined` to an optional property, hence we always
   // wrap onError rather than passing options.onError through conditionally.)
   const schedulerOptions: CollabPublishSchedulerOptions = {
-    adapter,
+    adapter: schedulerAdapter,
     onPublished: (result) => {
-      published.set(result.projectId, result.version);
-      syncStates.set(result.projectId, 'synced');
-      const principals = principalsForProject(result.projectId);
-      for (const principal of principals) syncStates.set(scopedProjectKey(result.projectId, principal), 'synced');
-      markTeamProjectSoon(result.projectId, 'synced');
-      if (principals.length === 0) {
-        options.onPublished?.({ ...result, principal: null });
-      } else {
-        for (const principal of principals) options.onPublished?.({ ...result, principal });
-      }
+      const { projectId, principal } = parseScopedProjectKey(result.projectId);
+      published.set(projectId, result.version);
+      syncStates.set(projectId, 'synced');
+      if (principal) syncStates.set(scopedProjectKey(projectId, principal), 'synced');
+      markTeamProjectSoon(projectId, 'synced', principal);
+      options.onPublished?.({ ...result, projectId, principal });
     },
     onError: (result) => {
       // A failed publish leaves the prior head standing; surface it as a
       // recoverable sync state rather than wedging the project.
-      syncStates.set(result.projectId, 'sync_failed');
-      const principals = principalsForProject(result.projectId);
-      for (const principal of principals) syncStates.set(scopedProjectKey(result.projectId, principal), 'sync_failed');
-      markTeamProjectSoon(result.projectId, 'failed');
-      if (principals.length === 0) {
-        options.onError?.({ ...result, principal: null });
-      } else {
-        for (const principal of principals) options.onError?.({ ...result, principal });
-      }
+      const { projectId, principal } = parseScopedProjectKey(result.projectId);
+      syncStates.set(projectId, 'sync_failed');
+      if (principal) syncStates.set(scopedProjectKey(projectId, principal), 'sync_failed');
+      markTeamProjectSoon(projectId, 'failed', principal);
+      options.onError?.({ ...result, projectId, principal });
     },
   };
   const scheduler = new CollabPublishScheduler(schedulerOptions);
@@ -246,17 +277,24 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
       // Pending until the publish confirms (onPublished → 'synced' / onError →
       // 'sync_failed'). Flushing at a run boundary publishes the stable state.
       syncStates.set(projectId, 'pending_upload');
-      if (share && typeof share !== 'string') syncStates.set(scopedProjectKey(projectId, share), 'pending_upload');
-      markTeamProjectSoon(projectId, 'pending_upload');
-      scheduler.notifyChanged(projectId, 'share');
-      scheduler.runBoundary(projectId);
+      if (share && typeof share !== 'string') {
+        const key = scopedProjectKey(projectId, share);
+        syncStates.set(key, 'pending_upload');
+        markTeamProjectSoon(projectId, 'pending_upload', share);
+        scheduler.notifyChanged(key, 'share');
+        scheduler.runBoundary(key);
+      } else {
+        markTeamProjectSoon(projectId, 'pending_upload');
+        scheduler.notifyChanged(projectId, 'share');
+        scheduler.runBoundary(projectId);
+      }
     },
     async pullLatest(projectId) {
       // The real hub adapter materializes the published tree locally; the stub
       // has no bytes. Either way, report the head version.
-      if (adapter.pull) await adapter.pull({ projectId });
-      const head = adapter.syncLatest
-        ? await adapter.syncLatest({ projectId })
+      if (baseAdapter.pull) await baseAdapter.pull({ projectId });
+      const head = baseAdapter.syncLatest
+        ? await baseAdapter.syncLatest({ projectId })
         : { version: published.get(projectId) ?? null };
       return { version: head?.version ?? null };
     },

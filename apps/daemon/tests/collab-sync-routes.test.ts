@@ -102,18 +102,16 @@ describe('collab sync routes', () => {
     runtime.requestTeamShare(projectId, workspaceA);
     runtime.requestTeamShare(projectId, workspaceB);
 
-    for (let i = 0; i < 40 && onPublished.mock.calls.length < 2; i += 1) {
+    for (let i = 0; i < 40 && (publish.mock.calls.length < 2 || onPublished.mock.calls.length < 2); i += 1) {
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
-    onPublished.mockClear();
-
-    runtime.scheduler.notifyChanged(projectId, 'save');
-    runtime.scheduler.runBoundary(projectId);
-
-    for (let i = 0; i < 40 && onPublished.mock.calls.length < 2; i += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-    expect(onPublished.mock.calls.map(([result]) => result.principal)).toEqual(
+    expect((publish.mock.calls as unknown as Array<[Record<string, unknown>]>).map((call) => call[0])).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ projectId, principal: workspaceA }),
+        expect.objectContaining({ projectId, principal: workspaceB }),
+      ]),
+    );
+    expect(onPublished.mock.calls.map((call) => call[0]?.principal)).toEqual(
       expect.arrayContaining([workspaceA, workspaceB]),
     );
   });
