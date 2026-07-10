@@ -2,6 +2,7 @@ import type { Express } from 'express';
 import type { ProjectSyncIntentEvent } from '@open-design/contracts';
 import type { CollabRuntime } from '../collab/runtime.js';
 import { contextToResourceHubPrincipal } from '../collab/resource-hub-publish-adapter.js';
+import type { ResourceHubPrincipal } from '../integrations/resource-hub.js';
 
 export interface RegisterCollabSyncRoutesDeps {
   collab: Pick<
@@ -37,11 +38,59 @@ export function registerCollabSyncRoutes(app: Express, deps: RegisterCollabSyncR
     pullLatest,
     workspaceContext,
   } = deps.collab;
-  async function principalForRequest(req: { headers: { authorization?: string | string[] | undefined } }) {
+  function headerValue(req: { get(name: string): string | undefined }, name: string): string | null {
+    const value = req.get(name);
+    return typeof value === 'string' && value.trim() ? value.trim() : null;
+  }
+  function headerBool(req: { get(name: string): string | undefined }, name: string, fallback: boolean): boolean {
+    const value = headerValue(req, name);
+    if (value === null) return fallback;
+    if (value === 'false') return false;
+    if (value === 'true') return true;
+    return fallback;
+  }
+  function headerPrincipalForRequest(req: { get(name: string): string | undefined }): ResourceHubPrincipal | null {
+    const teamId = headerValue(req, 'x-od-workspace-id');
+    const memberId = headerValue(req, 'x-od-workspace-member-id');
+    if (!teamId || !memberId) return null;
+    const role = headerValue(req, 'x-od-workspace-role') ?? 'member';
+    const lifecycleState = headerValue(req, 'x-od-workspace-lifecycle-state') ?? 'active';
+    return {
+      teamId,
+      memberId,
+      role: role === 'owner' || role === 'admin' ? role : 'member',
+      lifecycleState:
+        lifecycleState === 'billing_past_due' ||
+        lifecycleState === 'locked' ||
+        lifecycleState === 'deleting' ||
+        lifecycleState === 'deleted'
+          ? lifecycleState
+          : 'active',
+    };
+  }
+  async function principalForRequest(req: {
+    get(name: string): string | undefined;
+    headers: { authorization?: string | string[] | undefined };
+  }) {
     const authorization = Array.isArray(req.headers.authorization)
       ? req.headers.authorization[0]
       : req.headers.authorization;
-    return contextToResourceHubPrincipal(await workspaceContext.current({ authorization }));
+    return headerPrincipalForRequest(req) ?? contextToResourceHubPrincipal(await workspaceContext.current({ authorization }));
+  }
+  async function canShareProjectsForRequest(req: {
+    get(name: string): string | undefined;
+    headers: { authorization?: string | string[] | undefined };
+  }) {
+    const headerPrincipal = headerPrincipalForRequest(req);
+    if (headerPrincipal) {
+      const legacyWriteEnabled = headerBool(req, 'x-od-workspace-write-enabled', true);
+      const canWriteSyncedFiles = headerBool(req, 'x-od-workspace-can-write-synced-files', legacyWriteEnabled);
+      return headerBool(req, 'x-od-workspace-can-share-projects', canWriteSyncedFiles);
+    }
+    const authorization = Array.isArray(req.headers.authorization)
+      ? req.headers.authorization[0]
+      : req.headers.authorization;
+    return (await workspaceContext.current({ authorization }))?.permissions.canShareProjects ?? true;
   }
 
   // An author-side edit landed. The publish is coalesced within the scheduler's
@@ -77,12 +126,13 @@ export function registerCollabSyncRoutes(app: Express, deps: RegisterCollabSyncR
       });
       // Server-side permission gate, mirroring team resource sharing: a team
       // member without `canShareProjects` is refused — the client hides the
-      // affordance, but the daemon must not trust the client to enforce it. No
-      // team context stays a silent no-op (the publish adapter no-ops off-team).
-      if (context && !context.permissions.canShareProjects) {
+      // affordance, but the daemon must not trust the client to enforce it.
+      // Header-backed callers use the same workspace identity as project CRUD;
+      // requests with no workspace principal still no-op through the adapter.
+      if (!(await canShareProjectsForRequest(req))) {
         return res.status(403).json({ error: 'WORKSPACE_PROJECT_SHARE_DENIED' });
       }
-      requestTeamShare(req.params.id, contextToResourceHubPrincipal(context) ?? context?.workspaceMemberId);
+      requestTeamShare(req.params.id, (await principalForRequest(req)) ?? context?.workspaceMemberId);
     }
     const principal = await principalForRequest(req);
     res.json({ ok: true, syncState: projectSyncState(req.params.id, principal) });

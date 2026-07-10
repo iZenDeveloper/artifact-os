@@ -56,11 +56,16 @@ async function startSyncServer(workspaceContext?: WorkspaceContextProvider) {
   if (!address || typeof address === 'string') throw new Error('server did not bind to a TCP port');
   const base = `http://127.0.0.1:${address.port}`;
   return {
-    async json(route: string, options: { method?: string; body?: unknown } = {}) {
+    async json(
+      route: string,
+      options: { method?: string; body?: unknown; headers?: Record<string, string> } = {},
+    ) {
       const init: RequestInit = { method: options.method ?? 'GET' };
       if (options.body !== undefined) {
-        init.headers = { 'content-type': 'application/json' };
+        init.headers = { 'content-type': 'application/json', ...options.headers };
         init.body = JSON.stringify(options.body);
+      } else if (options.headers) {
+        init.headers = options.headers;
       }
       const response = await fetch(`${base}${route}`, init);
       return { status: response.status, body: (await response.json()) as Record<string, any> };
@@ -307,6 +312,38 @@ describe('collab sync routes', () => {
     });
     expect(res.status).toBe(200);
     expect(['pending_upload', 'synced']).toContain(res.body.syncState);
+  });
+
+  it('uses header-only workspace identity for sync intent, status, and pull', async () => {
+    const api = await startSyncServer({ current: async () => null });
+    const headers = {
+      'x-od-workspace-id': 'ws-header',
+      'x-od-workspace-member-id': 'member-header',
+      'x-od-workspace-role': 'admin',
+    };
+
+    const intent = await api.json('/api/projects/p1/collab/sync-intent', {
+      method: 'POST',
+      headers,
+      body: { event: 'project_team_share_requested', projectId: 'p1' },
+    });
+    expect(intent.status).toBe(200);
+    expect(['pending_upload', 'synced']).toContain(intent.body.syncState);
+
+    let status = await api.json('/api/projects/p1/collab/status', { headers });
+    for (let i = 0; i < 40 && status.body.syncState !== 'synced'; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      status = await api.json('/api/projects/p1/collab/status', { headers });
+    }
+    expect(status.body).toMatchObject({
+      syncState: 'synced',
+      ownerMemberId: 'member-header',
+      publishedVersion: 1,
+    });
+
+    const pull = await api.json('/api/projects/p1/collab/pull', { method: 'POST', headers });
+    expect(pull.status).toBe(200);
+    expect(pull.body.version).toBe(1);
   });
 
   it('pulls the published head for a member (null before any publish)', async () => {
