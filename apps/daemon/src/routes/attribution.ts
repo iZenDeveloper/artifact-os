@@ -141,7 +141,9 @@ export function createAttributionService(deps: Omit<RegisterAttributionRoutesDep
         attributionClaimResultAt: now().toISOString(),
         pendingAttribution: null,
       });
-      return response('not_found');
+      const result = response('not_found');
+      await captureClaimResult(result, attribution.source, attribution.platform, installationId);
+      return result;
     }
     if (ledger.status === 'already_consumed_other') {
       await deps.analytics.captureSafety({
@@ -154,11 +156,22 @@ export function createAttributionService(deps: Omit<RegisterAttributionRoutesDep
         attributionClaimResultAt: now().toISOString(),
         pendingAttribution: null,
       });
-      return response('shared_installer', { found: true });
+      const result = response('shared_installer', { found: true });
+      await captureClaimResult(result, attribution.source, attribution.platform, installationId);
+      return result;
     }
     if (!ledger.webDistinctId) {
       await persistPendingIfNeeded(attribution, true);
       return response('pending_ledger', { found: true, pending: true });
+    }
+    if (ledger.status === 'already_consumed_same') {
+      await writeInstallationFile(installationDir, {
+        attributionClaimResultAt: now().toISOString(),
+        pendingAttribution: null,
+      });
+      const result = response('already_claimed', { found: true });
+      await captureClaimResult(result, attribution.source, attribution.platform, installationId);
+      return result;
     }
     await deps.analytics.mergeAnonymousPerson({
       anonymousDistinctId: ledger.webDistinctId,
@@ -176,9 +189,26 @@ export function createAttributionService(deps: Omit<RegisterAttributionRoutesDep
       attributionClaimResultAt: now().toISOString(),
       pendingAttribution: null,
     });
-    return response(ledger.status === 'already_consumed_same' ? 'already_claimed' : 'claimed', {
+    const result = response('claimed', {
       found: true,
       merged: true,
+    });
+    await captureClaimResult(result, attribution.source, attribution.platform, installationId);
+    return result;
+  }
+
+  async function captureClaimResult(
+    result: AttributionClaimResponse,
+    source: string,
+    platform: string | undefined,
+    installationId: string,
+  ): Promise<void> {
+    await deps.analytics.captureSafety({
+      eventName: 'attribution_claim_result',
+      distinctId: installationId,
+      appVersion: '0.0.0',
+      properties: { found: result.found, merged: result.merged, source, platform: platform ?? 'unknown', status: result.status },
+      insertId: `attribution-claim-result-${Date.now()}`,
     });
   }
 

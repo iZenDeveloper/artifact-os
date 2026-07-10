@@ -147,4 +147,25 @@ describe('download attribution service', () => {
       await expect(service.bridgeUrl('https://example.com/')).resolves.toBeNull();
     });
   });
+
+  it('does not merge the same consumed token twice and records each consented result', async () => {
+    await withTempData(async (dataDir) => {
+      const analytics = analyticsStub();
+      const fetchImpl = vi.fn()
+        .mockResolvedValueOnce(new Response(JSON.stringify({ status: 'consumed', webDistinctId: 'web-1' }), { status: 200 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify({ status: 'already_consumed_same', webDistinctId: 'web-1' }), { status: 200 }));
+      const service = createAttributionService({
+        analytics,
+        appConfig: { readAppConfig: async () => ({ installationId: 'install-123', telemetry: { metrics: true } }) },
+        env: { OD_ATTRIBUTION_LEDGER_URL: 'https://ledger.test/api/attribution' },
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        paths: { RUNTIME_DATA_DIR: dataDir },
+      });
+
+      await expect(service.claim({ token: 'odtoken_repeat', source: 'manual' })).resolves.toMatchObject({ status: 'claimed', merged: true });
+      await expect(service.claim({ token: 'odtoken_repeat', source: 'manual' })).resolves.toMatchObject({ status: 'already_claimed', merged: false });
+      expect(analytics.mergeAnonymousPerson).toHaveBeenCalledTimes(1);
+      expect(analytics.captureSafety).toHaveBeenCalledTimes(2);
+    });
+  });
 });
