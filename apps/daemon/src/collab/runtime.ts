@@ -150,9 +150,26 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
     options.adapter ??
     selectResourcePublishAdapter(options.resolveProjectDir, workspaceContext, getProjectPrincipal) ??
     createStubResourcePublishAdapter();
+  const barePublishResults = new Map<string, Map<string, number>>();
   const schedulerAdapter: ResourcePublishAdapter = {
     async publish({ projectId: key, reason }) {
       const { projectId, principal } = parseScopedProjectKey(key);
+      if (!principal) {
+        const principals = principalsForProject(projectId);
+        if (principals.length > 0) {
+          const versions = new Map<string, number>();
+          for (const scopedPrincipal of principals) {
+            const result = await baseAdapter.publish({
+              projectId,
+              reason,
+              principal: scopedPrincipal,
+            });
+            if (result) versions.set(scopedPrincipal.teamId, result.version);
+          }
+          barePublishResults.set(projectId, versions);
+          return versions.size > 0 ? { version: Math.max(...versions.values()) } : null;
+        }
+      }
       return baseAdapter.publish({
         projectId,
         reason,
@@ -225,9 +242,21 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
     onPublished: (result) => {
       const { projectId, principal } = parseScopedProjectKey(result.projectId);
       published.set(projectId, result.version);
-      if (principal) published.set(scopedProjectKey(projectId, principal), result.version);
       syncStates.set(projectId, 'synced');
-      if (principal) syncStates.set(scopedProjectKey(projectId, principal), 'synced');
+      if (principal) {
+        published.set(scopedProjectKey(projectId, principal), result.version);
+        syncStates.set(scopedProjectKey(projectId, principal), 'synced');
+      } else {
+        const versions = barePublishResults.get(projectId);
+        if (versions) {
+          for (const scopedPrincipal of principalsForProject(projectId)) {
+            const version = versions.get(scopedPrincipal.teamId);
+            if (version !== undefined) published.set(scopedProjectKey(projectId, scopedPrincipal), version);
+            syncStates.set(scopedProjectKey(projectId, scopedPrincipal), 'synced');
+          }
+          barePublishResults.delete(projectId);
+        }
+      }
       markTeamProjectSoon(projectId, 'synced', principal);
       options.onPublished?.({ ...result, projectId, principal });
     },

@@ -120,6 +120,23 @@ describe('collab sync routes', () => {
     expect(runtime.publishedVersion(projectId, workspaceB)).toBe(22);
     expect(runtime.projectOwnerMemberId(projectId, workspaceA)).toBe('member-a');
     expect(runtime.projectOwnerMemberId(projectId, workspaceB)).toBe('member-b');
+
+    publish.mockClear();
+    onPublished.mockClear();
+    runtime.scheduler.notifyChanged(projectId, 'save');
+    runtime.scheduler.runBoundary(projectId);
+
+    for (let i = 0; i < 40 && publish.mock.calls.length < 2; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    expect((publish.mock.calls as unknown as Array<[Record<string, unknown>]>).map((call) => call[0])).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ projectId, reason: 'save', principal: workspaceA }),
+        expect.objectContaining({ projectId, reason: 'save', principal: workspaceB }),
+      ]),
+    );
+    expect(runtime.publishedVersion(projectId, workspaceA)).toBe(11);
+    expect(runtime.publishedVersion(projectId, workspaceB)).toBe(22);
   });
 
   it('publishes on request and advances the published version monotonically', async () => {
