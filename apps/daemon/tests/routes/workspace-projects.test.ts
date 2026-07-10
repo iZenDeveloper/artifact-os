@@ -264,7 +264,7 @@ describe('workspace project routes', () => {
       syncState: 'pending_upload',
       resourceHubResourceId: `project-${moveProjectId}`,
       cloudTombstonedAt: null,
-      createdByWorkspaceMemberId: null,
+      createdByWorkspaceMemberId: 'member-direct',
       pendingSyncIntent: {
         event: 'project_team_share_requested',
         projectId: moveProjectId,
@@ -306,6 +306,7 @@ describe('workspace project routes', () => {
       id: moveProjectId,
       syncState: 'synced',
       resourceHubResourceId: `project-${moveProjectId}`,
+      createdByWorkspaceMemberId: 'member-direct',
     });
     expect(syncedProject.pendingSyncIntent).toBeUndefined();
 
@@ -332,6 +333,30 @@ describe('workspace project routes', () => {
 
     const deleted = await fetch(`${baseUrl}/api/projects/${deleteProjectId}`);
     expect(deleted.status).toBe(404);
+  });
+
+  it('stamps the sharing member as owner when a legacy project moves to team', async () => {
+    const projectId = `workspace-share-owner-${Date.now()}`;
+    await createProject(projectId, 'Share owner project');
+
+    const moveResp = await fetch(`${baseUrl}/api/workspaces/${workspaceId}/projects/${projectId}/move`, {
+      method: 'POST',
+      headers: headers('member-share-owner', { 'x-od-workspace-role': 'admin' }),
+      body: JSON.stringify({ visibility: 'team' }),
+    });
+    expect(moveResp.status).toBe(200);
+    const moved = await moveResp.json() as { project: any };
+    expect(moved.project).toMatchObject({
+      id: projectId,
+      visibility: 'team',
+      createdByWorkspaceMemberId: 'member-share-owner',
+    });
+
+    const mine = await list('member-share-owner', '?owner=mine');
+    expect(mine.projects.map((item) => item.id)).toContain(projectId);
+
+    const others = await list('member-share-owner', '?owner=others');
+    expect(others.projects.map((item) => item.id)).not.toContain(projectId);
   });
 
   it('rejects member batch-delete for unknown legacy ownership and allows privileged delete', async () => {

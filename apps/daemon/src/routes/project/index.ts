@@ -1781,6 +1781,10 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       collabSync.requestTeamShare(projectId, workspaceProjectPrincipal(ctx));
     }
   }
+  function ownerForTeamShare(summary: any, ctx: WorkspaceProjectContext, visibility: 'personal' | 'team') {
+    if (visibility !== 'team') return summary?.createdByWorkspaceMemberId ?? null;
+    return summary?.createdByWorkspaceMemberId ?? ctx.workspaceMemberId;
+  }
 
   app.post('/api/workspaces/:workspaceId/projects/:projectId/move', async (req, res) => {
     try {
@@ -1805,6 +1809,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       }
       updateWorkspaceProject(db, ctx.workspaceId, project.id, {
         visibility,
+        createdByWorkspaceMemberId: ownerForTeamShare(summary, ctx, visibility),
         updatedByWorkspaceMemberId: ctx.workspaceMemberId,
         resourceHubResourceId: visibility === 'team' ? projectResourceIdFor(project.id) : null,
         cloudTombstonedAt: visibility === 'team' ? null : Date.now(),
@@ -1843,8 +1848,10 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       }
       const moveMany = db.transaction((ids: string[]) => {
         for (const id of ids) {
+          const summary = summaries.find((item: any) => item?.id === id);
           updateWorkspaceProject(db, ctx.workspaceId, id, {
             visibility,
+            createdByWorkspaceMemberId: ownerForTeamShare(summary, ctx, visibility),
             updatedByWorkspaceMemberId: ctx.workspaceMemberId,
             resourceHubResourceId: visibility === 'team' ? projectResourceIdFor(id) : null,
             cloudTombstonedAt: visibility === 'team' ? null : Date.now(),
