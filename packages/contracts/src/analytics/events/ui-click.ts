@@ -1561,3 +1561,4 @@ export type UiClickProps =
   | SettingsDesignReviewClickProps
   | SettingsExternalMcpClickProps
   | OnboardingClickProps;
+
