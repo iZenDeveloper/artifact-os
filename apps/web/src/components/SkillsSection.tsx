@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { Button } from '@open-design/components';
-import { useI18n, useT } from '../i18n';
+import { useI18n, useT, type Locale } from '../i18n';
 import {
   localizeSkillDescription,
   localizeSkillName,
@@ -78,7 +78,7 @@ function parseTriggers(raw: string): string[] {
     .filter(Boolean);
 }
 
-function skillMatchesSearch(skill: SkillSummary, q: string, locale: string): boolean {
+function skillMatchesSearch(skill: SkillSummary, q: string, locale: Locale): boolean {
   if (!q) return true;
   const hay = `${skill.name}\n${localizeSkillName(locale, skill)}\n${skill.description}\n${localizeSkillDescription(locale, skill)}\n${(skill.triggers ?? []).join(
     ' ',
