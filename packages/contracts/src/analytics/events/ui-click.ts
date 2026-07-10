@@ -1047,6 +1047,7 @@ export interface DrawToolbarClickProps {
   element:
     | 'rect'
     | 'pen'
+    | 'text'
     | 'undo'
     | 'redo'
     | 'attach_image'

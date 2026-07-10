@@ -21,6 +21,7 @@ import { Icon } from '../Icon';
 import { TrustBadge } from '../TrustBadge';
 import { PreviewSurface } from './cards/PreviewSurface';
 import { canDuplicatePluginPreview } from './duplicate';
+import { pluginCategoryLabel } from './categoryLabel';
 import { localizePluginDescription, localizePluginTitle } from './localization';
 import { inferPluginPreview } from './preview';
 import type { PluginUseAction } from './useActions';
@@ -76,6 +77,10 @@ export function PluginCard({
   const preview = useMemo(() => inferPluginPreview(record, { preferBaked: true }), [record]);
   const title = localizePluginTitle(locale, record);
   const description = localizePluginDescription(locale, record);
+  // Commercial category ("品类") chip — the same calm type signal the Create
+  // page picker and Home example row show, so the three deck-card surfaces read
+  // consistently. Null for records without a known category (no chip rendered).
+  const categoryLabel = pluginCategoryLabel(record, t);
   const tags = useMemo(
     () =>
       (record.manifest?.tags ?? [])
@@ -143,6 +148,14 @@ export function PluginCard({
           >
             {title}
           </button>
+          {categoryLabel ? (
+            <span
+              className="plugins-home__gallery-category"
+              data-testid={`plugins-home-category-${record.id}`}
+            >
+              {categoryLabel}
+            </span>
+          ) : null}
         </div>
         <div className="plugins-home__gallery-frame">
           <PreviewSurface

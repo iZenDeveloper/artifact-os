@@ -129,6 +129,7 @@ import {
   buildSubcategoryCatalog,
   type FacetOption,
 } from './plugins-home/facets';
+import { pluginCategoryLabel } from './plugins-home/categoryLabel';
 import { localizePluginDescription, localizePluginTitle } from './plugins-home/localization';
 import { pluginPresetQuery, renderPluginPresetQuery } from './plugins-home/presetSeedPrompt';
 import { inferPluginPreview, type PluginPreviewSpec } from './plugins-home/preview';
@@ -7124,10 +7125,20 @@ function PageCreatorPresetFrame({
 }) {
   const preview = preset.pluginPreview;
   const { ref, inView } = useInView<HTMLSpanElement>({ rootMargin: '520px', once: false });
+  // Decks ship a fixed 16:9 stage that scales itself to its viewport. The fixed
+  // 480×300 scale-0.4 crop below is tuned for tall webpage previews and would
+  // clip a deck to a cramped top-left corner. Tag deck presets so the frame
+  // becomes a 16:9 box the iframe fills natively — the stage then fits the whole
+  // slide edge-to-edge (matches the Community gallery deck treatment).
+  const odMode = (preset.plugin?.manifest?.od as { mode?: unknown } | undefined)?.mode;
+  const isDeck = odMode === 'deck' || preset.category === 'slides';
+  const frameClass = isDeck
+    ? 'page-creator-card-frame page-creator-card-frame--deck'
+    : 'page-creator-card-frame';
 
   if (preset.source === 'blank') {
     return (
-      <span ref={ref} className="page-creator-card-frame" aria-hidden>
+      <span ref={ref} className={frameClass} aria-hidden>
         <span className="page-creator-blank-thumb">
           <span className="page-creator-blank-plus">
             <Icon name="plus" size={28} />
@@ -7140,7 +7151,7 @@ function PageCreatorPresetFrame({
 
   if (preview?.kind === 'media') {
     return (
-      <span ref={ref} className="page-creator-card-frame" aria-hidden>
+      <span ref={ref} className={frameClass} aria-hidden>
         {preview.poster ? (
           <img
             className="page-creator-plugin-media"
@@ -7164,7 +7175,7 @@ function PageCreatorPresetFrame({
 
   if (preview?.kind === 'html') {
     return (
-      <span ref={ref} className="page-creator-card-frame" aria-hidden>
+      <span ref={ref} className={frameClass} aria-hidden>
         {inView ? (
           <iframe title="" src={preview.src} sandbox="allow-scripts" loading="lazy" tabIndex={-1} />
         ) : (
@@ -7175,7 +7186,7 @@ function PageCreatorPresetFrame({
   }
 
   return (
-    <span ref={ref} className="page-creator-card-frame" aria-hidden>
+    <span ref={ref} className={frameClass} aria-hidden>
       {inView ? (
         // allow-scripts (still origin-isolated) so templates that scale
         // themselves — the slides deck stage — preview at fit instead of a
@@ -7310,10 +7321,16 @@ function PageCreatorDialog({
   const activeCategoryAllCount = displayablePresets.filter(
     (preset) => pagePresetMatchesCategory(preset, category) && preset.source !== 'blank',
   ).length;
-  // Resolve the tag shown on a card: the plugin's sub-category (e.g.
-  // "Landing / marketing"), falling back to the preset's own category label so
-  // no card just reads "Community".
+  // Resolve the type chip shown on a card. Prefer the commercial category
+  // ("品类") so the Create page cards read like the Community gallery and Home
+  // example row (Genspark / Skywork reference), then fall back to the plugin's
+  // sub-category (e.g. "Landing / marketing") and finally the preset's own
+  // category label so no card just reads "Community".
   const presetTagLabel = (preset: ProjectPagePreset): string => {
+    if (preset.plugin) {
+      const commercial = pluginCategoryLabel(preset.plugin, t);
+      if (commercial) return commercial;
+    }
     const slug = PAGE_KIND_TO_FACET_SLUG[preset.category];
     if (slug && preset.plugin) {
       const sub = extractSubcategories(preset.plugin, slug)[0];
@@ -7529,10 +7546,7 @@ function PageCreatorDialog({
                           <span className="page-creator-source">
                             {presetTagLabel(preset)}
                           </span>
-                          <strong>
-                            <Icon name={preset.icon} size={14} />
-                            {title}
-                          </strong>
+                          <strong>{title}</strong>
                           <span>{description}</span>
                         </span>
                         <span className="page-creator-card-actions">

@@ -2432,12 +2432,35 @@
   object-position: top center;
 }
 
+/* Row 2 of the preset grid: a small commercial-category kicker pill over the
+   title (matches the Create-page card + the reference template galleries). */
+.home-hero__plugin-preset-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 2px 12px 12px;
+}
+.home-hero__plugin-preset-category {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .home-hero__plugin-preset-title {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 0 12px 12px;
   font-size: 12.5px;
   font-weight: 650;
   line-height: 1.2;

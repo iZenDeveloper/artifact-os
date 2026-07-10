@@ -308,14 +308,11 @@ describe('FileViewer preview scale', () => {
     );
   });
 
-  it('reserves safe preview space while the draw toolbar is active', () => {
+  it('keeps the draw toolbar floating without reserving preview space', () => {
     const css = readExpandedIndexCss();
 
-    expect(css).toContain('.preview-viewport.preview-draw-active');
-    expect(css).toContain('--preview-draw-dock-clearance: 120px;');
-    expect(css).toContain('padding-bottom: var(--preview-draw-dock-clearance);');
-    expect(css).toContain('.preview-viewport:not(.preview-viewport-desktop).preview-draw-active');
-    expect(css).toContain('--preview-draw-dock-clearance: 104px;');
+    expect(css).not.toContain('--preview-draw-dock-clearance');
+    expect(css).not.toContain('padding-bottom: var(--preview-draw-dock-clearance);');
   });
 
   it('keeps manual edit canvas layout aligned with comment preview on device viewports (#2960)', () => {
@@ -4230,7 +4227,9 @@ describe('FileViewer tweaks toolbar', () => {
 
     fireEvent.click(screen.getByTestId('draw-overlay-toggle'));
     expect(screen.getByPlaceholderText('Add a note for this mark')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Box select' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Box select' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Pen' }));
+    expect(screen.queryByRole('button', { name: 'Box select' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Pen' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Click' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();

@@ -75,6 +75,7 @@ import {
 } from '../i18n/content';
 import { PreviewSurface } from './plugins-home/cards/PreviewSurface';
 import { canDuplicatePluginPreview } from './plugins-home/duplicate';
+import { pluginCategoryLabel } from './plugins-home/categoryLabel';
 import { readHomeGuideStage, writeHomeGuideStage } from './home-hero/firstRunGuide';
 import { curatedPluginPriorityForChip } from './plugins-home/curatedPriority';
 import { sortByVisualAppeal } from './plugins-home/visualScore';
@@ -1197,6 +1198,17 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     contextOnlyMcpServers.length > 0 ||
     contextOnlyConnectors.length > 0 ||
     contextWorkspaceItems.length > 0;
+  const blankProjectEntry = onStartBlankProject ? (
+    <button
+      type="button"
+      className="home-hero__blank-project"
+      data-testid="home-hero-blank-project"
+      onClick={onStartBlankProject}
+    >
+      {t('homeHero.startBlankProject')}
+      <Icon name="chevron-right" size={13} aria-hidden />
+    </button>
+  ) : null;
 
   let optionRenderIndex = 0;
 
@@ -2039,17 +2051,6 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
               }}
             />
           </RailGroup>
-          {onStartBlankProject ? (
-            <button
-              type="button"
-              className="home-hero__blank-project"
-              data-testid="home-hero-blank-project"
-              onClick={onStartBlankProject}
-            >
-              {t('homeHero.startBlankProject')}
-              <Icon name="chevron-right" size={13} aria-hidden />
-            </button>
-          ) : null}
         </div>
       )}
 
@@ -2116,6 +2117,8 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
           </div>
         </div>
       ) : null}
+
+      {blankProjectEntry}
 
       {error ? (
         <div role="alert" className="home-hero__error">
@@ -2257,6 +2260,10 @@ function PluginPromptPresetCard({
   // dark band above it (matches the Community gallery deck treatment).
   const odMode = (record.manifest?.od as { mode?: unknown } | undefined)?.mode;
   const title = localizePluginTitle(locale, record);
+  // Commercial category ("品类") chip — same signal the gallery tile and the
+  // Create page picker show, so the example row reads like the reference
+  // template galleries. Null for records without a known category.
+  const categoryLabel = pluginCategoryLabel(record, t);
   const canDuplicate = canDuplicatePluginPreview(record);
   return (
     <span className="home-hero__plugin-preset-cell" role="listitem">
@@ -2281,8 +2288,18 @@ function PluginPromptPresetCard({
             </span>
           ) : null}
         </span>
-        <span className="home-hero__plugin-preset-title">
-          {title}
+        <span className="home-hero__plugin-preset-meta">
+          {categoryLabel ? (
+            <span
+              className="home-hero__plugin-preset-category"
+              data-testid={`home-hero-plugin-preset-category-${record.id}`}
+            >
+              {categoryLabel}
+            </span>
+          ) : null}
+          <span className="home-hero__plugin-preset-title">
+            {title}
+          </span>
         </span>
       </button>
       <span className="home-hero__plugin-preset-actions">

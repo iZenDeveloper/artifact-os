@@ -151,6 +151,22 @@ describe('HomeHero intent rail', () => {
     expect(node.textContent).toContain('Video');
   });
 
+  it('keeps the blank project entry visible after a template is selected', () => {
+    const onStartBlankProject = vi.fn();
+    renderHero({ activeChipId: 'deck', onStartBlankProject });
+
+    expect(screen.queryByTestId('home-hero-template-section')).toBeNull();
+    const promptExamples = screen.getByTestId('home-hero-prompt-examples');
+    const blankProject = screen.getByTestId('home-hero-blank-project');
+    expect(blankProject.textContent).toContain('start a blank project');
+    expect(
+      promptExamples.compareDocumentPosition(blankProject) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    fireEvent.click(blankProject);
+    expect(onStartBlankProject).toHaveBeenCalledTimes(1);
+  });
+
   it('does not reserve an empty active-context row for a hidden chip-bound plugin', () => {
     renderHero({
       activeChipId: 'wireframe',

@@ -2048,6 +2048,18 @@
   transform: scale(0.4);
   transform-origin: top left;
 }
+/* Deck presets: a 16:9 frame the deck's self-scaling stage fills edge-to-edge,
+   so the whole slide shows (等比缩小看到全貌) instead of a cramped top-left crop
+   from the fixed 480×300 scale-0.4 treatment above. */
+.page-creator-card-frame--deck {
+  height: auto;
+  aspect-ratio: 16 / 9;
+}
+.page-creator-card-frame--deck iframe {
+  width: 100%;
+  height: 100%;
+  transform: none;
+}
 .page-creator-plugin-media,
 .page-creator-preview-skeleton {
   width: 100%;

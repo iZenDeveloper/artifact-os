@@ -764,29 +764,29 @@ describe('FileWorkspace upload input', () => {
       if (url === '/api/plugins') {
         return new Response(JSON.stringify({
           plugins: [{
-            id: 'emerald-editorial',
-            title: 'Emerald Editorial',
+            id: 'html-ppt-pitch-deck',
+            title: 'Write a Demo Day Pitch like a Top Accelerator Group Partner',
             version: '0.1.0',
             sourceKind: 'bundled',
             source: '/tmp',
             trust: 'bundled',
             capabilitiesGranted: [],
             manifest: {
-              name: 'emerald-editorial',
+              name: 'html-ppt-pitch-deck',
               version: '0.1.0',
-              title: 'Emerald Editorial',
-              title_i18n: { 'zh-CN': '祖母绿封面故事' },
-              description: 'Magazine-cover business deck.',
-              description_i18n: { 'zh-CN': '杂志封面叙事商务幻灯片。' },
-              tags: ['product-launch'],
+              title: 'Write a Demo Day Pitch like a Top Accelerator Group Partner',
+              title_i18n: { 'zh-CN': '像顶级加速器合伙人一样写 Demo Day 路演' },
+              description: 'For fundraising pitch work: turn a startup story into growth, moat, and fundraise narrative that earns another meeting.',
+              description_i18n: { 'zh-CN': '融资/路演场景：围绕 core query「series-a-pitch-deck」把粗糙材料整理成可购买、可复用的专业 Deck。' },
+              tags: ['pitch-deck', 'fundraising-pitch', 'series-a-pitch-deck', 'commercial-slide-agent'],
               od: {
                 kind: 'scenario',
                 mode: 'deck',
                 preview: { type: 'html', entry: './preview.html' },
                 useCase: {
                   query: {
-                    en: 'Create an emerald editorial business deck.',
-                    'zh-CN': '为产品发布制作一份祖母绿杂志封面风格幻灯片。',
+                    en: 'Create "Write a Demo Day Pitch like a Top Accelerator Group Partner" as a Fundraising pitch deck.',
+                    'zh-CN': '像顶级加速器合伙人一样写 Demo Day 路演。先确认受众、决策目标、素材来源、截止时间和必须保留的数据，再输出叙事主线、页面规划、逐页文案、视觉方向和按评审标准自检的版本。',
                   },
                 },
               },
@@ -797,9 +797,9 @@ describe('FileWorkspace upload input', () => {
           }],
         }), { headers: { 'content-type': 'application/json' } });
       }
-      if (url === '/api/plugins/emerald-editorial/preview') {
+      if (url === '/api/plugins/html-ppt-pitch-deck/preview') {
         return new Response(
-          '<!doctype html><html><body><main>Emerald Editorial</main></body></html>',
+          '<!doctype html><html><body><main>Write a Demo Day Pitch like a Top Accelerator Group Partner</main></body></html>',
           { headers: { 'content-type': 'text/html' } },
         );
       }
@@ -828,26 +828,29 @@ describe('FileWorkspace upload input', () => {
     const dialog = await screen.findByRole('dialog', { name: '新建页面' });
     const dialogScope = within(dialog);
     expect(dialogScope.getByRole('tab', { name: /全部 幻灯片/ })).toBeTruthy();
-    expect(await dialogScope.findByRole('tab', { name: /产品 \/ 销售/ })).toBeTruthy();
-    const title = await dialogScope.findByText('祖母绿封面故事');
+    // The deck's commercial scene ("融资路演" / fundraising-pitch) is now the
+    // sub-category tab, resolved from its category tag — the filter row and the
+    // per-card 品类 chip share one taxonomy.
+    expect(await dialogScope.findByRole('tab', { name: /融资路演/ })).toBeTruthy();
+    const title = await dialogScope.findByText('像顶级加速器合伙人一样写 Demo Day 路演');
     const card = title.closest('article');
     expect(card).not.toBeNull();
-    expect(within(card as HTMLElement).getByText('杂志封面叙事商务幻灯片。')).toBeTruthy();
+    expect(within(card as HTMLElement).getByText('融资/路演场景：围绕 core query「series-a-pitch-deck」把粗糙材料整理成可购买、可复用的专业 Deck。')).toBeTruthy();
     fireEvent.click(within(card as HTMLElement).getByRole('button', { name: '使用' }));
 
     await waitFor(() => expect(mockedWriteProjectTextFile).toHaveBeenCalledTimes(1));
     const [projectId, name, , options] = mockedWriteProjectTextFile.mock.calls[0]!;
     expect(projectId).toBe('project-1');
-    expect(name).toBe('祖母绿封面故事.html');
+    expect(name).toBe('像顶级加速器合伙人一样写-demo-day-路演.html');
     expect(options).toMatchObject({
       versionSource: 'manual',
-      versionPrompt: '为产品发布制作一份祖母绿杂志封面风格幻灯片。',
+      versionPrompt: '像顶级加速器合伙人一样写 Demo Day 路演。先确认受众、决策目标、素材来源、截止时间和必须保留的数据，再输出叙事主线、页面规划、逐页文案、视觉方向和按评审标准自检的版本。',
     });
     await waitFor(() =>
       expect(onTabsStateChange).toHaveBeenCalledWith(
         expect.objectContaining({
-          tabs: ['祖母绿封面故事.html'],
-          active: '祖母绿封面故事.html',
+          tabs: ['像顶级加速器合伙人一样写-demo-day-路演.html'],
+          active: '像顶级加速器合伙人一样写-demo-day-路演.html',
         }),
       ),
     );

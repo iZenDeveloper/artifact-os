@@ -1503,16 +1503,6 @@
   background: var(--bg);
   isolation: isolate;
 }
-/* While the draw toolbar is open, reserve room at the bottom of the preview
-   viewport so the toolbar sits in safe scroll space instead of covering the
-   artifact content. The toolbar is portaled to this viewport when possible. */
-.preview-viewport.preview-draw-active {
-  --preview-draw-dock-clearance: 120px;
-  padding-bottom: var(--preview-draw-dock-clearance);
-}
-.preview-viewport:not(.preview-viewport-desktop).preview-draw-active {
-  --preview-draw-dock-clearance: 104px;
-}
 .comment-overlay-layer {
   position: absolute;
   inset: 0;
