@@ -2410,13 +2410,6 @@ export async function startServer({
     readAppConfig,
   });
   const { analyticsService } = telemetry;
-  const attributionService = registerAttributionRoutes(app, {
-    analytics: analyticsService,
-    appConfig: { readAppConfig },
-    http: httpDeps,
-    paths: { RUNTIME_DATA_DIR },
-    env: process.env,
-  });
   const design = {
     runs: createChatRunService({
       createSseResponse,
@@ -2519,6 +2512,13 @@ export async function startServer({
     isLocalSameOrigin,
     resolvedPortRef,
   };
+  const attributionService = registerAttributionRoutes(app, {
+    analytics: analyticsService,
+    appConfig: { readAppConfig },
+    http: httpDeps,
+    paths: { RUNTIME_DATA_DIR },
+    env: process.env,
+  });
   const pathDeps = {
     PROJECT_ROOT,
     PROJECTS_DIR,
