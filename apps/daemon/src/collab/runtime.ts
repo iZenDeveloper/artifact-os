@@ -122,10 +122,12 @@ function selectResourcePublishAdapter(
 
 export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): CollabRuntime {
   const workspaceContext = options.workspaceContext ?? createWorkspaceContextProviderFromEnv();
-  const sharePrincipals = new Map<string, ResourceHubPrincipal>();
+  const sharePrincipals = new Map<string, Map<string, ResourceHubPrincipal>>();
+  const scopedProjectKey = (projectId: string, principal: ResourceHubPrincipal) => `${principal.teamId}:${projectId}`;
+  const principalsForProject = (projectId: string) => [...(sharePrincipals.get(projectId)?.values() ?? [])];
   const getProjectPrincipal = async (projectId?: string) => {
     if (projectId) {
-      const principal = sharePrincipals.get(projectId);
+      const principal = principalsForProject(projectId)[0];
       if (principal) return principal;
     }
     return contextToResourceHubPrincipal(await workspaceContext.current({}));
@@ -148,23 +150,30 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
     projectId: string,
     syncState: 'pending_upload' | 'synced' | 'failed',
   ) {
-    const principal = await getProjectPrincipal(projectId);
-    if (!principal) return;
-    await options.teamProjectCatalog?.upsert(
-      {
-        projectId,
-        resourceId: projectResourceIdFor(projectId),
-        syncState,
-      },
-      principal,
-    );
+    const principals = principalsForProject(projectId);
+    const targets = principals.length > 0 ? principals : [await getProjectPrincipal(projectId)].filter((principal): principal is ResourceHubPrincipal => Boolean(principal));
+    for (const principal of targets) {
+      await options.teamProjectCatalog?.upsert(
+        {
+          projectId,
+          resourceId: projectResourceIdFor(projectId),
+          syncState,
+        },
+        principal,
+      );
+    }
   }
   function markTeamProjectSoon(
     projectId: string,
     syncState: 'pending_upload' | 'synced' | 'failed',
   ) {
     void markTeamProject(projectId, syncState).catch((error) => {
-      options.onError?.({ projectId, error, principal: sharePrincipals.get(projectId) ?? null });
+      const principals = principalsForProject(projectId);
+      if (principals.length === 0) {
+        options.onError?.({ projectId, error, principal: null });
+        return;
+      }
+      for (const principal of principals) options.onError?.({ projectId, error, principal });
     });
   }
   // Always track the published head + sync state so members can poll them; also
@@ -176,21 +185,27 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
     onPublished: (result) => {
       published.set(result.projectId, result.version);
       syncStates.set(result.projectId, 'synced');
+      const principals = principalsForProject(result.projectId);
+      for (const principal of principals) syncStates.set(scopedProjectKey(result.projectId, principal), 'synced');
       markTeamProjectSoon(result.projectId, 'synced');
-      options.onPublished?.({
-        ...result,
-        principal: sharePrincipals.get(result.projectId) ?? null,
-      });
+      if (principals.length === 0) {
+        options.onPublished?.({ ...result, principal: null });
+      } else {
+        for (const principal of principals) options.onPublished?.({ ...result, principal });
+      }
     },
     onError: (result) => {
       // A failed publish leaves the prior head standing; surface it as a
       // recoverable sync state rather than wedging the project.
       syncStates.set(result.projectId, 'sync_failed');
+      const principals = principalsForProject(result.projectId);
+      for (const principal of principals) syncStates.set(scopedProjectKey(result.projectId, principal), 'sync_failed');
       markTeamProjectSoon(result.projectId, 'failed');
-      options.onError?.({
-        ...result,
-        principal: sharePrincipals.get(result.projectId) ?? null,
-      });
+      if (principals.length === 0) {
+        options.onError?.({ ...result, principal: null });
+      } else {
+        for (const principal of principals) options.onError?.({ ...result, principal });
+      }
     },
   };
   const scheduler = new CollabPublishScheduler(schedulerOptions);
@@ -204,7 +219,15 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
     workspaceContext,
     teamResources,
     publishedVersion: (projectId) => published.get(projectId) ?? null,
-    projectSyncState: (projectId) => syncStates.get(projectId) ?? 'local_only',
+    projectSyncState: (projectId) => {
+      const states = principalsForProject(projectId)
+        .map((principal) => syncStates.get(scopedProjectKey(projectId, principal)))
+        .filter((state): state is ProjectSyncState => Boolean(state));
+      if (states.includes('pending_upload')) return 'pending_upload';
+      if (states.includes('sync_failed')) return 'sync_failed';
+      if (states.includes('synced')) return 'synced';
+      return syncStates.get(projectId) ?? 'local_only';
+    },
     projectOwnerMemberId: (projectId) => owners.get(projectId) ?? null,
     requestTeamShare(projectId, share) {
       // Record the sharer as the project's single writer so members can tell
@@ -213,11 +236,17 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
         owners.set(projectId, share);
       } else if (share) {
         owners.set(projectId, share.memberId);
-        sharePrincipals.set(projectId, share);
+        let principals = sharePrincipals.get(projectId);
+        if (!principals) {
+          principals = new Map();
+          sharePrincipals.set(projectId, principals);
+        }
+        principals.set(share.teamId, share);
       }
       // Pending until the publish confirms (onPublished → 'synced' / onError →
       // 'sync_failed'). Flushing at a run boundary publishes the stable state.
       syncStates.set(projectId, 'pending_upload');
+      if (share && typeof share !== 'string') syncStates.set(scopedProjectKey(projectId, share), 'pending_upload');
       markTeamProjectSoon(projectId, 'pending_upload');
       scheduler.notifyChanged(projectId, 'share');
       scheduler.runBoundary(projectId);

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import {
@@ -78,6 +78,46 @@ async function startSyncServer(workspaceContext?: WorkspaceContextProvider) {
 }
 
 describe('collab sync routes', () => {
+  it('keeps publish callbacks scoped to every workspace sharing the same project', async () => {
+    const onPublished = vi.fn();
+    const publish = vi.fn(async () => ({ version: publish.mock.calls.length + 1 }));
+    runtime = createCollabRuntime({
+      adapter: { publish },
+      onPublished,
+    });
+    const projectId = 'shared-project';
+    const workspaceA = {
+      memberId: 'member-a',
+      teamId: 'workspace-a',
+      role: 'admin' as const,
+      lifecycleState: 'active' as const,
+    };
+    const workspaceB = {
+      memberId: 'member-b',
+      teamId: 'workspace-b',
+      role: 'admin' as const,
+      lifecycleState: 'active' as const,
+    };
+
+    runtime.requestTeamShare(projectId, workspaceA);
+    runtime.requestTeamShare(projectId, workspaceB);
+
+    for (let i = 0; i < 40 && onPublished.mock.calls.length < 2; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    onPublished.mockClear();
+
+    runtime.scheduler.notifyChanged(projectId, 'save');
+    runtime.scheduler.runBoundary(projectId);
+
+    for (let i = 0; i < 40 && onPublished.mock.calls.length < 2; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    expect(onPublished.mock.calls.map(([result]) => result.principal)).toEqual(
+      expect.arrayContaining([workspaceA, workspaceB]),
+    );
+  });
+
   it('publishes on request and advances the published version monotonically', async () => {
     const api = await startSyncServer();
     expect((await api.json('/api/projects/p1/collab/status')).body.publishedVersion).toBeNull();

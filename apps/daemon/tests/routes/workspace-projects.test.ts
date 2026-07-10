@@ -357,6 +357,12 @@ describe('workspace project routes', () => {
 
     const others = await list('member-share-owner', '?owner=others');
     expect(others.projects.map((item) => item.id)).not.toContain(projectId);
+
+    const mineTeam = await list('member-share-owner', '?owner=mine&visibility=team');
+    expect(mineTeam.projects.map((item) => item.id)).toContain(projectId);
+
+    const othersTeam = await list('member-share-owner', '?owner=others&visibility=team');
+    expect(othersTeam.projects.map((item) => item.id)).not.toContain(projectId);
   });
 
   it('rejects member batch-delete for unknown legacy ownership and allows privileged delete', async () => {
@@ -642,6 +648,12 @@ describe('workspace project routes', () => {
           },
         ],
       });
+      expect(teamProjectCatalog.list).not.toHaveBeenCalled();
+
+      const personalOwnerResp = await fetch(`${routeServer.url}/api/workspaces/${workspaceId}/projects?owner=mine&visibility=personal`, {
+        headers: headers('member-viewer'),
+      });
+      expect(personalOwnerResp.status).toBe(200);
       expect(teamProjectCatalog.list).not.toHaveBeenCalled();
     } finally {
       await close(routeServer.server);

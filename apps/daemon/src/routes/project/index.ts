@@ -1725,12 +1725,12 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       const owner = typeof req.query.owner === 'string' ? req.query.owner : 'all';
       const visibility = typeof req.query.visibility === 'string' ? req.query.visibility : 'all';
       const rows = listWorkspaceProjects(db, ctx.workspaceId).filter((row: any) => workspaceProjectRowVisibleForLocations(row, locations));
-      const needsRemoteTeamProjects =
-        view === 'team' ||
-        visibility === 'team' ||
-        owner === 'mine' ||
-        owner === 'others' ||
-        (view === 'all' && visibility === 'all' && owner === 'all');
+      const queryCanIncludeTeam =
+        view !== 'drafts' &&
+        view !== 'recent' &&
+        visibility !== 'personal' &&
+        (view === 'team' || visibility === 'team' || (view === 'all' && visibility === 'all'));
+      const needsRemoteTeamProjects = queryCanIncludeTeam;
       const mergedProjects = [
         ...rows.map((row: any) => normalizeWorkspaceProjectRow(row, ctx)),
         ...(needsRemoteTeamProjects ? await listRemoteTeamProjectSummaries(rows, ctx) : []),
@@ -1738,13 +1738,13 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       const projects = mergedProjects
         .filter((project: any) => {
           if (view === 'drafts') {
-            return project.visibility === 'personal' && project.createdByWorkspaceMemberId === ctx.workspaceMemberId;
+            if (project.visibility !== 'personal' || project.createdByWorkspaceMemberId !== ctx.workspaceMemberId) return false;
           }
-          if (view === 'recent') return project.visibility === 'personal';
-          if (view === 'team') return project.visibility === 'team';
-          if (visibility === 'personal' || visibility === 'team') return project.visibility === visibility;
-          if (owner === 'mine') return project.createdByWorkspaceMemberId === ctx.workspaceMemberId;
-          if (owner === 'others') return project.createdByWorkspaceMemberId !== ctx.workspaceMemberId;
+          if (view === 'recent' && project.visibility !== 'personal') return false;
+          if (view === 'team' && project.visibility !== 'team') return false;
+          if ((visibility === 'personal' || visibility === 'team') && project.visibility !== visibility) return false;
+          if (owner === 'mine' && project.createdByWorkspaceMemberId !== ctx.workspaceMemberId) return false;
+          if (owner === 'others' && project.createdByWorkspaceMemberId === ctx.workspaceMemberId) return false;
           return true;
         });
       /** @type {import('@open-design/contracts').WorkspaceProjectsResponse} */
