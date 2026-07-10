@@ -461,7 +461,7 @@ import {
   sanitizeName,
   sanitizePath,
   searchProjectFiles,
-  resolveProjectDir,
+  stageProjectDirsForDelete,
   resolveProjectFilePath,
   writeProjectFile,
   reconcileHtmlArtifactManifest,
@@ -474,13 +474,17 @@ import {
   deleteConversation,
   deletePreviewComment,
   deleteProject as dbDeleteProject,
+  deleteWorkspaceProject,
   deleteTemplate,
   getConversation,
   getDeployment,
   getDeploymentById,
   getMessageTelemetryFinalizationState,
   getProject,
+  countWorkspaceProjectRefs,
+  getWorkspaceProject,
   getTemplate,
+  ensureWorkspaceProject,
   insertConversation,
   insertProject,
   insertRoutine,
@@ -496,6 +500,8 @@ import {
   listMessages,
   listPreviewComments,
   listProjects,
+  listTeamWorkspaceProjectShares,
+  listWorkspaceProjects,
   listRoutines,
   listRoutineRuns,
   listTabs,
@@ -510,6 +516,7 @@ import {
   updatePreviewCommentAnchor,
   updatePreviewCommentStatus,
   updateProject,
+  updateWorkspaceProject,
   updateRoutine,
   updateRoutineRun,
   clearAgentSession,
@@ -576,8 +583,10 @@ import { registerCollabContextRoutes } from './routes/collab-context.js';
 import { registerTeamResourceRoutes } from './routes/team-resources.js';
 import { registerTeamResourceShareRoutes } from './routes/team-resource-share.js';
 import { createCollabRuntime } from './collab/runtime.js';
+import { resolveProjectShareDir } from './collab/project-share-dir.js';
 import { createTeamResourceShareService } from './collab/team-resource-share.js';
 import { contextToResourceHubPrincipal } from './collab/resource-hub-publish-adapter.js';
+import { velaTeamProjectCatalogClient } from './integrations/vela-team-projects.js';
 import { registerTelemetryRoutes } from './routes/telemetry.js';
 import {
   assembleExample,
@@ -3806,9 +3815,41 @@ export async function startServer({
   // The scheduler publishes/pulls through the resource-hub adapter — the real
   // hub when OD_RESOURCE_HUB_URL + workspace member env are set, else a local
   // stub. resolveProjectDir lets the hub adapter pack/land managed projects.
+  function persistWorkspaceProjectSyncState(
+    projectId: string,
+    workspaceId: string | null | undefined,
+    syncState: 'synced' | 'sync_failed',
+  ) {
+    if (!workspaceId) return;
+    updateWorkspaceProject(db, workspaceId, projectId, { syncState });
+  }
   const collab = createCollabRuntime({
-    resolveProjectDir: (projectId) => resolveProjectDir(PROJECTS_DIR, projectId),
+    resolveProjectDir: (projectId) =>
+      resolveProjectShareDir(PROJECTS_DIR, projectId, getProject(db, projectId), resolveProjectDir),
+    teamProjectCatalog: velaTeamProjectCatalogClient,
+    onPublished: ({ projectId, principal }) => {
+      persistWorkspaceProjectSyncState(projectId, principal?.teamId, 'synced');
+    },
+    onError: ({ projectId, principal }) => {
+      persistWorkspaceProjectSyncState(projectId, principal?.teamId, 'sync_failed');
+    },
   });
+  for (const share of listTeamWorkspaceProjectShares(db)) {
+    const ownerMemberId = share.createdByWorkspaceMemberId ?? share.updatedByWorkspaceMemberId;
+    if (!share.projectId || !share.workspaceId || !ownerMemberId) continue;
+    collab.rememberTeamShare(
+      share.projectId,
+      {
+        memberId: ownerMemberId,
+        teamId: share.workspaceId,
+        role: 'member',
+        lifecycleState: 'active',
+      },
+      share.syncState === 'synced' || share.syncState === 'sync_failed' || share.syncState === 'pending_upload'
+        ? share.syncState
+        : 'pending_upload',
+    );
+  }
   registerCollabPresenceRoutes(app, { collab });
   registerCollabSyncRoutes(app, { collab });
   registerCollabContextRoutes(app, { workspaceContext: collab.workspaceContext });
@@ -4077,10 +4118,17 @@ export async function startServer({
   const uploadDeps = { upload, importUpload, handleProjectUpload };
   const projectStoreDeps = {
     getProject,
+    getWorkspaceProject,
+    ensureWorkspaceProject,
+    listWorkspaceProjects,
+    updateWorkspaceProject,
+    deleteWorkspaceProject,
+    countWorkspaceProjectRefs,
     insertProject,
     updateProject,
     dbDeleteProject,
     removeProjectDir,
+    stageProjectDirsForDelete,
     validateLinkedDirs,
   };
   const projectFileDeps = {
@@ -4341,6 +4389,10 @@ export async function startServer({
     appConfig: appConfigDeps,
     agents: agentDeps,
     validation: validationDeps,
+    // C-lane sync seam for D's project-visibility routes: a personal→team move
+    // calls requestTeamShare on success to publish the project for the team.
+    collabSync: { requestTeamShare: (projectId, ownerMemberId) => collab.requestTeamShare(projectId, ownerMemberId) },
+    teamProjectCatalog: velaTeamProjectCatalogClient,
   });
   registerTerminalRoutes(app, {
     db,
