@@ -170,7 +170,10 @@ function withVelaModelPriceFields(
   const isDefault = extractOptionalBoolean(item, ['default']);
   const inputPriceUsdPerMillion = extractInputPriceUsdPerMillion(item);
   const outputPriceUsdPerMillion = extractOutputPriceUsdPerMillion(item);
-  const metadata = extractModelMetadata(item);
+  const metadata = withPriceDerivedCostMetadata(
+    extractModelMetadata(item),
+    inputPriceUsdPerMillion,
+  );
   if (
     enabled === undefined &&
     isDefault === undefined &&
@@ -200,6 +203,24 @@ function extractModelMetadata(item: unknown): ModelMetadata | null {
     ...(cost ? { cost } : {}),
     ...(capability ? { capability } : {}),
   };
+}
+
+function withPriceDerivedCostMetadata(
+  metadata: ModelMetadata | null,
+  inputPriceUsdPerMillion: number | undefined,
+): ModelMetadata | null {
+  if (metadata?.cost || inputPriceUsdPerMillion === undefined) return metadata;
+  return {
+    ...(metadata ?? {}),
+    cost: modelCostFromInputPrice(inputPriceUsdPerMillion),
+  };
+}
+
+function modelCostFromInputPrice(inputPriceUsdPerMillion: number): ModelCost {
+  if (inputPriceUsdPerMillion <= 0.5) return 'low';
+  if (inputPriceUsdPerMillion <= 1) return 'medium';
+  if (inputPriceUsdPerMillion <= 4) return 'high';
+  return 'very_high';
 }
 
 function parseModelCost(value: unknown): ModelCost | null {
@@ -324,7 +345,16 @@ function enrichVelaModelsFromOpenCodeCatalog(
   return models.map((model) => {
     if (model.inputPriceUsdPerMillion !== undefined) return model;
     const price = lookupOpenCodeModelPrice(catalog, model.id);
-    return price ? { ...model, ...price } : model;
+    if (!price) return model;
+    const metadata = {
+      ...(model.metadata ?? {}),
+      ...(price.metadata ?? {}),
+    };
+    return {
+      ...model,
+      ...price,
+      ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
+    };
   });
 }
 
@@ -363,7 +393,7 @@ function lookupOpenCodeModelPrice(
   modelId: string,
 ): Pick<
   RuntimeModelOption,
-  'inputPriceUsdPerMillion' | 'outputPriceUsdPerMillion'
+  'inputPriceUsdPerMillion' | 'outputPriceUsdPerMillion' | 'metadata'
 > | null {
   for (const providerId of OPENCODE_MODEL_PRICE_PROVIDER_PRIORITY) {
     const provider = catalog[providerId];
@@ -380,7 +410,7 @@ function lookupProviderModel(
   modelId: string,
 ): Pick<
   RuntimeModelOption,
-  'inputPriceUsdPerMillion' | 'outputPriceUsdPerMillion'
+  'inputPriceUsdPerMillion' | 'outputPriceUsdPerMillion' | 'metadata'
 > | null {
   const lookupKeys = openCodeModelLookupKeys(modelId);
   for (const key of lookupKeys) {
@@ -428,15 +458,20 @@ function openCodeModelPrice(
   model: unknown,
 ): Pick<
   RuntimeModelOption,
-  'inputPriceUsdPerMillion' | 'outputPriceUsdPerMillion'
+  'inputPriceUsdPerMillion' | 'outputPriceUsdPerMillion' | 'metadata'
 > | null {
   if (!isRecord(model)) return null;
   const inputPriceUsdPerMillion = extractInputPriceUsdPerMillion(model);
   if (inputPriceUsdPerMillion === undefined) return null;
   const outputPriceUsdPerMillion = extractOutputPriceUsdPerMillion(model);
+  const metadata = withPriceDerivedCostMetadata(
+    extractModelMetadata(model),
+    inputPriceUsdPerMillion,
+  );
   return {
     inputPriceUsdPerMillion,
     ...(outputPriceUsdPerMillion === undefined ? {} : { outputPriceUsdPerMillion }),
+    ...(metadata === null ? {} : { metadata }),
   };
 }
 

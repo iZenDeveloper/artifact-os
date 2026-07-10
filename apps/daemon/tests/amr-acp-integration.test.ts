@@ -310,24 +310,28 @@ describe('AMR runtime def', () => {
           label: 'claude-fable-5',
           inputPriceUsdPerMillion: 10,
           outputPriceUsdPerMillion: 50,
+          metadata: { cost: 'very_high' },
         },
         {
           id: 'claude-opus-4.6',
           label: 'claude-opus-4.6',
           inputPriceUsdPerMillion: 5,
           outputPriceUsdPerMillion: 25,
+          metadata: { cost: 'very_high' },
         },
         {
           id: 'gemini-3-flash-preview',
           label: 'gemini-3-flash-preview',
           inputPriceUsdPerMillion: 0.5,
           outputPriceUsdPerMillion: 3,
+          metadata: { cost: 'low' },
         },
         {
           id: 'mimo-v2.5-pro',
           label: 'mimo-v2.5-pro',
           inputPriceUsdPerMillion: 1.74,
           outputPriceUsdPerMillion: 3.48,
+          metadata: { cost: 'high' },
         },
       ]);
     } finally {
