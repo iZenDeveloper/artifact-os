@@ -44,10 +44,10 @@ const cardIn: Variants = {
 type CardModel = {
   /** Highlight identity — recorded as "seen" so the card shows once per id. */
   id: string;
-  /** Running app version, for analytics only. */
+  /** Running app version, shown as the "Open Design x.y.z" eyebrow. */
   appVersion: string;
+  /** The release headline, rendered as the main serif title. */
   title: string;
-  body: string;
   imageUrl: string | null;
   linkUrl: string;
 };
@@ -83,7 +83,6 @@ export function WhatsNewPopup({ active }: { active: boolean }) {
         id: info.id,
         appVersion: info.version,
         title: localized.title,
-        body: localized.body,
         imageUrl: info.content.imageUrl ?? null,
         linkUrl: localized.linkUrl ?? RELEASES_INDEX_URL,
       });
@@ -152,7 +151,7 @@ export function WhatsNewPopup({ active }: { active: boolean }) {
     <AnimatePresence>
       {active && card != null ? (
         <motion.section
-          aria-label={card.title}
+          aria-labelledby="whats-new-popup-title"
           className={styles.card}
           data-testid="whats-new-popup"
           role="dialog"
@@ -161,19 +160,24 @@ export function WhatsNewPopup({ active }: { active: boolean }) {
           animate="visible"
           exit="exit"
         >
-          <Button
-            aria-label={t('whatsNew.dismissAria')}
-            className={styles.close}
-            data-testid="whats-new-dismiss"
-            size="icon"
-            variant="ghost"
-            onClick={dismiss}
-          >
-            <Icon name="close" size={14} strokeWidth={2} />
-          </Button>
+          <div className={styles.header}>
+            <span className={styles.eyebrow}>Open Design {card.appVersion}</span>
+            <Button
+              aria-label={t('whatsNew.dismissAria')}
+              className={styles.close}
+              data-testid="whats-new-dismiss"
+              size="icon"
+              variant="ghost"
+              onClick={dismiss}
+            >
+              <Icon name="close" size={14} strokeWidth={2} />
+            </Button>
+          </div>
           <div className={styles.content}>
             <div className={styles.main}>
-              <p className={styles.body}>{card.body}</p>
+              <h2 className={styles.title} id="whats-new-popup-title">
+                {card.title}
+              </h2>
               <div className={styles.actions}>
                 <Button
                   data-testid="whats-new-cta"
