@@ -107,6 +107,31 @@ function buildTrackerScript(pageName: string, downloadAttributionUrl: string): s
       return true;
     };
 
+    // A desktop-originated first-party navigation carries a short-lived,
+    // single-use token. Resolve it only on our own Pages origin, then ask
+    // PostHog to identify the current browser person as that installation.
+    // Third-party links never receive this parameter.
+    var bridgeToken = '';
+    try { bridgeToken = new URLSearchParams(window.location.search || '').get('od_bridge') || ''; } catch (e) {}
+    if (bridgeToken) {
+      fetch('/api/attribution/bridge/consume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ token: bridgeToken }),
+      })
+        .then(function (r) { return r && r.ok ? r.json() : null; })
+        .then(function (body) {
+          var installationId = body && body.installationId;
+          if (typeof installationId === 'string' && installationId && window.posthog && typeof window.posthog.identify === 'function') {
+            window.posthog.identify(installationId, {
+              od_source_resolution: 'client_web_bridge',
+              od_source_bound_at: new Date().toISOString(),
+            });
+          }
+        })
+        .catch(function () {});
+    }
+
     // The section (area) an element lives in. Header chrome reports 'header';
     // otherwise the nearest [data-od-id] section id, matching the埋点文档
     // section taxonomy (hero/official-strip/labs/work/testimonial/faq/cta/footer).

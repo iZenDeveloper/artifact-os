@@ -20,6 +20,7 @@ type ReadAppConfig = (dataDir: string) => Promise<AppConfigPrefs>;
 export interface AttributionService {
   claim(input: AttributionClaimInput): Promise<AttributionClaimResponse>;
   processPending(): Promise<AttributionClaimResponse | null>;
+  bridgeUrl(url: string): Promise<string | null>;
 }
 
 export interface AttributionClaimInput {
@@ -83,6 +84,29 @@ export function createAttributionService(deps: Omit<RegisterAttributionRoutesDep
       const installation = await readInstallationFile(installationDir);
       if (!installation.pendingAttribution) return null;
       return processAttribution(installation.pendingAttribution, { persistBeforeReturn: false });
+    },
+    async bridgeUrl(url) {
+      const target = trustedFirstPartyUrl(url);
+      if (!target) return null;
+      const appConfig = await deps.appConfig.readAppConfig(dataDir);
+      const installation = await readInstallationFile(installationDir);
+      const installationId = cleanString(appConfig.installationId) ?? cleanString(installation.installationId);
+      if (appConfig.telemetry?.metrics !== true || !installationId) return null;
+      const baseUrl = env.OD_ATTRIBUTION_LEDGER_URL?.trim() || DEFAULT_ATTRIBUTION_LEDGER_URL;
+      const secret = env.OD_ATTRIBUTION_LEDGER_TOKEN?.trim();
+      if (!secret) return null;
+      try {
+        const result = await (deps.fetchImpl ?? fetch)(`${baseUrl.replace(/\/+$/, '')}/bridge/mint`, {
+          method: 'POST',
+          headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${secret}` },
+          body: JSON.stringify({ installationId, url: target.toString() }),
+        });
+        if (!result.ok) return null;
+        const body = await result.json() as { url?: unknown };
+        return typeof body.url === 'string' && trustedFirstPartyUrl(body.url) ? body.url : null;
+      } catch {
+        return null;
+      }
     },
   };
 
@@ -185,6 +209,16 @@ export function registerAttributionRoutes(app: Express, deps: RegisterAttributio
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });
+  app.post('/api/attribution/bridge-url', express.json({ limit: '8kb' }), async (req, res) => {
+    if (!deps.http.isLocalSameOrigin(req, deps.http.resolvedPortRef.current)) {
+      return res.status(403).json({ error: 'cross-origin request rejected' });
+    }
+    const url = req.body && typeof req.body === 'object' && typeof req.body.url === 'string'
+      ? req.body.url
+      : null;
+    if (!url) return res.status(400).json({ error: 'invalid_url' });
+    res.json({ url: await service.bridgeUrl(url) });
+  });
   return service;
 }
 
@@ -268,6 +302,18 @@ function cleanString(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function trustedFirstPartyUrl(value: string): URL | null {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:') return null;
+    return ['open-design.ai', 'www.open-design.ai', 'staging.open-design.ai'].includes(url.hostname)
+      ? url
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function response(

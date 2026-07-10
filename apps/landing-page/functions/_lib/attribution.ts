@@ -30,6 +30,15 @@ export interface AttributionRecord {
   consumedAt?: string;
 }
 
+export interface ClientWebBridgeRecord {
+  kind: 'client_web_bridge';
+  installationId: string;
+  targetOrigin: string;
+  createdAt: string;
+  token: string;
+  consumedAt?: string;
+}
+
 export const ATTRIBUTION_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 export function json(status: number, body: Record<string, unknown>, extraHeaders?: HeadersInit): Response {

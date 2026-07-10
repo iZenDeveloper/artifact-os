@@ -123,4 +123,28 @@ describe('download attribution service', () => {
       }));
     });
   });
+
+  it('mints a first-party browser bridge only with metrics consent and a ledger secret', async () => {
+    await withTempData(async (dataDir) => {
+      const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
+        url: 'https://open-design.ai/clipper?od_bridge=odbr_12345678',
+      }), { status: 200 }));
+      const service = createAttributionService({
+        analytics: analyticsStub(),
+        appConfig: { readAppConfig: async () => ({ installationId: 'install-123', telemetry: { metrics: true } }) },
+        env: { OD_ATTRIBUTION_LEDGER_URL: 'https://ledger.test/api/attribution', OD_ATTRIBUTION_LEDGER_TOKEN: 'secret' },
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        paths: { RUNTIME_DATA_DIR: dataDir },
+      });
+
+      await expect(service.bridgeUrl('https://open-design.ai/clipper')).resolves.toBe(
+        'https://open-design.ai/clipper?od_bridge=odbr_12345678',
+      );
+      expect(fetchImpl).toHaveBeenCalledWith(
+        'https://ledger.test/api/attribution/bridge/mint',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer secret' }) }),
+      );
+      await expect(service.bridgeUrl('https://example.com/')).resolves.toBeNull();
+    });
+  });
 });
