@@ -301,6 +301,10 @@
   background: rgba(255, 255, 255, 0.16);
   color: var(--bg, #fff);
 }
+.od-toast.od-toast-browser-snapshot .od-toast-close {
+  top: 8px;
+  transform: none;
+}
 .od-toast-close svg {
   /* flex-shrink:0 so the glyph can never be crushed to 0 width by the
      flex button even if the content box gets tight again. */
