@@ -48,13 +48,13 @@ describe('createVelaCliResourceAdapter', () => {
       '/projects/p1',
       '--ref',
       'published',
+      '--json',
       '--exclude',
       '.file-versions',
       '--exclude',
       '.live-artifacts',
       '--exclude',
       '.od-skills',
-      '--json',
     ]);
   });
 
@@ -73,13 +73,13 @@ describe('createVelaCliResourceAdapter', () => {
       '/projects/p1',
       '--ref',
       'published',
+      '--json',
       '--exclude',
       '.file-versions',
       '--exclude',
       '.live-artifacts',
       '--exclude',
       '.od-skills',
-      '--json',
       '--metadata-json',
       JSON.stringify({ name: 'Launch Deck', metadata: { kind: 'deck' } }),
     ]);

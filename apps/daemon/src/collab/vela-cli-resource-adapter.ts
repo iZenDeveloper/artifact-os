@@ -10,13 +10,17 @@ import type { ResourceHubPrincipal } from './resource-principal.js';
 // vela login session AMR uses — one identity, and the content-addressing lives in
 // the vela CLI so any vela-embedding project shares the exact same code path.
 //
-// This is a drop-in ResourcePublishAdapter, selected by env so it coexists with
-// the in-process SDK adapter until the CLI ships everywhere (see
-// createResourcePublishAdapterFromEnv). The child process is injectable so the
-// wiring is unit-tested without a live CLI or hub.
+// This is a drop-in ResourcePublishAdapter selected by the collaboration mode.
+// The child process is injectable so the wiring is unit-tested without a live
+// CLI or hub.
 
 const PUBLISHED_REF = 'published';
 const PROJECT_KIND = 'project';
+const MEMBER_MIRROR_EXCLUDED_ENTRIES = [
+  '.file-versions',
+  '.live-artifacts',
+  '.od-skills',
+] as const;
 
 /** Run `vela resource <args>` and resolve its stdout. */
 export type RunVelaResource = (args: string[]) => Promise<string>;
@@ -47,6 +51,14 @@ interface VelaVersionRecord {
   version?: number;
 }
 
+export interface VelaResourceSnapshotRecord {
+  slug: string;
+  name: string;
+  kind: string;
+  versionId: string;
+  createdAt: string;
+}
+
 export function createVelaCliResourceAdapter(
   options: VelaCliResourceAdapterOptions,
 ): ResourcePublishAdapter {
@@ -70,21 +82,10 @@ export function createVelaCliResourceAdapter(
     publish({ projectId, principal }) {
       return gated(async () => {
         const dir = await options.resolveProjectDir(projectId);
-        const args = [
-          'push',
-          kind,
-          resourceIdFor(projectId, principal),
-          dir,
-          '--ref',
-          PUBLISHED_REF,
-          '--exclude',
-          '.file-versions',
-          '--exclude',
-          '.live-artifacts',
-          '--exclude',
-          '.od-skills',
-          '--json',
-        ];
+        const args = ['push', kind, resourceIdFor(projectId, principal), dir, '--ref', PUBLISHED_REF, '--json'];
+        for (const name of MEMBER_MIRROR_EXCLUDED_ENTRIES) {
+          args.push('--exclude', name);
+        }
         const metadata = await options.describeProject?.(projectId);
         const resourceMetadata = kind === PROJECT_KIND
           ? { projectId, ...(metadata ?? {}) }
@@ -149,8 +150,29 @@ function parseVersion(stdout: string): number | null {
   }
 }
 
-const defaultRunVelaResource: RunVelaResource = (args) =>
+export function parseVelaResourceSnapshot(stdout: string): VelaResourceSnapshotRecord | null {
+  const trimmed = stdout.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = JSON.parse(trimmed) as Partial<VelaResourceSnapshotRecord>;
+    return typeof parsed.slug === 'string' && parsed.slug
+      ? {
+          slug: parsed.slug,
+          name: typeof parsed.name === 'string' ? parsed.name : '',
+          kind: typeof parsed.kind === 'string' ? parsed.kind : '',
+          versionId: typeof parsed.versionId === 'string' ? parsed.versionId : '',
+          createdAt: typeof parsed.createdAt === 'string' ? parsed.createdAt : '',
+        }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export const runVelaResourceCommand: RunVelaResource = (args) =>
   runVelaCommand(['resource', ...args]);
+
+const defaultRunVelaResource: RunVelaResource = runVelaResourceCommand;
 
 /**
  * Whether this run should drive resource sharing through the `vela resource` CLI

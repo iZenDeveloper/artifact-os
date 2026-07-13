@@ -177,7 +177,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
   function rememberTeamShare(
     projectId: string,
     share: ResourceHubPrincipal,
-    syncState: ProjectSyncState = 'pending_upload',
+    syncState?: ProjectSyncState,
   ) {
     owners.set(projectId, share.memberId);
     scopedOwners.set(scopedProjectKey(projectId, share), share.memberId);
@@ -187,8 +187,10 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
       sharePrincipals.set(projectId, principals);
     }
     principals.set(share.teamId, share);
-    syncStates.set(projectId, syncState);
-    syncStates.set(scopedProjectKey(projectId, share), syncState);
+    if (syncState) {
+      syncStates.set(projectId, syncState);
+      syncStates.set(scopedProjectKey(projectId, share), syncState);
+    }
   }
 
   async function markTeamProject(
