@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AnalyticsService } from '../src/analytics.js';
 import { createAttributionService } from '../src/routes/attribution.js';
 import { readInstallationFile, writeInstallationFile } from '../src/installation.js';
-import type { AppConfigPrefs } from '../src/app-config.js';
+import { readAppConfig, type AppConfigPrefs, writeAppConfig } from '../src/app-config.js';
 
 function analyticsStub(): AnalyticsService {
   return {
@@ -48,6 +48,41 @@ describe('download attribution service', () => {
       expect(result.status).toBe('pending_consent');
       const installation = await readInstallationFile(dataDir);
       expect(installation.pendingAttribution?.token).toBe('odtoken_123456');
+      expect(analytics.mergeAnonymousPerson).not.toHaveBeenCalled();
+    });
+  });
+
+  it('does not claim pre-delete attribution after metrics are re-enabled', async () => {
+    await withTempData(async (dataDir) => {
+      await writeInstallationFile(dataDir, {
+        installationId: 'install-before-delete',
+        pendingAttribution: {
+          token: 'odtoken_predelete',
+          source: 'mac_where_froms',
+          capturedAt: '2026-07-10T00:00:00.000Z',
+        },
+        attributionClaimedAt: '2026-07-10T00:00:01.000Z',
+        attributionClaimResultAt: '2026-07-10T00:00:02.000Z',
+      });
+      await writeAppConfig(dataDir, {
+        installationId: 'install-after-delete',
+        telemetry: { metrics: false },
+      });
+      expect(await readInstallationFile(dataDir)).toEqual({ installationId: 'install-after-delete' });
+
+      await writeAppConfig(dataDir, { telemetry: { metrics: true } });
+      const analytics = analyticsStub();
+      const fetchImpl = vi.fn();
+      const service = createAttributionService({
+        analytics,
+        appConfig: { readAppConfig },
+        env: { OD_ATTRIBUTION_LEDGER_URL: 'https://ledger.test/api/attribution' },
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        paths: { RUNTIME_DATA_DIR: dataDir },
+      });
+
+      await expect(service.processPending()).resolves.toBeNull();
+      expect(fetchImpl).not.toHaveBeenCalled();
       expect(analytics.mergeAnonymousPerson).not.toHaveBeenCalled();
     });
   });
