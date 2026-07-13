@@ -520,7 +520,17 @@ function shapeStreamingQuestions(rawQuestions: unknown, closedCount: number): Fo
     const hasId = typeof q.id === 'string' && q.id.trim().length > 0;
     if (!isClosed && !hasId) return;
     const mapped = mapRawQuestion(raw, index);
-    if (mapped) out.push(mapped);
+    if (mapped) {
+      // The trailing in-flight object may hold a MID-STREAM `default`: the
+      // partial-JSON repair terminates it early ("单位教育" → "单位教",
+      // ["历史背景与经过", "抗战精神…"] → ["历史背景与经过", "抗战精"]).
+      // The card adopts a streamed default only while the answer is still
+      // empty, so surfacing a truncated one would freeze garbage the
+      // completed value can never overwrite. A closed object's braces are
+      // balanced, so its default is complete — only then expose it.
+      if (!isClosed && mapped.defaultValue !== undefined) delete mapped.defaultValue;
+      out.push(mapped);
+    }
   });
   return out;
 }
