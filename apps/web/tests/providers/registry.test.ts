@@ -963,4 +963,32 @@ describe('deploy provider registry helpers', () => {
       }),
     });
   });
+
+  it('carries the HTTP status as an error .code when a failed deploy has only a human message', async () => {
+    // The provider/daemon returns a message but no structured code; the wrapper
+    // must still surface the status so analytics (deployErrorCode reads `.code`
+    // first) can bucket it instead of collapsing to the generic "Error".
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      JSON.stringify({ error: { message: 'Cloudflare rejected the request' } }),
+      { status: 403 },
+    )));
+    await deployProjectFile('project-1', 'index.html', CLOUDFLARE_PAGES_PROVIDER_ID).then(
+      () => { throw new Error('expected deploy to reject'); },
+      (err: unknown) => {
+        expect((err as { code?: string }).code).toBe('HTTP_403');
+        expect((err as Error).message).toBe('Cloudflare rejected the request');
+      },
+    );
+  });
+
+  it('prefers a structured provider error code over the HTTP status', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      JSON.stringify({ error: { message: 'quota exceeded', code: 'RATE_LIMITED' } }),
+      { status: 429 },
+    )));
+    await deployProjectFile('project-1', 'index.html', CLOUDFLARE_PAGES_PROVIDER_ID).then(
+      () => { throw new Error('expected deploy to reject'); },
+      (err: unknown) => expect((err as { code?: string }).code).toBe('RATE_LIMITED'),
+    );
+  });
 });

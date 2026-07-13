@@ -1378,9 +1378,15 @@ export async function deployProjectFile(
   });
   if (!resp.ok) {
     const payload = (await resp.json().catch(() => null)) as
-      | { error?: { message?: string }; message?: string }
+      | { error?: { message?: string; code?: string }; code?: string; message?: string }
       | null;
-    throw new Error(payload?.error?.message || payload?.message || `Deploy failed (${resp.status})`);
+    const message = payload?.error?.message || payload?.message || `Deploy failed (${resp.status})`;
+    // Preserve a queryable failure code for analytics: `deployErrorCode` reads
+    // `.code` first, so carry a structured provider/daemon code when present,
+    // else the HTTP status. Without this a human `message` here swallows the
+    // status and the failure collapses to the generic "Error" bucket.
+    const code = payload?.error?.code || payload?.code || `HTTP_${resp.status}`;
+    throw Object.assign(new Error(message), { code });
   }
   return (await resp.json()) as WebDeployProjectFileResponse;
 }
