@@ -892,6 +892,55 @@ describe('ProjectView conversation run isolation', () => {
     expect(showCompletionNotification).not.toHaveBeenCalled();
   });
 
+  it('downgrades a reloaded terminal Design run with prose but no delivered file', async () => {
+    conversationAMessages = [
+      {
+        ...succeededAssistant,
+        content: '',
+        sessionMode: 'design',
+        events: [{ kind: 'text', text: 'I finished the design.' }],
+        preTurnFileNames: [],
+        producedFiles: undefined,
+        traceObjectFiles: undefined,
+      },
+    ];
+    fetchChatRunStatus.mockResolvedValue({
+      id: 'run-a',
+      status: 'succeeded',
+      createdAt: 1,
+      updatedAt: 2,
+      exitCode: 0,
+      signal: null,
+    });
+
+    renderProjectView();
+
+    await waitFor(() => {
+      const recoveredMessage = saveMessage.mock.calls
+        .map((call) => call[2] as ChatMessage)
+        .find((message) => message.id === succeededAssistant.id && message.resultDeliveryState === 'no_result');
+      expect(recoveredMessage).toMatchObject({
+        runStatus: 'succeeded',
+        resultDeliveryState: 'no_result',
+        producedFiles: [],
+        traceObjectFiles: [],
+      });
+      expect(recoveredMessage?.events).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: 'status',
+            label: 'error',
+            code: 'ARTIFACT_NOT_FOUND',
+          }),
+        ]),
+      );
+    });
+    expect(screen.getByTestId('chat-error').textContent).toMatch(
+      /finished without producing a deliverable project file/i,
+    );
+    expect(reattachDaemonRun).not.toHaveBeenCalled();
+  });
+
   it('does not reload or reattach when selecting the active streaming conversation', async () => {
     renderProjectView();
 
