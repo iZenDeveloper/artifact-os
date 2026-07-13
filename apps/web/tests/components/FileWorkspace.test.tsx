@@ -3108,4 +3108,39 @@ describe('FileWorkspace empty-project generation contract', () => {
       expect(screen.getByTestId('design-files-empty')).toBeTruthy();
     },
   );
+
+  it('keeps a persisted delivery failure actionable in the preview workspace', () => {
+    const onRetry = vi.fn();
+    const onViewRunDetails = vi.fn();
+    render(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[]}
+        liveArtifacts={[]}
+        onRefreshFiles={vi.fn()}
+        isDeck={false}
+        tabsState={{ tabs: [], active: DESIGN_FILES_TAB }}
+        onTabsStateChange={vi.fn()}
+        onRetry={onRetry}
+        onViewRunDetails={onViewRunDetails}
+        messages={[
+          {
+            ...assistantMessage('failed'),
+            id: 'delivery-failure',
+            runStatus: 'succeeded',
+            resultDeliveryState: 'no_result',
+            sessionMode: 'design',
+            endedAt: 1_700_000_012_000,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByTestId('preview-run-status')).toHaveTextContent('Delivery needs attention');
+    fireEvent.click(screen.getByTestId('preview-run-status-retry'));
+    expect(onRetry).toHaveBeenCalledWith(expect.objectContaining({ id: 'delivery-failure' }));
+    fireEvent.click(screen.getByTestId('preview-run-status-view-details'));
+    expect(onViewRunDetails).toHaveBeenCalledTimes(1);
+  });
 });

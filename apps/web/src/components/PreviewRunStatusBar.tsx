@@ -1,0 +1,211 @@
+import { Button } from '@open-design/components';
+import { useEffect, useMemo, useRef, useState } from 'react';
+
+import {
+  trackPreviewRunStatusClick,
+  trackPreviewRunStatusSurfaceView,
+} from '../analytics/events';
+import { useAnalytics } from '../analytics/provider';
+import { useI18n } from '../i18n';
+import {
+  formatPreviewRunElapsed,
+  latestPreviewRunStatus,
+  PREVIEW_RUN_SUCCESS_VISIBLE_MS,
+  previewRunStatusVisibleAt,
+  type PreviewRunStatus,
+} from '../runtime/preview-run-status';
+import type { ChatMessage } from '../types';
+import { Icon } from './Icon';
+import styles from './PreviewRunStatusBar.module.css';
+
+const SUCCESS_EXIT_MS = 140;
+
+interface Props {
+  projectId: string;
+  conversationId?: string | null;
+  messages: readonly ChatMessage[];
+  onRetry?: (message: ChatMessage) => void;
+  onViewDetails?: () => void;
+}
+
+function statusLabelKey(status: PreviewRunStatus):
+  | 'previewRunStatus.generating'
+  | 'previewRunStatus.verifying'
+  | 'previewRunStatus.succeeded'
+  | 'previewRunStatus.failed' {
+  switch (status.phase) {
+    case 'generating':
+      return 'previewRunStatus.generating';
+    case 'verifying':
+      return 'previewRunStatus.verifying';
+    case 'succeeded':
+      return 'previewRunStatus.succeeded';
+    case 'failed':
+      return 'previewRunStatus.failed';
+  }
+}
+
+function statusIcon(status: PreviewRunStatus) {
+  switch (status.phase) {
+    case 'generating':
+    case 'verifying':
+      return <Icon name="spinner" size={16} className={styles.spinner} />;
+    case 'succeeded':
+      return <Icon name="check" size={16} />;
+    case 'failed':
+      return <Icon name="alert-triangle" size={16} />;
+  }
+}
+
+/** Lightweight, persistent status feedback for the preview workspace. */
+export function PreviewRunStatusBar({
+  projectId,
+  conversationId,
+  messages,
+  onRetry,
+  onViewDetails,
+}: Props) {
+  const { t } = useI18n();
+  const analytics = useAnalytics();
+  const [now, setNow] = useState(() => Date.now());
+  const current = useMemo(
+    () => {
+      const status = latestPreviewRunStatus(messages, now);
+      return status && previewRunStatusVisibleAt(status, now) ? status : null;
+    },
+    [messages, now],
+  );
+  const [lastVisible, setLastVisible] = useState<PreviewRunStatus | null>(current);
+  const [leaving, setLeaving] = useState(false);
+  const exposureRef = useRef<string | null>(null);
+
+  const currentKey = current
+    ? `${current.message.id}:${current.phase}:${current.message.resultDeliveryState ?? ''}`
+    : null;
+
+  useEffect(() => {
+    if (!current) {
+      if (lastVisible?.phase === 'succeeded') {
+        setLeaving(true);
+        const clear = window.setTimeout(() => setLastVisible(null), SUCCESS_EXIT_MS);
+        return () => window.clearTimeout(clear);
+      }
+      setLastVisible(null);
+      return;
+    }
+    setLastVisible(current);
+    setLeaving(false);
+  }, [currentKey, current, lastVisible?.phase]);
+
+  useEffect(() => {
+    if (!current) return;
+    if (current.phase === 'generating' || current.phase === 'verifying') {
+      const interval = window.setInterval(() => setNow(Date.now()), 1_000);
+      return () => window.clearInterval(interval);
+    }
+    if (current.phase !== 'succeeded') return;
+
+    const completedAt = current.message.endedAt;
+    if (completedAt === undefined) return;
+    const remaining = Math.max(0, completedAt + PREVIEW_RUN_SUCCESS_VISIBLE_MS - Date.now());
+    const fade = window.setTimeout(
+      () => setLeaving(true),
+      Math.max(0, remaining - SUCCESS_EXIT_MS),
+    );
+    const expire = window.setTimeout(() => setNow(Date.now()), remaining);
+    return () => {
+      window.clearTimeout(fade);
+      window.clearTimeout(expire);
+    };
+  }, [currentKey, current]);
+
+  useEffect(() => {
+    if (!current || leaving || exposureRef.current === currentKey) return;
+    exposureRef.current = currentKey;
+    trackPreviewRunStatusSurfaceView(analytics.track, {
+      page_name: 'file_manager',
+      area: 'preview_run_status',
+      element: 'run_status_bar',
+      status: current.phase,
+      ...(current.message.resultDeliveryState
+        ? { delivery_state: current.message.resultDeliveryState }
+        : {}),
+      project_id: projectId,
+      conversation_id: conversationId ?? null,
+      assistant_message_id: current.message.id,
+      ...(current.message.runId ? { run_id: current.message.runId } : {}),
+    });
+  }, [analytics.track, conversationId, current, currentKey, leaving, projectId]);
+
+  const displayed = current ?? lastVisible;
+  if (!displayed) return null;
+
+  const elapsed = formatPreviewRunElapsed(displayed.elapsedMs);
+  const isFailure = displayed.phase === 'failed';
+  const trackClick = (element: 'retry' | 'view_details') => {
+    trackPreviewRunStatusClick(analytics.track, {
+      page_name: 'file_manager',
+      area: 'preview_run_status',
+      element,
+      status: displayed.phase,
+      ...(displayed.message.resultDeliveryState
+        ? { delivery_state: displayed.message.resultDeliveryState }
+        : {}),
+      project_id: projectId,
+      conversation_id: conversationId ?? null,
+      assistant_message_id: displayed.message.id,
+      ...(displayed.message.runId ? { run_id: displayed.message.runId } : {}),
+    });
+  };
+
+  return (
+    <section
+      className={`${styles.root}${leaving ? ` ${styles.leaving}` : ''}`}
+      data-testid="preview-run-status"
+      aria-live={isFailure ? 'assertive' : 'polite'}
+      aria-label={t(statusLabelKey(displayed))}
+    >
+      <div className={`${styles.card} ${styles[displayed.phase]}`}>
+        <span className={styles.icon}>{statusIcon(displayed)}</span>
+        <div className={styles.copy}>
+          <span className={styles.label}>{t(statusLabelKey(displayed))}</span>
+          <span className={styles.elapsed}>{t('previewRunStatus.elapsed', { time: elapsed })}</span>
+          {(displayed.phase === 'generating' || displayed.phase === 'verifying') ? (
+            <span className={styles.tip}>{t('previewRunStatus.tip')}</span>
+          ) : null}
+        </div>
+        {isFailure ? (
+          <div className={styles.actions}>
+            {onRetry ? (
+              <Button
+                variant="primary-ghost"
+                className={styles.action}
+                data-testid="preview-run-status-retry"
+                onClick={() => {
+                  trackClick('retry');
+                  onRetry(displayed.message);
+                }}
+              >
+                <Icon name="refresh" size={14} />
+                {t('previewRunStatus.retry')}
+              </Button>
+            ) : null}
+            {onViewDetails ? (
+              <Button
+                variant="ghost"
+                className={styles.action}
+                data-testid="preview-run-status-view-details"
+                onClick={() => {
+                  trackClick('view_details');
+                  onViewDetails();
+                }}
+              >
+                {t('previewRunStatus.viewDetails')}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}

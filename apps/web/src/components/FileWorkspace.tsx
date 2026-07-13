@@ -142,6 +142,7 @@ import { LiveArtifactBadges } from './LiveArtifactBadges';
 import { MissingBrandFontsBanner } from './MissingBrandFontsBanner';
 import { LibraryPicker } from './LibraryPicker';
 import { QuestionsPanel } from './QuestionsPanel';
+import { PreviewRunStatusBar } from './PreviewRunStatusBar';
 import { QuickSwitcher } from './QuickSwitcher';
 import { SketchEditor } from './SketchEditor';
 import { SketchEnginePrewarm } from './SketchEnginePrewarm';
@@ -273,6 +274,8 @@ interface Props {
   artifactHtml?: string | null;
   conversationError?: string | null;
   onRetry?: (message: ChatMessage) => void;
+  /** Restores the chat pane so a preview-surface recovery can show its full details. */
+  onViewRunDetails?: () => void;
   // Contextual failure recovery, mirrored from the chat error card so the
   // preview surface can offer the same one-click fix (AMR authorize, terminal
   // sign-in) instead of a bare retry.
@@ -1281,6 +1284,8 @@ export function FileWorkspace({
   onActiveContextChange,
   onWorkspaceContextsChange,
   messages = [],
+  onRetry,
+  onViewRunDetails,
   conversationId,
   headerActions,
   questionForm = null,
@@ -3997,6 +4002,13 @@ export function FileWorkspace({
             .
           </div>
         )}
+        <PreviewRunStatusBar
+          projectId={projectId}
+          conversationId={conversationId}
+          messages={messages}
+          onRetry={onRetry}
+          onViewDetails={onViewRunDetails}
+        />
       </div>
       <PageCreatorDialog
         open={pageCreatorOpen}
