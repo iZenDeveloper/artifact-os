@@ -1943,6 +1943,12 @@ export interface StartServerOptions {
   host?: string;
   port?: number;
   returnServer?: boolean;
+  // False when the daemon runs headless (`od daemon start --headless /
+  // --serve-web`) — the container/Web shape where revealing a local folder is
+  // meaningless to the browsing user. Feeds GET /api/editors'
+  // `canRevealFolder`. Defaults to true: desktop and sidecar entrypoints are
+  // local GUI sessions.
+  revealFolderCapable?: boolean;
   runtime?: DaemonRuntimeContext | null;
 }
 
@@ -1960,6 +1966,7 @@ export async function startServer({
   desktopPdfExporter = null,
   desktopSlideRenderer = null,
   desktopArtifactExporter = null,
+  revealFolderCapable = true,
   runtime = null,
 }: StartServerOptions = {}) {
   host = normalizeDaemonBindHost(host);
@@ -2842,6 +2849,7 @@ export async function startServer({
     paths: pathDeps,
     projectStore: projectStoreDeps,
     projectFiles: projectFileDeps,
+    revealFolderCapable,
   });
   // OD Library — global asset registry (clipper ingest, grid, pairing, apply).
   registerLibraryRoutes(app, {
