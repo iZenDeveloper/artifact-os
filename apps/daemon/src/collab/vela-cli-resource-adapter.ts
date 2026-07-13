@@ -18,6 +18,11 @@ import type { ResourcePublishAdapter } from './publish-scheduler.js';
 
 const PUBLISHED_REF = 'published';
 const PROJECT_KIND = 'project';
+const MEMBER_MIRROR_EXCLUDED_ENTRIES = [
+  '.file-versions',
+  '.live-artifacts',
+  '.od-skills',
+] as const;
 
 /** Run `vela resource <args>` and resolve its stdout. */
 export type RunVelaResource = (args: string[]) => Promise<string>;
@@ -80,6 +85,9 @@ export function createVelaCliResourceAdapter(
       return gated(async () => {
         const dir = await options.resolveProjectDir(projectId);
         const args = ['push', kind, resourceIdFor(projectId, principal), dir, '--ref', PUBLISHED_REF, '--json'];
+        for (const name of MEMBER_MIRROR_EXCLUDED_ENTRIES) {
+          args.push('--exclude', name);
+        }
         const metadata = await options.describeProject?.(projectId);
         if (metadata && Object.keys(metadata).length > 0) {
           args.push('--metadata-json', JSON.stringify(metadata));
