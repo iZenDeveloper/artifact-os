@@ -269,6 +269,7 @@ export interface DesignSystemSummary {
   updatedAt?: string;
   provenance?: DesignSystemProvenance;
   projectId?: string;
+  teamSynced?: boolean;
 }
 
 export interface DesignSystemDetail extends DesignSystemSummary {

@@ -182,7 +182,7 @@ export function DesignSystemsTab({
   );
 
   const userSystems = useMemo(
-    () => systems.filter(isUserSystem),
+    () => systems.filter((system) => isUserSystem(system) && !system.teamSynced),
     [systems],
   );
 
@@ -191,11 +191,17 @@ export function DesignSystemsTab({
     [userSystems, locale, q],
   );
 
-  // The "team" collection: the caller's own design systems that have been shared
-  // into the team scope (search-filtered like the others).
+  const teamSystems = useMemo(
+    () => systems.filter((system) => isUserSystem(system) && teamSharedIds.has(system.id)),
+    [systems, teamSharedIds],
+  );
+
+  // The "team" collection: team-shared design systems materialized locally.
+  // Uploaders may also see their own shared systems under "your systems"; synced
+  // teammate copies are excluded there by `teamSynced`.
   const teamSearched = useMemo(
-    () => userSearched.filter((s) => teamSharedIds.has(s.id)),
-    [userSearched, teamSharedIds],
+    () => teamSystems.filter((s) => systemMatchesQuery(locale, s, q)),
+    [teamSystems, locale, q],
   );
 
   const surfaceScoped = useMemo(

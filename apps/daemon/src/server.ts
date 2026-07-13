@@ -4061,7 +4061,34 @@ export async function startServer({
     const dirId = stripPrefixAndValidateId(resource.id, 'user:');
     if (!dirId) return;
     const targetDir = path.join(USER_DESIGN_SYSTEMS_DIR, dirId);
-    if (fs.existsSync(targetDir)) return;
+    const currentContext = await collab.workspaceContext.current({});
+    const isOwnedByCurrentMember =
+      typeof resource.ownerMemberId === 'string' &&
+      typeof currentContext?.workspaceMemberId === 'string' &&
+      resource.ownerMemberId === currentContext.workspaceMemberId;
+    async function markTeamSynced(): Promise<void> {
+      if (isOwnedByCurrentMember) return;
+      const metadataPath = path.join(targetDir, 'metadata.json');
+      let metadata: Record<string, unknown> = {};
+      try {
+        const raw = await fs.promises.readFile(metadataPath, 'utf8');
+        const parsed = JSON.parse(raw) as unknown;
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          metadata = parsed as Record<string, unknown>;
+        }
+      } catch {
+        metadata = {};
+      }
+      await fs.promises.writeFile(
+        metadataPath,
+        `${JSON.stringify({ ...metadata, teamSynced: true }, null, 2)}\n`,
+        'utf8',
+      );
+    }
+    if (fs.existsSync(targetDir)) {
+      await markTeamSynced();
+      return;
+    }
     const stagedFolder = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'od-team-design-system-'));
     try {
       const { runVelaResourceCommand } = await import('./collab/vela-cli-resource-adapter.js');
@@ -4077,6 +4104,7 @@ export async function startServer({
       await fs.promises.rm(targetDir, { recursive: true, force: true }).catch(() => undefined);
       await fs.promises.mkdir(USER_DESIGN_SYSTEMS_DIR, { recursive: true });
       await fs.promises.rename(stagedFolder, targetDir);
+      await markTeamSynced();
     } catch (error) {
       console.warn(
         `[team-resources] failed to pull shared design system ${resource.id}:`,

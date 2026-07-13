@@ -45,6 +45,7 @@ export type DesignSystemSummary = {
   updatedAt?: string;
   provenance?: DesignSystemProvenance;
   projectId?: string;
+  teamSynced?: boolean;
 };
 
 export type DesignSystemFileKind =
@@ -198,6 +199,7 @@ type UserDesignSystemMetadata = {
   updatedAt?: string;
   provenance?: DesignSystemProvenance;
   projectId?: string;
+  teamSynced?: boolean;
 };
 
 type AtomicTextFileWrite = {
@@ -329,6 +331,7 @@ export async function listDesignSystems(
         ...(metadata.updatedAt ? { updatedAt: metadata.updatedAt } : {}),
         ...(metadata.provenance ? { provenance: metadata.provenance } : {}),
         ...(metadata.projectId ? { projectId: metadata.projectId } : {}),
+        ...(metadata.teamSynced ? { teamSynced: true } : {}),
       });
     } catch {
       // Skip.
@@ -2416,6 +2419,7 @@ async function readUserMetadata(root: string, id: string): Promise<UserDesignSys
       ...(typeof parsed.updatedAt === 'string' ? { updatedAt: parsed.updatedAt } : {}),
       ...(provenance ? { provenance } : {}),
       ...(projectId ? { projectId } : {}),
+      ...(parsed.teamSynced === true ? { teamSynced: true } : {}),
     };
   } catch {
     return {};
