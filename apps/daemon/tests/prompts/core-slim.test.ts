@@ -53,7 +53,13 @@ const repoRoot = path.resolve(__dirname, '../../../..');
 // Bumped from 14_336 to restore load-bearing production-value craft guidance
 // (real imagery via the media tool, cohesive palette + interaction depth) whose
 // absence caused visible slim regressions on visual-first pages (P1 hero, P5 buttons).
-const SLIM_CORE_BYTE_BUDGET = 15_360;
+// Bumped from 15_360 to restore two quality instructions the tool-economy pass
+// dropped as collateral: the seed-copy rule ("Copy the seed and paste its
+// layouts") that keeps skills from writing CSS from scratch, and the
+// unconditional own-browser ban on preview (the softened "probes first"
+// wording let a run reach for Playwright after an export failure in the
+// 2026-07-13 slim-tool-economy eval, v1_001 turn 3).
+const SLIM_CORE_BYTE_BUDGET = 15_616;
 
 describe('renderSlimCoreCharter — byte budget', () => {
   it('stays under the byte budget in both execution profiles', () => {
@@ -91,8 +97,43 @@ describe('renderSlimCoreCharter — frozen protocol markers', () => {
   });
 
   it('states the verification budget once and without a re-score loop', () => {
-    expect(charter).toContain('One render is the whole budget');
+    expect(charter.match(/One render is the whole budget/g)).toHaveLength(1);
     expect(charter).not.toContain('Two passes is normal');
+  });
+
+  it('makes the tool-economy budget operational', () => {
+    for (const marker of [
+      'Use the DESIGN.md included here',
+      'read disk only if skill/project names an unincluded file',
+      'active-skill-required seed/reference fully once',
+      'Batch independent reads/searches into one call',
+      'keep dependencies separate',
+      'read minimal sufficient ranges',
+      'search the whole file once for a global request',
+      'Reuse returned results',
+      'Never repeat a read-only probe on unchanged state',
+      'after failure change the input, fix, or diagnostic before retry',
+      'one batched check of changed ranges',
+      'do not reopen unrelated ranges',
+    ]) {
+      expect(charter).toContain(marker);
+    }
+    expect(charter).not.toContain('Re-read the current file');
+    expect(charter).not.toContain('Open the file you wrote');
+  });
+
+  it('keeps the seed-copy rule the tool-economy rewrite must not drop', () => {
+    expect(charter).toContain("Copy the seed and paste its layouts — don't write CSS from scratch");
+  });
+
+  it('separates the optional preview budget from final delivery exports', () => {
+    expect(charter).toContain('ONE optional preview directly');
+    expect(charter).toContain('`"$OD_NODE_BIN" "$OD_BIN" export <file>');
+    expect(charter).toContain('never your own browser (no Playwright/headless), even after a failure');
+    expect(charter).toContain('No help/env/path probes first');
+    expect(charter).toContain('after failure, run at most one diagnostic');
+    expect(charter).toContain('retry only after fixing the cause');
+    expect(charter).toContain('A user-requested final export is delivery, outside this preview budget');
   });
 
   it('switches the handoff rule by execution profile', () => {
@@ -331,6 +372,8 @@ describe('slim core — direction library becomes a pull layer', () => {
     const slim = composeSystemPrompt({ ...input, promptCoreVariant: 'slim' });
     expect(slim).toContain('## Direction library — index (pull the chosen one on demand)');
     expect(slim).toContain('tools directions --id <id>');
+    expect(slim).toContain('do not probe CLI help or alternate paths first');
+    expect(slim).toContain('retry only after materially changing the fix or input');
     expect(slim).toContain('- `editorial-monocle` — Editorial — Monocle / FT magazine');
     // No inline palette data under slim — that's the pull payload.
     expect(slim).not.toContain('**Palette (drop into `:root`):**');
