@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { Button, Textarea } from '@open-design/components';
 import type {
-  BrandDetailResponse,
   ChatSessionMode,
   ConnectorConnectResponse,
   ConnectorDetail,
@@ -230,28 +229,7 @@ interface DemoExtractionProject {
   designSystemId?: string | null;
 }
 
-const DEMO_DESIGN_SYSTEM_READY_ATTEMPTS = 30;
-const DEMO_DESIGN_SYSTEM_READY_INTERVAL_MS = 500;
 const DEMO_HOME_HIDDEN_TEMPLATE_IDS = ['live-artifact', 'image', 'video', 'audio'];
-
-async function waitForDemoDesignSystem(
-  brandId: string,
-): Promise<string | null> {
-  for (let attempt = 0; attempt < DEMO_DESIGN_SYSTEM_READY_ATTEMPTS; attempt += 1) {
-    const response = await fetch(`/api/brands/${encodeURIComponent(brandId)}`, {
-      cache: 'no-store',
-      headers: { Accept: 'application/json' },
-    });
-    if (!response.ok) throw new Error('Could not read the extracted design system.');
-    const detail = (await response.json()) as BrandDetailResponse;
-    if (detail.meta.designSystemId) return detail.meta.designSystemId;
-    if (detail.meta.status === 'failed' || detail.meta.status === 'needs_input') {
-      return null;
-    }
-    await new Promise<void>((resolve) => window.setTimeout(resolve, DEMO_DESIGN_SYSTEM_READY_INTERVAL_MS));
-  }
-  return null;
-}
 
 interface DemoExtractedFoundation {
   displayFont: string | null;
@@ -473,18 +451,18 @@ export function DesignSystemCreationFlow({
     setDemoArtifactCreating(true);
     setError(null);
     try {
-      const designSystemId = await waitForDemoDesignSystem(demoProject.brandId);
-      if (!designSystemId) {
-        setError('The extracted design system is still preparing. Try again in a moment.');
-        return false;
-      }
+      // Brand extraction registers its design system under this deterministic
+      // id. Do not block the demo transition on the catalogue refresh: the
+      // focused composer already supplies a local summary fallback while the
+      // daemon finishes publishing the entry.
+      const designSystemId = demoProject.designSystemId ?? `user:${demoProject.brandId}`;
+      setDemoComposerDesignSystemId(designSystemId);
       try {
         await onSystemsRefresh?.();
       } catch {
         // The focused composer carries a local summary fallback, so a failed
         // catalogue refresh must not block artifact creation.
       }
-      setDemoComposerDesignSystemId(designSystemId);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not open the creation composer.');
