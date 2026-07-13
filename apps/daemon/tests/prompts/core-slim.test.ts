@@ -53,7 +53,13 @@ const repoRoot = path.resolve(__dirname, '../../../..');
 // Bumped from 14_336 to restore load-bearing production-value craft guidance
 // (real imagery via the media tool, cohesive palette + interaction depth) whose
 // absence caused visible slim regressions on visual-first pages (P1 hero, P5 buttons).
-const SLIM_CORE_BYTE_BUDGET = 15_360;
+// Bumped from 15_360 to restore two quality instructions the tool-economy pass
+// dropped as collateral: the seed-copy rule ("Copy the seed and paste its
+// layouts") that keeps skills from writing CSS from scratch, and the
+// unconditional own-browser ban on preview (the softened "probes first"
+// wording let a run reach for Playwright after an export failure in the
+// 2026-07-13 slim-tool-economy eval, v1_001 turn 3).
+const SLIM_CORE_BYTE_BUDGET = 15_616;
 
 describe('renderSlimCoreCharter — byte budget', () => {
   it('stays under the byte budget in both execution profiles', () => {
@@ -116,10 +122,15 @@ describe('renderSlimCoreCharter — frozen protocol markers', () => {
     expect(charter).not.toContain('Open the file you wrote');
   });
 
+  it('keeps the seed-copy rule the tool-economy rewrite must not drop', () => {
+    expect(charter).toContain("Copy the seed and paste its layouts — don't write CSS from scratch");
+  });
+
   it('separates the optional preview budget from final delivery exports', () => {
     expect(charter).toContain('ONE optional preview directly');
     expect(charter).toContain('`"$OD_NODE_BIN" "$OD_BIN" export <file>');
-    expect(charter).toContain('No browser/help/env/path probes first');
+    expect(charter).toContain('never your own browser (no Playwright/headless), even after a failure');
+    expect(charter).toContain('No help/env/path probes first');
     expect(charter).toContain('after failure, run at most one diagnostic');
     expect(charter).toContain('retry only after fixing the cause');
     expect(charter).toContain('A user-requested final export is delivery, outside this preview budget');
