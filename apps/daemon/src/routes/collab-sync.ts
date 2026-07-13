@@ -222,6 +222,18 @@ function publicSnapshotFileUrl(baseUrl: string, slug: string, filePath: string):
   return new URL(relative, baseUrl).toString();
 }
 
+async function resolveSharedProjectForPublicFile(
+  resolveSharedProject: RegisterCollabSyncRoutesDeps['resolveSharedProject'],
+  projectId: string,
+): Promise<{ ok: true; project: TeamProject | null } | { ok: false }> {
+  try {
+    return { ok: true, project: await resolveSharedProject?.(projectId) ?? null };
+  } catch (error) {
+    console.warn('[od] failed to resolve public file project ownership:', error);
+    return { ok: false };
+  }
+}
+
 export function registerCollabSyncRoutes(app: Express, deps: RegisterCollabSyncRoutesDeps): void {
   const {
     scheduler,
@@ -364,14 +376,17 @@ export function registerCollabSyncRoutes(app: Express, deps: RegisterCollabSyncR
     if (!await canShareProjectsForRequest(req)) {
       return res.status(403).json({ error: 'WORKSPACE_PROJECT_SHARE_DENIED' });
     }
-    let sharedProject: TeamProject | null = null;
-    try {
-      sharedProject = await resolveSharedProject?.(projectId) ?? null;
-    } catch {
-      sharedProject = null;
+    const sharedProjectResult = await resolveSharedProjectForPublicFile(resolveSharedProject, projectId);
+    if (!sharedProjectResult.ok) {
+      return res.status(503).json({ error: 'WORKSPACE_PROJECT_OWNERSHIP_UNAVAILABLE' });
     }
+    const sharedProject = sharedProjectResult.project;
     if (sharedProject?.ownerMemberId && sharedProject.ownerMemberId !== principal.memberId) {
       return res.status(403).json({ error: 'WORKSPACE_PROJECT_PUBLISH_DENIED' });
+    }
+    const baseUrl = publicResourceHubBaseUrl();
+    if (!baseUrl) {
+      return res.status(502).json({ error: 'PUBLIC_FILE_URL_UNAVAILABLE' });
     }
     if (!resolveProjectDir) {
       return res.status(500).json({ error: 'PROJECT_DIR_UNAVAILABLE' });
@@ -423,10 +438,6 @@ export function registerCollabSyncRoutes(app: Express, deps: RegisterCollabSyncR
       if (!snapshot) {
         return res.status(502).json({ error: 'PUBLIC_SNAPSHOT_UNAVAILABLE' });
       }
-      const baseUrl = publicResourceHubBaseUrl();
-      if (!baseUrl) {
-        return res.status(502).json({ error: 'PUBLIC_FILE_URL_UNAVAILABLE' });
-      }
       return res.json({
         url: publicSnapshotFileUrl(baseUrl, snapshot.slug, filePath),
         slug: snapshot.slug,
@@ -457,12 +468,11 @@ export function registerCollabSyncRoutes(app: Express, deps: RegisterCollabSyncR
     if (!await canShareProjectsForRequest(req)) {
       return res.status(403).json({ error: 'WORKSPACE_PROJECT_SHARE_DENIED' });
     }
-    let sharedProject: TeamProject | null = null;
-    try {
-      sharedProject = await resolveSharedProject?.(projectId) ?? null;
-    } catch {
-      sharedProject = null;
+    const sharedProjectResult = await resolveSharedProjectForPublicFile(resolveSharedProject, projectId);
+    if (!sharedProjectResult.ok) {
+      return res.status(503).json({ error: 'WORKSPACE_PROJECT_OWNERSHIP_UNAVAILABLE' });
     }
+    const sharedProject = sharedProjectResult.project;
     if (sharedProject?.ownerMemberId && sharedProject.ownerMemberId !== principal.memberId) {
       return res.status(403).json({ error: 'WORKSPACE_PROJECT_PUBLISH_DENIED' });
     }

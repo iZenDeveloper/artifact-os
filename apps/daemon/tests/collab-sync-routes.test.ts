@@ -9,12 +9,14 @@ import {
   buildWorkspaceSeatSummary,
   type WorkspaceCollabContext,
 } from '@open-design/contracts';
+import { runVelaResourceCommand } from '../src/collab/vela-cli-resource-adapter.js';
 import {
   createCollabRuntime,
   type CollabRuntime,
   type CreateCollabRuntimeOptions,
 } from '../src/collab/runtime.js';
 import type { WorkspaceContextProvider } from '../src/collab/workspace-context.js';
+import { readVelaControlApiContext } from '../src/integrations/vela.js';
 import { projectResourceIdFor } from '../src/integrations/vela-team-projects.js';
 import {
   registerCollabSyncRoutes,
@@ -23,6 +25,18 @@ import {
   type RegisterPulledProjectInput,
 } from '../src/routes/collab-sync.js';
 import { writeProjectManifest } from '../src/project-locations.js';
+
+vi.mock('../src/collab/vela-cli-resource-adapter.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/collab/vela-cli-resource-adapter.js')>();
+  return {
+    ...actual,
+    runVelaResourceCommand: vi.fn(),
+  };
+});
+
+vi.mock('../src/integrations/vela.js', () => ({
+  readVelaControlApiContext: vi.fn(() => null),
+}));
 
 /** In-memory project store standing in for the daemon's SQLite-backed store, so
  *  a route test can assert register-on-pull without a real database. */
@@ -75,6 +89,8 @@ let runtime: CollabRuntime | null = null;
 const tempDirs: string[] = [];
 
 afterEach(async () => {
+  vi.mocked(runVelaResourceCommand).mockReset();
+  vi.mocked(readVelaControlApiContext).mockReturnValue(null);
   runtime?.dispose(); // cancel any pending debounce timers
   runtime = null;
   if (server) {
@@ -541,6 +557,13 @@ describe('collab sync routes', () => {
     const resolveProjectDir = vi.fn(() => {
       throw new Error('project dir should not be read');
     });
+    vi.mocked(readVelaControlApiContext).mockReturnValue({
+      profile: 'test',
+      apiUrl: 'https://hub.example.test',
+      controlKey: 'ctrl-test',
+      user: null,
+      configMtimeMs: null,
+    });
     const api = await startSyncServer(fixedShareContextProvider(true), {
       resolveProjectDir,
       resolveSharedProject: async () => ({
@@ -558,6 +581,59 @@ describe('collab sync routes', () => {
     expect(res.status).toBe(403);
     expect(res.body.error).toBe('WORKSPACE_PROJECT_PUBLISH_DENIED');
     expect(resolveProjectDir).not.toHaveBeenCalled();
+  });
+
+  it('fails public file publish and unpublish when ownership lookup fails', async () => {
+    const resolveProjectDir = vi.fn(() => {
+      throw new Error('project dir should not be read');
+    });
+    vi.mocked(readVelaControlApiContext).mockReturnValue({
+      profile: 'test',
+      apiUrl: 'https://hub.example.test',
+      controlKey: 'ctrl-test',
+      user: null,
+      configMtimeMs: null,
+    });
+    const api = await startSyncServer(fixedShareContextProvider(true), {
+      resolveProjectDir,
+      resolveSharedProject: async () => {
+        throw new Error('catalog unavailable');
+      },
+    });
+
+    const publish = await api.json('/api/projects/p1/files/index.html/publish-public', {
+      method: 'POST',
+    });
+    const unpublish = await api.json('/api/projects/p1/files/index.html/publish-public', {
+      method: 'DELETE',
+      body: { slug: 'public-slug' },
+    });
+
+    expect(publish.status).toBe(503);
+    expect(publish.body.error).toBe('WORKSPACE_PROJECT_OWNERSHIP_UNAVAILABLE');
+    expect(unpublish.status).toBe(503);
+    expect(unpublish.body.error).toBe('WORKSPACE_PROJECT_OWNERSHIP_UNAVAILABLE');
+    expect(resolveProjectDir).not.toHaveBeenCalled();
+    expect(runVelaResourceCommand).not.toHaveBeenCalled();
+  });
+
+  it('does not create a public snapshot when no public base URL is configured', async () => {
+    const resolveProjectDir = vi.fn(() => {
+      throw new Error('project dir should not be read');
+    });
+    const api = await startSyncServer(fixedShareContextProvider(true), {
+      resolveProjectDir,
+      resolveSharedProject: async () => null,
+    });
+
+    const res = await api.json('/api/projects/p1/files/index.html/publish-public', {
+      method: 'POST',
+    });
+
+    expect(res.status).toBe(502);
+    expect(res.body.error).toBe('PUBLIC_FILE_URL_UNAVAILABLE');
+    expect(resolveProjectDir).not.toHaveBeenCalled();
+    expect(runVelaResourceCommand).not.toHaveBeenCalled();
   });
 
   it('writes and removes the Vela team-project catalog around share intents', async () => {
