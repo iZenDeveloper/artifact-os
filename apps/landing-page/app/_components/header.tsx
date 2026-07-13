@@ -94,7 +94,7 @@ const AGENTS: ReadonlyArray<{ name: string; route: string }> = [
   { name: 'Pi', route: 'pi-design' },
   { name: 'Kiro CLI', route: 'kiro-design' },
   { name: 'Kilo', route: 'kilo-design' },
-  { name: 'Mistral Vibe CLI', route: 'vibe-design' },
+  { name: 'Mistral Vibe CLI', route: 'vibe-cli-design' },
   { name: 'Qoder CLI', route: 'qoder-design' },
 ];
 
@@ -458,7 +458,7 @@ export function Header({
               </ul>
             </li>
 
-            {/* Community — Contributors / Ambassadors / Moderators. These
+            {/* Community — Contributors / Ambassadors / Moderators / Events. These
                 pages are now localized Astro routes, so link through `href()`
                 to keep visitors on their language variant. */}
             <li className='has-dropdown'>
@@ -489,6 +489,11 @@ export function Header({
                     <span className='dropdown-name'>
                       {productMenuCopy.communityItems.moderators}
                     </span>
+                  </a>
+                </li>
+                <li>
+                  <a href={href('/community/events/')}>
+                    <span className='dropdown-name'>Events</span>
                   </a>
                 </li>
                 <li>

@@ -115,6 +115,7 @@ Inside a project's Studio, the same design system streams out multiple artifact 
 |---|:---:|---|
 | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | ✅ Supported | `od mcp install claude` |
 | [Codex CLI](https://github.com/openai/codex) | ✅ Supported | `od mcp install codex` |
+| [DeepSeek Reasonix](https://github.com/esengine/DeepSeek-Reasonix) | ✅ Supported | `od mcp install reasonix` |
 | [Cursor](https://www.cursor.com/cli) | ✅ Supported | `od mcp install cursor` |
 | [VS Code + GitHub Copilot](https://github.com/features/copilot) | ✅ Supported | `od mcp install copilot` |
 | [GitHub Copilot CLI](https://github.com/features/copilot/cli) | ✅ Supported | `od mcp install copilot` |
@@ -125,6 +126,7 @@ Inside a project's Studio, the same design system streams out multiple artifact 
 | [Cline](https://github.com/cline/cline) | ✅ Supported | `od mcp install cline` |
 | [Trae](https://www.trae.ai/) | ✅ Supported | `od mcp install trae` |
 | [Kimi CLI](https://github.com/MoonshotAI/kimi-cli) | ✅ Supported | `od mcp install kimi` |
+| [Kiro](https://kiro.dev) | ✅ Supported | `od mcp install kiro` |
 | [Pi Agent](https://github.com/badlogic/pi-mono) | ✅ Supported | `od mcp install pi` |
 | [Mistral Vibe CLI](https://github.com/mistralai/mistral-vibe) | ✅ Supported | `od mcp install vibe` |
 | [Hermes Agent](https://github.com/nousresearch/hermes-agent) | ✅ Supported | `od mcp install hermes` |
@@ -302,8 +304,9 @@ You can use Open Design without ever opening the GUI — call it as a skill, plu
 ```bash
 # One-line install into the agent you're using:
 od mcp install <agent>
-# <agent> = claude | codex | cursor | copilot | openclaw | antigravity | gemini
-#         | pi | vibe | hermes | cline | kimi | trae | opencode
+# <agent> = claude | codex | reasonix | cursor | copilot | openclaw
+#         | antigravity | gemini | pi | vibe | hermes | cline | kimi
+#         | trae | opencode
 
 # Hosted equivalent for curl-based setup:
 curl -fsSL https://open-design.ai/install.sh | sh -s <agent>
@@ -388,6 +391,8 @@ od skill list --scenario marketing
 **For an agent starting from scratch,** the installer places `~/.config/<agent>/open-design.json` (or the platform equivalent) plus a copy-paste MCP snippet. Cursor gets a one-click deeplink; Claude Code gets a `claude mcp add-json` one-liner; every other agent gets JSON in the schema its config expects. Full per-agent flow → **Settings → MCP server** in the desktop app, or [`docs/agent-adapters.md`](docs/agent-adapters.md).
 
 **Security model.** Read-only by default, the daemon binds to `127.0.0.1`, and SSRF is blocked at the proxy edge. LAN exposure requires an explicit `OD_BIND_HOST` plus `OD_ALLOWED_ORIGINS`. Connector credentials and live-artifact preview routes stay loopback-only regardless.
+
+**Internally-hosted model endpoints.** To prevent SSRF, the daemon blocks provider base URLs that resolve to private/internal address ranges (RFC1918, link-local, CGNAT, and cloud-metadata IPs) by default, surfacing `Internal IPs blocked`. If you run an internally-hosted gateway (e.g. LiteLLM or Ollama on a VPN-only `10.x`/`192.168.x` address), opt that host out with `OD_ALLOWED_INTERNAL_HOSTS=<host1>,<host2>,...` — a comma- or whitespace-separated list of bare hostnames or IPs (`10.0.0.5`, `litellm.internal.corp`; a `host:port` or full URL is accepted and reduced to its hostname; IPv6 must be bracketed, e.g. `[fd00::1]`). The allowlist is strict opt-in (empty by default), exact-host (no subdomain/substring matching), and applies **only** to provider endpoints you configure (connection test, model discovery, BYOK chat). It deliberately does **not** relax the guard on download URLs returned inside upstream responses, which stay blocked. A malformed entry — or CIDR notation, which is not supported — is dropped with a warning rather than silently trusted, so a typo never quietly widens (or fails to widen) the guard. Allowlisting a hostname trusts whatever it resolves to (like `OD_ALLOWED_ORIGINS`); allowlist the resolved IP instead if you want the DNS-resolved address re-checked.
 
 ---
 
