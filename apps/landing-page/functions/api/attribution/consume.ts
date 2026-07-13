@@ -40,7 +40,15 @@ export const onRequest: PagesFunction<AttributionEnv> = async ({ request, env })
     consumedBy: installationId,
   });
   if (!consumed.won) {
-    return json(200, { status: consumed.consumedBy === installationId ? 'already_consumed_same' : 'already_consumed_other' });
+    if (consumed.consumedBy !== installationId) return json(200, { status: 'already_consumed_other' });
+    const raw = await kv.get(recordKey(token));
+    if (!raw) return json(200, { status: 'not_found' });
+    const record = JSON.parse(raw) as AttributionRecord;
+    return json(200, {
+      status: 'already_consumed_same',
+      webDistinctId: record.webDistinctId,
+      properties: record.properties,
+    });
   }
   const raw = await kv.get(recordKey(token));
   if (!raw) {

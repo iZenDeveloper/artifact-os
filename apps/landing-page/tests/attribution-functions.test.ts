@@ -139,6 +139,36 @@ test('download attribution consumption has exactly one concurrent winner', async
   assert.deepEqual(results.map((result) => result.status).sort(), ['already_consumed_other', 'consumed']);
 });
 
+test('download attribution retry returns its payload after the first response is lost', async () => {
+  const records = new Map<string, string>();
+  const token = 'odtoken_retry_123';
+  records.set(`download-attribution:${token}`, JSON.stringify({
+    token,
+    webDistinctId: 'web-anon-retry',
+    assetUrl: 'https://github.com/nexu-io/open-design/releases/download/v1/Open-Design.dmg',
+    createdAt: new Date().toISOString(), landingUrl: null, referrer: null,
+    properties: { od_utm_source: 'release' },
+  }));
+  const env = {
+    ATTRIBUTION_KV: {
+      get: async (key: string) => records.get(key) ?? null,
+      put: async (key: string, value: string) => { records.set(key, value); },
+    },
+    ATTRIBUTION_DB: consumptionDb(),
+  };
+  const claim = () => consumeDownload({
+    request: new Request('https://download.open-design.ai/api/attribution/consume', {
+      method: 'POST', body: JSON.stringify({ token, installationId: 'install-retry' }),
+    }), env, params: {},
+  });
+  assert.equal((await (await claim()).json() as { status: string }).status, 'consumed');
+  assert.deepEqual(await (await claim()).json(), {
+    status: 'already_consumed_same',
+    webDistinctId: 'web-anon-retry',
+    properties: { od_utm_source: 'release' },
+  });
+});
+
 test('download proxy preserves successful HEAD responses without a body', async () => {
   const token = 'odtoken_head_123';
   const originalFetch = globalThis.fetch;
