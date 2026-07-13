@@ -1661,6 +1661,9 @@ describe('ProjectView conversation run isolation', () => {
   });
 
   it('notifies when a BYOK OpenCode chat completes without a daemon run status transition', async () => {
+    listConversations.mockResolvedValue(
+      conversations.map((conversation) => ({ ...conversation, sessionMode: 'chat' as const })),
+    );
     listMessages.mockResolvedValue([]);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
     streamViaDaemon.mockImplementation(async (options: {

@@ -3708,7 +3708,11 @@ export function retryableAssistantMessage(
   const last = messages[messages.length - 1];
   if (!last || last.role !== 'assistant') return null;
   if (last.id !== lastAssistantId) return null;
-  return last.runStatus === 'failed' ? last : null;
+  return last.runStatus === 'failed' ||
+    last.resultDeliveryState === 'no_result' ||
+    last.resultDeliveryState === 'delivery_failed'
+    ? last
+    : null;
 }
 
 export function isAssistantMessageStreaming(

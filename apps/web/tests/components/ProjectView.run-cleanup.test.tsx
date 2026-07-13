@@ -15,6 +15,7 @@ import {
   resolveSucceededRunStatus,
   selectPrimaryProjectFile,
   shouldClearActiveRunRefs,
+  shouldReplayTerminalRunMessage,
 } from '../../src/components/ProjectView';
 import type { Artifact, ChatMessage, ProjectFile } from '../../src/types';
 
@@ -557,6 +558,31 @@ describe('ProjectView daemon cleanup', () => {
     expect(resolveSucceededRunStatus(undefined)).toBe('succeeded');
     expect(resolveSucceededRunStatus('failed')).toBe('failed');
     expect(resolveSucceededRunStatus('canceled')).toBe('canceled');
+  });
+
+  it('replays an unverified terminal Design-mode result after reload', () => {
+    expect(
+      shouldReplayTerminalRunMessage({
+        id: 'msg-unverified-delivery',
+        role: 'assistant',
+        content: 'I finished the design.',
+        runId: 'run-unverified-delivery',
+        runStatus: 'succeeded',
+        sessionMode: 'design',
+        startedAt: 1,
+      }),
+    ).toBe(true);
+    expect(
+      shouldReplayTerminalRunMessage({
+        id: 'msg-chat-answer',
+        role: 'assistant',
+        content: 'Here is the answer.',
+        runId: 'run-chat-answer',
+        runStatus: 'succeeded',
+        sessionMode: 'chat',
+        startedAt: 1,
+      }),
+    ).toBe(false);
   });
 
   // Regression: a phantom 'running' row in DB (no runId, no matching active
