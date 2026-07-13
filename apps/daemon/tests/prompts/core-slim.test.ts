@@ -132,6 +132,13 @@ describe('renderSlimCoreCharter — frozen protocol markers', () => {
     expect(charter).toContain('the host renders a localized "Other" escape hatch');
     expect(charter).not.toContain("Other — I'll describe");
     expect(charter).toContain('Hard cap: 5 questions');
+    // The default-shape recipe must fit inside the cap: 2 fixed slots + a
+    // pick-at-most-3 menu. The old prescriptive sequence ("Between `output`
+    // and `brand`, in this order … After `brand`: …") implied 7 questions and
+    // must not coexist with the hard cap (review: PR #5573).
+    expect(charter).toContain('fill AT MOST 3 more from this menu');
+    expect(charter).not.toContain('Between `output` and `brand`, in this order');
+    expect(charter).not.toContain('After `brand`:');
   });
 
   it('keeps the imagery fallback chain intact', () => {

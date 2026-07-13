@@ -21,6 +21,7 @@ answers.
 ```html
 <question-form id="task-type" title="Choose the task type">
 {
+  "lang": "en",
   "description": "I will route the free-form prompt through the right Open Design workflow.",
   "questions": [
     {

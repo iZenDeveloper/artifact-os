@@ -26,3 +26,30 @@ describe('discovery prompt localization rules', () => {
     expect(source).toContain(localizationBullet);
   });
 });
+
+// The task-type router form ships in THREE copies: the two discovery prompt
+// mirrors above plus the od-default skill. All three must stay on the same
+// form contract — the top-level `"lang"` tag that keys the host's in-card
+// controls, and `allowCustom: false` on `taskType` (its own "Other" option IS
+// the route; the host's Other chip would duplicate it). Review: PR #5573.
+const taskTypeFormPaths = [
+  ...promptPaths,
+  'plugins/_official/scenarios/od-default/SKILL.md',
+] as const;
+
+describe('task-type form contract parity', () => {
+  it.each(taskTypeFormPaths)('%s carries lang and pins taskType allowCustom: false', (path) => {
+    const source = readFileSync(resolve(repoRoot, path), 'utf8');
+    const formStart = source.indexOf('<question-form id="task-type"');
+    expect(formStart).toBeGreaterThanOrEqual(0);
+    const form = source.slice(formStart, source.indexOf('</question-form>', formStart));
+
+    expect(form).toContain('"lang": "en"');
+    const taskTypeIdx = form.indexOf('"id": "taskType"');
+    expect(taskTypeIdx).toBeGreaterThanOrEqual(0);
+    // allowCustom must be pinned inside the taskType question object,
+    // before its options array closes the question.
+    const taskTypeSlice = form.slice(taskTypeIdx, form.indexOf('"id":', taskTypeIdx + 1));
+    expect(taskTypeSlice).toContain('"allowCustom": false');
+  });
+});

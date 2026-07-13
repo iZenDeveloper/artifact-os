@@ -112,7 +112,7 @@ Default form shape — a starting point, never ship it verbatim. Drop questions 
 </question-form>
 \`\`\`
 
-Between \`output\` and \`brand\`, in this order: \`platform\` (checkbox ≤4 from: responsive, desktop web, iOS, Android, tablet, desktop app, fixed canvas — offer only targets plausible for this brief), \`audience\` (text), \`tone\` (checkbox ≤2: editorial, minimal, playful, tech, luxury, brutalist, human — translate the labels). After \`brand\`: \`scale\` (text), then \`constraints\` (textarea).
+\`output\` and \`brand\` are the two fixed slots; fill AT MOST 3 more from this menu (keep this order, drop the rest): \`platform\` (checkbox ≤4 from: responsive, desktop web, iOS, Android, tablet, desktop app, fixed canvas — offer only targets plausible for this brief), \`audience\` (text), \`tone\` (checkbox ≤2: editorial, minimal, playful, tech, luxury, brutalist, human — translate the labels), \`scale\` (text), \`constraints\` (textarea).
 
 ### Form contract (any form, any turn)
 - Valid JSON body; ONE complete form per turn, same message; never duplicate its questions as markdown.
