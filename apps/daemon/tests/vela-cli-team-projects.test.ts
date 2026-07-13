@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createVelaCliTeamProjectCatalog } from '../src/collab/vela-cli-team-projects.js';
+import {
+  createVelaCliTeamProjectCatalog,
+  shouldUseVelaCliTeamProjectCatalog,
+} from '../src/collab/vela-cli-team-projects.js';
 
 describe('Vela CLI team-project catalog adapter', () => {
   it('maps list output into team-project DTOs', async () => {
@@ -126,5 +129,12 @@ describe('Vela CLI team-project catalog adapter', () => {
       ],
       ['remove', 'p1'],
     ]);
+  });
+
+  it('keeps Vela workspace context authoritative over legacy transport flags', () => {
+    expect(shouldUseVelaCliTeamProjectCatalog({
+      OD_WORKSPACE_CONTEXT_SOURCE: 'vela',
+      OD_TEAM_PROJECTS_TRANSPORT: 'resource-hub',
+    })).toBe(true);
   });
 });

@@ -2,9 +2,11 @@ import type { Express } from 'express';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { ProjectMetadata, ProjectSyncIntentEvent, TeamProject } from '@open-design/contracts';
-import { contextToResourceHubPrincipal } from '../collab/resource-hub-publish-adapter.js';
 import type { CollabRuntime } from '../collab/runtime.js';
-import type { ResourceHubPrincipal } from '../integrations/resource-hub.js';
+import {
+  contextToResourceHubPrincipal,
+  type ResourceHubPrincipal,
+} from '../collab/resource-principal.js';
 import { projectResourceIdFor } from '../integrations/vela-team-projects.js';
 import { readProjectManifest } from '../project-locations.js';
 

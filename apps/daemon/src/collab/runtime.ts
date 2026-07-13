@@ -5,7 +5,6 @@
 // ResourcePublishAdapter.
 
 import type { ProjectSyncState } from '@open-design/contracts';
-import type { ResourceHubPrincipal } from '../integrations/resource-hub.js';
 import { projectResourceIdFor } from '../integrations/vela-team-projects.js';
 import {
   CollabPresenceTracker,
@@ -19,8 +18,8 @@ import {
 } from './publish-scheduler.js';
 import {
   contextToResourceHubPrincipal,
-  createResourceHubPublishAdapterFromEnv,
-} from './resource-hub-publish-adapter.js';
+  type ResourceHubPrincipal,
+} from './resource-principal.js';
 import { createStubResourcePublishAdapter } from './stub-resource-adapter.js';
 import {
   createDevTeamResourceStateProvider,
@@ -114,7 +113,6 @@ export interface CreateCollabRuntimeOptions {
 function selectResourcePublishAdapter(
   resolveProjectDir: ((projectId: string) => string | Promise<string>) | undefined,
   workspaceContext: WorkspaceContextProvider,
-  getProjectPrincipal: (projectId?: string) => ResourceHubPrincipal | null | Promise<ResourceHubPrincipal | null>,
   describeProject: ((projectId: string) => Record<string, unknown> | null | Promise<Record<string, unknown> | null>) | undefined,
 ): ResourcePublishAdapter | null {
   if (!resolveProjectDir) return null;
@@ -125,7 +123,7 @@ function selectResourcePublishAdapter(
       hasTeamIdentity: async () => contextHasTeamIdentity(await workspaceContext.current({})),
     });
   }
-  return createResourceHubPublishAdapterFromEnv(resolveProjectDir, getProjectPrincipal, describeProject);
+  return null;
 }
 
 export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): CollabRuntime {
@@ -167,7 +165,6 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
     selectResourcePublishAdapter(
       options.resolveProjectDir,
       workspaceContext,
-      getProjectPrincipal,
       options.describeProject,
     ) ??
     createStubResourcePublishAdapter();

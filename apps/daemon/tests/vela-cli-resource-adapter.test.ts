@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildVelaResourceEnv,
   contextHasTeamIdentity,
   createVelaCliResourceAdapter,
   shouldUseVelaCliResourceTransport,
@@ -49,6 +48,12 @@ describe('createVelaCliResourceAdapter', () => {
       '/projects/p1',
       '--ref',
       'published',
+      '--exclude',
+      '.file-versions',
+      '--exclude',
+      '.live-artifacts',
+      '--exclude',
+      '.od-skills',
       '--json',
     ]);
   });
@@ -68,6 +73,12 @@ describe('createVelaCliResourceAdapter', () => {
       '/projects/p1',
       '--ref',
       'published',
+      '--exclude',
+      '.file-versions',
+      '--exclude',
+      '.live-artifacts',
+      '--exclude',
+      '.od-skills',
       '--json',
       '--metadata-json',
       JSON.stringify({ name: 'Launch Deck', metadata: { kind: 'deck' } }),
@@ -160,19 +171,14 @@ describe('transport selection', () => {
   it('opts into the CLI transport for explicit or Vela-backed team modes', () => {
     expect(shouldUseVelaCliResourceTransport({ OD_RESOURCE_TRANSPORT: 'vela-cli' })).toBe(true);
     expect(shouldUseVelaCliResourceTransport({ OD_RESOURCE_TRANSPORT: 'sdk' })).toBe(false);
+    expect(shouldUseVelaCliResourceTransport({ OD_WORKSPACE_CONTEXT_SOURCE: 'vela' })).toBe(true);
+    expect(shouldUseVelaCliResourceTransport({
+      OD_WORKSPACE_CONTEXT_SOURCE: 'vela',
+      OD_RESOURCE_TRANSPORT: 'sdk',
+    })).toBe(true);
     expect(shouldUseVelaCliResourceTransport({ OD_TEAM_PROJECTS_TRANSPORT: 'vela-cli' })).toBe(true);
     expect(shouldUseVelaCliResourceTransport({ OD_COLLAB_TRANSPORT: 'vela-cli' })).toBe(true);
     expect(shouldUseVelaCliResourceTransport({})).toBe(false);
-  });
-
-  it('preserves an explicit VELA_PROFILE over the daemon default profile', () => {
-    expect(
-      buildVelaResourceEnv({
-        OPEN_DESIGN_AMR_PROFILE: 'prod',
-        VELA_PROFILE: 'local',
-        AMR_HOME: '/tmp/member',
-      }).VELA_PROFILE,
-    ).toBe('local');
   });
 
   it('gates team identity on a live team workspace context', () => {

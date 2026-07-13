@@ -1,4 +1,3 @@
-import { execFile } from 'node:child_process';
 import type { ProjectMetadata, TeamProject } from '@open-design/contracts';
 import type {
   UpsertVelaTeamProjectInput,
@@ -6,7 +5,7 @@ import type {
   VelaTeamProjectRecord,
   VelaTeamProjectSyncState,
 } from '../integrations/vela-team-projects.js';
-import { amrVelaProfileEnv } from '../integrations/vela-profile.js';
+import { runVelaCommand } from '../integrations/vela-command.js';
 
 const PROJECT_RESOURCE_PREFIX = 'project-';
 
@@ -139,6 +138,7 @@ export function createVelaCliTeamProjectCatalogFromEnv(): VelaTeamProjectCatalog
 }
 
 export function shouldUseVelaCliTeamProjectCatalog(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (env.OD_WORKSPACE_CONTEXT_SOURCE?.trim() === 'vela') return true;
   const explicitTransport = env.OD_TEAM_PROJECTS_TRANSPORT?.trim();
   if (explicitTransport) return explicitTransport === 'vela-cli';
   return env.OD_RESOURCE_TRANSPORT?.trim() === 'vela-cli';
@@ -242,21 +242,4 @@ function recordObject(value: unknown): Record<string, unknown> | null {
 }
 
 const defaultRunVelaTeamProjects: RunVelaTeamProjects = (args) =>
-  new Promise<string>((resolve, reject) => {
-    const bin = process.env.OD_VELA_BIN?.trim() || 'vela';
-    execFile(
-      bin,
-      ['team-projects', ...args],
-      { env: buildVelaTeamProjectsEnv(), maxBuffer: 16 * 1024 * 1024 },
-      (error, stdout) => {
-        if (error) reject(error);
-        else resolve(stdout);
-      },
-    );
-  });
-
-export function buildVelaTeamProjectsEnv(
-  env: NodeJS.ProcessEnv = process.env,
-): NodeJS.ProcessEnv {
-  return { ...amrVelaProfileEnv(env), ...env };
-}
+  runVelaCommand(['team-projects', ...args]);
