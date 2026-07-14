@@ -3935,7 +3935,6 @@ export async function startServer({
     );
   }
   const collabCloudClient = velaCliCollabClient ?? createCollabCloudClientFromEnv();
-  registerCollabPresenceRoutes(app, { collab, cloud: velaCliCollabClient });
 
   // Collab cloud (C-lane §D2.5/§D4): cross-daemon comment sync + member
   // directory. The client is null (all calls degrade to no-op) unless
@@ -3974,6 +3973,14 @@ export async function startServer({
   const resolveSharedProjectOwner = async (projectId: string): Promise<string | null> => {
     return (await resolveSharedProject(projectId))?.ownerMemberId ?? null;
   };
+  const isSharedTeamProject = async (projectId: string): Promise<boolean> => {
+    return (await resolveSharedProject(projectId)) != null;
+  };
+  registerCollabPresenceRoutes(app, {
+    collab,
+    cloud: velaCliCollabClient,
+    isProjectShared: isSharedTeamProject,
+  });
   // Author-side publish TRIGGER (C spec §D1): watch the projects THIS daemon's
   // member owns + has shared, and coalesce every file edit into a debounced
   // publish. The read-only gate (team-shared AND owner === me) means a member's
@@ -4741,6 +4748,7 @@ export async function startServer({
     resolveAuthorMemberId: async (authorization) =>
       (await collab.workspaceContext.current({ authorization }))?.workspaceMemberId,
     resolveProjectOwnerMemberId: resolveSharedProjectOwner,
+    shouldSyncProjectComments: async (_authorization, projectId) => isSharedTeamProject(projectId),
     ...(collabCloud
       ? {
           onCommentCreated: (comment) => {
@@ -6894,6 +6902,23 @@ export async function startServer({
         agentId: run.agentId,
         events: run.events,
       });
+      if (
+        result === 'failed' &&
+        failure?.failure_category === 'prompt_too_large' &&
+        def.resumesSessionViaAcpLoad === true &&
+        agentResumeCtx.isResuming &&
+        agentResumeCtx.resumeSessionId &&
+        run.conversationId
+      ) {
+        clearAgentSession(db, run.conversationId, def.id);
+        design.runs.emit(run, 'diagnostic', {
+          type: 'agent_session_cleared_after_prompt_too_large',
+          agent_id: def.id,
+          reason: 'prompt_too_large',
+          previous_session_id: agentResumeCtx.resumeSessionId,
+          stale_session_cleared: true,
+        });
+      }
       const sideEffects = {
         ...scanRunEventsForRetrySideEffects(run.events),
         cancelRequested: !!run.cancelRequested,

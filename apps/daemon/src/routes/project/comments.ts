@@ -18,6 +18,16 @@ export interface RegisterProjectCommentRoutesDeps extends RouteDeps<'db' | 'proj
    */
   resolveProjectOwnerMemberId?: (projectId: string) => Promise<string | null>;
   /**
+   * Whether this project should still sync comment mutations to the team relay.
+   * Local comments are allowed to save regardless; this gate only prevents stale
+   * pulled copies from continuing to publish into a project after it leaves the
+   * team catalog.
+   */
+  shouldSyncProjectComments?: (
+    authorization: string | undefined,
+    projectId: string,
+  ) => Promise<boolean>;
+  /**
    * Fired after a comment is created OR edited (body upsert), so the collab-cloud
    * service can push it to the cross-daemon relay (best-effort — a push failure
    * must not fail the local save). No-op off-team / when the collab cloud is
@@ -53,6 +63,15 @@ export function registerProjectCommentRoutes(app: Express, ctx: RegisterProjectC
   async function resolveCaller(req: Request): Promise<string | undefined> {
     if (!ctx.resolveAuthorMemberId) return undefined;
     return ctx.resolveAuthorMemberId(req.headers.authorization);
+  }
+
+  async function shouldSyncComments(req: Request, projectId: string): Promise<boolean> {
+    if (!ctx.shouldSyncProjectComments) return true;
+    try {
+      return await ctx.shouldSyncProjectComments(req.headers.authorization, projectId);
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -129,7 +148,7 @@ export function registerProjectCommentRoutes(app: Express, ctx: RegisterProjectC
       const comment = upsertPreviewComment(db, req.params.id, req.params.cid, body);
       updateProject(db, req.params.id, {});
       // Best-effort cross-daemon push; never fails the local save.
-      if (comment) {
+      if (comment && await shouldSyncComments(req, req.params.id)) {
         try {
           ctx.onCommentCreated?.(comment as unknown as PreviewComment);
         } catch {
@@ -172,10 +191,12 @@ export function registerProjectCommentRoutes(app: Express, ctx: RegisterProjectC
         if (!comment)
           return res.status(404).json({ error: 'comment not found' });
         updateProject(db, req.params.id, {});
-        try {
-          ctx.onCommentUpdated?.(comment as unknown as PreviewComment);
-        } catch {
-          /* push is best-effort */
+        if (await shouldSyncComments(req, req.params.id)) {
+          try {
+            ctx.onCommentUpdated?.(comment as unknown as PreviewComment);
+          } catch {
+            /* push is best-effort */
+          }
         }
         res.json({ comment });
       } catch (err: any) {
@@ -239,10 +260,12 @@ export function registerProjectCommentRoutes(app: Express, ctx: RegisterProjectC
       );
       if (!ok) return res.status(404).json({ error: 'comment not found' });
       updateProject(db, req.params.id, {});
-      try {
-        ctx.onCommentDeleted?.(existing);
-      } catch {
-        /* push is best-effort */
+      if (await shouldSyncComments(req, req.params.id)) {
+        try {
+          ctx.onCommentDeleted?.(existing);
+        } catch {
+          /* push is best-effort */
+        }
       }
       res.json({ ok: true });
     },

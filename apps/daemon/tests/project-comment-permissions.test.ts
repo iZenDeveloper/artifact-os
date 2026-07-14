@@ -57,6 +57,8 @@ async function startServer() {
 
   const updated: string[] = [];
   const deleted: string[] = [];
+  const created: string[] = [];
+  let syncComments = true;
 
   const app = express();
   app.use(express.json());
@@ -77,6 +79,8 @@ async function startServer() {
       authorization?.startsWith('member:') ? authorization.slice('member:'.length) : undefined,
     // p1 is owned by OWNER.
     resolveProjectOwnerMemberId: async () => OWNER,
+    shouldSyncProjectComments: async () => syncComments,
+    onCommentCreated: (c) => created.push(c.id),
     onCommentUpdated: (c) => updated.push(c.id),
     onCommentDeleted: (c) => deleted.push(c.id),
   });
@@ -129,7 +133,19 @@ async function startServer() {
       note: string;
     }>;
 
-  return { db, json, createComment, listComments, updated, deleted, commentTarget };
+  return {
+    db,
+    json,
+    createComment,
+    listComments,
+    created,
+    updated,
+    deleted,
+    commentTarget,
+    setSyncComments(value: boolean) {
+      syncComments = value;
+    },
+  };
 }
 
 describe('preview comment permission gating', () => {
@@ -291,6 +307,30 @@ describe('preview comment permission gating', () => {
     );
 
     expect(edit.status).toBe(404);
+    expect(api.listComments()).toHaveLength(0);
+  });
+
+  it('does not push local comment mutations when the project is no longer team-shared', async () => {
+    const api = await startServer();
+    api.setSyncComments(false);
+
+    const comment = await api.createComment('m-author', 'local after unshare');
+    expect(comment.note).toBe('local after unshare');
+    expect(api.created).toEqual([]);
+
+    const patch = await api.json(
+      `/api/projects/${PROJECT}/conversations/${CONVERSATION}/comments/${comment.id}`,
+      { method: 'PATCH', member: 'm-author', body: { status: 'applying' } },
+    );
+    expect(patch.status).toBe(200);
+    expect(api.updated).toEqual([]);
+
+    const del = await api.json(
+      `/api/projects/${PROJECT}/conversations/${CONVERSATION}/comments/${comment.id}`,
+      { method: 'DELETE', member: 'm-author' },
+    );
+    expect(del.status).toBe(200);
+    expect(api.deleted).toEqual([]);
     expect(api.listComments()).toHaveLength(0);
   });
 });

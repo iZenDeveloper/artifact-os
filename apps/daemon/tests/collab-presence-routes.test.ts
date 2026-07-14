@@ -15,12 +15,16 @@ afterEach(async () => {
   }
 });
 
-async function startPresenceServer(cloud?: CollabPresenceCloudClient) {
+async function startPresenceServer(
+  cloud?: CollabPresenceCloudClient,
+  options: { isProjectShared?: (projectId: string) => Promise<boolean> } = {},
+) {
   const app = express();
   app.use(express.json());
   registerCollabPresenceRoutes(app, {
     collab: createCollabRuntime(),
     ...(cloud ? { cloud } : {}),
+    ...(options.isProjectShared ? { isProjectShared: options.isProjectShared } : {}),
   });
   server = http.createServer(app);
   await new Promise<void>((resolve) => server!.listen(0, resolve));
@@ -135,5 +139,36 @@ describe('collab presence routes', () => {
       { op: 'list', projectId: 'p1' },
       { op: 'leave', projectId: 'p1', input: { memberId: 'm1', clientId: 'client-1' } },
     ]);
+  });
+
+  it('does not publish presence for a project that is no longer team-shared', async () => {
+    const calls: Array<{ op: string; projectId: string; input?: unknown }> = [];
+    const cloud: CollabPresenceCloudClient = {
+      async heartbeatPresence(projectId, input) {
+        calls.push({ op: 'heartbeat', projectId, input });
+        return [{ memberId: 'm1', name: 'Ada', role: 'owner' }];
+      },
+      async listPresence(projectId) {
+        calls.push({ op: 'list', projectId });
+        return [{ memberId: 'm1', name: 'Ada', role: 'owner' }];
+      },
+      async leavePresence(projectId, input) {
+        calls.push({ op: 'leave', projectId, input });
+        return [];
+      },
+    };
+    const api = await startPresenceServer(cloud, { isProjectShared: async () => false });
+
+    const list = await api.json('/api/projects/p1/presence');
+    const heartbeat = await api.json('/api/projects/p1/presence/heartbeat', {
+      method: 'POST',
+      body: { memberId: 'm1', name: 'Ada', role: 'owner' },
+    });
+
+    expect(list.status).toBe(200);
+    expect(list.body.present).toEqual([]);
+    expect(heartbeat.status).toBe(200);
+    expect(heartbeat.body.present).toEqual([]);
+    expect(calls).toEqual([]);
   });
 });

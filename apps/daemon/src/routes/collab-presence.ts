@@ -24,6 +24,7 @@ export interface CollabPresenceCloudClient {
 export interface RegisterCollabPresenceRoutesDeps {
   collab: Pick<CollabRuntime, 'presence'>;
   cloud?: CollabPresenceCloudClient | null;
+  isProjectShared?: (projectId: string) => Promise<boolean>;
 }
 
 function readHeartbeat(body: unknown): {
@@ -79,7 +80,19 @@ export function registerCollabPresenceRoutes(app: Express, deps: RegisterCollabP
   const { presence } = deps.collab;
   const cloud = deps.cloud ?? null;
 
+  async function projectIsShared(projectId: string): Promise<boolean> {
+    if (!deps.isProjectShared) return true;
+    try {
+      return await deps.isProjectShared(projectId);
+    } catch (error) {
+      return false;
+    }
+  }
+
   app.get('/api/projects/:id/presence', async (req, res) => {
+    if (!(await projectIsShared(req.params.id))) {
+      return res.json({ present: [] });
+    }
     if (cloud) {
       try {
         return res.json({ present: await cloud.listPresence(req.params.id) });
@@ -93,6 +106,9 @@ export function registerCollabPresenceRoutes(app: Express, deps: RegisterCollabP
   app.post('/api/projects/:id/presence/heartbeat', async (req, res) => {
     const heartbeat = readHeartbeat(req.body);
     if (!heartbeat) return res.status(400).json({ error: 'memberId required' });
+    if (!(await projectIsShared(req.params.id))) {
+      return res.json({ present: [] });
+    }
     if (cloud) {
       try {
         return res.json({
