@@ -1727,18 +1727,38 @@ function DesignSystemExtractionDemo({
   const selectedArtifact = DEMO_ARTIFACT_CHOICES.find((artifact) => artifact.id === artifactTypeId) ?? null;
   const showSummary = stage === 'system-review' && creationStep === 'summary';
   const showArtifactFlow = stage === 'system-review' && creationStep !== 'summary';
+  const loadingSteps = [
+    {
+      label: 'Logo',
+      state: stage === 'extracting-logo' ? 'active' : 'complete',
+    },
+    {
+      label: 'Typography',
+      state: stage === 'extracting-system' ? 'active' : 'waiting',
+    },
+    {
+      label: 'Palette',
+      state: stage === 'extracting-system' ? 'active' : 'waiting',
+    },
+  ] as const;
 
   return (
     <main
-      className={`ds-extraction-demo${showSummary ? ' ds-extraction-demo--result' : ''}${showArtifactFlow ? ' ds-extraction-demo--artifact-flow' : ''}`}
+      className={`ds-extraction-demo${showSummary ? ' ds-extraction-demo--result' : ''}${showArtifactFlow ? ' ds-extraction-demo--artifact-flow' : ''}${isLoading || stage === 'logo-review' ? ' ds-extraction-demo--focused-step' : ''}`}
       aria-live="polite"
     >
       {isLoading ? (
         <section className="ds-extraction-demo__loading">
-          <span className="ds-extraction-demo__pulse" aria-hidden="true"><Spinner size={22} /></span>
-          <p className="ds-extraction-demo__eyebrow">{stage === 'extracting-logo' ? 'First, your logo' : 'Building the foundations'}</p>
-          <h1>{stage === 'extracting-logo' ? 'Finding the most likely logo' : 'Extracting color, type, and shape'}</h1>
-          <p>Open Design is reading <strong>{sourceUrl || label}</strong> and assembling the first pass.</p>
+          <h1>{stage === 'extracting-logo' ? 'Extracting your logo' : 'Building your design system'}</h1>
+          <p>Reading <strong>{label}</strong> and preparing a first pass.</p>
+          <div className="ds-extraction-demo__scan" aria-label="Extraction progress">
+            {loadingSteps.map((item) => (
+              <div className={`is-${item.state}`} key={item.label}>
+                <span>{item.label}</span>
+                <b>{item.state === 'complete' ? 'Found' : item.state === 'active' ? 'Extracting' : 'Queued'}</b>
+              </div>
+            ))}
+          </div>
         </section>
       ) : null}
 
@@ -1747,7 +1767,6 @@ function DesignSystemExtractionDemo({
           <div className="ds-extraction-demo__logo-tile">
             <img src={logoUrl} alt={`${label} logo`} onError={(event) => { event.currentTarget.style.display = 'none'; }} />
           </div>
-          <p className="ds-extraction-demo__eyebrow">Logo detected</p>
           <h1>Does this logo look accurate?</h1>
           <p>If not, upload the right mark and we will use that instead.</p>
           <input
@@ -1769,7 +1788,7 @@ function DesignSystemExtractionDemo({
           <section className="ds-extraction-demo__result-board">
             <header className="ds-extraction-demo__result-heading">
               <h1>Design System</h1>
-              <span>Generated from {sourceUrl || label}</span>
+              <span>Generated from {label}</span>
             </header>
             <div className="ds-extraction-demo__result-grid">
               <article className="ds-extraction-demo__result-card ds-extraction-demo__result-card--logo">
@@ -1807,8 +1826,8 @@ function DesignSystemExtractionDemo({
           {canOpenProject ? (
             <footer className="ds-extraction-demo__next-step">
               <div>
-                <p>Ready for the next step?</p>
-                <span>Use this design system to create your first artifact.</span>
+                <p>Create your first artifact</p>
+                <span>Your extracted design system is already selected.</span>
               </div>
               <Button
                 variant="primary"
@@ -1952,6 +1971,13 @@ function DemoExtractedComponentKit({
     '--demo-kit-body': cssFontFamily(foundation.bodyFont ?? 'system-ui'),
   } as CSSProperties;
   const primaryText = readableTextColor(primary);
+  const displayBrandName = brandName
+    .replace(/^www\./i, '')
+    .replace(/\.[a-z]{2,}$/i, '')
+    .replace(/^./, (character) => character.toUpperCase());
+  const uniqueFontCount = new Set(
+    [foundation.displayFont, foundation.bodyFont].filter((font): font is string => Boolean(font)),
+  ).size;
 
   return (
     <section className="ds-extraction-demo__kit" style={style}>
@@ -1986,18 +2012,18 @@ function DemoExtractedComponentKit({
         </section>
         <section className="ds-extraction-demo__kit-section ds-extraction-demo__kit-section--data">
           <h3>Data display</h3>
-          <div className="ds-extraction-demo__kit-metrics"><strong>10k+<small>Teams reached</small></strong><strong>99.9%<small>Uptime SLA</small></strong><strong>4.9/5<small>Average rating</small></strong></div>
+          <div className="ds-extraction-demo__kit-metrics"><strong>{foundation.colors.length}<small>Brand colors</small></strong><strong>{uniqueFontCount}<small>Font families</small></strong><strong>1<small>Logo asset</small></strong></div>
         </section>
         <section className="ds-extraction-demo__kit-section ds-extraction-demo__kit-section--marketing">
-          <h3>Marketing blocks</h3>
+          <h3>Content blocks</h3>
           <div>
-            <blockquote>“We help teams move from idea to finished work.”<small>— Ada Lovelace, Design lead</small></blockquote>
-            <aside><strong>Pro</strong><b>$29</b><button type="button" style={{ backgroundColor: primary, color: primaryText }}>Start free trial</button></aside>
+            <blockquote>“Create with {displayBrandName}.”<small>Brand headline</small></blockquote>
+            <aside><strong>Call to action</strong><b>Ready</b><button type="button" style={{ backgroundColor: primary, color: primaryText }}>Get started</button></aside>
           </div>
         </section>
         <section className="ds-extraction-demo__kit-section ds-extraction-demo__kit-section--alerts">
-          <h3>Alerts &amp; progress</h3>
-          <p className="is-success">✓ Brand system generated</p><p className="is-warning">! Review a missing source</p><div><i style={{ backgroundColor: primary }} /></div>
+          <h3>Alerts</h3>
+          <p className="is-success">✓ Brand system generated</p><p className="is-warning">! Review source assets</p>
         </section>
         <section className="ds-extraction-demo__kit-section ds-extraction-demo__kit-section--tags">
           <h3>Tags</h3>
