@@ -112,7 +112,7 @@ describe('deck capture DOM prep', () => {
     );
   });
 
-  test('off-stage slide fallback captures the live canvas instead of a structural clone', () => {
+  test('off-stage slide fallback preserves live content across a multi-slide restore cycle', () => {
     class FakeStyle {
       cssText = '';
       private readonly values = new Map<string, { priority: string; value: string }>();
@@ -220,14 +220,21 @@ describe('deck capture DOM prep', () => {
       setAttribute(): void {}
     }
 
-    const runtimeFrame = Symbol('painted chart frame');
-    const canvas = new FakeElement();
-    canvas.runtimeFrame = runtimeFrame;
-    const slide = new FakeElement();
-    slide.style.setProperty('opacity', '1');
-    slide.appendChild(canvas);
+    const firstRuntimeFrame = Symbol('first painted chart frame');
+    const laterRuntimeFrame = Symbol('later painted chart frame');
+    const firstCanvas = new FakeElement();
+    firstCanvas.runtimeFrame = firstRuntimeFrame;
+    const laterCanvas = new FakeElement();
+    laterCanvas.runtimeFrame = laterRuntimeFrame;
+    const firstSlide = new FakeElement({ x: 1920, y: 0 });
+    firstSlide.style.setProperty('opacity', '1');
+    firstSlide.appendChild(firstCanvas);
+    const laterSlide = new FakeElement({ x: 2880, y: 0 });
+    laterSlide.style.setProperty('opacity', '0');
+    laterSlide.appendChild(laterCanvas);
     const body = new FakeElement();
-    body.appendChild(slide);
+    body.appendChild(firstSlide);
+    body.appendChild(laterSlide);
     const findById = (root: FakeElement, id: string): FakeElement | null => {
       if (root.id === id) return root;
       for (const child of root.children) {
@@ -236,11 +243,17 @@ describe('deck capture DOM prep', () => {
       }
       return null;
     };
+    const slidesInDocumentOrder = (root: FakeElement): FakeElement[] => {
+      const slides: FakeElement[] = [];
+      if (root === firstSlide || root === laterSlide) slides.push(root);
+      for (const child of root.children) slides.push(...slidesInDocumentOrder(child));
+      return slides;
+    };
     const fakeDocument = {
       body,
       createElement: () => new FakeElement({ x: 0, y: 0 }, true),
       getElementById: (id: string) => findById(body, id),
-      querySelectorAll: () => [slide],
+      querySelectorAll: () => slidesInDocumentOrder(body),
     };
     const previousDocument = globalThis.document;
     Object.assign(globalThis, { document: fakeDocument });
@@ -254,9 +267,9 @@ describe('deck capture DOM prep', () => {
       // cloneNode(true) would produce a blank canvas. The live slide must be the
       // sole paintable capture subtree so its current canvas/WebGL/media state is
       // preserved without rendering the slide's ordinary DOM twice.
-      expect(capturedSlide).toBe(slide);
-      expect(capturedSlide?.children[0]).toBe(canvas);
-      expect(capturedSlide?.children[0]?.runtimeFrame).toBe(runtimeFrame);
+      expect(capturedSlide).toBe(firstSlide);
+      expect(capturedSlide?.children[0]).toBe(firstCanvas);
+      expect(capturedSlide?.children[0]?.runtimeFrame).toBe(firstRuntimeFrame);
       // Align from the moved slide's live rect. Reusing the source rect would
       // apply the translated parent's offset a second time and move it off-screen.
       expect(offset?.style.getPropertyValue('transform')).toBe('translate(0px, 0px)');
@@ -264,11 +277,29 @@ describe('deck capture DOM prep', () => {
 
       restoreActiveSlideCapture();
       expect(findById(body, '__od_export_active_slide_capture')).toBeNull();
-      expect(body.children[0]).toBe(slide);
-      expect(slide.children[0]).toBe(canvas);
-      expect(slide.style.getPropertyValue('opacity')).toBe('1');
-      expect(slide.style.getPropertyPriority('opacity')).toBe('');
+      expect(firstSlide.children[0]).toBe(firstCanvas);
+      expect(firstSlide.style.getPropertyValue('opacity')).toBe('1');
+      expect(firstSlide.style.getPropertyPriority('opacity')).toBe('');
+
+      restackActiveSlide('.slide', 1, 960, 540);
+      const laterLayer = findById(body, '__od_export_active_slide_capture');
+      const laterOffset = laterLayer?.children[0];
+      const laterCapturedSlide = laterOffset?.children[0];
+
+      // Restoring the first slide must preserve selector order before the next
+      // off-stage capture. Otherwise index 1 can select the first slide again,
+      // leaving the later exported page blank or duplicated.
+      expect(laterCapturedSlide).toBe(laterSlide);
+      expect(laterCapturedSlide?.children[0]).toBe(laterCanvas);
+      expect(laterCapturedSlide?.children[0]?.runtimeFrame).toBe(laterRuntimeFrame);
+      expect(laterOffset?.style.getPropertyValue('transform')).toBe('translate(0px, 0px)');
+
+      restoreActiveSlideCapture();
+      expect(body.children).toEqual([firstSlide, laterSlide]);
+      expect(laterSlide.children[0]?.runtimeFrame).toBe(laterRuntimeFrame);
+      expect(laterSlide.style.getPropertyValue('opacity')).toBe('0');
     } finally {
+      restoreActiveSlideCapture();
       Object.assign(globalThis, { document: previousDocument });
     }
   });
