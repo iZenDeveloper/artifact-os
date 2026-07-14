@@ -4930,6 +4930,66 @@ describe('SettingsDialog about interactions', () => {
     expect(screen.getByText('Version 1.2.3-beta.4 is ready to install.')).toBeTruthy();
   });
 
+  it('installs a downloaded auto-replace DMG update from the about page', async () => {
+    const dmgReady = updateStatus({
+      artifact: {
+        name: 'Open Design Beta.dmg',
+        platformKey: 'macAppleSilicon',
+        type: 'dmg',
+        url: 'https://fixture.test/Open Design Beta.dmg',
+      },
+      availableVersion: '1.2.3-beta.4',
+      capabilities: {
+        canApplyInPlace: true,
+        canDownload: true,
+        canOpenInstaller: true,
+        requiresManualInstall: true,
+      },
+      downloadPath: '/tmp/open-design-updater/Open Design Beta.dmg',
+      state: 'downloaded',
+    });
+    const installing = updateStatus({
+      ...dmgReady,
+      state: 'installing',
+    });
+    const install = vi.fn(async () => installing);
+    const quit = vi.fn(async () => ({ ok: true as const }));
+    restoreOpenDesignHost = installMockOpenDesignHost({
+      host: {
+        updater: {
+          install,
+          quit,
+          status: vi.fn(async () => dmgReady),
+        },
+      },
+    });
+
+    renderSettingsDialog(
+      { mode: 'daemon', agentId: 'codex' },
+      {
+        initialSection: 'about',
+        appVersionInfo: {
+          version: '1.2.3-beta.3',
+          channel: 'beta',
+          packaged: true,
+          platform: 'darwin',
+          arch: 'arm64',
+        },
+      },
+    );
+
+    expect(await screen.findByText('Version 1.2.3-beta.4 is ready to install.')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: en['updater.installRestart'] }));
+
+    await waitFor(() => {
+      expect(install).toHaveBeenCalledWith({ payload: { source: 'settings-about' } });
+    });
+    await waitFor(() => {
+      expect(quit).toHaveBeenCalledWith({ payload: { source: 'settings-about' } });
+    });
+  });
+
   it('installs a downloaded payload update from the about page', async () => {
     const payloadReady = updateStatus({
       artifact: {

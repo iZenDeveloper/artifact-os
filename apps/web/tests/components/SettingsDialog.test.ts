@@ -186,6 +186,39 @@ describe('SettingsDialog about update control', () => {
     });
   });
 
+  it('offers install and restart when an auto-replace DMG has already downloaded', () => {
+    const control = deriveAboutUpdateControl(
+      deriveUpdaterModel(
+        updateStatus({
+          artifact: {
+            name: 'Open Design Beta.dmg',
+            platformKey: 'macAppleSilicon',
+            type: 'dmg',
+            url: 'https://fixture.test/Open Design Beta.dmg',
+          },
+          availableVersion: '1.2.3-beta.4',
+          capabilities: {
+            canApplyInPlace: true,
+            canDownload: true,
+            canOpenInstaller: true,
+            requiresManualInstall: true,
+          },
+          downloadPath: '/tmp/open-design-updater/Open Design Beta.dmg',
+          state: 'downloaded',
+        }),
+        { hostAvailable: true },
+      ),
+      packagedVersion,
+    );
+
+    expect(control).toMatchObject({
+      primaryAction: 'install',
+      primaryLabelKey: 'updater.installRestart',
+      statusKey: 'settings.updateStatusReady',
+      statusVars: { version: '1.2.3-beta.4' },
+    });
+  });
+
   it('offers install and restart when a payload update has already downloaded', () => {
     const control = deriveAboutUpdateControl(
       deriveUpdaterModel(
