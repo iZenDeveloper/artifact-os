@@ -182,6 +182,59 @@ const acceptedFinalTraceBodyIds = new Map<
 >();
 
 /**
+ * Process-local set of runs whose final-purpose telemetry delivery is still
+ * in flight. createFinalizedMessageTelemetryReporter marks the message
+ * `telemetry_finalized` before reportRunCompleted can call
+ * rememberAcceptedFinalTraceBodyId; feedback during that window must wait.
+ *
+ * Absent from this set means there is no completer that will flush a deferred
+ * score (cold start, pre-migration row, or delivery already finished without
+ * an accepted anchor) — do not queue forever on those rows.
+ */
+const runsAwaitingFinalAcceptance = new Set<string>();
+
+/**
+ * Mark a run as having a final-purpose telemetry delivery in flight so
+ * feedback can defer until rememberAcceptedFinalTraceBodyId (or clear).
+ */
+export function markRunAwaitingFinalAcceptance(runId: string): void {
+  const key = typeof runId === 'string' ? runId.trim() : '';
+  if (key) runsAwaitingFinalAcceptance.add(key);
+}
+
+/**
+ * End the live finalization wait for a run.
+ *
+ * When an accepted body was never recorded, any deferred feedback is released
+ * onto the canonical runId (legacy cold / failed-finalization path) instead of
+ * remaining in pendingRunFeedbackByRunId until process exit.
+ */
+export function clearRunAwaitingFinalAcceptance(runId: string): void {
+  const key = typeof runId === 'string' ? runId.trim() : '';
+  if (!key) return;
+  if (!runsAwaitingFinalAcceptance.delete(key)) return;
+  // Accepted anchors already flushed via rememberAcceptedFinalTraceBodyId
+  // (which clears this set first). Remaining queue entries have no completer.
+  if (acceptedFinalTraceBodyIds.has(key)) return;
+  const pending = pendingRunFeedbackByRunId.get(key);
+  if (!pending) return;
+  pendingRunFeedbackByRunId.delete(key);
+  void reportRunFeedback(
+    {
+      ...pending.ctx,
+      // Never invent `:tf` without acceptance; canonical is the legacy target.
+      traceId: key,
+    },
+    pending.opts,
+  ).catch((err) => {
+    console.warn(
+      '[langfuse-trace] legacy/canonical deferred feedback flush failed:',
+      String(err),
+    );
+  });
+}
+
+/**
  * Stable fingerprint for the Vela account that accepted a final-purpose body.
  * Profile name + truncated Control Key hash (never the raw key).
  */
@@ -231,6 +284,9 @@ export function rememberAcceptedFinalTraceBodyId(
     ...(channel ? { deliveryChannel: channel } : {}),
     ...(identity ? { velaIdentity: identity } : {}),
   });
+  // End the live-finalization wait before flushing so a concurrent clear does
+  // not double-ship the same deferred score on the canonical body.
+  runsAwaitingFinalAcceptance.delete(key);
   // Replay any feedback that arrived during the terminal_fallback delay (or
   // before final_message acceptance) onto the body that was actually accepted.
   // Keep the queue after terminal_fallback so a later final_message can re-
@@ -262,6 +318,7 @@ export function getAcceptedFinalVelaIdentity(runId: string): string | null {
 /** Test-only: clear the accepted-final-trace registry between cases. */
 export function resetAcceptedFinalTraceBodyIdsForTests(): void {
   acceptedFinalTraceBodyIds.clear();
+  runsAwaitingFinalAcceptance.clear();
 }
 
 type PendingRunFeedbackEntry = {
@@ -283,9 +340,16 @@ const pendingRunFeedbackByRunId = new Map<string, PendingRunFeedbackEntry>();
  * Defer when no accepted body is known yet (process-local or persisted) and
  * either:
  * - the run failed/canceled (terminal_fallback delay window), or
- * - the message is already telemetry-finalized (live finalization race:
- *   createFinalizedMessageTelemetryReporter marks finalized before
- *   reportRunCompleted / rememberAcceptedFinalTraceBodyId records the anchor).
+ * - the message is telemetry-finalized *and* this process still has a final-
+ *   purpose delivery in flight (`markRunAwaitingFinalAcceptance`): the live
+ *   race where createFinalizedMessageTelemetryReporter marks finalized before
+ *   reportRunCompleted / rememberAcceptedFinalTraceBodyId records the anchor.
+ *
+ * Cold finalized rows with no accepted body (pre-migration, never-persisted
+ * anchors, or delivery already finished without accept) are NOT deferred —
+ * there is no completer to flush a queue, so scores ship on the canonical
+ * runId (or skip via sink eligibility) instead of sitting in
+ * pendingRunFeedbackByRunId until process exit.
  *
  * Once any body has been accepted — or the caller already pinned an explicit
  * `traceId` — send now so scores attach to the known body/channel.
@@ -307,9 +371,12 @@ export function shouldDeferRunFeedback(input: {
       ? input.acceptedTraceBodyId.trim()
       : '';
   if (accepted) return false;
-  // Finalized-without-accepted is the live finalization race, not "safe to
-  // ship on a guessed channel". Queue until rememberAcceptedFinalTraceBodyId.
-  if (input.telemetryFinalized === true) return true;
+  // Finalized-without-accepted is only the live finalization race while a
+  // completer is still in flight. Cold/legacy finalized rows have no pending
+  // rememberAcceptedFinalTraceBodyId — do not queue them forever.
+  if (input.telemetryFinalized === true) {
+    return runsAwaitingFinalAcceptance.has(runId);
+  }
   return input.runStatus === 'failed' || input.runStatus === 'canceled';
 }
 
@@ -412,6 +479,7 @@ function flushPendingRunFeedback(
 /** Test-only: clear deferred feedback between cases. */
 export function resetPendingRunFeedbackForTests(): void {
   pendingRunFeedbackByRunId.clear();
+  runsAwaitingFinalAcceptance.clear();
 }
 
 /**

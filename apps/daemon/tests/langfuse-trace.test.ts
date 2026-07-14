@@ -16,6 +16,7 @@ import {
   readLegacyAnonymousAcceptedSinkConfig,
   readTelemetrySinkConfig,
   readTelemetrySinkConfigForChannel,
+  markRunAwaitingFinalAcceptance,
   rememberAcceptedFinalTraceBodyId,
   reportRunCompleted,
   reportRunFeedback,
@@ -3831,9 +3832,11 @@ describe('reportRunFeedback', () => {
 
   it('defers feedback when telemetryFinalized without an accepted anchor yet', () => {
     // Live finalization race: message row is finalized before reportRunCompleted
-    // persists acceptedTraceBodyId / acceptedDeliveryChannel.
+    // persists acceptedTraceBodyId / acceptedDeliveryChannel — only while this
+    // process still has a final-purpose delivery in flight.
     resetAcceptedFinalTraceBodyIdsForTests();
     resetPendingRunFeedbackForTests();
+    markRunAwaitingFinalAcceptance('run-finalized-no-anchor');
     expect(
       shouldDeferRunFeedback({
         runId: 'run-finalized-no-anchor',
@@ -3847,6 +3850,14 @@ describe('reportRunFeedback', () => {
         runStatus: 'succeeded',
         telemetryFinalized: true,
         acceptedTraceBodyId: 'run-finalized-with-body',
+      }),
+    ).toBe(false);
+    // Cold finalized/no-anchor (no in-flight completer) must not queue forever.
+    expect(
+      shouldDeferRunFeedback({
+        runId: 'run-cold-finalized-no-anchor',
+        runStatus: 'succeeded',
+        telemetryFinalized: true,
       }),
     ).toBe(false);
     // Unscoped feedback (no status / finalized signal) still ships immediately.

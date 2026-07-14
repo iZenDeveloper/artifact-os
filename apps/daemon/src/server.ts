@@ -385,7 +385,11 @@ import {
   snapshotAiHtmlVersionsForRun,
 } from './run-html-version-snapshots.js';
 import { reportRunCompletedFromDaemon } from './langfuse-bridge.js';
-import { scopedTelemetryBodyId } from './langfuse-trace.js';
+import {
+  clearRunAwaitingFinalAcceptance,
+  markRunAwaitingFinalAcceptance,
+  scopedTelemetryBodyId,
+} from './langfuse-trace.js';
 import { buildPromptStackTelemetry } from './prompt-telemetry.js';
 import { readAnalyticsContext } from './analytics.js';
 import {
@@ -1541,40 +1545,52 @@ export function createFinalizedMessageTelemetryReporter({
     if (reportTrigger !== 'terminal_fallback') {
       reportedRuns.add(run.id);
     }
+    // Cover the live finalization race: message is already telemetry_finalized
+    // before async reportRunCompleted can rememberAcceptedFinalTraceBodyId.
+    // Feedback during this window defers; cold finalized/no-anchor rows without
+    // this mark ship on the canonical body instead of queueing forever.
+    markRunAwaitingFinalAcceptance(run.id);
     void (async () => {
       const start = Date.now();
-      const delivery = await report({
-        db,
-        dataDir,
-        run,
-        persistedRunStatus: saved.runStatus,
-        persistedEndedAt: saved.endedAt,
-        appVersion: getAppVersion(),
-        reportTrigger,
-      });
-      const state = delivery ?? {
-        langfuse_expected: true,
-        langfuse_delivery_status: 'accepted',
-      };
-      captureResult({
-        analyticsContext: options.analyticsContext,
-        conversationId: options.conversationId ?? saved.conversationId,
-        delivery: state,
-        durationMs: Date.now() - start,
-        projectId: options.projectId,
-        reportTrigger,
-        reportResult: state.langfuse_expected === false
-          ? 'skipped'
-          : state.langfuse_delivery_status === 'accepted'
-            ? 'accepted'
-            : state.langfuse_delivery_status === 'failed'
-              ? 'failed'
-              : 'skipped',
-        run,
-        runId: run.id,
-        skipReason: state.langfuse_expected === false ? 'not_expected' : undefined,
-        status: saved.runStatus,
-      });
+      try {
+        const delivery = await report({
+          db,
+          dataDir,
+          run,
+          persistedRunStatus: saved.runStatus,
+          persistedEndedAt: saved.endedAt,
+          appVersion: getAppVersion(),
+          reportTrigger,
+        });
+        const state = delivery ?? {
+          langfuse_expected: true,
+          langfuse_delivery_status: 'accepted',
+        };
+        captureResult({
+          analyticsContext: options.analyticsContext,
+          conversationId: options.conversationId ?? saved.conversationId,
+          delivery: state,
+          durationMs: Date.now() - start,
+          projectId: options.projectId,
+          reportTrigger,
+          reportResult: state.langfuse_expected === false
+            ? 'skipped'
+            : state.langfuse_delivery_status === 'accepted'
+              ? 'accepted'
+              : state.langfuse_delivery_status === 'failed'
+                ? 'failed'
+                : 'skipped',
+          run,
+          runId: run.id,
+          skipReason: state.langfuse_expected === false ? 'not_expected' : undefined,
+          status: saved.runStatus,
+        });
+      } finally {
+        // On accept, rememberAcceptedFinalTraceBodyId already cleared the mark
+        // and flushed deferred scores. On failure/skip, release any queue onto
+        // the canonical body so scores are not stranded until process exit.
+        clearRunAwaitingFinalAcceptance(run.id);
+      }
     })();
   };
 }

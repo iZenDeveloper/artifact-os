@@ -8,6 +8,7 @@ import {
   reportRunFeedbackFromDaemon,
 } from '../src/langfuse-bridge.js';
 import {
+  markRunAwaitingFinalAcceptance,
   rememberAcceptedFinalTraceBodyId,
   reportRunCompleted,
   resetAcceptedFinalTraceBodyIdsForTests,
@@ -2425,6 +2426,8 @@ describe('langfuse-bridge.reportRunFeedbackFromDaemon', () => {
     // reportRunCompleted persists an accepted body/channel. Immediate thumbs
     // on a just-finished successful final_message must not take the legacy
     // anonymous path (Vela-only → skipped_no_sink) or ship on a guessed sink.
+    // markRunAwaitingFinalAcceptance is what distinguishes this live race from
+    // cold finalized/no-anchor rows that must not queue forever.
     await writeAppCfg({
       installationId: 'install-uuid-1',
       telemetry: { metrics: true, content: true },
@@ -2434,6 +2437,7 @@ describe('langfuse-bridge.reportRunFeedbackFromDaemon', () => {
     // Vela-only: no relay / direct Langfuse.
     const fetchSpy = vi.fn().mockResolvedValue(new Response('', { status: 202 }));
     const runId = 'run-live-finalization-race';
+    markRunAwaitingFinalAcceptance(runId);
     const db = {
       prepare: (sql: string) => {
         if (
@@ -2477,6 +2481,59 @@ describe('langfuse-bridge.reportRunFeedbackFromDaemon', () => {
     expect(String(fetchSpy.mock.calls[0]![0])).toContain(
       '/api/v1/open-design/telemetry',
     );
+  });
+
+  it('ships cold finalized/no-anchor feedback on the canonical body (no indefinite defer)', async () => {
+    // Pre-migration or never-accepted rows: telemetry_finalized_at set, no
+    // accepted body/channel, and no in-flight markRunAwaitingFinalAcceptance.
+    // Must not sit in pendingRunFeedbackByRunId until process exit.
+    await writeAppCfg({
+      installationId: 'install-uuid-1',
+      telemetry: { metrics: true, content: true },
+    });
+    process.env.LANGFUSE_PUBLIC_KEY = 'pk';
+    process.env.LANGFUSE_SECRET_KEY = 'sk';
+    const fetchSpy = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ successes: [], errors: [] }), { status: 207 }),
+      );
+    const runId = 'run-cold-finalized-no-anchor';
+    const db = {
+      prepare: (sql: string) => {
+        if (
+          sql.includes('telemetry_accepted_body_id') ||
+          sql.includes('run_telemetry_accepted_anchors')
+        ) {
+          return {
+            get: () => ({
+              runStatus: 'succeeded',
+              telemetryFinalizedAt: Date.now() - 60_000,
+              acceptedTraceBodyId: null,
+              acceptedReportTrigger: null,
+              acceptedDeliveryChannel: null,
+            }),
+          };
+        }
+        return { get: () => undefined, run: () => ({ changes: 0 }), all: () => [] };
+      },
+    };
+    const outcome = await reportRunFeedbackFromDaemon({
+      dataDir,
+      runId,
+      rating: 'positive',
+      reasonCodes: [],
+      hasCustomReason: false,
+      customReason: '',
+      db,
+      fetchImpl: fetchSpy as any,
+    });
+    expect(outcome).toEqual({ status: 'accepted' });
+    await vi.waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalled();
+    });
+    const body = JSON.parse(fetchSpy.mock.calls[0]![1].body as string);
+    expect(body.batch[0].body.traceId).toBe(runId);
   });
 
   it('replays the latest mid-window re-rating onto final_message after terminal_fallback', async () => {
