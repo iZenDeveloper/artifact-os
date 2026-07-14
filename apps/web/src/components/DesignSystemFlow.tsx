@@ -1724,7 +1724,6 @@ function DesignSystemExtractionDemo({
   const isLoading = stage === 'extracting-logo' || stage === 'extracting-system';
   const resultFoundation = foundation ?? demoFoundationFromSource(sourceUrl);
   const [creationStep, setCreationStep] = useState<'summary' | 'artifact' | 'compose'>('summary');
-  const selectedArtifact = DEMO_ARTIFACT_CHOICES.find((artifact) => artifact.id === artifactTypeId) ?? null;
   const showSummary = stage === 'system-review' && creationStep === 'summary';
   const showArtifactFlow = stage === 'system-review' && creationStep !== 'summary';
   const loadingSteps = [
@@ -1852,30 +1851,22 @@ function DesignSystemExtractionDemo({
             <p>Choose an artifact to create with your new design system.</p>
           </header>
           <div className="ds-artifact-picker__grid">
-            {DEMO_ARTIFACT_CHOICES.map((artifact) => {
-              const selected = artifact.id === artifactTypeId;
-              return (
-                <button
-                  type="button"
-                  key={artifact.id}
-                  className={`ds-artifact-choice${selected ? ' is-selected' : ''}`}
-                  aria-pressed={selected}
-                  onClick={() => onArtifactTypeChange(artifact.id)}
-                >
-                  <Icon name={artifact.icon} size={22} />
-                  <strong>{artifact.label}</strong>
-                  <span>{artifact.description ?? artifact.hint}</span>
-                </button>
-              );
-            })}
+            {DEMO_ARTIFACT_CHOICES.map((artifact) => (
+              <button
+                type="button"
+                key={artifact.id}
+                className="ds-artifact-choice"
+                onClick={() => {
+                  onArtifactTypeChange(artifact.id);
+                  setCreationStep('compose');
+                }}
+              >
+                <Icon name={artifact.icon} size={22} />
+                <strong>{artifact.label}</strong>
+                <span>{artifact.description ?? artifact.hint}</span>
+              </button>
+            ))}
           </div>
-          <Button
-            variant="primary"
-            disabled={!selectedArtifact}
-            onClick={() => setCreationStep('compose')}
-          >
-            Continue
-          </Button>
         </section>
       ) : null}
 

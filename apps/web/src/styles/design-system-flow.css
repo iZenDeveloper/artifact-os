@@ -686,11 +686,6 @@
   background: color-mix(in srgb, var(--bg-panel) 95%, var(--text-strong) 5%);
   transform: translateY(-2px);
 }
-.ds-artifact-choice.is-selected {
-  border-color: var(--text-strong);
-  background: color-mix(in srgb, var(--bg-panel) 92%, var(--text-strong) 8%);
-  box-shadow: inset 0 0 0 1px var(--text-strong);
-}
 .ds-artifact-choice .od-icon {
   grid-row: 1 / span 2;
   align-self: start;
@@ -705,11 +700,6 @@
   font-size: 12px;
   line-height: 1.35;
 }
-.ds-artifact-picker > button {
-  min-width: 160px;
-  margin-top: 20px;
-}
-
 @media (max-width: 760px) {
   .ds-extraction-demo--result {
     padding-top: 96px;
