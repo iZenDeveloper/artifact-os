@@ -1579,14 +1579,40 @@ export function upsertMessage(db: SqliteDb, conversationId: string, m: DbRow) {
   return row ? normalizeMessage(row) : null;
 }
 
-export function getMessageTelemetryFinalizationState(db: SqliteDb, messageId: string) {
-  const row = db
-    .prepare(
-      `SELECT telemetry_finalized_at AS telemetryFinalizedAt
-         FROM messages
-        WHERE id = ?`,
-    )
-    .get(messageId) as DbRow | undefined;
+/**
+ * Read the assistant message's telemetry finalization gate.
+ *
+ * When `runId` is provided, the lookup is run-scoped (`id` + `run_id`). The
+ * delayed terminal_fallback timer must pass the run that scheduled it: after
+ * a side-chat retry rebinds the same assistant row to a newer run, the old
+ * run's timer must not observe the new run's `telemetry_finalized_at` and
+ * skip reporting.
+ */
+export function getMessageTelemetryFinalizationState(
+  db: SqliteDb,
+  messageId: string,
+  runId?: string | null,
+) {
+  const normalizedRunId =
+    typeof runId === 'string' && runId.trim() ? runId.trim() : null;
+  const row = (
+    normalizedRunId
+      ? db
+          .prepare(
+            `SELECT telemetry_finalized_at AS telemetryFinalizedAt
+               FROM messages
+              WHERE id = ?
+                AND run_id = ?`,
+          )
+          .get(messageId, normalizedRunId)
+      : db
+          .prepare(
+            `SELECT telemetry_finalized_at AS telemetryFinalizedAt
+               FROM messages
+              WHERE id = ?`,
+          )
+          .get(messageId)
+  ) as DbRow | undefined;
   if (!row) {
     return {
       exists: false,

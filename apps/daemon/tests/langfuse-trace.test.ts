@@ -3689,4 +3689,95 @@ describe('reportRunFeedback', () => {
     expect(feedbackBody.batch[0].body.id).toBe(`${expectedTraceId}-rating`);
     expect(feedbackBody.batch[0].body.traceId).not.toBe(runId);
   });
+
+  it('replays deferred feedback onto final_message after terminal_fallback was accepted first', async () => {
+    // feedback during delay → terminal_fallback accepted → final_message accepted.
+    // The score must re-attach to the canonical body once final_message wins;
+    // flushing (and deleting) only on the first acceptance would leave it on :tf.
+    resetAcceptedFinalTraceBodyIdsForTests();
+    resetPendingRunFeedbackForTests();
+    const runId = 'run-feedback-tf-then-final';
+    const fallbackTraceId = scopedTelemetryBodyId(runId, 'final', 'terminal_fallback');
+    const fetchSpy = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ successes: [], errors: [] }), { status: 207 }),
+    );
+
+    expect(
+      shouldDeferRunFeedback({
+        runId,
+        runStatus: 'failed',
+        telemetryFinalized: false,
+      }),
+    ).toBe(true);
+    await reportRunFeedback(
+      makeFeedbackCtx({
+        runId,
+        runStatus: 'failed',
+        telemetryFinalized: false,
+        reasonCodes: [],
+      }),
+      { config: TEST_CONFIG, fetchImpl: fetchSpy as any },
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    const fallbackCompleted = await reportRunCompleted(
+      makeCtx({
+        prefs: { metrics: true, content: true, artifactManifest: false },
+        run: {
+          runId,
+          status: 'failed',
+          startedAt: 1_700_000_000_000,
+          endedAt: 1_700_000_001_000,
+        },
+      }),
+      {
+        config: TEST_CONFIG,
+        fetchImpl: fetchSpy as any,
+        reportTrigger: 'terminal_fallback',
+      },
+    );
+    expect(fallbackCompleted).toEqual({
+      langfuse_expected: true,
+      langfuse_delivery_status: 'accepted',
+    });
+    await vi.waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+    });
+    const afterFallbackScore = JSON.parse(
+      fetchSpy.mock.calls[1]![1].body as string,
+    );
+    expect(afterFallbackScore.batch[0].body.traceId).toBe(fallbackTraceId);
+
+    const finalCompleted = await reportRunCompleted(
+      makeCtx({
+        prefs: { metrics: true, content: true, artifactManifest: false },
+        run: {
+          runId,
+          status: 'failed',
+          startedAt: 1_700_000_000_000,
+          endedAt: 1_700_000_002_000,
+        },
+      }),
+      {
+        config: TEST_CONFIG,
+        fetchImpl: fetchSpy as any,
+        reportTrigger: 'final_message',
+      },
+    );
+    expect(finalCompleted).toEqual({
+      langfuse_expected: true,
+      langfuse_delivery_status: 'accepted',
+    });
+    await vi.waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledTimes(4);
+    });
+
+    const finalScoreBody = JSON.parse(fetchSpy.mock.calls[3]![1].body as string);
+    expect(finalScoreBody.batch).toHaveLength(1);
+    expect(finalScoreBody.batch[0].type).toBe('score-create');
+    expect(finalScoreBody.batch[0].body.traceId).toBe(runId);
+    expect(finalScoreBody.batch[0].body.id).toBe(`${runId}-rating`);
+    expect(finalScoreBody.batch[0].body.traceId).not.toBe(fallbackTraceId);
+    expect(resolveFeedbackTraceId({ runId })).toBe(runId);
+  });
 });

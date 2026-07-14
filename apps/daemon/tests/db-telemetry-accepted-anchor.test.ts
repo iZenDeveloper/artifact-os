@@ -499,6 +499,78 @@ describe('persisted telemetry accepted anchor', () => {
     });
   });
 
+  it('run-scoped finalization lookup keeps failed run A eligible after row reuse + B finalize', () => {
+    // Overlapping sequence the message-id-only gate misses:
+    // failed A schedules terminal_fallback → same assistant row rebinds to B →
+    // B finalizes before A's timer fires. A's delayed check must pass run.id
+    // so it does not observe B's telemetry_finalized_at and skip reporting.
+    const oldRunId = 'run-a-failed-pending-fallback';
+    const newRunId = 'run-b-reused-and-finalized';
+    const db = openDatabase(tempDir, { dataDir: tempDir });
+    const now = Date.now();
+    insertProject(db, {
+      id: 'proj-1',
+      name: 'Telemetry project',
+      createdAt: now,
+      updatedAt: now,
+    });
+    insertConversation(db, {
+      id: 'conv-1',
+      projectId: 'proj-1',
+      title: 'Telemetry run',
+      createdAt: now,
+      updatedAt: now,
+    });
+    // A failed without finalization yet (fallback delay still open).
+    upsertMessage(db, 'conv-1', {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: 'partial A',
+      runId: oldRunId,
+      runStatus: 'failed',
+      telemetryFinalized: false,
+      endedAt: now,
+    });
+    expect(
+      getMessageTelemetryFinalizationState(db, 'assistant-1', oldRunId),
+    ).toEqual({
+      exists: true,
+      finalizedAt: null,
+    });
+
+    // Rebind the same assistant row to B and finalize B.
+    pinAssistantMessageOnRunCreate(db, {
+      id: newRunId,
+      conversationId: 'conv-1',
+      assistantMessageId: 'assistant-1',
+      status: 'running',
+      createdAt: now + 1,
+    });
+    upsertMessage(db, 'conv-1', {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: 'final B',
+      runId: newRunId,
+      runStatus: 'succeeded',
+      telemetryFinalized: true,
+      endedAt: now + 2,
+    });
+
+    // Message-id-only lookup sees B's finalized_at (the bug surface).
+    expect(getMessageTelemetryFinalizationState(db, 'assistant-1').finalizedAt).not.toBeNull();
+    // Run-scoped A no longer owns the row → gate open for A's delayed fallback.
+    expect(
+      getMessageTelemetryFinalizationState(db, 'assistant-1', oldRunId),
+    ).toEqual({
+      exists: false,
+      finalizedAt: null,
+    });
+    // Run-scoped B correctly sees finalization and would skip a redundant fallback.
+    expect(
+      getMessageTelemetryFinalizationState(db, 'assistant-1', newRunId).finalizedAt,
+    ).not.toBeNull();
+  });
+
   it('accepted write with stale assistantMessageId still lands on the run row after restart', () => {
     const runId = 'run-stale-write';
     const otherRunId = 'run-other-stale-write';

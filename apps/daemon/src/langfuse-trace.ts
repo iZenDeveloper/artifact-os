@@ -183,7 +183,9 @@ export function rememberAcceptedFinalTraceBodyId(
   });
   // Replay any feedback that arrived during the terminal_fallback delay (or
   // before final_message acceptance) onto the body that was actually accepted.
-  flushPendingRunFeedback(key, acceptedBodyId);
+  // Keep the queue after terminal_fallback so a later final_message can re-
+  // attach the same score to the canonical body when it wins the anchor.
+  flushPendingRunFeedback(key, acceptedBodyId, reportTrigger);
 }
 
 /** Test-only: clear the accepted-final-trace registry between cases. */
@@ -242,13 +244,23 @@ export function queuePendingRunFeedback(
   pendingRunFeedbackByRunId.set(key, { ctx, opts });
 }
 
-function flushPendingRunFeedback(runId: string, acceptedBodyId: string): void {
+function flushPendingRunFeedback(
+  runId: string,
+  acceptedBodyId: string,
+  reportTrigger: TelemetryReportTrigger,
+): void {
   const key = runId.trim();
   const bodyId = acceptedBodyId.trim();
   if (!key || !bodyId) return;
   const pending = pendingRunFeedbackByRunId.get(key);
   if (!pending) return;
-  pendingRunFeedbackByRunId.delete(key);
+  // Drop the queue only once final_message owns the anchor. A terminal_fallback
+  // acceptance may be followed by a later final_message that prefers the
+  // canonical body; deleting here would permanently leave the only score on
+  // `runId:tf`.
+  if (reportTrigger === 'final_message') {
+    pendingRunFeedbackByRunId.delete(key);
+  }
   void reportRunFeedback(
     {
       ...pending.ctx,
@@ -2978,6 +2990,22 @@ export async function reportRunFeedback(
   ) {
     queuePendingRunFeedback(ctx, opts);
     return;
+  }
+
+  // After terminal_fallback is accepted, live re-ratings ship immediately onto
+  // `:tf` but must also refresh the deferred queue so a later final_message
+  // re-attach uses the latest score (not a stale pre-fallback rating).
+  // Skip when the caller already pinned a body id (flush path) — those
+  // deliveries must not overwrite the unpinned deferred entry.
+  const runKey = typeof ctx.runId === 'string' ? ctx.runId.trim() : '';
+  const explicitTrace =
+    typeof ctx.traceId === 'string' ? ctx.traceId.trim() : '';
+  if (
+    runKey &&
+    !explicitTrace &&
+    acceptedFinalTraceBodyIds.get(runKey)?.reportTrigger === 'terminal_fallback'
+  ) {
+    queuePendingRunFeedback(ctx, opts);
   }
 
   let batch: unknown[];

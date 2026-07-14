@@ -2519,7 +2519,14 @@ export async function startServer({
     const timer = setTimeout(() => {
       if (reportedRuns.has(run.id)) return;
       if (run.assistantMessageId) {
-        const messageTelemetry = getMessageTelemetryFinalizationState(db, run.assistantMessageId);
+        // Run-scoped: a later run may reuse this assistant row and finalize
+        // before our delayed fallback fires. Message-id-only lookup would see
+        // the new run's finalized_at and drop this run's terminal_fallback.
+        const messageTelemetry = getMessageTelemetryFinalizationState(
+          db,
+          run.assistantMessageId,
+          run.id,
+        );
         if (messageTelemetry.finalizedAt !== null) return;
       }
       reportFinalizedMessage(
