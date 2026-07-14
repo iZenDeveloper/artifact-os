@@ -257,6 +257,45 @@ describe('splitOnQuestionForms', () => {
       expect(out[1].form.id).toBe('x');
     }
   });
+
+  it('unwinds a false-positive open tag mentioned in prose and re-parses the real form', () => {
+    // Model mentioned the tag name inside backtick-quoted prose before
+    // emitting the real form — the first open match must not consume the real
+    // close tag, or the real form is lost.
+    const input =
+      `my first output should be \`<question-form id="discovery">\`.\n\n` +
+      `Let me write a custom form:\n\n` +
+      `<question-form id="discovery" title="Quick brief">${VALID_BODY}</question-form>\n\n` +
+      `Now I'll proceed.`;
+    const out = splitOnQuestionForms(input);
+    expect(out.map((s) => s.kind)).toEqual(['text', 'text', 'form', 'text']);
+    if (out[2]?.kind === 'form') {
+      expect(out[2].form.id).toBe('discovery');
+      expect(out[2].form.questions).toHaveLength(1);
+    }
+    // Segments must reconstruct the input without gaps or duplication.
+    const reconstructed = out
+      .map((s) => (s.kind === 'form' ? (s as { raw: string }).raw : (s as { text: string }).text))
+      .join('');
+    expect(reconstructed).toBe(input);
+  });
+
+  it('unwinds a tag-name mismatch — prose mentions <ask-question> but the real form is <question-form>', () => {
+    const input =
+      `In your output you'll see \`<ask-question>\` tags.\n\n` +
+      `<question-form id="real" title="Brief">${VALID_BODY}</question-form>\n\n` +
+      `Done.`;
+    const out = splitOnQuestionForms(input);
+    expect(out.map((s) => s.kind)).toEqual(['text', 'text', 'form', 'text']);
+    if (out[2]?.kind === 'form') {
+      expect(out[2].form.id).toBe('real');
+      expect(out[2].form.questions).toHaveLength(1);
+    }
+    const reconstructed = out
+      .map((s) => (s.kind === 'form' ? (s as { raw: string }).raw : (s as { text: string }).text))
+      .join('');
+    expect(reconstructed).toBe(input);
+  });
 });
 
 describe('parsePartialQuestionForm (true token-by-token streaming)', () => {
