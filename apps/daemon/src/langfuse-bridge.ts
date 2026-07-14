@@ -18,6 +18,7 @@ import { agentCliEnvForAgent, readAppConfig } from './app-config.js';
 import type { AppVersionInfo } from './app-version.js';
 import { listMessages } from './db.js';
 import {
+  canDeliverRunFeedback,
   deriveLangfuseDeliveryState,
   readTelemetrySinkConfig,
   reportRunCompleted,
@@ -1188,15 +1189,17 @@ export async function reportRunFeedbackFromDaemon(
   }
   // Pre-resolve the sink before claiming `accepted`. Avoids advertising a
   // successful enqueue to callers when there's no Langfuse endpoint
-  // configured to ship the score to.
+  // configured to ship the score to. Share eligibility with reportRunFeedback:
+  // a Vela sink still needs installationId (or an anonymous fallback).
   const configuredEnv = agentCliEnvForAgent(cfg.agentCliEnv, 'amr');
   const sink = readTelemetrySinkConfig(process.env, configuredEnv);
-  if (!sink) {
+  const installationId = cfg.installationId ?? null;
+  if (!canDeliverRunFeedback(sink, installationId)) {
     return { status: 'skipped_no_sink' };
   }
   const ctx: FeedbackReportContext = {
     runId: opts.runId,
-    installationId: cfg.installationId ?? null,
+    installationId,
     prefs,
     rating: opts.rating,
     reasonCodes: opts.reasonCodes,

@@ -530,6 +530,28 @@ export function readTelemetrySinkConfig(
   );
 }
 
+/**
+ * Whether feedback telemetry can actually be delivered for this sink +
+ * installation. Shared by the daemon preflight (`accepted` vs
+ * `skipped_no_sink`) and `reportRunFeedback` so both use the same rule:
+ * a resolved Vela sink still requires a non-empty installationId, otherwise
+ * delivery falls back to the anonymous sink (or is undeliverable when that
+ * is also missing).
+ */
+export function canDeliverRunFeedback(
+  sink: TelemetrySinkConfig | null,
+  installationId: string | null | undefined,
+  env: NodeJS.ProcessEnv = process.env,
+): sink is TelemetrySinkConfig {
+  if (!sink) return false;
+  if (sink.kind === 'vela') {
+    const id = installationId?.trim() ?? '';
+    if (id) return true;
+    return readAnonymousTelemetrySinkConfig(env) != null;
+  }
+  return true;
+}
+
 export function deriveLangfuseDeliveryState(
   prefs: TelemetryPrefs,
   sink: TelemetrySinkConfig | null,
@@ -2570,7 +2592,9 @@ export async function reportRunFeedback(
   if (ctx.prefs.content !== true) return;
 
   const config = resolveReportConfig(opts);
-  if (!config) return;
+  // Same eligibility as reportRunFeedbackFromDaemon preflight: Vela without
+  // installationId only ships when an anonymous sink is available.
+  if (!canDeliverRunFeedback(config, ctx.installationId)) return;
 
   let batch: unknown[];
   try {
@@ -2594,6 +2618,7 @@ export async function reportRunFeedback(
   if (config.kind === 'vela') {
     const installationId = ctx.installationId?.trim() ?? '';
     if (!installationId) {
+      // canDeliverRunFeedback already verified anonymous fallback exists.
       const fallback = readAnonymousTelemetrySinkConfig();
       if (!fallback) return;
       await postAnonymousBatch(fallback, batch, serialized, fetchImpl);

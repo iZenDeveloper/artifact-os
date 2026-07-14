@@ -3,7 +3,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { reportRunCompletedFromDaemon } from '../src/langfuse-bridge.js';
+import {
+  reportRunCompletedFromDaemon,
+  reportRunFeedbackFromDaemon,
+} from '../src/langfuse-bridge.js';
 import { buildPromptStackTelemetry } from '../src/prompt-telemetry.js';
 
 interface FakeMessage {
@@ -1860,6 +1863,101 @@ describe('langfuse-bridge.reportRunCompletedFromDaemon', () => {
     expect(trace.metadata.eventsSummary.durationMs).toBe(2500);
     expect(span.metadata.status).toBe('canceled');
     expect(span.endTime).toBe(new Date(run.createdAt + 2500).toISOString());
+  });
+});
+
+describe('langfuse-bridge.reportRunFeedbackFromDaemon', () => {
+  let dataDir: string;
+
+  beforeEach(async () => {
+    dataDir = await mkdtemp(path.join(tmpdir(), 'od-bridge-feedback-'));
+  });
+
+  afterEach(async () => {
+    await rm(dataDir, { recursive: true, force: true });
+    vi.restoreAllMocks();
+    delete process.env.VELA_CONTROL_KEY;
+    delete process.env.VELA_API_URL;
+    delete process.env.OPEN_DESIGN_TELEMETRY_RELAY_URL;
+    delete process.env.LANGFUSE_PUBLIC_KEY;
+    delete process.env.LANGFUSE_SECRET_KEY;
+    delete process.env.OPEN_DESIGN_VELA_TELEMETRY;
+  });
+
+  async function writeAppCfg(cfg: Record<string, unknown>) {
+    await writeFile(path.join(dataDir, 'app-config.json'), JSON.stringify(cfg));
+  }
+
+  it('returns skipped_no_sink when Vela is configured but installationId is missing and no anonymous sink exists', async () => {
+    await writeAppCfg({
+      // Missing / null installationId is legitimate; Vela cannot ship without it.
+      installationId: null,
+      telemetry: { metrics: true, content: true },
+    });
+    process.env.VELA_CONTROL_KEY = 'ck_test_key';
+    process.env.VELA_API_URL = 'https://amr-api.example.com';
+    // No OPEN_DESIGN_TELEMETRY_RELAY_URL / LANGFUSE_* → anonymous fallback absent.
+    const fetchSpy = vi.fn();
+    const outcome = await reportRunFeedbackFromDaemon({
+      dataDir,
+      runId: 'run-feedback-1',
+      rating: 'positive',
+      reasonCodes: [],
+      hasCustomReason: false,
+      customReason: '',
+      fetchImpl: fetchSpy as any,
+    });
+    expect(outcome).toEqual({ status: 'skipped_no_sink' });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('returns accepted when Vela has installationId', async () => {
+    await writeAppCfg({
+      installationId: 'install-uuid-1',
+      telemetry: { metrics: true, content: true },
+    });
+    process.env.VELA_CONTROL_KEY = 'ck_test_key';
+    process.env.VELA_API_URL = 'https://amr-api.example.com';
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('', { status: 202 }));
+    const outcome = await reportRunFeedbackFromDaemon({
+      dataDir,
+      runId: 'run-feedback-1',
+      rating: 'positive',
+      reasonCodes: [],
+      hasCustomReason: false,
+      customReason: '',
+      fetchImpl: fetchSpy as any,
+    });
+    expect(outcome).toEqual({ status: 'accepted' });
+    // Fire-and-forget send may race the assertion; give the microtask a tick.
+    await vi.waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalled();
+    });
+  });
+
+  it('returns accepted for Vela without installationId when anonymous fallback is configured', async () => {
+    await writeAppCfg({
+      installationId: null,
+      telemetry: { metrics: true, content: true },
+    });
+    process.env.VELA_CONTROL_KEY = 'ck_test_key';
+    process.env.VELA_API_URL = 'https://amr-api.example.com';
+    process.env.OPEN_DESIGN_TELEMETRY_RELAY_URL =
+      'https://telemetry.open-design.ai/api/langfuse';
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 207 }));
+    const outcome = await reportRunFeedbackFromDaemon({
+      dataDir,
+      runId: 'run-feedback-1',
+      rating: 'negative',
+      reasonCodes: ['matched_request'],
+      hasCustomReason: false,
+      customReason: '',
+      fetchImpl: fetchSpy as any,
+    });
+    expect(outcome).toEqual({ status: 'accepted' });
+    await vi.waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalled();
+    });
   });
 });
 

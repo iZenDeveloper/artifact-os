@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildFeedbackPayload,
   buildTelemetryIdempotencyKey,
+  canDeliverRunFeedback,
   feedbackIngestionRevision,
   buildTracePayload,
   deriveLangfuseDeliveryState,
@@ -269,6 +270,51 @@ describe('readTelemetrySinkConfig', () => {
       OPEN_DESIGN_TELEMETRY_RELAY_URL: 'https://telemetry.open-design.ai/api/langfuse',
     });
     expect(cfg).toMatchObject({ kind: 'relay' });
+  });
+});
+
+describe('canDeliverRunFeedback', () => {
+  const velaSink: TelemetrySinkConfig = {
+    kind: 'vela',
+    apiUrl: 'https://amr-api.example.com',
+    controlKey: 'ck_test_key',
+    timeoutMs: 20_000,
+    retries: 1,
+    profile: 'prod',
+    authSource: 'env',
+    clearLoginOnAuthFailure: false,
+  };
+  const relaySink: TelemetrySinkConfig = {
+    kind: 'relay',
+    relayUrl: 'https://telemetry.open-design.ai/api/langfuse',
+    timeoutMs: 20_000,
+    retries: 1,
+  };
+
+  it('rejects a null sink', () => {
+    expect(canDeliverRunFeedback(null, 'install-1')).toBe(false);
+  });
+
+  it('accepts anonymous sinks without an installation id', () => {
+    expect(canDeliverRunFeedback(relaySink, null)).toBe(true);
+    expect(canDeliverRunFeedback(relaySink, undefined)).toBe(true);
+  });
+
+  it('accepts Vela when installationId is present', () => {
+    expect(canDeliverRunFeedback(velaSink, 'install-1', {})).toBe(true);
+  });
+
+  it('rejects Vela without installationId when no anonymous sink exists', () => {
+    expect(canDeliverRunFeedback(velaSink, null, {})).toBe(false);
+    expect(canDeliverRunFeedback(velaSink, '   ', {})).toBe(false);
+  });
+
+  it('accepts Vela without installationId when anonymous fallback exists', () => {
+    expect(
+      canDeliverRunFeedback(velaSink, null, {
+        OPEN_DESIGN_TELEMETRY_RELAY_URL: 'https://telemetry.open-design.ai/api/langfuse',
+      }),
+    ).toBe(true);
   });
 });
 
