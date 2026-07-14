@@ -171,7 +171,38 @@ function findRepeatDirective(
     const nameMatch =
       openTagStart >= 0 ? /^<([A-Za-z][A-Za-z0-9_-]*)/.exec(html.slice(openTagStart)) : null;
     const tagName = nameMatch?.[1];
-    if (tagName && !html.slice(openTagStart, directiveIndex).includes('>')) {
+    // Inside an HTML comment nothing is a directive, even text that looks
+    // like a whole `<div data-od-repeat="...">` tag.
+    const commentStart = html.lastIndexOf('<!--', directiveIndex);
+    const inComment =
+      commentStart !== -1 &&
+      (() => {
+        const commentEnd = html.indexOf('-->', commentStart);
+        return commentEnd === -1 || commentEnd > directiveIndex;
+      })();
+    // Within the open tag, the attribute must start at the top level — a
+    // match inside another attribute's quoted value (title='... data-od-
+    // repeat="x in y"') is authored text, not a directive.
+    const inQuotedAttrValue =
+      tagName !== undefined &&
+      (() => {
+        let quote: string | null = null;
+        for (let i = openTagStart; i < directiveIndex; i += 1) {
+          const ch = html[i];
+          if (quote) {
+            if (ch === quote) quote = null;
+          } else if (ch === '"' || ch === "'") {
+            quote = ch;
+          }
+        }
+        return quote !== null;
+      })();
+    if (
+      tagName &&
+      !inComment &&
+      !inQuotedAttrValue &&
+      !html.slice(openTagStart, directiveIndex).includes('>')
+    ) {
       return { openTagStart, tagName, spec: match[1] ?? '', matchEnd };
     }
     cursor = matchEnd;

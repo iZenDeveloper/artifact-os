@@ -191,6 +191,31 @@ describe('renderHtmlTemplateV1', () => {
     );
   });
 
+  it('ignores directive-looking text inside a quoted attribute value', () => {
+    // Third-round reviewer repro (#5603): the inside-open-tag check alone
+    // still treated `title='docs data-od-repeat="x in data.y"'` as a real
+    // loop, duplicating the element and truncating the title.
+    const result = renderHtmlTemplateV1({
+      templateHtml:
+        `<div title='docs data-od-repeat="x in data.y"'>{{ data.note }}</div>`,
+      dataJson: { note: 'ok', y: ['a', 'b'] },
+    });
+    expect(result.html).toBe(
+      `<div title='docs data-od-repeat="x in data.y"'>ok</div>`,
+    );
+  });
+
+  it('ignores a full tag-like directive inside an HTML comment', () => {
+    const result = renderHtmlTemplateV1({
+      templateHtml:
+        '<section><!-- <div data-od-repeat="row in data.rows">example</div> --><p>{{ data.note }}</p></section>',
+      dataJson: { note: 'ok', rows: ['a', 'b'] },
+    });
+    expect(result.html).toBe(
+      '<section><!-- <div data-od-repeat="row in data.rows">example</div> --><p>ok</p></section>',
+    );
+  });
+
   it('still rejects a REAL nested data-od-repeat element', () => {
     expect(() => renderHtmlTemplateV1({
       templateHtml:

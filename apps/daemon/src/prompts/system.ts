@@ -729,7 +729,19 @@ export function composeSystemPrompt({
   // layered composition until the A/B comparison signs off.
   const isSlimCore = promptCoreVariant === 'slim';
   const isAskModeEarly = sessionMode === 'chat';
-  const isSlimCharterHead = isSlimCore && !isAskModeEarly;
+  // Media surfaces (image / video / audio) must be resolved BEFORE the head
+  // is built: the slim design charter mandates the turn-1 discovery form and
+  // HTML handoff, which are mutually exclusive with the media-generation
+  // contract that is the sole workflow authority on these runs (classic
+  // guaranteed this by gating its discovery layer on the same signal).
+  const isMediaSurfaceEarly =
+    skillMode === 'image' ||
+    skillMode === 'video' ||
+    skillMode === 'audio' ||
+    metadata?.kind === 'image' ||
+    metadata?.kind === 'video' ||
+    metadata?.kind === 'audio';
+  const isSlimCharterHead = isSlimCore && !isAskModeEarly && !isMediaSurfaceEarly;
 
   // Head ordering differs by variant, following prompt-caching prefix rules
   // (stable content first — see shared prompt-caching guidance):
@@ -834,14 +846,6 @@ export function composeSystemPrompt({
   // parse and override all of those rules before it can start, adding tokens
   // and LLM inference time. The MEDIA_GENERATION_CONTRACT (pushed below) is
   // the sole workflow authority for these surfaces.
-  const isMediaSurfaceEarly =
-    skillMode === 'image' ||
-    skillMode === 'video' ||
-    skillMode === 'audio' ||
-    metadata?.kind === 'image' ||
-    metadata?.kind === 'video' ||
-    metadata?.kind === 'audio';
-
   if (metadata?.examplePrompt === true) {
     parts.push(buildExamplePromptOverride(metadata.examplePromptTitle, metadata.examplePromptBrief));
     parts.push('\n\n---\n\n');
@@ -1214,7 +1218,7 @@ export function composeSystemPrompt({
   // questions surface: the chat shows a banner, the form renders in the
   // right-hand Questions tab, and answers return as the next user message.
   // Applies to every agent — question-form is UI-parsed markup, not a tool.
-  if (!isSlimCore || isAskMode) parts.push(
+  if (!isSlimCharterHead || isAskMode) parts.push(
     "\n\n---\n\n## Clarifying questions mid-conversation\n\nWhen you need a clarification AFTER turn 1 and the answer benefits from structured input, emit a `<question-form>` block — the same markup turn-1 discovery uses — instead of writing a bulleted list of options in markdown. The host renders it as a Questions banner the user opens in the side tab; a markdown list renders as plain text and forces the user to type a reply. Use the richest appropriate web form controls (`radio`, `checkbox`, `select`, `text`, `textarea`, `number`, `range`, `date`, `time`, `datetime-local`, `color`, `url`, `email`, `tel`, `file`, `switch`, or `direction-cards`). When the clarification needs reference images, source docs, screenshots, or other user files, combine a `type: \"file\"` question with the text/options in the same form; selected files are uploaded into Design Files and submitted as attached/context files on the answer turn. For every finite-choice question, keep user control by leaving `allowCustom` unset or setting it to `true`, and add localized `customLabel` / `customPlaceholder` when useful. Use free-form prose questions only when a form would add no structure. Do NOT also duplicate the form's questions as markdown text alongside it.\n\n`<question-form>` is assistant text for the Open Design UI, not a native tool call. If you need to clarify direction, emit the complete `<question-form>...</question-form>` block directly in the assistant message before any TodoWrite, file write/edit, Bash, or other native tool call. Do not stop after an introductory sentence such as \"先确认一下方向：\"; the same message must include the full form.",
   );
 
