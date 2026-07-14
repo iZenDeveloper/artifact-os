@@ -16,13 +16,14 @@ import { modelIdForTracking } from '@open-design/contracts/analytics';
 
 import { agentCliEnvForAgent, readAppConfig } from './app-config.js';
 import type { AppVersionInfo } from './app-version.js';
-import { listMessages } from './db.js';
+import { getRunFeedbackTelemetryAnchor, listMessages } from './db.js';
 import {
   canDeliverRunFeedback,
   deriveLangfuseDeliveryState,
   readTelemetrySinkConfig,
   reportRunCompleted,
   reportRunFeedback,
+  resolveFeedbackTraceId,
   type AgentEventSummary,
   type ArtifactManifestEntry,
   type ArtifactSummary,
@@ -1166,6 +1167,11 @@ export interface ReportRunFeedbackFromDaemonOpts {
   customReason: string;
   /** Extra context for Langfuse score metadata (projectId / conversationId / assistantMessageId). */
   scoreMetadata?: Record<string, unknown>;
+  /**
+   * Optional SQLite handle so feedback can derive the accepted final-purpose
+   * body id (canonical vs terminal_fallback `:tf`) from message finalization.
+   */
+  db?: unknown;
   fetchImpl?: typeof fetch;
 }
 
@@ -1204,8 +1210,41 @@ export async function reportRunFeedbackFromDaemon(
   if (!canDeliverRunFeedback(sink, installationId)) {
     return { status: 'skipped_no_sink' };
   }
+  const assistantMessageId =
+    opts.scoreMetadata &&
+    typeof opts.scoreMetadata.assistantMessageId === 'string'
+      ? opts.scoreMetadata.assistantMessageId
+      : null;
+  let runStatus: string | null | undefined;
+  let telemetryFinalized: boolean | undefined;
+  if (opts.db) {
+    try {
+      const anchor = getRunFeedbackTelemetryAnchor(
+        opts.db as Parameters<typeof getRunFeedbackTelemetryAnchor>[0],
+        opts.runId,
+        assistantMessageId,
+      );
+      if (anchor) {
+        runStatus = anchor.runStatus;
+        telemetryFinalized = anchor.telemetryFinalized;
+      }
+    } catch (err) {
+      console.warn(
+        '[langfuse-bridge] feedback telemetry anchor lookup failed:',
+        String(err),
+      );
+    }
+  }
+  const traceId = resolveFeedbackTraceId({
+    runId: opts.runId,
+    ...(runStatus !== undefined ? { runStatus } : {}),
+    ...(telemetryFinalized !== undefined ? { telemetryFinalized } : {}),
+  });
   const ctx: FeedbackReportContext = {
     runId: opts.runId,
+    traceId,
+    ...(runStatus !== undefined ? { runStatus } : {}),
+    ...(telemetryFinalized !== undefined ? { telemetryFinalized } : {}),
     installationId,
     prefs,
     rating: opts.rating,

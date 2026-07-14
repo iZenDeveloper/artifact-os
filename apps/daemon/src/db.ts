@@ -1564,6 +1564,53 @@ export function getMessageTelemetryFinalizationState(db: SqliteDb, messageId: st
   };
 }
 
+/**
+ * Best-effort anchor for feedback → Langfuse score attachment: run status and
+ * whether the assistant message was telemetry-finalized. Used to derive the
+ * terminal_fallback body id (`runId:tf`) when no final_message was delivered.
+ */
+export function getRunFeedbackTelemetryAnchor(
+  db: SqliteDb,
+  runId: string,
+  assistantMessageId?: string | null,
+): {
+  runStatus: string | null;
+  telemetryFinalized: boolean;
+} | null {
+  if (typeof assistantMessageId === 'string' && assistantMessageId.trim()) {
+    const byId = db
+      .prepare(
+        `SELECT run_status AS runStatus,
+                telemetry_finalized_at AS telemetryFinalizedAt
+           FROM messages
+          WHERE id = ?`,
+      )
+      .get(assistantMessageId.trim()) as DbRow | undefined;
+    if (byId) {
+      return {
+        runStatus: typeof byId.runStatus === 'string' ? byId.runStatus : null,
+        telemetryFinalized:
+          typeof byId.telemetryFinalizedAt === 'number',
+      };
+    }
+  }
+  const byRun = db
+    .prepare(
+      `SELECT run_status AS runStatus,
+              telemetry_finalized_at AS telemetryFinalizedAt
+         FROM messages
+        WHERE run_id = ?
+        ORDER BY position DESC
+        LIMIT 1`,
+    )
+    .get(runId) as DbRow | undefined;
+  if (!byRun) return null;
+  return {
+    runStatus: typeof byRun.runStatus === 'string' ? byRun.runStatus : null,
+    telemetryFinalized: typeof byRun.telemetryFinalizedAt === 'number',
+  };
+}
+
 export function appendMessageStatusEvent(db: SqliteDb, messageId: string, event: DbRow) {
   const label = typeof event?.label === 'string' ? event.label.trim() : '';
   const detail = typeof event?.detail === 'string' ? event.detail.trim() : '';

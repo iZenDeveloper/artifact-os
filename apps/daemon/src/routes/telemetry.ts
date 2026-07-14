@@ -26,10 +26,12 @@ export interface DaemonTelemetry {
 export interface RegisterTelemetryRoutesDeps {
   dataDir: string;
   readAppConfig: typeof readAppConfig;
+  /** Optional SQLite handle for feedback → accepted-trace-id derivation. */
+  db?: unknown;
 }
 
 export function registerTelemetryRoutes(app: Express, deps: RegisterTelemetryRoutesDeps): DaemonTelemetry {
-  const { dataDir } = deps;
+  const { dataDir, db } = deps;
   const analyticsService = createAnalyticsService({ dataDir });
   let cachedAppVersion: any = null;
 
@@ -119,6 +121,7 @@ export function registerTelemetryRoutes(app: Express, deps: RegisterTelemetryRou
     reportFeedback: (req) =>
       reportRunFeedbackFromDaemon({
         dataDir,
+        ...(db ? { db } : {}),
         ...req,
       }),
   };

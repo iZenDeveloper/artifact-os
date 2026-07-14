@@ -151,6 +151,76 @@ export function scopedTelemetryBodyId(
   return `${candidate.slice(0, Math.max(1, keep))}-${digest}`;
 }
 
+/**
+ * Process-local map of the last accepted final-purpose Langfuse body id per run.
+ * Prefer final_message over terminal_fallback so a later finalized delivery
+ * becomes the feedback anchor when both fire in the same process.
+ */
+const acceptedFinalTraceBodyIds = new Map<
+  string,
+  { bodyId: string; reportTrigger: TelemetryReportTrigger }
+>();
+
+/**
+ * Remember the body id of an accepted final-purpose delivery so feedback
+ * scores can attach to the same Langfuse/Vela trace (including `:tf`).
+ */
+export function rememberAcceptedFinalTraceBodyId(
+  runId: string,
+  bodyId: string,
+  reportTrigger: TelemetryReportTrigger,
+): void {
+  const key = runId.trim();
+  if (!key || !bodyId.trim()) return;
+  const existing = acceptedFinalTraceBodyIds.get(key);
+  if (existing?.reportTrigger === 'final_message' && reportTrigger === 'terminal_fallback') {
+    return;
+  }
+  acceptedFinalTraceBodyIds.set(key, {
+    bodyId: bodyId.trim(),
+    reportTrigger,
+  });
+}
+
+/** Test-only: clear the accepted-final-trace registry between cases. */
+export function resetAcceptedFinalTraceBodyIdsForTests(): void {
+  acceptedFinalTraceBodyIds.clear();
+}
+
+/**
+ * Resolve the Langfuse body id feedback scores should target for a run.
+ *
+ * Priority:
+ * 1. Explicit override (`traceId`)
+ * 2. Process-local accepted final delivery body id
+ * 3. Derive from run status + message finalization (mirrors terminal_fallback rules)
+ * 4. Canonical runId
+ */
+export function resolveFeedbackTraceId(input: {
+  runId: string;
+  /** Explicit override (e.g. caller already resolved the anchor). */
+  traceId?: string | null;
+  runStatus?: string | null;
+  /** True when the assistant message was telemetry-finalized (final_message path). */
+  telemetryFinalized?: boolean;
+}): string {
+  const runId = typeof input.runId === 'string' ? input.runId.trim() : '';
+  if (!runId) return typeof input.runId === 'string' ? input.runId : '';
+  const explicit = typeof input.traceId === 'string' ? input.traceId.trim() : '';
+  if (explicit) return explicit;
+  const remembered = acceptedFinalTraceBodyIds.get(runId);
+  if (remembered?.bodyId) return remembered.bodyId;
+  // Failed/canceled runs that never reach a telemetry-finalized final_message
+  // only have the terminal_fallback body namespace in Langfuse/Vela.
+  if (
+    input.telemetryFinalized !== true &&
+    (input.runStatus === 'failed' || input.runStatus === 'canceled')
+  ) {
+    return scopedTelemetryBodyId(runId, 'final', 'terminal_fallback');
+  }
+  return runId;
+}
+
 export type TelemetrySinkConfig =
   | {
       kind: 'vela';
@@ -442,15 +512,22 @@ export interface ReportRunOpts {
 /**
  * Payload sent to Langfuse when a user thumbs-up/down's an assistant turn.
  *
- * The `runId` doubles as the Langfuse trace id (same convention used by
- * buildTracePayload), so the score lands on the existing trace if the run
- * was previously reported. If the run wasn't reported (e.g. content
- * consent was off at run completion, then turned on before the user
- * scored), Langfuse will accept the score anyway and the trace will
- * materialize when/if the daemon backfills it.
+ * Scores attach to the accepted final-purpose body id for the run (canonical
+ * `runId` after final_message, or `${runId}:tf` for terminal_fallback-only
+ * completions). Callers may pass an explicit `traceId`, or supply run status +
+ * finalization so resolveFeedbackTraceId can derive the anchor.
  */
 export interface FeedbackReportContext {
   runId: string;
+  /**
+   * Langfuse body id the score should attach to. When omitted, derived via
+   * resolveFeedbackTraceId from accepted-delivery memory and/or run status.
+   */
+  traceId?: string;
+  /** Terminal run status; used to derive the fallback `:tf` body id. */
+  runStatus?: string | null;
+  /** True when the assistant message was telemetry-finalized. */
+  telemetryFinalized?: boolean;
   installationId: string | null;
   prefs: TelemetryPrefs;
   rating: 'positive' | 'negative';
@@ -595,9 +672,26 @@ export function canDeliverRunFeedback(
   return true;
 }
 
+/**
+ * Whether a resolved sink can actually deliver a final run report.
+ * Same Vela + installationId + anonymous-fallback rule as reportRunCompleted
+ * and canDeliverRunFeedback.
+ */
+export function canDeliverRunTelemetry(
+  sink: TelemetrySinkConfig | null,
+  installationId: string | null | undefined,
+  env: NodeJS.ProcessEnv = process.env,
+): sink is TelemetrySinkConfig {
+  return canDeliverRunFeedback(sink, installationId, env);
+}
+
 export function deriveLangfuseDeliveryState(
   prefs: TelemetryPrefs,
   sink: TelemetrySinkConfig | null,
+  opts: {
+    installationId?: string | null;
+    env?: NodeJS.ProcessEnv;
+  } = {},
 ): LangfuseDeliveryState {
   if (prefs.metrics !== true) {
     return {
@@ -617,6 +711,16 @@ export function deriveLangfuseDeliveryState(
     return {
       langfuse_expected: false,
       langfuse_delivery_status: 'not_expected',
+      langfuse_drop_reason: 'missing_sink_config',
+    };
+  }
+  // Match reportRunCompleted: a resolved Vela sink still needs installationId
+  // (or anonymous fallback). Otherwise delivery fails immediately as
+  // missing_sink_config — run_finished must not claim `queued`.
+  if (!canDeliverRunTelemetry(sink, opts.installationId, opts.env ?? process.env)) {
+    return {
+      langfuse_expected: true,
+      langfuse_delivery_status: 'failed',
       langfuse_drop_reason: 'missing_sink_config',
     };
   }
@@ -2490,7 +2594,9 @@ export async function reportRunCompleted(
   if (ctx.prefs.content !== true) return notExpected;
 
   const config = resolveReportConfig(opts);
-  const langfuseDelivery = deriveLangfuseDeliveryState(ctx.prefs, config);
+  const langfuseDelivery = deriveLangfuseDeliveryState(ctx.prefs, config, {
+    installationId: ctx.installationId,
+  });
   if (!config) {
     if (!missingTelemetrySinkWarned) {
       // Warn once per daemon process; packaged config is loaded at process
@@ -2500,6 +2606,11 @@ export async function reportRunCompleted(
         '[langfuse-trace] Telemetry metrics are enabled but no Vela Control Key, relay, or Langfuse credentials are configured',
       );
     }
+    return langfuseDelivery;
+  }
+  // Pre-send eligibility matches run_finished analytics: undeliverable Vela
+  // configs (no installationId, no anonymous fallback) fail immediately.
+  if (langfuseDelivery.langfuse_delivery_status === 'failed') {
     return langfuseDelivery;
   }
 
@@ -2539,6 +2650,19 @@ export async function reportRunCompleted(
 
   const fetchImpl = opts.fetchImpl ?? globalThis.fetch;
   const configuredEnv = opts.configuredEnv ?? {};
+  const noteAcceptedFinalTrace = (state: LangfuseDeliveryState): LangfuseDeliveryState => {
+    if (
+      deliveryPurpose === 'final' &&
+      state.langfuse_delivery_status === 'accepted'
+    ) {
+      rememberAcceptedFinalTraceBodyId(
+        ctx.run.runId,
+        scopedTelemetryBodyId(ctx.run.runId, deliveryPurpose, reportTrigger),
+        reportTrigger,
+      );
+    }
+    return state;
+  };
   if (config.kind === 'vela') {
     // Object-registration must stay on the anonymous relay so object scope is
     // keyed by the original runId (Vela scopes/hashes body.id for Langfuse).
@@ -2551,7 +2675,9 @@ export async function reportRunCompleted(
           langfuse_drop_reason: 'missing_sink_config',
         };
       }
-      return postAnonymousBatch(fallback, batch, serialized, fetchImpl);
+      return noteAcceptedFinalTrace(
+        await postAnonymousBatch(fallback, batch, serialized, fetchImpl),
+      );
     }
     const installationId = ctx.installationId?.trim() ?? '';
     if (!installationId) {
@@ -2565,18 +2691,26 @@ export async function reportRunCompleted(
           langfuse_drop_reason: 'missing_sink_config',
         };
       }
-      return postAnonymousBatch(fallback, batch, serialized, fetchImpl);
+      return noteAcceptedFinalTrace(
+        await postAnonymousBatch(fallback, batch, serialized, fetchImpl),
+      );
     }
-    return postVelaBatch(config, batch, installationId, fetchImpl, {
-      configuredEnv,
-      deliveryPurpose,
-      reportTrigger,
-    });
+    return noteAcceptedFinalTrace(
+      await postVelaBatch(config, batch, installationId, fetchImpl, {
+        configuredEnv,
+        deliveryPurpose,
+        reportTrigger,
+      }),
+    );
   }
   if (config.kind === 'relay') {
-    return postRelayBatch(config, serialized, fetchImpl);
+    return noteAcceptedFinalTrace(
+      await postRelayBatch(config, serialized, fetchImpl),
+    );
   }
-  return postLangfuseBatch(config, batch, fetchImpl);
+  return noteAcceptedFinalTrace(
+    await postLangfuseBatch(config, batch, fetchImpl),
+  );
 }
 
 // Build a Langfuse `score-create` batch for a user-supplied turn rating.
@@ -2615,7 +2749,17 @@ export function feedbackIngestionRevision(ctx: FeedbackReportContext): string {
 }
 
 export function buildFeedbackPayload(ctx: FeedbackReportContext): unknown[] {
-  const traceId = ctx.runId;
+  // Attach scores to the same body id final-purpose delivery used (canonical
+  // runId or the terminal_fallback `:tf` namespace) — never invent a second
+  // canonical trace when only the fallback was sent.
+  const traceId = resolveFeedbackTraceId({
+    runId: ctx.runId,
+    ...(ctx.traceId !== undefined ? { traceId: ctx.traceId } : {}),
+    ...(ctx.runStatus !== undefined ? { runStatus: ctx.runStatus } : {}),
+    ...(ctx.telemetryFinalized !== undefined
+      ? { telemetryFinalized: ctx.telemetryFinalized }
+      : {}),
+  });
   const nowIso = new Date().toISOString();
   const batch: unknown[] = [];
   const revision = feedbackIngestionRevision(ctx);

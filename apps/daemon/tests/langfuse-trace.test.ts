@@ -7,14 +7,18 @@ import {
   buildFeedbackPayload,
   buildTelemetryIdempotencyKey,
   canDeliverRunFeedback,
+  canDeliverRunTelemetry,
   feedbackIngestionRevision,
   buildTracePayload,
   deriveLangfuseDeliveryState,
   readAnonymousTelemetrySinkConfig,
   readLangfuseConfig,
   readTelemetrySinkConfig,
+  rememberAcceptedFinalTraceBodyId,
   reportRunCompleted,
   reportRunFeedback,
+  resetAcceptedFinalTraceBodyIdsForTests,
+  resolveFeedbackTraceId,
   scopedTelemetryBodyId,
   stableIngestionEventId,
   toVelaTelemetryEnvelope,
@@ -372,6 +376,99 @@ describe('deriveLangfuseDeliveryState', () => {
       langfuse_expected: true,
       langfuse_delivery_status: 'queued',
     });
+  });
+
+  it('marks Vela without installationId and no anonymous fallback as failed missing_sink_config', () => {
+    const velaSink: TelemetrySinkConfig = {
+      kind: 'vela',
+      apiUrl: 'https://amr-api.example.com',
+      controlKey: 'ck_test_key',
+      timeoutMs: 20_000,
+      retries: 1,
+      profile: 'prod',
+      authSource: 'env',
+      clearLoginOnAuthFailure: false,
+    };
+    expect(
+      deriveLangfuseDeliveryState(
+        { metrics: true, content: true, artifactManifest: true },
+        velaSink,
+        { installationId: null, env: {} },
+      ),
+    ).toEqual({
+      langfuse_expected: true,
+      langfuse_delivery_status: 'failed',
+      langfuse_drop_reason: 'missing_sink_config',
+    });
+    expect(canDeliverRunTelemetry(velaSink, null, {})).toBe(false);
+  });
+
+  it('keeps Vela queued when installationId is present', () => {
+    const velaSink: TelemetrySinkConfig = {
+      kind: 'vela',
+      apiUrl: 'https://amr-api.example.com',
+      controlKey: 'ck_test_key',
+      timeoutMs: 20_000,
+      retries: 1,
+      profile: 'prod',
+      authSource: 'env',
+      clearLoginOnAuthFailure: false,
+    };
+    expect(
+      deriveLangfuseDeliveryState(
+        { metrics: true, content: true, artifactManifest: true },
+        velaSink,
+        { installationId: 'install-1', env: {} },
+      ),
+    ).toEqual({
+      langfuse_expected: true,
+      langfuse_delivery_status: 'queued',
+    });
+  });
+});
+
+describe('resolveFeedbackTraceId', () => {
+  afterEach(() => {
+    resetAcceptedFinalTraceBodyIdsForTests();
+  });
+
+  it('defaults to the canonical runId', () => {
+    expect(resolveFeedbackTraceId({ runId: 'run-a' })).toBe('run-a');
+  });
+
+  it('derives the terminal_fallback body id for failed/canceled non-finalized runs', () => {
+    expect(
+      resolveFeedbackTraceId({
+        runId: 'run-failed',
+        runStatus: 'failed',
+        telemetryFinalized: false,
+      }),
+    ).toBe(scopedTelemetryBodyId('run-failed', 'final', 'terminal_fallback'));
+    expect(
+      resolveFeedbackTraceId({
+        runId: 'run-canceled',
+        runStatus: 'canceled',
+      }),
+    ).toBe('run-canceled:tf');
+  });
+
+  it('keeps the canonical id when the message was telemetry-finalized', () => {
+    expect(
+      resolveFeedbackTraceId({
+        runId: 'run-finalized',
+        runStatus: 'failed',
+        telemetryFinalized: true,
+      }),
+    ).toBe('run-finalized');
+  });
+
+  it('prefers the accepted final_message body id over a prior terminal_fallback memory', () => {
+    rememberAcceptedFinalTraceBodyId('run-mem', 'run-mem:tf', 'terminal_fallback');
+    rememberAcceptedFinalTraceBodyId('run-mem', 'run-mem', 'final_message');
+    expect(resolveFeedbackTraceId({ runId: 'run-mem' })).toBe('run-mem');
+    // Late fallback must not demote the canonical anchor.
+    rememberAcceptedFinalTraceBodyId('run-mem', 'run-mem:tf', 'terminal_fallback');
+    expect(resolveFeedbackTraceId({ runId: 'run-mem' })).toBe('run-mem');
   });
 });
 
@@ -3068,6 +3165,10 @@ function makeFeedbackCtx(
 }
 
 describe('buildFeedbackPayload', () => {
+  afterEach(() => {
+    resetAcceptedFinalTraceBodyIdsForTests();
+  });
+
   it('emits a numeric user_rating score plus per-reason categorical scores', () => {
     const batch = buildFeedbackPayload(
       makeFeedbackCtx({
@@ -3098,6 +3199,35 @@ describe('buildFeedbackPayload', () => {
     }
     expect(batch[1]!.body.value).toBe('missed_request');
     expect(batch[2]!.body.value).toBe('weak_visual');
+  });
+
+  it('attaches scores to the terminal_fallback body id for fallback-only runs', () => {
+    const batch = buildFeedbackPayload(
+      makeFeedbackCtx({
+        runId: 'run-fallback-only',
+        runStatus: 'failed',
+        telemetryFinalized: false,
+      }),
+    ) as Array<Record<string, any>>;
+    const expectedTraceId = scopedTelemetryBodyId(
+      'run-fallback-only',
+      'final',
+      'terminal_fallback',
+    );
+    expect(batch[0]!.body.traceId).toBe(expectedTraceId);
+    expect(batch[0]!.body.id).toBe(`${expectedTraceId}-rating`);
+  });
+
+  it('uses the remembered accepted body id when present', () => {
+    rememberAcceptedFinalTraceBodyId(
+      'run-remembered',
+      'run-remembered:tf',
+      'terminal_fallback',
+    );
+    const batch = buildFeedbackPayload(
+      makeFeedbackCtx({ runId: 'run-remembered' }),
+    ) as Array<Record<string, any>>;
+    expect(batch[0]!.body.traceId).toBe('run-remembered:tf');
   });
 
   it('does not emit reason scores when no codes were submitted', () => {

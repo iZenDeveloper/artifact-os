@@ -1009,9 +1009,17 @@ export function registerRunRoutes(app: Express, ctx: RegisterRunRoutesDeps) {
           (appCfgAtFinish as { agentCliEnv?: AgentCliEnv }).agentCliEnv,
           'amr',
         );
+        const installationIdAtFinish =
+          typeof (appCfgAtFinish as { installationId?: unknown }).installationId ===
+          'string'
+            ? (appCfgAtFinish as { installationId: string }).installationId
+            : null;
+        // Same eligibility as reportRunCompleted: Vela without installationId
+        // (and without anonymous fallback) is not `queued`.
         const langfuseDeliveryForAnalytics = deriveLangfuseDeliveryState(
           (appCfgAtFinish as { telemetry?: Record<string, unknown> }).telemetry ?? {},
           readTelemetrySinkConfig(process.env, configuredAmrEnvAtFinish),
+          { installationId: installationIdAtFinish },
         );
         const result = runResultFromStatus(status.status);
         const errorCode = deriveRunErrorCode(status);
