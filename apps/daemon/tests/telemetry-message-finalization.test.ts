@@ -484,6 +484,8 @@ describe('Langfuse message finalization gate', () => {
         insertId: 'run-accepted-headerless-finalize-langfuse-report-final_message-accepted',
         properties: expect.objectContaining({
           run_id: 'run-accepted-headerless-finalize',
+          // final_message keeps the canonical runId; only terminal_fallback scopes to :tf.
+          langfuse_trace_id: 'run-accepted-headerless-finalize',
           langfuse_delivery_status: 'accepted',
           langfuse_report_result: 'accepted',
           langfuse_report_trigger: 'final_message',

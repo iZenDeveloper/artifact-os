@@ -1959,6 +1959,47 @@ describe('langfuse-bridge.reportRunFeedbackFromDaemon', () => {
       expect(fetchSpy).toHaveBeenCalled();
     });
   });
+
+  it('returns skipped_no_sink for Vela-accepted anchors when only anonymous relay remains', async () => {
+    await writeAppCfg({
+      installationId: 'install-uuid-1',
+      telemetry: { metrics: true, content: true },
+    });
+    // Logged out of Vela; only the anonymous relay is available.
+    delete process.env.VELA_CONTROL_KEY;
+    delete process.env.VELA_API_URL;
+    process.env.OPEN_DESIGN_TELEMETRY_RELAY_URL =
+      'https://telemetry.open-design.ai/api/langfuse';
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 207 }));
+    const db = {
+      prepare: (sql: string) => {
+        if (sql.includes('telemetry_accepted_body_id')) {
+          return {
+            get: () => ({
+              runStatus: 'succeeded',
+              telemetryFinalizedAt: Date.now(),
+              acceptedTraceBodyId: 'run-vela-anchor',
+              acceptedReportTrigger: 'final_message',
+              acceptedDeliveryChannel: 'vela',
+            }),
+          };
+        }
+        return { get: () => undefined, run: () => ({ changes: 0 }), all: () => [] };
+      },
+    };
+    const outcome = await reportRunFeedbackFromDaemon({
+      dataDir,
+      runId: 'run-vela-anchor',
+      rating: 'positive',
+      reasonCodes: [],
+      hasCustomReason: false,
+      customReason: '',
+      db,
+      fetchImpl: fetchSpy as any,
+    });
+    expect(outcome).toEqual({ status: 'skipped_no_sink' });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });
 
 // listMessages reads from a `prepare(...).all(cid)` call against

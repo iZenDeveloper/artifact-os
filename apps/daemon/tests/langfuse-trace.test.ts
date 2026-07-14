@@ -326,6 +326,25 @@ describe('canDeliverRunFeedback', () => {
       }),
     ).toBe(true);
   });
+
+  it('rejects anonymous fallback when the accepted channel is Vela', () => {
+    expect(
+      canDeliverRunFeedback(
+        relaySink,
+        'install-1',
+        {},
+        { requireChannel: 'vela' },
+      ),
+    ).toBe(false);
+    expect(
+      canDeliverRunFeedback(velaSink, null, {
+        OPEN_DESIGN_TELEMETRY_RELAY_URL: 'https://telemetry.open-design.ai/api/langfuse',
+      }, { requireChannel: 'vela' }),
+    ).toBe(false);
+    expect(
+      canDeliverRunFeedback(velaSink, 'install-1', {}, { requireChannel: 'vela' }),
+    ).toBe(true);
+  });
 });
 
 describe('deriveLangfuseDeliveryState', () => {
@@ -2306,6 +2325,7 @@ describe('reportRunCompleted', () => {
     expect(result).toEqual({
       langfuse_expected: true,
       langfuse_delivery_status: 'accepted',
+      langfuse_delivery_channel: 'langfuse',
     });
   });
 
@@ -2346,6 +2366,7 @@ describe('reportRunCompleted', () => {
     expect(result).toEqual({
       langfuse_expected: true,
       langfuse_delivery_status: 'accepted',
+      langfuse_delivery_channel: 'langfuse',
     });
   });
 
@@ -2416,6 +2437,7 @@ describe('reportRunCompleted', () => {
     expect(result).toEqual({
       langfuse_expected: true,
       langfuse_delivery_status: 'accepted',
+      langfuse_delivery_channel: 'relay',
     });
   });
 
@@ -2557,6 +2579,7 @@ describe('reportRunCompleted', () => {
     expect(result).toEqual({
       langfuse_expected: true,
       langfuse_delivery_status: 'accepted',
+      langfuse_delivery_channel: 'vela',
     });
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const [url, init] = fetchSpy.mock.calls[0]!;
@@ -2857,6 +2880,8 @@ describe('reportRunCompleted', () => {
       expect(result).toEqual({
         langfuse_expected: true,
         langfuse_delivery_status: 'accepted',
+        // Vela auth failure fell back to anonymous relay.
+        langfuse_delivery_channel: 'relay',
       });
       expect(fetchSpy).toHaveBeenCalledTimes(2);
       expect(String(fetchSpy.mock.calls[0]![0])).toContain('/api/v1/open-design/telemetry');
@@ -2995,6 +3020,8 @@ describe('reportRunCompleted', () => {
           expect(result).toEqual({
             langfuse_expected: true,
             langfuse_delivery_status: 'accepted',
+            // Vela auth failure fell back to anonymous relay.
+            langfuse_delivery_channel: 'relay',
           });
           expect(fetchSpy).toHaveBeenCalledTimes(2);
           expect(String(fetchSpy.mock.calls[0]![0])).toContain(
@@ -3286,6 +3313,7 @@ describe('reportRunCompleted', () => {
     expect(result).toEqual({
       langfuse_expected: true,
       langfuse_delivery_status: 'accepted',
+      langfuse_delivery_channel: 'langfuse',
     });
   });
 
@@ -3376,6 +3404,7 @@ describe('reportRunCompleted', () => {
     expect(result).toEqual({
       langfuse_expected: true,
       langfuse_delivery_status: 'accepted',
+      langfuse_delivery_channel: 'langfuse',
     });
   });
 });
@@ -3568,6 +3597,47 @@ describe('reportRunFeedback', () => {
     expect(body.batch[0].body.value).toBe(1);
   });
 
+  it('does not post feedback to anonymous sinks when the accepted channel is Vela', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ successes: [], errors: [] }), { status: 207 }),
+    );
+    await reportRunFeedback(
+      makeFeedbackCtx({
+        runId: 'run-vela-scoped',
+        acceptedDeliveryChannel: 'vela',
+        reasonCodes: [],
+      }),
+      { config: TEST_CONFIG, fetchImpl: fetchSpy as any },
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('posts feedback through Vela when the accepted channel is Vela', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('', { status: 202 }));
+    const velaConfig: TelemetrySinkConfig = {
+      kind: 'vela',
+      apiUrl: 'https://amr-api.example.com',
+      controlKey: 'ck_test_key',
+      timeoutMs: 20_000,
+      retries: 0,
+      profile: 'prod',
+      authSource: 'env',
+      clearLoginOnAuthFailure: false,
+    };
+    await reportRunFeedback(
+      makeFeedbackCtx({
+        runId: 'run-vela-scoped',
+        acceptedDeliveryChannel: 'vela',
+        reasonCodes: [],
+      }),
+      { config: velaConfig, fetchImpl: fetchSpy as any },
+    );
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(String(fetchSpy.mock.calls[0]![0])).toContain(
+      '/api/v1/open-design/telemetry',
+    );
+  });
+
   it('attaches feedback to the terminal_fallback :tf body after a fallback-only completion', async () => {
     resetAcceptedFinalTraceBodyIdsForTests();
     resetPendingRunFeedbackForTests();
@@ -3597,6 +3667,7 @@ describe('reportRunFeedback', () => {
     expect(completed).toEqual({
       langfuse_expected: true,
       langfuse_delivery_status: 'accepted',
+      langfuse_delivery_channel: 'langfuse',
     });
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const completionBody = JSON.parse(fetchSpy.mock.calls[0]![1].body as string);
@@ -3671,6 +3742,7 @@ describe('reportRunFeedback', () => {
     expect(completed).toEqual({
       langfuse_expected: true,
       langfuse_delivery_status: 'accepted',
+      langfuse_delivery_channel: 'langfuse',
     });
 
     await vi.waitFor(() => {
@@ -3739,6 +3811,7 @@ describe('reportRunFeedback', () => {
     expect(fallbackCompleted).toEqual({
       langfuse_expected: true,
       langfuse_delivery_status: 'accepted',
+      langfuse_delivery_channel: 'langfuse',
     });
     await vi.waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledTimes(2);
@@ -3767,6 +3840,7 @@ describe('reportRunFeedback', () => {
     expect(finalCompleted).toEqual({
       langfuse_expected: true,
       langfuse_delivery_status: 'accepted',
+      langfuse_delivery_channel: 'langfuse',
     });
     await vi.waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledTimes(4);

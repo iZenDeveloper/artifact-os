@@ -1154,8 +1154,9 @@ export async function reportRunCompletedFromDaemon(
         ...(opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}),
       },
     );
-    // Persist the accepted final-purpose body id so feedback can still attach
-    // after a daemon restart when process-local memory is cold.
+    // Persist the accepted final-purpose body id + delivery channel so feedback
+    // can still attach after a daemon restart when process-local memory is cold,
+    // and so Vela-scoped traces never get anonymous raw-id scores later.
     if (delivery.langfuse_delivery_status === 'accepted') {
       try {
         setRunTelemetryAcceptedAnchor(db as Parameters<typeof setRunTelemetryAcceptedAnchor>[0], {
@@ -1163,6 +1164,7 @@ export async function reportRunCompletedFromDaemon(
           assistantMessageId: run.assistantMessageId ?? null,
           bodyId: scopedTelemetryBodyId(run.id, 'final', reportTrigger),
           reportTrigger,
+          deliveryChannel: delivery.langfuse_delivery_channel ?? null,
         });
       } catch (err) {
         console.warn(
@@ -1228,13 +1230,11 @@ export async function reportRunFeedbackFromDaemon(
   // Pre-resolve the sink before claiming `accepted`. Avoids advertising a
   // successful enqueue to callers when there's no Langfuse endpoint
   // configured to ship the score to. Share eligibility with reportRunFeedback:
-  // a Vela sink still needs installationId (or an anonymous fallback).
+  // a Vela sink still needs installationId (or an anonymous fallback) unless
+  // the accepted final body was Vela-scoped (anonymous must not misattach).
   const configuredEnv = agentCliEnvForAgent(cfg.agentCliEnv, 'amr');
   const sink = readTelemetrySinkConfig(process.env, configuredEnv);
   const installationId = cfg.installationId ?? null;
-  if (!canDeliverRunFeedback(sink, installationId)) {
-    return { status: 'skipped_no_sink' };
-  }
   const assistantMessageId =
     opts.scoreMetadata &&
     typeof opts.scoreMetadata.assistantMessageId === 'string'
@@ -1243,6 +1243,12 @@ export async function reportRunFeedbackFromDaemon(
   let runStatus: string | null | undefined;
   let telemetryFinalized: boolean | undefined;
   let acceptedTraceBodyId: string | null | undefined;
+  let acceptedDeliveryChannel:
+    | 'vela'
+    | 'relay'
+    | 'langfuse'
+    | null
+    | undefined;
   if (opts.db) {
     try {
       const anchor = getRunFeedbackTelemetryAnchor(
@@ -1254,6 +1260,7 @@ export async function reportRunFeedbackFromDaemon(
         runStatus = anchor.runStatus;
         telemetryFinalized = anchor.telemetryFinalized;
         acceptedTraceBodyId = anchor.acceptedTraceBodyId;
+        acceptedDeliveryChannel = anchor.acceptedDeliveryChannel;
       }
     } catch (err) {
       console.warn(
@@ -1261,6 +1268,14 @@ export async function reportRunFeedbackFromDaemon(
         String(err),
       );
     }
+  }
+  if (
+    !canDeliverRunFeedback(sink, installationId, process.env, {
+      requireChannel:
+        acceptedDeliveryChannel === 'vela' ? 'vela' : null,
+    })
+  ) {
+    return { status: 'skipped_no_sink' };
   }
   const resolveInput = {
     runId: opts.runId,
@@ -1281,6 +1296,9 @@ export async function reportRunFeedbackFromDaemon(
       : { traceId: resolveFeedbackTraceId(resolveInput) }),
     ...(runStatus !== undefined ? { runStatus } : {}),
     ...(telemetryFinalized !== undefined ? { telemetryFinalized } : {}),
+    ...(acceptedDeliveryChannel !== undefined
+      ? { acceptedDeliveryChannel }
+      : {}),
     installationId,
     prefs,
     rating: opts.rating,

@@ -72,6 +72,7 @@ describe('persisted telemetry accepted anchor', () => {
         assistantMessageId: 'assistant-1',
         bodyId: expectedBodyId,
         reportTrigger: 'terminal_fallback',
+        deliveryChannel: 'relay',
       }),
     ).toBe(true);
     // Simulate final_message failure: process memory cleared, no final accepted write.
@@ -85,6 +86,7 @@ describe('persisted telemetry accepted anchor', () => {
       telemetryFinalized: true,
       acceptedTraceBodyId: expectedBodyId,
       acceptedReportTrigger: 'terminal_fallback',
+      acceptedDeliveryChannel: 'relay',
     });
     expect(
       resolveFeedbackTraceId({
@@ -102,6 +104,32 @@ describe('persisted telemetry accepted anchor', () => {
         telemetryFinalized: true,
       }),
     ).toBe(runId);
+  });
+
+  it('persists Vela delivery channel so feedback can refuse anonymous misattach', () => {
+    const runId = 'run-vela-accepted-channel';
+    const db1 = openDatabase(tempDir, { dataDir: tempDir });
+    seedFailedAssistant(db1, runId);
+    expect(
+      setRunTelemetryAcceptedAnchor(db1, {
+        runId,
+        assistantMessageId: 'assistant-1',
+        bodyId: runId,
+        reportTrigger: 'final_message',
+        deliveryChannel: 'vela',
+      }),
+    ).toBe(true);
+    closeDatabase();
+    resetAcceptedFinalTraceBodyIdsForTests();
+
+    const db2 = openDatabase(tempDir, { dataDir: tempDir });
+    expect(getRunFeedbackTelemetryAnchor(db2, runId, 'assistant-1')).toEqual({
+      runStatus: 'failed',
+      telemetryFinalized: true,
+      acceptedTraceBodyId: runId,
+      acceptedReportTrigger: 'final_message',
+      acceptedDeliveryChannel: 'vela',
+    });
   });
 
   it('does not demote an accepted final_message anchor with a later terminal_fallback write', () => {
@@ -190,6 +218,7 @@ describe('persisted telemetry accepted anchor', () => {
         telemetryFinalized: false,
         acceptedTraceBodyId: expectedBodyId,
         acceptedReportTrigger: 'terminal_fallback',
+        acceptedDeliveryChannel: null,
       });
       expect(
         resolveFeedbackTraceId({
@@ -207,6 +236,7 @@ describe('persisted telemetry accepted anchor', () => {
       telemetryFinalized: false,
       acceptedTraceBodyId: expectedBodyId,
       acceptedReportTrigger: 'terminal_fallback',
+      acceptedDeliveryChannel: null,
     });
   });
 
@@ -263,12 +293,14 @@ describe('persisted telemetry accepted anchor', () => {
       telemetryFinalized: false,
       acceptedTraceBodyId: expectedBodyId,
       acceptedReportTrigger: 'terminal_fallback',
+      acceptedDeliveryChannel: null,
     });
     expect(getRunFeedbackTelemetryAnchor(db, otherRunId, 'assistant-foreign')).toEqual({
       runStatus: 'succeeded',
       telemetryFinalized: true,
       acceptedTraceBodyId: null,
       acceptedReportTrigger: null,
+      acceptedDeliveryChannel: null,
     });
 
     // Matching id still writes the intended row.
@@ -305,6 +337,7 @@ describe('persisted telemetry accepted anchor', () => {
       telemetryFinalized: true,
       acceptedTraceBodyId: staleBodyId,
       acceptedReportTrigger: 'terminal_fallback',
+      acceptedDeliveryChannel: null,
     });
 
     // Side-chat retry reuses the failed assistant message id with a new run.
@@ -325,6 +358,7 @@ describe('persisted telemetry accepted anchor', () => {
       telemetryFinalized: false,
       acceptedTraceBodyId: null,
       acceptedReportTrigger: null,
+      acceptedDeliveryChannel: null,
     });
     expect(getMessageTelemetryFinalizationState(db, 'assistant-1')).toEqual({
       exists: true,
@@ -362,6 +396,7 @@ describe('persisted telemetry accepted anchor', () => {
       telemetryFinalized: true,
       acceptedTraceBodyId: newRunId,
       acceptedReportTrigger: 'final_message',
+      acceptedDeliveryChannel: null,
     });
   });
 
@@ -384,6 +419,7 @@ describe('persisted telemetry accepted anchor', () => {
       telemetryFinalized: true,
       acceptedTraceBodyId: staleBodyId,
       acceptedReportTrigger: 'terminal_fallback',
+      acceptedDeliveryChannel: null,
     });
 
     // Run creation pins existing assistant rows through a raw UPDATE, not
@@ -404,6 +440,7 @@ describe('persisted telemetry accepted anchor', () => {
       telemetryFinalized: false,
       acceptedTraceBodyId: null,
       acceptedReportTrigger: null,
+      acceptedDeliveryChannel: null,
     });
     expect(getMessageTelemetryFinalizationState(db, 'assistant-1')).toEqual({
       exists: true,
@@ -440,6 +477,7 @@ describe('persisted telemetry accepted anchor', () => {
       telemetryFinalized: false,
       acceptedTraceBodyId: newRunId,
       acceptedReportTrigger: 'final_message',
+      acceptedDeliveryChannel: null,
     });
   });
 
@@ -496,6 +534,7 @@ describe('persisted telemetry accepted anchor', () => {
       telemetryFinalized: false,
       acceptedTraceBodyId: null,
       acceptedReportTrigger: null,
+      acceptedDeliveryChannel: null,
     });
   });
 
@@ -623,7 +662,8 @@ describe('persisted telemetry accepted anchor', () => {
         .prepare(
           `UPDATE messages
               SET telemetry_accepted_body_id = NULL,
-                  telemetry_accepted_report_trigger = NULL
+                  telemetry_accepted_report_trigger = NULL,
+                  telemetry_accepted_delivery_channel = NULL
             WHERE run_id = ?`,
         )
         .run(runId);
@@ -641,6 +681,7 @@ describe('persisted telemetry accepted anchor', () => {
         telemetryFinalized: true,
         acceptedTraceBodyId: expectedBodyId,
         acceptedReportTrigger: 'terminal_fallback',
+        acceptedDeliveryChannel: null,
       });
       expect(
         getRunFeedbackTelemetryAnchor(db1, otherRunId, 'assistant-foreign')
@@ -660,6 +701,7 @@ describe('persisted telemetry accepted anchor', () => {
       telemetryFinalized: true,
       acceptedTraceBodyId: expectedBodyId,
       acceptedReportTrigger: 'terminal_fallback',
+      acceptedDeliveryChannel: null,
     });
     expect(
       resolveFeedbackTraceId({

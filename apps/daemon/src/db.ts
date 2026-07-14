@@ -128,6 +128,7 @@ function migrate(db: SqliteDb): void {
       telemetry_finalized_at INTEGER,
       telemetry_accepted_body_id TEXT,
       telemetry_accepted_report_trigger TEXT,
+      telemetry_accepted_delivery_channel TEXT,
       started_at INTEGER,
       ended_at INTEGER,
       position INTEGER NOT NULL,
@@ -316,6 +317,9 @@ function migrate(db: SqliteDb): void {
   }
   if (!messageCols.some((c: DbRow) => c.name === 'telemetry_accepted_report_trigger')) {
     db.exec(`ALTER TABLE messages ADD COLUMN telemetry_accepted_report_trigger TEXT`);
+  }
+  if (!messageCols.some((c: DbRow) => c.name === 'telemetry_accepted_delivery_channel')) {
+    db.exec(`ALTER TABLE messages ADD COLUMN telemetry_accepted_delivery_channel TEXT`);
   }
   const routineRunCols = db.prepare(`PRAGMA table_info(routine_runs)`).all() as DbRow[];
   if (!routineRunCols.some((c: DbRow) => c.name === 'error_code')) {
@@ -1464,6 +1468,10 @@ export function upsertMessage(db: SqliteDb, conversationId: string, m: DbRow) {
                 WHEN ? THEN NULL
                 ELSE telemetry_accepted_report_trigger
               END,
+              telemetry_accepted_delivery_channel = CASE
+                WHEN ? THEN NULL
+                ELSE telemetry_accepted_delivery_channel
+              END,
               started_at = ?, ended_at = ?
         WHERE id = ?`,
     ).run(
@@ -1491,6 +1499,7 @@ export function upsertMessage(db: SqliteDb, conversationId: string, m: DbRow) {
       m.telemetryFinalized === true ? now : null,
       m.telemetryFinalized === true ? 1 : 0,
       now,
+      clearAcceptedTelemetryAnchor ? 1 : 0,
       clearAcceptedTelemetryAnchor ? 1 : 0,
       clearAcceptedTelemetryAnchor ? 1 : 0,
       m.startedAt ?? null,
@@ -1627,6 +1636,7 @@ export function getMessageTelemetryFinalizationState(
 }
 
 type TelemetryAcceptedReportTrigger = 'final_message' | 'terminal_fallback';
+type TelemetryAcceptedDeliveryChannel = 'vela' | 'relay' | 'langfuse';
 
 function normalizeTelemetryAcceptedReportTrigger(
   value: unknown,
@@ -1636,11 +1646,20 @@ function normalizeTelemetryAcceptedReportTrigger(
     : null;
 }
 
+function normalizeTelemetryAcceptedDeliveryChannel(
+  value: unknown,
+): TelemetryAcceptedDeliveryChannel | null {
+  return value === 'vela' || value === 'relay' || value === 'langfuse'
+    ? value
+    : null;
+}
+
 function rowToFeedbackTelemetryAnchor(row: DbRow): {
   runStatus: string | null;
   telemetryFinalized: boolean;
   acceptedTraceBodyId: string | null;
   acceptedReportTrigger: TelemetryAcceptedReportTrigger | null;
+  acceptedDeliveryChannel: TelemetryAcceptedDeliveryChannel | null;
 } {
   const acceptedTraceBodyId =
     typeof row.acceptedTraceBodyId === 'string' && row.acceptedTraceBodyId.trim()
@@ -1652,6 +1671,9 @@ function rowToFeedbackTelemetryAnchor(row: DbRow): {
     acceptedTraceBodyId,
     acceptedReportTrigger: normalizeTelemetryAcceptedReportTrigger(
       row.acceptedReportTrigger,
+    ),
+    acceptedDeliveryChannel: normalizeTelemetryAcceptedDeliveryChannel(
+      row.acceptedDeliveryChannel,
     ),
   };
 }
@@ -1665,6 +1687,10 @@ function rowToFeedbackTelemetryAnchor(row: DbRow): {
  *
  * Preference matches process-local memory: an accepted final_message is never
  * demoted by a later terminal_fallback write.
+ *
+ * `deliveryChannel` records the transport that accepted the body (especially
+ * `vela`, which scopes/hashes ids) so feedback cannot later attach via an
+ * anonymous relay to a raw body id that never received the run.
  */
 export function setRunTelemetryAcceptedAnchor(
   db: SqliteDb,
@@ -1673,11 +1699,15 @@ export function setRunTelemetryAcceptedAnchor(
     assistantMessageId?: string | null;
     bodyId: string;
     reportTrigger: TelemetryAcceptedReportTrigger;
+    deliveryChannel?: TelemetryAcceptedDeliveryChannel | null;
   },
 ): boolean {
   const runId = typeof opts.runId === 'string' ? opts.runId.trim() : '';
   const bodyId = typeof opts.bodyId === 'string' ? opts.bodyId.trim() : '';
   const reportTrigger = normalizeTelemetryAcceptedReportTrigger(opts.reportTrigger);
+  const deliveryChannel = normalizeTelemetryAcceptedDeliveryChannel(
+    opts.deliveryChannel,
+  );
   if (!runId || !bodyId || !reportTrigger) return false;
 
   let messageId: string | null = null;
@@ -1737,10 +1767,11 @@ export function setRunTelemetryAcceptedAnchor(
     .prepare(
       `UPDATE messages
           SET telemetry_accepted_body_id = ?,
-              telemetry_accepted_report_trigger = ?
+              telemetry_accepted_report_trigger = ?,
+              telemetry_accepted_delivery_channel = ?
         WHERE id = ?`,
     )
-    .run(bodyId, reportTrigger, messageId);
+    .run(bodyId, reportTrigger, deliveryChannel, messageId);
   return Number(result.changes ?? 0) > 0;
 }
 
@@ -1766,6 +1797,7 @@ export function getRunFeedbackTelemetryAnchor(
   telemetryFinalized: boolean;
   acceptedTraceBodyId: string | null;
   acceptedReportTrigger: TelemetryAcceptedReportTrigger | null;
+  acceptedDeliveryChannel: TelemetryAcceptedDeliveryChannel | null;
 } | null {
   const normalizedRunId = typeof runId === 'string' ? runId.trim() : '';
   if (!normalizedRunId) return null;
@@ -1776,7 +1808,8 @@ export function getRunFeedbackTelemetryAnchor(
         `SELECT run_status AS runStatus,
                 telemetry_finalized_at AS telemetryFinalizedAt,
                 telemetry_accepted_body_id AS acceptedTraceBodyId,
-                telemetry_accepted_report_trigger AS acceptedReportTrigger
+                telemetry_accepted_report_trigger AS acceptedReportTrigger,
+                telemetry_accepted_delivery_channel AS acceptedDeliveryChannel
            FROM messages
           WHERE id = ?
             AND run_id = ?
@@ -1793,7 +1826,8 @@ export function getRunFeedbackTelemetryAnchor(
       `SELECT run_status AS runStatus,
               telemetry_finalized_at AS telemetryFinalizedAt,
               telemetry_accepted_body_id AS acceptedTraceBodyId,
-              telemetry_accepted_report_trigger AS acceptedReportTrigger
+              telemetry_accepted_report_trigger AS acceptedReportTrigger,
+              telemetry_accepted_delivery_channel AS acceptedDeliveryChannel
          FROM messages
         WHERE run_id = ?
           AND role = 'assistant'
