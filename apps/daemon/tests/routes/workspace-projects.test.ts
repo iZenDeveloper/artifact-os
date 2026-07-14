@@ -693,7 +693,7 @@ describe('workspace project routes', () => {
     const routeServer = await listen(app);
     try {
       const resp = await fetch(`${routeServer.url}/api/workspaces/${workspaceId}/projects?view=team`, {
-        headers: headers('member-viewer'),
+        headers: headers('member-viewer', { 'x-od-workspace-type': 'team' }),
       });
       expect(resp.status).toBe(200);
       const body = await resp.json() as { projects: Array<any> };
@@ -722,6 +722,53 @@ describe('workspace project routes', () => {
         },
       });
       expect(body.projects[0].project.id).toBe(remoteProjectId);
+    } finally {
+      await close(routeServer.server);
+    }
+  });
+
+  it('does not merge remote team projects into a personal workspace list (isolation)', async () => {
+    const remoteProjectId = `workspace-personal-leak-${Date.now()}`;
+    const teamProjectCatalog = {
+      list: vi.fn(async () => [
+        {
+          id: `catalog-${remoteProjectId}`,
+          workspaceId,
+          projectId: remoteProjectId,
+          resourceId: `project-remote-${remoteProjectId}`,
+          ownerMemberId: 'member-owner',
+          displayName: 'Team project that must not leak',
+          syncState: 'synced',
+          lastSyncedVersionId: 'version-1',
+          createdAt: new Date(10).toISOString(),
+          updatedAt: new Date(20).toISOString(),
+          access: { canView: true, canComment: true, canEdit: true, frozen: false },
+        },
+      ]),
+      upsert: vi.fn(),
+    };
+    const app = express();
+    app.use(express.json());
+    registerProjectRoutes(app, workspaceProjectRouteDeps({
+      workspaceId,
+      projectId: `workspace-personal-local-${Date.now()}`,
+      dbDeleteProject: vi.fn(),
+      removeProjectDir: vi.fn(),
+      teamProjectCatalog,
+    }));
+    const routeServer = await listen(app);
+    try {
+      // Personal workspace context (no team type header). The Vela team catalog
+      // lister is scoped to the active team, so without the workspace-type guard
+      // the team project would leak into — and duplicate within — the personal
+      // list. A personal workspace must never fetch or merge team projects.
+      const resp = await fetch(`${routeServer.url}/api/workspaces/${workspaceId}/projects?view=all`, {
+        headers: headers('member-personal'),
+      });
+      expect(resp.status).toBe(200);
+      const body = await resp.json() as { projects: Array<any> };
+      expect(body.projects.some((item) => item.id === remoteProjectId)).toBe(false);
+      expect(teamProjectCatalog.list).not.toHaveBeenCalled();
     } finally {
       await close(routeServer.server);
     }
@@ -784,7 +831,7 @@ describe('workspace project routes', () => {
     const routeServer = await listen(app);
     try {
       const resp = await fetch(`${routeServer.url}/api/workspaces/${workspaceId}/projects?view=team`, {
-        headers: headers('member-viewer'),
+        headers: headers('member-viewer', { 'x-od-workspace-type': 'team' }),
       });
       expect(resp.status).toBe(200);
       const body = await resp.json() as { projects: Array<any> };
@@ -837,7 +884,7 @@ describe('workspace project routes', () => {
     const routeServer = await listen(app);
     try {
       const resp = await fetch(`${routeServer.url}/api/workspaces/${workspaceId}/projects?owner=others`, {
-        headers: headers('member-viewer'),
+        headers: headers('member-viewer', { 'x-od-workspace-type': 'team' }),
       });
       expect(resp.status).toBe(200);
       const body = await resp.json() as { projects: Array<any> };
@@ -868,7 +915,7 @@ describe('workspace project routes', () => {
     const routeServer = await listen(app);
     try {
       const resp = await fetch(`${routeServer.url}/api/workspaces/${workspaceId}/projects?view=team`, {
-        headers: headers('member-viewer'),
+        headers: headers('member-viewer', { 'x-od-workspace-type': 'team' }),
       });
       expect(resp.status).toBe(502);
       await expect(resp.json()).resolves.toMatchObject({
@@ -879,7 +926,7 @@ describe('workspace project routes', () => {
 
       teamProjectCatalog.list.mockClear();
       const personalResp = await fetch(`${routeServer.url}/api/workspaces/${workspaceId}/projects?visibility=personal`, {
-        headers: headers('member-viewer'),
+        headers: headers('member-viewer', { 'x-od-workspace-type': 'team' }),
       });
       expect(personalResp.status).toBe(200);
       await expect(personalResp.json()).resolves.toMatchObject({
@@ -893,7 +940,7 @@ describe('workspace project routes', () => {
       expect(teamProjectCatalog.list).not.toHaveBeenCalled();
 
       const personalOwnerResp = await fetch(`${routeServer.url}/api/workspaces/${workspaceId}/projects?owner=mine&visibility=personal`, {
-        headers: headers('member-viewer'),
+        headers: headers('member-viewer', { 'x-od-workspace-type': 'team' }),
       });
       expect(personalOwnerResp.status).toBe(200);
       expect(teamProjectCatalog.list).not.toHaveBeenCalled();

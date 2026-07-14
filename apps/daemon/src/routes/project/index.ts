@@ -1848,7 +1848,12 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
         view !== 'drafts' &&
         visibility !== 'personal' &&
         (view === 'team' || view === 'recent' || visibility === 'team' || (view === 'all' && visibility === 'all'));
-      const needsRemoteTeamProjects = queryCanIncludeTeam;
+      // Only a team workspace has a remote team-project catalog. A personal
+      // workspace must never merge the caller's team projects into its list —
+      // the Vela CLI team-projects lister is scoped to the active team, not the
+      // queried workspace, so without this guard team projects leak into (and
+      // duplicate within) a personal workspace's project list.
+      const needsRemoteTeamProjects = queryCanIncludeTeam && ctx.workspaceType === 'team';
       const mergedProjects = [
         ...rows.map((row: any) => normalizeWorkspaceProjectRow(row, ctx)),
         ...(needsRemoteTeamProjects ? await listRemoteTeamProjectSummaries(rows, ctx) : []),
