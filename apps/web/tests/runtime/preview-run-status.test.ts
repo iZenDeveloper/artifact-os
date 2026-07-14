@@ -27,8 +27,26 @@ describe('preview run status', () => {
   it('uses real timestamps for an active Design run instead of a fake percentage', () => {
     const status = latestPreviewRunStatus([designMessage()], STARTED_AT + 67_000);
 
-    expect(status).toMatchObject({ phase: 'generating', elapsedMs: 67_000 });
+    expect(status).toMatchObject({ phase: 'generating', stage: 'analyzing', elapsedMs: 67_000 });
     expect(formatPreviewRunElapsed(status?.elapsedMs ?? 0)).toBe('1:07');
+  });
+
+  it('uses real agent activity to advance from analysis to design generation', () => {
+    const analyzing = latestPreviewRunStatus(
+      [designMessage({ events: [{ kind: 'thinking', text: 'Reviewing the brief.' }] })],
+      STARTED_AT + 1_000,
+    );
+    const generating = latestPreviewRunStatus(
+      [
+        designMessage({
+          events: [{ kind: 'tool_use', id: 'tool-1', name: 'write_file', input: {} }],
+        }),
+      ],
+      STARTED_AT + 2_000,
+    );
+
+    expect(analyzing?.stage).toBe('analyzing');
+    expect(generating?.stage).toBe('generating');
   });
 
   it('holds success briefly, then lets the surface fade away', () => {

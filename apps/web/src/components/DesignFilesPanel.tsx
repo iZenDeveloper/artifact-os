@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useAnalytics } from '../analytics/provider';
 import { trackFileManagerClick } from '../analytics/events';
 import { useT } from '../i18n';
@@ -42,6 +42,8 @@ interface Props {
   // True while the chat agent is generating. The footer swaps its idle
   // drop/upload hint for the typewriter "tip" line while a run is in flight.
   running?: boolean;
+  /** Lightweight delivery feedback placed beneath the empty preview card. */
+  previewRunStatus?: ReactNode;
   files: ProjectFile[];
   // Persisted folders from `/api/projects/:id/folders`, including empty ones
   // that no file lives under. Without these, a folder only appears once a file
@@ -291,6 +293,7 @@ export function DesignFilesPanel({
   rootDirName,
   reloading,
   running = false,
+  previewRunStatus,
   files,
   folders,
   liveArtifacts,
@@ -1148,6 +1151,7 @@ export function DesignFilesPanel({
                   </button>
                 </div>
               </div>
+              {previewRunStatus}
             </div>
           ) : (
             <>

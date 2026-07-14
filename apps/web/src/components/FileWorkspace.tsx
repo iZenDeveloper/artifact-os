@@ -3784,6 +3784,14 @@ export function FileWorkspace({
             rootDirName={rootDirName ?? t('workspace.allProjectFiles')}
             reloading={reloading}
             running={Boolean(streaming)}
+            previewRunStatus={
+              <PreviewRunStatusBar
+                projectId={projectId}
+                conversationId={conversationId}
+                messages={messages}
+                onViewDetails={onViewRunDetails}
+              />
+            }
             files={visibleFiles}
             folders={projectFolders}
             liveArtifacts={liveArtifactEntries}
@@ -4000,12 +4008,6 @@ export function FileWorkspace({
             .
           </div>
         )}
-        <PreviewRunStatusBar
-          projectId={projectId}
-          conversationId={conversationId}
-          messages={messages}
-          onViewDetails={onViewRunDetails}
-        />
       </div>
       <PageCreatorDialog
         open={pageCreatorOpen}

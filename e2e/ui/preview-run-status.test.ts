@@ -73,6 +73,7 @@ test('[P1] preview delivery status keeps persisted delivery-failure recovery in 
   await gotoProject(page, projectId);
   const status = page.getByTestId('preview-run-status');
   await expect(status).toContainText('Delivery needs attention');
+  await expect(status.locator('xpath=ancestor::*[@data-testid="design-files-empty"]')).toHaveCount(1);
   await expect(status).not.toContainText('Elapsed');
   await expect(page.getByTestId('preview-run-status-retry')).toHaveCount(0);
   await expect(page.getByTestId('preview-run-status-view-details')).toBeVisible();

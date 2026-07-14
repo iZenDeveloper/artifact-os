@@ -12,14 +12,45 @@ export type PreviewRunStatusPhase =
   | 'succeeded'
   | 'failed';
 
+export type PreviewRunStatusStage = 'analyzing' | PreviewRunStatusPhase;
+
 export interface PreviewRunStatus {
   message: ChatMessage;
   phase: PreviewRunStatusPhase;
+  /** A real stream-derived label for the active generation phase. */
+  stage: PreviewRunStatusStage;
   elapsedMs: number;
 }
 
 function isActiveDesignRun(message: ChatMessage): boolean {
   return message.runStatus === 'queued' || message.runStatus === 'running';
+}
+
+const ANALYZING_STATUS_LABELS = new Set(['requesting', 'starting', 'initializing', 'thinking']);
+
+function activeDesignRunStage(message: ChatMessage): Extract<PreviewRunStatusStage, 'analyzing' | 'generating'> {
+  const events = message.events ?? [];
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const event = events[index];
+    if (!event) continue;
+    if (event.kind === 'thinking') return 'analyzing';
+    if (event.kind === 'status') {
+      return ANALYZING_STATUS_LABELS.has(event.label) ? 'analyzing' : 'generating';
+    }
+    if (
+      event.kind === 'text'
+      || event.kind === 'tool_use'
+      || event.kind === 'tool_result'
+      || event.kind === 'live_artifact'
+      || event.kind === 'live_artifact_refresh'
+    ) {
+      return 'generating';
+    }
+  }
+
+  // A queued run has no agent event yet. Label it as analysis rather than
+  // pretending design output is already being produced.
+  return 'analyzing';
 }
 
 /**
@@ -37,25 +68,31 @@ export function latestPreviewRunStatus(
     if (message.role !== 'assistant' || message.sessionMode !== 'design') continue;
 
     let phase: PreviewRunStatusPhase | null = null;
+    let stage: PreviewRunStatusStage | null = null;
     if (isActiveDesignRun(message)) {
       phase = 'generating';
+      stage = activeDesignRunStage(message);
     } else if (designDeliveryVerificationPending(message)) {
       phase = 'verifying';
+      stage = 'verifying';
     } else if (isRetryableAssistantTerminalFailure(message)) {
       phase = 'failed';
+      stage = 'failed';
     } else if (message.runStatus === 'succeeded' && message.resultDeliveryState === 'delivered') {
       phase = 'succeeded';
+      stage = 'succeeded';
     }
 
     // A later Design turn supersedes any prior failure. For example, a
     // clarification-only completion must not leave an earlier delivery error
     // floating over the preview while the user supplies the requested input.
-    if (!phase) return null;
+    if (!phase || !stage) return null;
     const start = message.startedAt ?? message.createdAt;
     const end = isActiveDesignRun(message) ? now : (message.endedAt ?? now);
     return {
       message,
       phase,
+      stage,
       elapsedMs: start === undefined ? 0 : Math.max(0, end - start),
     };
   }

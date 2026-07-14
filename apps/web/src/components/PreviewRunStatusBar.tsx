@@ -15,7 +15,6 @@ import {
   type PreviewRunStatus,
 } from '../runtime/preview-run-status';
 import type { ChatMessage } from '../types';
-import { Icon } from './Icon';
 import styles from './PreviewRunStatusBar.module.css';
 
 const SUCCESS_EXIT_MS = 140;
@@ -28,13 +27,16 @@ interface Props {
 }
 
 function statusLabelKey(status: PreviewRunStatus):
+  | 'previewRunStatus.analyzing'
   | 'previewRunStatus.generating'
   | 'previewRunStatus.verifying'
   | 'previewRunStatus.succeeded'
   | 'previewRunStatus.failed' {
   switch (status.phase) {
     case 'generating':
-      return 'previewRunStatus.generating';
+      return status.stage === 'analyzing'
+        ? 'previewRunStatus.analyzing'
+        : 'previewRunStatus.generating';
     case 'verifying':
       return 'previewRunStatus.verifying';
     case 'succeeded':
@@ -44,19 +46,7 @@ function statusLabelKey(status: PreviewRunStatus):
   }
 }
 
-function statusIcon(status: PreviewRunStatus) {
-  switch (status.phase) {
-    case 'generating':
-    case 'verifying':
-      return <Icon name="spinner" size={16} className={styles.spinner} />;
-    case 'succeeded':
-      return <Icon name="check" size={16} />;
-    case 'failed':
-      return <Icon name="alert-triangle" size={16} />;
-  }
-}
-
-/** Lightweight run feedback for the preview workspace, with recovery owned by Chat. */
+/** Lightweight run feedback embedded directly in the preview canvas. */
 export function PreviewRunStatusBar({
   projectId,
   conversationId,
@@ -163,33 +153,25 @@ export function PreviewRunStatusBar({
       aria-live="polite"
       aria-label={t(statusLabelKey(displayed))}
     >
-      <div className={`${styles.card} ${styles[displayed.phase]}`}>
-        <span className={styles.icon}>{statusIcon(displayed)}</span>
-        <div className={styles.copy}>
-          <span className={styles.label}>{t(statusLabelKey(displayed))}</span>
-          {isFailure ? null : (
-            <span className={styles.elapsed}>{t('previewRunStatus.elapsed', { time: elapsed })}</span>
-          )}
-          {(displayed.phase === 'generating' || displayed.phase === 'verifying') ? (
-            <span className={styles.tip}>{t('previewRunStatus.tip')}</span>
-          ) : null}
-        </div>
+      <div className={`${styles.card}${displayed.phase === 'failed' ? ` ${styles.failed}` : ''}`}>
+        <span className={styles.label}>{t(statusLabelKey(displayed))}</span>
+        {isFailure ? null : (
+          <span className={styles.elapsed}>{t('previewRunStatus.elapsed', { time: elapsed })}</span>
+        )}
         {isFailure ? (
-          <div className={styles.actions}>
-            {onViewDetails ? (
-              <Button
-                variant="ghost"
-                className={styles.action}
-                data-testid="preview-run-status-view-details"
-                onClick={() => {
-                  trackClick();
-                  onViewDetails();
-                }}
-              >
-                {t('previewRunStatus.viewDetails')}
-              </Button>
-            ) : null}
-          </div>
+          onViewDetails ? (
+            <Button
+              variant="ghost"
+              className={styles.action}
+              data-testid="preview-run-status-view-details"
+              onClick={() => {
+                trackClick();
+                onViewDetails();
+              }}
+            >
+              {t('previewRunStatus.viewDetails')}
+            </Button>
+          ) : null
         ) : null}
       </div>
     </section>

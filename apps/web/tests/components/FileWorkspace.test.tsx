@@ -3135,9 +3135,11 @@ describe('FileWorkspace empty-project generation contract', () => {
       />,
     );
 
-    expect(screen.getByTestId('preview-run-status')).toHaveTextContent('Delivery needs attention');
+    const previewStatus = screen.getByTestId('preview-run-status');
+    expect(previewStatus).toHaveTextContent('Delivery needs attention');
+    expect(previewStatus.closest('[data-testid="design-files-empty"]')).not.toBeNull();
     expect(screen.queryByTestId('preview-run-status-retry')).toBeNull();
-    expect(screen.getByTestId('preview-run-status')).not.toHaveTextContent('Elapsed');
+    expect(previewStatus).not.toHaveTextContent('Elapsed');
     fireEvent.click(screen.getByTestId('preview-run-status-view-details'));
     expect(onViewRunDetails).toHaveBeenCalledTimes(1);
   });

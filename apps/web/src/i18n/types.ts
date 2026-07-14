@@ -3210,12 +3210,12 @@ export interface Dict {
   'workspace.terminalReconnecting': string;
   'workspace.terminalStartFailed': string;
   'workspace.terminalRestart': string;
+  'previewRunStatus.analyzing': string;
   'previewRunStatus.generating': string;
   'previewRunStatus.verifying': string;
   'previewRunStatus.succeeded': string;
   'previewRunStatus.failed': string;
   'previewRunStatus.elapsed': string;
-  'previewRunStatus.tip': string;
   'previewRunStatus.viewDetails': string;
   'designFiles.title': string;
   'designFiles.upload': string;
