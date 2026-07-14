@@ -1679,6 +1679,13 @@ describe("desktop updater", () => {
       expect(script).toContain("hdiutil detach");
       expect(script).toContain('open -n "$target_bundle_path"');
       expect(script).toContain('open "$installer_path"');
+      expect(script).toContain('scratch_root=$(mktemp -d "$target_parent/.od-update.XXXXXX") || fallback_open_installer');
+      expect(script).toContain('tmp_root="$scratch_root/tmp"');
+      expect(script).toContain('backup_root="$scratch_root/backup"');
+      expect(script).toContain('preserve_scratch=1');
+      expect(script).toContain("exit 1");
+      expect(script).not.toContain(".od-update-tmp");
+      expect(script).not.toContain(".od-update-back");
       expect(script).toContain('target_bundle_path="$4"');
       expect(script).toContain('expected_app_name="$5"');
       expect(script).not.toContain(targetBundlePath);

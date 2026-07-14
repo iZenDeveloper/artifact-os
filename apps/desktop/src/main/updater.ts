@@ -1506,6 +1506,8 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 owned_mount="$script_dir/dmg-mount-$$"
 plist_path="$script_dir/hdiutil-attach-$$.plist"
 mounted_path=""
+scratch_root=""
+preserve_scratch=0
 
 cleanup() {
   if [ -n "$mounted_path" ]; then
@@ -1513,6 +1515,9 @@ cleanup() {
   fi
   rmdir "$owned_mount" >/dev/null 2>&1 || true
   rm -f "$plist_path"
+  if [ "$preserve_scratch" != "1" ] && [ -n "$scratch_root" ]; then
+    rm -rf "$scratch_root"
+  fi
   rm -f "$0"
 }
 trap cleanup EXIT
@@ -1604,14 +1609,13 @@ else
   fi
 fi
 
-tmp_root="$target_parent/.od-update-tmp"
-backup_root="$target_parent/.od-update-back"
+scratch_root=$(mktemp -d "$target_parent/.od-update.XXXXXX") || fallback_open_installer
+tmp_root="$scratch_root/tmp"
+backup_root="$scratch_root/backup"
 tmp_bundle="$tmp_root/$target_base"
 backup_bundle="$backup_root/$target_base"
-rm -rf "$tmp_root" "$backup_root"
 mkdir -p "$tmp_root" "$backup_root" || fallback_open_installer
 if ! ditto "$source_app" "$tmp_bundle"; then
-  rm -rf "$tmp_root" "$backup_root"
   fallback_open_installer
 fi
 for attribute in com.apple.quarantine com.apple.provenance com.apple.macl; do
@@ -1619,22 +1623,22 @@ for attribute in com.apple.quarantine com.apple.provenance com.apple.macl; do
 done
 
 if ! mv "$target_bundle_path" "$backup_bundle"; then
-  rm -rf "$tmp_root" "$backup_root"
   fallback_open_installer
 fi
 if ! mv "$tmp_bundle" "$target_bundle_path"; then
   if [ -d "$backup_bundle" ] && [ ! -e "$target_bundle_path" ]; then
-    mv "$backup_bundle" "$target_bundle_path" >/dev/null 2>&1 || true
+    if mv "$backup_bundle" "$target_bundle_path" >/dev/null 2>&1; then
+      fallback_open_installer
+    fi
   fi
-  rm -rf "$tmp_root" "$backup_root"
-  fallback_open_installer
+  preserve_scratch=1
+  exit 1
 fi
 
 if [ -n "$mounted_path" ]; then
   hdiutil detach "$mounted_path" >/dev/null 2>&1 || true
   mounted_path=""
 fi
-rm -rf "$tmp_root" "$backup_root"
 open -n "$target_bundle_path" >/dev/null 2>&1 &
 exit 0
 `;
