@@ -1631,13 +1631,14 @@ describe("desktop updater", () => {
   it("writes a mac DMG replacement helper when the installed app bundle path is trusted", async () => {
     const root = makeRoot();
     const fixture = await createUpdaterFixture();
-    const targetBundlePath = "/Applications/Open Design.app";
+    const targetBundlePath = join(root, "installed", "Open Design.app");
     const spawned: Array<{ args: string[]; command: string }> = [];
     try {
+      await mkdir(targetBundlePath, { recursive: true });
       const updater = createDesktopUpdater(
         {
           arch: "arm64",
-          downloadRoot: root,
+          downloadRoot: join(root, "updates"),
           env: {
             ...updaterEnv(fixture.metadataUrl),
             [DESKTOP_UPDATE_ENV.OPEN_DRY_RUN]: "0",
@@ -1665,7 +1666,7 @@ describe("desktop updater", () => {
       expect(spawned).toHaveLength(1);
       expect(spawned[0]?.command).toBe("/bin/sh");
       const [scriptPath, pidArg, installerArg, timeoutArg, targetArg, expectedAppNameArg] = spawned[0]?.args ?? [];
-      expect(scriptPath).toEqual(expect.stringContaining(join(root, "helpers", "replace-dmg-after-quit-")));
+      expect(scriptPath).toEqual(expect.stringContaining(join(root, "updates", "helpers", "replace-dmg-after-quit-")));
       expect(pidArg).toBe("4242");
       expect(installerArg).toBe(checked.downloadPath);
       expect(timeoutArg).toBe("600");
@@ -1681,6 +1682,84 @@ describe("desktop updater", () => {
       expect(script).toContain('target_bundle_path="$4"');
       expect(script).toContain('expected_app_name="$5"');
       expect(script).not.toContain(targetBundlePath);
+    } finally {
+      await fixture.close();
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
+
+  it("keeps mac DMG updates on the manual installer capability when the installed app bundle is missing", async () => {
+    const root = makeRoot();
+    const fixture = await createUpdaterFixture();
+    try {
+      const updater = createDesktopUpdater({
+        arch: "arm64",
+        downloadRoot: join(root, "updates"),
+        env: updaterEnv(fixture.metadataUrl),
+        launcherLaunchPath: join(root, "missing", "Open Design.app"),
+        source: SIDECAR_SOURCES.TOOLS_PACK,
+      });
+
+      const checked = await updater.checkForUpdates();
+
+      expect(checked.artifact?.type).toBe("dmg");
+      expect(checked.capabilities.canApplyInPlace).toBe(false);
+      expect(checked.capabilities.canOpenInstaller).toBe(true);
+      expect(checked.capabilities.requiresManualInstall).toBe(true);
+    } finally {
+      await fixture.close();
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
+
+  it.skipIf(process.platform === "win32")("keeps mac DMG installer launch manual when the installed app bundle is symlinked", async () => {
+    const root = makeRoot();
+    const fixture = await createUpdaterFixture();
+    const realBundlePath = join(root, "real", "Open Design.app");
+    const targetBundlePath = join(root, "installed", "Open Design.app");
+    const spawned: Array<{ args: string[]; command: string }> = [];
+    try {
+      await mkdir(realBundlePath, { recursive: true });
+      await mkdir(join(root, "installed"), { recursive: true });
+      symlinkSync(realBundlePath, targetBundlePath, "dir");
+      const updater = createDesktopUpdater(
+        {
+          arch: "arm64",
+          downloadRoot: join(root, "updates"),
+          env: {
+            ...updaterEnv(fixture.metadataUrl),
+            [DESKTOP_UPDATE_ENV.OPEN_DRY_RUN]: "0",
+          },
+          launcherLaunchPath: targetBundlePath,
+          source: SIDECAR_SOURCES.TOOLS_PACK,
+        },
+        {
+          processPid: 4242,
+          spawnDetached: (command, args) => {
+            spawned.push({ args, command });
+            return { unref: vi.fn() };
+          },
+        },
+      );
+
+      const checked = await updater.checkForUpdates();
+      const installed = await updater.installUpdate();
+
+      expect(checked.artifact?.type).toBe("dmg");
+      expect(checked.capabilities.canApplyInPlace).toBe(false);
+      expect(checked.capabilities.canOpenInstaller).toBe(true);
+      expect(checked.capabilities.requiresManualInstall).toBe(true);
+      expect(installed.installResult?.path).toBe(checked.downloadPath);
+      expect(spawned).toHaveLength(1);
+      const [scriptPath, pidArg, installerArg, timeoutArg, targetArg] = spawned[0]?.args ?? [];
+      expect(scriptPath).toEqual(expect.stringContaining(join(root, "updates", "helpers", "open-installer-after-quit-")));
+      expect(pidArg).toBe("4242");
+      expect(installerArg).toBe(checked.downloadPath);
+      expect(timeoutArg).toBe("600");
+      expect(targetArg).toBeUndefined();
+      const script = await readFile(scriptPath ?? "", "utf8");
+      expect(script).toContain('open "$installer_path"');
+      expect(script).not.toContain("ditto");
     } finally {
       await fixture.close();
       rmSync(root, { force: true, recursive: true });

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFile, spawn } from "node:child_process";
-import { createReadStream } from "node:fs";
+import { constants, createReadStream } from "node:fs";
 import {
   access,
   chmod,
@@ -515,6 +515,21 @@ function macAutoReplaceTarget(input: { launcherLaunchPath?: string; platform: st
     expectedAppName,
     targetBundlePath,
   };
+}
+
+async function macAutoReplaceTargetIfReplaceable(
+  input: { launcherLaunchPath?: string; platform: string },
+): Promise<DeferredInstallerLaunchInput["macAutoReplace"] | undefined> {
+  const target = macAutoReplaceTarget(input);
+  if (target == null) return undefined;
+  try {
+    const targetStat = await lstat(target.targetBundlePath);
+    if (targetStat.isSymbolicLink() || !targetStat.isDirectory()) return undefined;
+    await access(dirname(target.targetBundlePath), constants.W_OK | constants.X_OK);
+    return target;
+  } catch {
+    return undefined;
+  }
 }
 
 function createError(code: string, message: string, details?: unknown): DesktopUpdateErrorSnapshot {
@@ -2598,6 +2613,7 @@ export function createDesktopUpdater(
   let installResult: DesktopUpdateStatusSnapshot["installResult"];
   let installFrozen = false;
   let lifecycleSummary: DesktopUpdateCacheLifecycleSummary | undefined;
+  let macDmgAutoReplaceTarget: DeferredInstallerLaunchInput["macAutoReplace"] | undefined;
   let progress: DesktopUpdateProgressSnapshot | undefined;
   let state: DesktopUpdateState = DESKTOP_UPDATE_STATES.IDLE;
   let error: DesktopUpdateErrorSnapshot | undefined;
@@ -2625,6 +2641,12 @@ export function createDesktopUpdater(
 
   function supported(): boolean {
     return config.enabled && config.mode === DESKTOP_UPDATE_MODES.PACKAGE_LAUNCHER && isSupportedPackageLauncherPlatform(config.platform);
+  }
+
+  async function refreshMacDmgAutoReplaceTarget(artifactType?: string): Promise<void> {
+    macDmgAutoReplaceTarget = artifactType === "dmg"
+      ? await macAutoReplaceTargetIfReplaceable(config)
+      : undefined;
   }
 
   function emit(): void {
@@ -2666,7 +2688,7 @@ export function createDesktopUpdater(
       ...(lifecycleSummary == null ? {} : { cache: { lifecycle: lifecycleSummary } }),
       capabilities: capabilitiesFor({
         artifactType: capabilityArtifactType,
-        canAutoReplaceMacDmg: capabilityArtifactType === "dmg" && macAutoReplaceTarget(config) != null,
+        canAutoReplaceMacDmg: capabilityArtifactType === "dmg" && macDmgAutoReplaceTarget != null,
         mode: config.mode,
         platform: config.platform,
         supported: statusSupported,
@@ -2744,6 +2766,7 @@ export function createDesktopUpdater(
     const loadedActive = await loadActiveRelease(opened.root, restoredMetadata, config, logger);
     if (!loadedActive.ok) return setState(DESKTOP_UPDATE_STATES.ERROR, loadedActive.error);
     activeRelease = loadedActive.active;
+    await refreshMacDmgAutoReplaceTarget(activeRelease?.ref.artifact.type);
     // If the app now runs at or beyond the stored active release, the
     // external installer succeeded and its one-shot UI state is stale.
     const clearedAppliedRelease =
@@ -2862,6 +2885,7 @@ export function createDesktopUpdater(
         logUpdateEvent("check-not-available", { candidateVersion: selected.candidate.version });
         candidate = null;
         activeRelease = null;
+        macDmgAutoReplaceTarget = undefined;
         await writeMetadataPatch((current) => ({
           ...current,
           active: undefined,
@@ -2877,6 +2901,7 @@ export function createDesktopUpdater(
         });
         candidate = selected.candidate;
         metadata = selected.candidate.metadata;
+        await refreshMacDmgAutoReplaceTarget(activeRelease.ref.artifact.type);
         const prepareError = await preparePayloadReleaseForReady(activeRelease);
         if (prepareError != null) return prepareError;
         return setState(DESKTOP_UPDATE_STATES.DOWNLOADED);
@@ -2893,6 +2918,7 @@ export function createDesktopUpdater(
           if (prepareError != null) return prepareError;
           candidate = selected.candidate;
           activeRelease = adoptedRelease;
+          await refreshMacDmgAutoReplaceTarget(activeRelease.ref.artifact.type);
           metadata = adoptedRelease.ref.metadata;
           installFrozen = false;
           installResult = undefined;
@@ -2911,6 +2937,7 @@ export function createDesktopUpdater(
         }
       }
       candidate = selected.candidate;
+      await refreshMacDmgAutoReplaceTarget(selected.candidate.artifact.type);
       logUpdateEvent("check-available", {
         artifactType: selected.candidate.artifact.type,
         size: selected.candidate.artifact.size,
@@ -3068,6 +3095,7 @@ export function createDesktopUpdater(
       progress = undefined;
       activeRelease = downloadedRelease;
       incomingRelease = null;
+      await refreshMacDmgAutoReplaceTarget(activeRelease.ref.artifact.type);
       await writeStoreMetadata(opened.root, {
         ...opened.metadata,
         active: releaseRef,
@@ -3147,7 +3175,8 @@ export function createDesktopUpdater(
 
   async function requestInstallerOpen(resolvedDownload: string, updateRoot: string): Promise<string> {
     if (config.platform !== "darwin" && config.platform !== "win32") return await openPath(resolvedDownload);
-    const macAutoReplace = activeRelease?.ref.artifact.type === "dmg" ? macAutoReplaceTarget(config) : undefined;
+    await refreshMacDmgAutoReplaceTarget(activeRelease?.ref.artifact.type);
+    const macAutoReplace = activeRelease?.ref.artifact.type === "dmg" ? macDmgAutoReplaceTarget : undefined;
     return await launchInstallerAfterQuit({
       appPid: processPid,
       installerPath: resolvedDownload,
