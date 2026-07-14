@@ -437,16 +437,22 @@ describe('deck capture DOM prep', () => {
       }
     }
 
-    // Resolve the deck-stage fallback cascade for a slotted slide: hidden by
-    // `::slotted(*){visibility:hidden!important}` unless the host beats it. An
-    // inline declaration only wins with `!important` priority (inline !important
-    // beats a shadow ::slotted !important rule); the deck-active attribute the
-    // reveal rule keys on is the other way to win.
-    const slideRenders = (slide: Slide): boolean => {
+    // Resolve the deck-stage fallback cascade EXACTLY as
+    // packages/contracts/src/runtime/deck-stage-fallback.ts defines it:
+    //   ::slotted(*){visibility:hidden!important}
+    //   ::slotted([data-od-deck-active]){visibility:visible!important}
+    // A slotted slide is hidden unless the host wins that cascade — either via an
+    // inline `visibility` at `!important` priority (an inline !important beats a
+    // shadow ::slotted !important rule) or via the `data-od-deck-active` attribute
+    // the reveal rule keys on. The fallback keys ONLY on `data-od-deck-active`
+    // (`data-deck-active` belongs to the real deck-stage.js runtime), so the oracle
+    // must not accept it — otherwise a relapse that drops `data-od-deck-active` and
+    // the `!important` visibility could still keep this test green.
+    const slideRendersUnderFallback = (slide: Slide): boolean => {
       if (slide.style.getPropertyPriority('visibility') === 'important') {
         return slide.style.getPropertyValue('visibility') === 'visible';
       }
-      return slide.hasAttribute('data-od-deck-active') || slide.hasAttribute('data-deck-active');
+      return slide.hasAttribute('data-od-deck-active');
     };
 
     const slides = [new Slide(), new Slide(), new Slide()];
@@ -462,9 +468,24 @@ describe('deck capture DOM prep', () => {
     try {
       // Export the SECOND page (index 1) — the one the bug left blank.
       await showSlide('.slide, [data-screen-label], .deck-slide, .ppt-slide', 1);
-      expect(slideRenders(slides[1])).toBe(true);
-      expect(slideRenders(slides[0])).toBe(false);
-      expect(slideRenders(slides[2])).toBe(false);
+      // Only the selected page renders under the fallback cascade; the rest stay hidden.
+      expect(slideRendersUnderFallback(slides[1])).toBe(true);
+      expect(slideRendersUnderFallback(slides[0])).toBe(false);
+      expect(slideRendersUnderFallback(slides[2])).toBe(false);
+      // Pin the exact mechanism: the selected slide must be revealed by an inline
+      // `visibility:visible` at `!important` priority (the universal win that also
+      // beats non-important or differently-keyed runtimes) AND carry the
+      // `data-od-deck-active` marker the fallback reveal rule requires. Either half
+      // regressing re-blanks fallback-backed exports.
+      expect(slides[1].style.getPropertyValue('visibility')).toBe('visible');
+      expect(slides[1].style.getPropertyPriority('visibility')).toBe('important');
+      expect(slides[1].hasAttribute('data-od-deck-active')).toBe(true);
+      // Non-selected slides are affirmatively hidden with `!important` and unmarked.
+      for (const off of [slides[0], slides[2]]) {
+        expect(off.style.getPropertyValue('visibility')).toBe('hidden');
+        expect(off.style.getPropertyPriority('visibility')).toBe('important');
+        expect(off.hasAttribute('data-od-deck-active')).toBe(false);
+      }
     } finally {
       Object.assign(globalThis, {
         document: previousDocument,
