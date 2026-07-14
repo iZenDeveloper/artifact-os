@@ -1002,9 +1002,16 @@ export function registerRunRoutes(app: Express, ctx: RegisterRunRoutesDeps) {
         const appCfgAtFinish = await readAppConfig(RUNTIME_DATA_DIR).catch(
           () => ({} as Record<string, unknown>),
         );
+        // Match langfuse-bridge delivery: Settings AMR profile env must reach
+        // sink resolution so run_finished delivery metrics stay consistent with
+        // the actual Vela/anonymous path for non-default profiles.
+        const configuredAmrEnvAtFinish = agentCliEnvForAgent(
+          (appCfgAtFinish as { agentCliEnv?: AgentCliEnv }).agentCliEnv,
+          'amr',
+        );
         const langfuseDeliveryForAnalytics = deriveLangfuseDeliveryState(
           (appCfgAtFinish as { telemetry?: Record<string, unknown> }).telemetry ?? {},
-          readTelemetrySinkConfig(),
+          readTelemetrySinkConfig(process.env, configuredAmrEnvAtFinish),
         );
         const result = runResultFromStatus(status.status);
         const errorCode = deriveRunErrorCode(status);
