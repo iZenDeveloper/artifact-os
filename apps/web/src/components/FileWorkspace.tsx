@@ -3784,14 +3784,6 @@ export function FileWorkspace({
             rootDirName={rootDirName ?? t('workspace.allProjectFiles')}
             reloading={reloading}
             running={Boolean(streaming)}
-            previewRunStatus={
-              <PreviewRunStatusBar
-                projectId={projectId}
-                conversationId={conversationId}
-                messages={messages}
-                onViewDetails={onViewRunDetails}
-              />
-            }
             files={visibleFiles}
             folders={projectFolders}
             liveArtifacts={liveArtifactEntries}
@@ -4008,6 +4000,16 @@ export function FileWorkspace({
             .
           </div>
         )}
+        {activeTab !== QUESTIONS_TAB && !isSideChatTabId(activeTab) && !isTerminalTabId(activeTab) ? (
+          <div className="ws-preview-run-status-slot">
+            <PreviewRunStatusBar
+              projectId={projectId}
+              conversationId={conversationId}
+              messages={messages}
+              onViewDetails={onViewRunDetails}
+            />
+          </div>
+        ) : null}
       </div>
       <PageCreatorDialog
         open={pageCreatorOpen}

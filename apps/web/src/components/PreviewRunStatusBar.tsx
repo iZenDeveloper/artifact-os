@@ -130,6 +130,7 @@ export function PreviewRunStatusBar({
 
   const elapsed = formatPreviewRunElapsed(displayed.elapsedMs);
   const isFailure = displayed.phase === 'failed';
+  const label = t(statusLabelKey(displayed));
   const trackClick = () => {
     trackPreviewRunStatusClick(analytics.track, {
       page_name: 'file_manager',
@@ -147,18 +148,24 @@ export function PreviewRunStatusBar({
   };
 
   return (
-    <section
-      className={`${styles.root}${isFailure ? ` ${styles.failure}` : ''}${leaving ? ` ${styles.leaving}` : ''}`}
+    <div
+      className={`${styles.root}${leaving ? ` ${styles.leaving}` : ''}`}
       data-testid="preview-run-status"
-      aria-live="polite"
-      aria-label={t(statusLabelKey(displayed))}
     >
       <div className={`${styles.card}${displayed.phase === 'failed' ? ` ${styles.failed}` : ''}`}>
-        <span key={`${displayed.message.id}:${displayed.stage}`} className={styles.label}>
-          {t(statusLabelKey(displayed))}
+        <span
+          key={`${displayed.message.id}:${displayed.stage}`}
+          className={styles.label}
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {label}
         </span>
         {isFailure ? null : (
-          <span className={styles.elapsed}>{t('previewRunStatus.elapsed', { time: elapsed })}</span>
+          <span className={styles.elapsed} aria-hidden="true">
+            {t('previewRunStatus.elapsed', { time: elapsed })}
+          </span>
         )}
         {isFailure ? (
           onViewDetails ? (
@@ -176,6 +183,6 @@ export function PreviewRunStatusBar({
           ) : null
         ) : null}
       </div>
-    </section>
+    </div>
   );
 }

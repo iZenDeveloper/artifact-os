@@ -37,6 +37,13 @@ test('[P1] preview delivery status keeps persisted delivery-failure recovery in 
   await putAppConfig(page, browserConfig);
 
   const { conversationId } = await createProjectViaApi(page, projectId, 'Preview status recovery');
+  const existingFileResponse = await page.request.post(`/api/projects/${projectId}/files`, {
+    data: {
+      name: 'existing-design.html',
+      content: '<!doctype html><html><body><p>Existing design</p></body></html>',
+    },
+  });
+  expect(existingFileResponse.ok(), await existingFileResponse.text()).toBeTruthy();
   const userResponse = await page.request.put(
     `/api/projects/${projectId}/conversations/${conversationId}/messages/user-preview-status`,
     {
@@ -63,7 +70,7 @@ test('[P1] preview delivery status keeps persisted delivery-failure recovery in 
         createdAt: now - 50_000,
         startedAt: now - 45_000,
         endedAt: now - 3_000,
-        preTurnFileNames: [],
+        preTurnFileNames: ['existing-design.html'],
         events: [{ kind: 'status', label: 'error', detail: 'The design result was not delivered.' }],
       },
     },
@@ -73,7 +80,8 @@ test('[P1] preview delivery status keeps persisted delivery-failure recovery in 
   await gotoProject(page, projectId);
   const status = page.getByTestId('preview-run-status');
   await expect(status).toContainText('Delivery needs attention');
-  await expect(status.locator('xpath=ancestor::*[@data-testid="design-files-empty"]')).toHaveCount(1);
+  await expect(status.locator('xpath=ancestor::*[contains(@class, "ws-preview-run-status-slot")]')).toHaveCount(1);
+  await expect(status.locator('xpath=ancestor::*[@data-testid="design-files-empty"]')).toHaveCount(0);
   await expect(status).not.toContainText('Elapsed');
   await expect(page.getByTestId('preview-run-status-retry')).toHaveCount(0);
   await expect(page.getByTestId('preview-run-status-view-details')).toBeVisible();
@@ -108,4 +116,9 @@ test('[P1] preview delivery status keeps persisted delivery-failure recovery in 
       return body.files?.map((file) => file.name) ?? [];
     }, { timeout: T.long })
     .toContain('fake-agent-runtime-codex.html');
+
+  await expect(page.getByTestId('preview-run-status')).toContainText('Design ready');
+  await expect(
+    page.getByTestId('preview-run-status').locator('xpath=ancestor::*[contains(@class, "ws-preview-run-status-slot")]'),
+  ).toHaveCount(1);
 });
