@@ -7,12 +7,21 @@ import {
   reportRunCompletedFromDaemon,
   reportRunFeedbackFromDaemon,
 } from '../src/langfuse-bridge.js';
+import {
+  rememberAcceptedFinalTraceBodyId,
+  reportRunCompleted,
+  resetAcceptedFinalTraceBodyIdsForTests,
+  resetPendingRunFeedbackForTests,
+  scopedTelemetryBodyId,
+} from '../src/langfuse-trace.js';
 import { buildPromptStackTelemetry } from '../src/prompt-telemetry.js';
 
 interface FakeMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  /** Owning run id when known; foreign ownership must not be published. */
+  runId?: string | null;
   attachments?: Array<Record<string, unknown>>;
   producedFiles?: Array<Record<string, unknown>>;
   traceObjectFiles?: Array<Record<string, unknown>>;
@@ -139,6 +148,107 @@ describe('langfuse-bridge.reportRunCompletedFromDaemon', () => {
       fetchImpl: fetchSpy as any,
     });
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not publish reused assistant-row content under a prior run id', async () => {
+    // A -> B reuse: delayed terminal_fallback for failed run A still holds
+    // assistantMessageId, but the row now belongs to succeeded run B. Emitting
+    // B's content/files under A's failed trace is cross-run corruption.
+    await writeAppCfg({
+      installationId: 'install-uuid-1',
+      telemetry: { metrics: true, content: true, artifactManifest: true },
+    });
+    const fetchSpy = vi
+      .fn()
+      .mockResolvedValue(new Response('{}', { status: 207 }));
+    process.env.LANGFUSE_PUBLIC_KEY = 'pk';
+    process.env.LANGFUSE_SECRET_KEY = 'sk';
+    try {
+      await reportRunCompletedFromDaemon({
+        db: makeDbWithListMessages({
+          'conv-1': [
+            {
+              id: 'assistant-1',
+              role: 'assistant',
+              content: 'final B — must not appear on run A',
+              runId: 'run-b-reused',
+              producedFiles: [
+                {
+                  name: 'b-only.html',
+                  kind: 'html',
+                  size: 42,
+                },
+              ],
+            },
+          ],
+        }),
+        dataDir,
+        run: makeRun({
+          id: 'run-a-failed-pending-fallback',
+          assistantMessageId: 'assistant-1',
+          status: 'failed',
+          userPrompt: 'prompt for run A',
+        }) as any,
+        persistedRunStatus: 'failed',
+        reportTrigger: 'terminal_fallback',
+        fetchImpl: fetchSpy as any,
+      });
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const batch = JSON.parse(
+        (fetchSpy.mock.calls[0]![1] as RequestInit).body as string,
+      ).batch as Array<{ type: string; body: Record<string, any> }>;
+      const trace = batch.find((item) => item.type === 'trace-create')?.body;
+      expect(trace?.id).toBe('run-a-failed-pending-fallback:tf');
+      expect(trace?.input).toBe('prompt for run A');
+      // Foreign row content and artifact inventory must not leak onto run A.
+      // Empty assistant output is omitted from the payload (undefined), not "".
+      expect(trace?.output ?? '').toBe('');
+      expect(String(trace?.output ?? '')).not.toContain('final B');
+      const artifacts = batch.find(
+        (item) =>
+          item.type === 'event-create' && item.body?.name === 'artifact-summary',
+      )?.body;
+      expect(artifacts?.output?.artifacts ?? []).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ slug: 'b-only.html' }),
+        ]),
+      );
+
+      // Positive control: matching run ownership still ships content.
+      fetchSpy.mockClear();
+      await reportRunCompletedFromDaemon({
+        db: makeDbWithListMessages({
+          'conv-1': [
+            {
+              id: 'assistant-1',
+              role: 'assistant',
+              content: 'owned by run B',
+              runId: 'run-b-reused',
+              producedFiles: [{ name: 'b-only.html', kind: 'html', size: 42 }],
+            },
+          ],
+        }),
+        dataDir,
+        run: makeRun({
+          id: 'run-b-reused',
+          assistantMessageId: 'assistant-1',
+          status: 'succeeded',
+          userPrompt: 'prompt for run B',
+        }) as any,
+        fetchImpl: fetchSpy as any,
+      });
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const ownedBatch = JSON.parse(
+        (fetchSpy.mock.calls[0]![1] as RequestInit).body as string,
+      ).batch as Array<{ type: string; body: Record<string, any> }>;
+      const ownedTrace = ownedBatch.find(
+        (item) => item.type === 'trace-create',
+      )?.body;
+      expect(ownedTrace?.output).toBe('owned by run B');
+    } finally {
+      delete process.env.LANGFUSE_PUBLIC_KEY;
+      delete process.env.LANGFUSE_SECRET_KEY;
+    }
   });
 
   it('does nothing when conversation/tool content reporting is off', async () => {
@@ -1871,11 +1981,15 @@ describe('langfuse-bridge.reportRunFeedbackFromDaemon', () => {
 
   beforeEach(async () => {
     dataDir = await mkdtemp(path.join(tmpdir(), 'od-bridge-feedback-'));
+    resetAcceptedFinalTraceBodyIdsForTests();
+    resetPendingRunFeedbackForTests();
   });
 
   afterEach(async () => {
     await rm(dataDir, { recursive: true, force: true });
     vi.restoreAllMocks();
+    resetAcceptedFinalTraceBodyIdsForTests();
+    resetPendingRunFeedbackForTests();
     delete process.env.VELA_CONTROL_KEY;
     delete process.env.VELA_API_URL;
     delete process.env.OPEN_DESIGN_TELEMETRY_RELAY_URL;
@@ -2000,6 +2114,141 @@ describe('langfuse-bridge.reportRunFeedbackFromDaemon', () => {
     expect(outcome).toEqual({ status: 'skipped_no_sink' });
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it('replays the latest mid-window re-rating onto final_message after terminal_fallback', async () => {
+    // terminal_fallback accepted → bridge pins :tf → user flips rating →
+    // final_message wins. Canonical replay must use the edited rating, not a
+    // stale pre-fallback / first-tf payload.
+    await writeAppCfg({
+      installationId: 'install-uuid-1',
+      telemetry: { metrics: true, content: true },
+    });
+    process.env.LANGFUSE_PUBLIC_KEY = 'pk';
+    process.env.LANGFUSE_SECRET_KEY = 'sk';
+    const runId = 'run-bridge-tf-rerate';
+    const fallbackBodyId = scopedTelemetryBodyId(runId, 'final', 'terminal_fallback');
+    const fetchSpy = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ successes: [], errors: [] }), { status: 207 }),
+      );
+    const langfuseConfig = {
+      kind: 'langfuse' as const,
+      authHeader: 'Basic dGVzdA==',
+      baseUrl: 'https://langfuse.example',
+      timeoutMs: 5_000,
+      retries: 0,
+    };
+
+    // Seed process-local + DB-shaped anchor the way terminal_fallback acceptance does.
+    rememberAcceptedFinalTraceBodyId(runId, fallbackBodyId, 'terminal_fallback', 'langfuse');
+    const db = {
+      prepare: (sql: string) => {
+        if (sql.includes('telemetry_accepted_body_id')) {
+          return {
+            get: () => ({
+              runStatus: 'failed',
+              telemetryFinalizedAt: null,
+              acceptedTraceBodyId: fallbackBodyId,
+              acceptedReportTrigger: 'terminal_fallback',
+              acceptedDeliveryChannel: 'langfuse',
+            }),
+          };
+        }
+        return { get: () => undefined, run: () => ({ changes: 0 }), all: () => [] };
+      },
+    };
+
+    try {
+      const first = await reportRunFeedbackFromDaemon({
+        dataDir,
+        runId,
+        rating: 'positive',
+        reasonCodes: [],
+        hasCustomReason: false,
+        customReason: '',
+        db,
+        fetchImpl: fetchSpy as any,
+      });
+      expect(first).toEqual({ status: 'accepted' });
+      await vi.waitFor(() => {
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+      });
+      const firstScore = JSON.parse(
+        (fetchSpy.mock.calls[0]![1] as RequestInit).body as string,
+      );
+      expect(firstScore.batch[0].body.traceId).toBe(fallbackBodyId);
+      expect(firstScore.batch[0].body.value).toBe(1);
+
+      // User flips rating while only :tf is accepted.
+      const second = await reportRunFeedbackFromDaemon({
+        dataDir,
+        runId,
+        rating: 'negative',
+        reasonCodes: ['matched_request'],
+        hasCustomReason: false,
+        customReason: '',
+        db,
+        fetchImpl: fetchSpy as any,
+      });
+      expect(second).toEqual({ status: 'accepted' });
+      await vi.waitFor(() => {
+        expect(fetchSpy).toHaveBeenCalledTimes(2);
+      });
+      const secondScore = JSON.parse(
+        (fetchSpy.mock.calls[1]![1] as RequestInit).body as string,
+      );
+      expect(secondScore.batch[0].body.traceId).toBe(fallbackBodyId);
+      expect(secondScore.batch[0].body.value).toBe(-1);
+
+      // Later final_message wins the anchor; deferred queue must re-attach the
+      // latest (negative) score onto the canonical body.
+      const finalCompleted = await reportRunCompleted(
+        {
+          installationId: 'install-uuid-1',
+          projectId: 'proj-1',
+          conversationId: 'conv-1',
+          agentId: 'claude',
+          run: {
+            runId,
+            status: 'failed',
+            startedAt: 1_700_000_000_000,
+            endedAt: 1_700_000_002_000,
+          },
+          message: {
+            messageId: 'assistant-1',
+            prompt: 'prompt',
+            output: 'partial',
+          },
+          artifacts: [],
+          tools: [],
+          agentEvents: [],
+          eventsSummary: { toolCalls: 0, errors: 0, durationMs: 2000 },
+          prefs: { metrics: true, content: true, artifactManifest: false },
+        },
+        {
+          config: langfuseConfig,
+          fetchImpl: fetchSpy as any,
+          reportTrigger: 'final_message',
+        },
+      );
+      expect(finalCompleted.langfuse_delivery_status).toBe('accepted');
+      await vi.waitFor(() => {
+        expect(fetchSpy.mock.calls.length).toBeGreaterThanOrEqual(4);
+      });
+      const finalScoreBody = JSON.parse(
+        (fetchSpy.mock.calls[fetchSpy.mock.calls.length - 1]![1] as RequestInit)
+          .body as string,
+      );
+      expect(finalScoreBody.batch[0].type).toBe('score-create');
+      expect(finalScoreBody.batch[0].body.traceId).toBe(runId);
+      expect(finalScoreBody.batch[0].body.value).toBe(-1);
+      expect(finalScoreBody.batch[0].body.comment).toBe('negative');
+    } finally {
+      delete process.env.LANGFUSE_PUBLIC_KEY;
+      delete process.env.LANGFUSE_SECRET_KEY;
+    }
+  });
 });
 
 // listMessages reads from a `prepare(...).all(cid)` call against
@@ -2020,7 +2269,7 @@ function makeDbWithListMessages(messagesByConvo: Record<string, FakeMessage[]>) 
             content: m.content,
             agentId: null,
             agentName: null,
-            runId: null,
+            runId: m.runId ?? null,
             runStatus: null,
             lastRunEventId: null,
             eventsJson: null,

@@ -973,7 +973,14 @@ export async function reportRunCompletedFromDaemon(
           (x) => x.id === run.assistantMessageId,
         );
         const m = assistantIndex >= 0 ? allMessages[assistantIndex] : undefined;
-        if (m) {
+        // Only trust message-derived content/manifests when the row still
+        // belongs to this run. Delayed terminal_fallback for run A can fire
+        // after a side-chat retry rebinds the same assistantMessageId to run
+        // B; id-only reload would otherwise publish B's content under A's
+        // failed trace.
+        const messageRunId =
+          m && typeof m.runId === 'string' ? m.runId.trim() : '';
+        if (m && (!messageRunId || messageRunId === run.id)) {
           messageContent = typeof m.content === 'string' ? m.content : '';
           // listMessages returns producedFiles already parsed (db.ts:965).
           producedFilesRaw = m.producedFiles;
@@ -1243,6 +1250,7 @@ export async function reportRunFeedbackFromDaemon(
   let runStatus: string | null | undefined;
   let telemetryFinalized: boolean | undefined;
   let acceptedTraceBodyId: string | null | undefined;
+  let acceptedReportTrigger: 'final_message' | 'terminal_fallback' | null | undefined;
   let acceptedDeliveryChannel:
     | 'vela'
     | 'relay'
@@ -1260,6 +1268,7 @@ export async function reportRunFeedbackFromDaemon(
         runStatus = anchor.runStatus;
         telemetryFinalized = anchor.telemetryFinalized;
         acceptedTraceBodyId = anchor.acceptedTraceBodyId;
+        acceptedReportTrigger = anchor.acceptedReportTrigger;
         acceptedDeliveryChannel = anchor.acceptedDeliveryChannel;
       }
     } catch (err) {
@@ -1288,6 +1297,9 @@ export async function reportRunFeedbackFromDaemon(
   // Do not pin a provisional canonical runId while terminal_fallback may still
   // become the only accepted body — reportRunFeedback will defer until
   // rememberAcceptedFinalTraceBodyId flushes onto the accepted id.
+  // When the accepted trigger is still terminal_fallback, pin for immediate
+  // `:tf` delivery but also pass acceptedReportTrigger so reportRunFeedback
+  // refreshes the deferred queue for a later final_message replay.
   const deferFeedback = shouldDeferRunFeedback(resolveInput);
   const ctx: FeedbackReportContext = {
     runId: opts.runId,
@@ -1296,6 +1308,9 @@ export async function reportRunFeedbackFromDaemon(
       : { traceId: resolveFeedbackTraceId(resolveInput) }),
     ...(runStatus !== undefined ? { runStatus } : {}),
     ...(telemetryFinalized !== undefined ? { telemetryFinalized } : {}),
+    ...(acceptedReportTrigger !== undefined
+      ? { acceptedReportTrigger }
+      : {}),
     ...(acceptedDeliveryChannel !== undefined
       ? { acceptedDeliveryChannel }
       : {}),

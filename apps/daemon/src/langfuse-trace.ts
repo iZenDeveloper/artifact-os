@@ -687,6 +687,13 @@ export interface FeedbackReportContext {
    * Vela scopes body ids, so raw-id anonymous scores would misattach.
    */
   acceptedDeliveryChannel?: TelemetryDeliveryChannel | null;
+  /**
+   * Report trigger that owns the accepted final-purpose body (from process
+   * memory or the persisted DB anchor). When still `terminal_fallback`, live
+   * re-ratings must refresh the deferred queue so a later final_message can
+   * re-attach the latest score.
+   */
+  acceptedReportTrigger?: TelemetryReportTrigger | null;
   installationId: string | null;
   prefs: TelemetryPrefs;
   rating: 'positive' | 'negative';
@@ -3080,17 +3087,23 @@ export async function reportRunFeedback(
   // After terminal_fallback is accepted, live re-ratings ship immediately onto
   // `:tf` but must also refresh the deferred queue so a later final_message
   // re-attach uses the latest score (not a stale pre-fallback rating).
-  // Skip when the caller already pinned a body id (flush path) — those
-  // deliveries must not overwrite the unpinned deferred entry.
+  // The bridge pins an explicit `:tf` body id once the DB/process anchor is
+  // accepted, so we must refresh even when `traceId` is present — otherwise
+  // mid-window re-ratings leave the queue on a stale pre-fallback payload.
+  // final_message flush deletes the queue before shipping, so it never
+  // re-enters here after the canonical body wins.
   const runKey = typeof ctx.runId === 'string' ? ctx.runId.trim() : '';
-  const explicitTrace =
-    typeof ctx.traceId === 'string' ? ctx.traceId.trim() : '';
-  if (
-    runKey &&
-    !explicitTrace &&
-    acceptedFinalTraceBodyIds.get(runKey)?.reportTrigger === 'terminal_fallback'
-  ) {
-    queuePendingRunFeedback(ctx, opts);
+  const acceptedTrigger =
+    acceptedFinalTraceBodyIds.get(runKey)?.reportTrigger ??
+    (ctx.acceptedReportTrigger === 'terminal_fallback' ||
+    ctx.acceptedReportTrigger === 'final_message'
+      ? ctx.acceptedReportTrigger
+      : null);
+  if (runKey && acceptedTrigger === 'terminal_fallback') {
+    // Keep the deferred entry unpinned so final_message flush can re-target
+    // the canonical body via rememberAcceptedFinalTraceBodyId.
+    const { traceId: _pinnedTraceId, ...unpinnedCtx } = ctx;
+    queuePendingRunFeedback(unpinnedCtx, opts);
   }
 
   let batch: unknown[];
