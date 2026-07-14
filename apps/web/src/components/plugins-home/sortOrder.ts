@@ -47,17 +47,40 @@ export function writeStoredSortOrder(order: PluginSortOrder): void {
   }
 }
 
-// Newest-first ordering. `updatedAt` moves on reinstall/upgrade so it is
-// the freshness signal; `installedAt` breaks ties for records written in
-// the same batch. The sort is stable, so records with identical
-// timestamps (e.g. a bundled catalog seeded in one transaction) keep
-// their incoming visual-appeal order instead of degrading to raw
-// daemon order.
+// The manifest's `publishedAt` is the shipped publication date. It is the
+// only recency signal that survives a fresh install: the local
+// installed-record timestamps are written when THIS machine seeds its
+// database, so a first boot (or an upgrade that re-stamps the catalog)
+// stamps the whole bundled catalog milliseconds apart in folder-walk
+// order — "newest" would otherwise show reverse walk order (roughly
+// reverse-alphabetical), not publication recency (#1457).
+function publishedAtMs(record: InstalledPluginRecord): number | null {
+  const raw = record.manifest?.publishedAt;
+  if (typeof raw !== 'string') return null;
+  const ms = Date.parse(raw);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+// Newest-first ordering. Freshness is the manifest publication date when
+// the plugin ships one, else `updatedAt` (which moves on
+// reinstall/upgrade — the right signal for user-installed plugins that
+// have no catalog date). `updatedAt` then `installedAt` break ties for
+// records published or written in the same batch. The sort is stable, so
+// fully tied records (e.g. one catalog PR landing several templates in a
+// single commit) keep their incoming visual-appeal order instead of
+// degrading to raw daemon order.
 export function sortByNewest<T extends InstalledPluginRecord>(
   records: readonly T[],
 ): T[] {
-  const annotated = records.map((record, idx) => ({ record, idx }));
+  const annotated = records.map((record, idx) => ({
+    record,
+    idx,
+    freshness: publishedAtMs(record) ?? record.updatedAt,
+  }));
   annotated.sort((a, b) => {
+    if (b.freshness !== a.freshness) {
+      return b.freshness - a.freshness;
+    }
     if (b.record.updatedAt !== a.record.updatedAt) {
       return b.record.updatedAt - a.record.updatedAt;
     }

@@ -17,6 +17,7 @@ function fixture(overrides: {
   id: string;
   installedAt?: number;
   updatedAt?: number;
+  publishedAt?: string;
 }): InstalledPluginRecord {
   return {
     id: overrides.id,
@@ -26,7 +27,13 @@ function fixture(overrides: {
     source: '/tmp',
     trust: 'bundled',
     capabilitiesGranted: ['prompt:inject'],
-    manifest: { name: overrides.id, version: '0.1.0' },
+    manifest: {
+      name: overrides.id,
+      version: '0.1.0',
+      ...(overrides.publishedAt !== undefined
+        ? { publishedAt: overrides.publishedAt }
+        : {}),
+    },
     fsPath: '/tmp',
     installedAt: overrides.installedAt ?? 0,
     updatedAt: overrides.updatedAt ?? 0,
@@ -67,6 +74,90 @@ describe('sortByNewest', () => {
       'appeal-first',
       'appeal-second',
       'appeal-third',
+    ]);
+  });
+
+  it('ranks by manifest publishedAt when local timestamps are tied (fresh install)', () => {
+    // Issue #1457 reproduction: a fresh install (or an upgrade that
+    // re-stamps the catalog) seeds every bundled plugin in one boot, so
+    // installedAt/updatedAt carry only the seeding walk's own clock —
+    // ties and millisecond-apart folder-walk order — and "Newest"
+    // silently degrades to an order unrelated to publication. The
+    // manifest's publishedAt is the shipped publication date and must
+    // win over those meaningless local timestamps.
+    const seededAt = 1_700_000_000_000;
+    const records = [
+      fixture({
+        id: 'published-2025',
+        installedAt: seededAt,
+        updatedAt: seededAt,
+        publishedAt: '2025-03-01T00:00:00Z',
+      }),
+      fixture({
+        id: 'published-2026',
+        installedAt: seededAt,
+        updatedAt: seededAt,
+        publishedAt: '2026-06-20T00:00:00Z',
+      }),
+      fixture({
+        id: 'published-2024',
+        installedAt: seededAt,
+        updatedAt: seededAt,
+        publishedAt: '2024-11-05T00:00:00Z',
+      }),
+    ];
+    expect(sortByNewest(records).map((r) => r.id)).toEqual([
+      'published-2026',
+      'published-2025',
+      'published-2024',
+    ]);
+  });
+
+  it('keeps publication order when a local content update bumps updatedAt', () => {
+    // A typo fix shipped for an old template refreshes its local
+    // updatedAt, but "Newest" means newly PUBLISHED — the tweaked old
+    // template must not leapfrog genuinely newer publications.
+    const records = [
+      fixture({
+        id: 'old-template-tweaked',
+        updatedAt: 9_000,
+        installedAt: 1_000,
+        publishedAt: '2025-01-01T00:00:00Z',
+      }),
+      fixture({
+        id: 'new-template',
+        updatedAt: 1_000,
+        installedAt: 1_000,
+        publishedAt: '2026-05-01T00:00:00Z',
+      }),
+    ];
+    expect(sortByNewest(records).map((r) => r.id)).toEqual([
+      'new-template',
+      'old-template-tweaked',
+    ]);
+  });
+
+  it('falls back to updatedAt for records without a parseable publishedAt', () => {
+    // A user-installed plugin has no publication date; its local install
+    // recency is its freshness. An invalid date string must not be
+    // treated as newer or older than everything — it just falls back.
+    const records = [
+      fixture({
+        id: 'published-recently',
+        updatedAt: 1_000,
+        publishedAt: '2026-01-01T00:00:00Z',
+      }),
+      fixture({ id: 'installed-later', updatedAt: Date.parse('2026-03-01T00:00:00Z') }),
+      fixture({
+        id: 'garbage-date',
+        updatedAt: Date.parse('2025-06-01T00:00:00Z'),
+        publishedAt: 'not-a-date',
+      }),
+    ];
+    expect(sortByNewest(records).map((r) => r.id)).toEqual([
+      'installed-later',
+      'published-recently',
+      'garbage-date',
     ]);
   });
 
