@@ -273,8 +273,7 @@ interface Props {
   messages?: ChatMessage[];
   artifactHtml?: string | null;
   conversationError?: string | null;
-  onRetry?: (message: ChatMessage) => void;
-  /** Restores the chat pane so a preview-surface recovery can show its full details. */
+  /** Restores the chat pane when the compact preview hint requests details. */
   onViewRunDetails?: () => void;
   // Contextual failure recovery, mirrored from the chat error card so the
   // preview surface can offer the same one-click fix (AMR authorize, terminal
@@ -1284,7 +1283,6 @@ export function FileWorkspace({
   onActiveContextChange,
   onWorkspaceContextsChange,
   messages = [],
-  onRetry,
   onViewRunDetails,
   conversationId,
   headerActions,
@@ -4006,7 +4004,6 @@ export function FileWorkspace({
           projectId={projectId}
           conversationId={conversationId}
           messages={messages}
-          onRetry={onRetry}
           onViewDetails={onViewRunDetails}
         />
       </div>

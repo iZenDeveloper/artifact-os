@@ -2415,7 +2415,6 @@ export const fa: Dict = {
   'previewRunStatus.failed': 'تحویل نیاز به رسیدگی دارد',
   'previewRunStatus.elapsed': 'زمان سپری‌شده {time}',
   'previewRunStatus.tip': 'هنگام آماده شدن نتیجه، می‌توانید به مرور ادامه دهید.',
-  'previewRunStatus.retry': 'تلاش دوباره',
   'previewRunStatus.viewDetails': 'مشاهده جزئیات',
   'workspace.designFilesLink': 'فایل‌های طراحی',
   'workspace.loadingSketch': 'در حال بارگذاری طرح…',

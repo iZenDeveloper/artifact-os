@@ -2415,7 +2415,6 @@ export const ko: Dict = {
   'previewRunStatus.failed': '전달에 확인이 필요합니다',
   'previewRunStatus.elapsed': '경과 시간 {time}',
   'previewRunStatus.tip': '결과를 준비하는 동안 계속 둘러볼 수 있습니다.',
-  'previewRunStatus.retry': '다시 시도',
   'previewRunStatus.viewDetails': '세부정보 보기',
   'workspace.designFilesLink': '디자인 파일',
   'workspace.loadingSketch': '스케치 불러오는 중…',

@@ -16,7 +16,7 @@ test.beforeAll(async () => {
   codexEnv = runtimes.codex.env;
 });
 
-test('[P1] preview delivery status restores after navigation and retries a persisted delivery failure', async ({ page }) => {
+test('[P1] preview delivery status keeps persisted delivery-failure recovery in Chat', async ({ page }) => {
   test.setTimeout(T.xlong);
   const projectId = `preview-run-status-${Date.now()}`;
   const now = Date.now();
@@ -73,18 +73,21 @@ test('[P1] preview delivery status restores after navigation and retries a persi
   await gotoProject(page, projectId);
   const status = page.getByTestId('preview-run-status');
   await expect(status).toContainText('Delivery needs attention');
-  await expect(status).toContainText('Elapsed 0:42');
-  await expect(page.getByTestId('preview-run-status-retry')).toBeVisible();
+  await expect(status).not.toContainText('Elapsed');
+  await expect(page.getByTestId('preview-run-status-retry')).toHaveCount(0);
   await expect(page.getByTestId('preview-run-status-view-details')).toBeVisible();
+  const chatRetry = page.locator('.chat-error-retry');
+  await expect(chatRetry).toBeVisible();
 
-  // The status is derived from the persisted assistant message, so leaving the
-  // project cannot erase a delivery failure or its recovery affordances.
+  // A small persisted preview hint can bring users back to the full Chat
+  // failure card, which remains the sole retry entry point after navigation.
   await gotoEntryHome(page);
   await gotoProject(page, projectId);
   await expect(page.getByTestId('preview-run-status')).toContainText('Delivery needs attention');
-  await expect(page.getByTestId('preview-run-status')).toContainText('Elapsed 0:42');
+  await expect(page.getByTestId('preview-run-status')).not.toContainText('Elapsed');
+  await expect(page.locator('.chat-error-retry')).toBeVisible();
 
-  await page.getByTestId('preview-run-status-retry').click();
+  await page.locator('.chat-error-retry').click();
   await expect
     .poll(async () => {
       const response = await page.request.get(
@@ -103,5 +106,5 @@ test('[P1] preview delivery status restores after navigation and retries a persi
       const body = (await response.json()) as { files?: Array<{ name: string }> };
       return body.files?.map((file) => file.name) ?? [];
     }, { timeout: T.long })
-    .toContain('real-daemon-smoke.html');
+    .toContain('fake-agent-runtime-codex.html');
 });

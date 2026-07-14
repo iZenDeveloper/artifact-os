@@ -2415,7 +2415,6 @@ export const esES: Dict = {
   'previewRunStatus.failed': 'La entrega necesita atención',
   'previewRunStatus.elapsed': 'Transcurrido {time}',
   'previewRunStatus.tip': 'Puedes seguir explorando mientras se prepara el resultado.',
-  'previewRunStatus.retry': 'Reintentar',
   'previewRunStatus.viewDetails': 'Ver detalles',
   'workspace.designFilesLink': 'Archivos de diseño',
   'workspace.loadingSketch': 'Cargando boceto…',

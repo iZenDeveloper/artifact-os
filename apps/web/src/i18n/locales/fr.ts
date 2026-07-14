@@ -2415,7 +2415,6 @@ export const fr: Dict = {
   'previewRunStatus.failed': 'La livraison nécessite votre attention',
   'previewRunStatus.elapsed': 'Temps écoulé {time}',
   'previewRunStatus.tip': 'Vous pouvez continuer à explorer pendant la préparation du résultat.',
-  'previewRunStatus.retry': 'Réessayer',
   'previewRunStatus.viewDetails': 'Voir les détails',
   'workspace.designFilesLink': 'Fichiers de design',
   'workspace.loadingSketch': 'Chargement du croquis…',

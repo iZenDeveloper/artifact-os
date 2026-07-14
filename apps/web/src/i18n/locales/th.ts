@@ -2415,7 +2415,6 @@ export const th: Dict = {
   'previewRunStatus.failed': 'การส่งมอบต้องได้รับการตรวจสอบ',
   'previewRunStatus.elapsed': 'เวลาที่ใช้ {time}',
   'previewRunStatus.tip': 'คุณสามารถสำรวจต่อได้ในขณะที่กำลังเตรียมผลลัพธ์',
-  'previewRunStatus.retry': 'ลองอีกครั้ง',
   'previewRunStatus.viewDetails': 'ดูรายละเอียด',
   'workspace.designFilesLink': 'หน้าไฟล์งาน',
   'workspace.loadingSketch': 'กำลังโหลดกระดานวาด…',

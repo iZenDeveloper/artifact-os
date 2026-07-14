@@ -3109,8 +3109,7 @@ describe('FileWorkspace empty-project generation contract', () => {
     },
   );
 
-  it('keeps a persisted delivery failure actionable in the preview workspace', () => {
-    const onRetry = vi.fn();
+  it('keeps delivery recovery in Chat and only leaves a compact details handoff in the preview', () => {
     const onViewRunDetails = vi.fn();
     render(
       <FileWorkspace
@@ -3122,7 +3121,6 @@ describe('FileWorkspace empty-project generation contract', () => {
         isDeck={false}
         tabsState={{ tabs: [], active: DESIGN_FILES_TAB }}
         onTabsStateChange={vi.fn()}
-        onRetry={onRetry}
         onViewRunDetails={onViewRunDetails}
         messages={[
           {
@@ -3138,8 +3136,8 @@ describe('FileWorkspace empty-project generation contract', () => {
     );
 
     expect(screen.getByTestId('preview-run-status')).toHaveTextContent('Delivery needs attention');
-    fireEvent.click(screen.getByTestId('preview-run-status-retry'));
-    expect(onRetry).toHaveBeenCalledWith(expect.objectContaining({ id: 'delivery-failure' }));
+    expect(screen.queryByTestId('preview-run-status-retry')).toBeNull();
+    expect(screen.getByTestId('preview-run-status')).not.toHaveTextContent('Elapsed');
     fireEvent.click(screen.getByTestId('preview-run-status-view-details'));
     expect(onViewRunDetails).toHaveBeenCalledTimes(1);
   });

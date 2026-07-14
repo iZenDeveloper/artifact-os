@@ -2415,7 +2415,6 @@ export const ptBR: Dict = {
   'previewRunStatus.failed': 'A entrega precisa de atenção',
   'previewRunStatus.elapsed': 'Decorrido {time}',
   'previewRunStatus.tip': 'Você pode continuar explorando enquanto seu resultado é preparado.',
-  'previewRunStatus.retry': 'Tentar novamente',
   'previewRunStatus.viewDetails': 'Ver detalhes',
   'workspace.designFilesLink': 'Arquivos de design',
   'workspace.loadingSketch': 'Carregando esboço…',

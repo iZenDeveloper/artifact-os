@@ -2415,7 +2415,6 @@ export const pl: Dict = {
   'previewRunStatus.failed': 'Dostarczenie wymaga uwagi',
   'previewRunStatus.elapsed': 'Czas {time}',
   'previewRunStatus.tip': 'Możesz dalej eksplorować, gdy przygotowujemy wynik.',
-  'previewRunStatus.retry': 'Ponów',
   'previewRunStatus.viewDetails': 'Zobacz szczegóły',
   'workspace.designFilesLink': 'Pliki projektu',
   'workspace.loadingSketch': 'Ładowanie szkicu…',

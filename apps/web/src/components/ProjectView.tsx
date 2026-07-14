@@ -8853,7 +8853,6 @@ export function ProjectView({
           messages={messages}
           artifactHtml={artifact?.html}
           conversationError={error}
-          onRetry={handleRetry}
           onViewRunDetails={() => setWorkspaceFocused(false)}
           onAuthorizeAndRetry={handleSwitchToAmrAndRetry}
           onLaunchTerminalAuth={handleLaunchAntigravityOauth}

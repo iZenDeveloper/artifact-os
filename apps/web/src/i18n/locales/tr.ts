@@ -2415,7 +2415,6 @@ export const tr: Dict = {
   'previewRunStatus.failed': 'Teslimatın ilgilenilmesi gerekiyor',
   'previewRunStatus.elapsed': 'Geçen süre {time}',
   'previewRunStatus.tip': 'Sonucunuz hazırlanırken keşfetmeye devam edebilirsiniz.',
-  'previewRunStatus.retry': 'Yeniden dene',
   'previewRunStatus.viewDetails': 'Ayrıntıları görüntüle',
   'workspace.designFilesLink': 'Tasarım Dosyaları',
   'workspace.loadingSketch': 'Taslak yükleniyor…',

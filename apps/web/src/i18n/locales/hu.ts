@@ -2415,7 +2415,6 @@ export const hu: Dict = {
   'previewRunStatus.failed': 'A kézbesítés figyelmet igényel',
   'previewRunStatus.elapsed': 'Eltelt idő {time}',
   'previewRunStatus.tip': 'A végeredmény elkészülte közben tovább böngészhet.',
-  'previewRunStatus.retry': 'Újrapróbálás',
   'previewRunStatus.viewDetails': 'Részletek',
   'workspace.designFilesLink': 'Designfájlok',
   'workspace.loadingSketch': 'Vázlat betöltése…',

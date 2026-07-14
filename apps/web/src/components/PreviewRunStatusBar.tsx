@@ -24,7 +24,6 @@ interface Props {
   projectId: string;
   conversationId?: string | null;
   messages: readonly ChatMessage[];
-  onRetry?: (message: ChatMessage) => void;
   onViewDetails?: () => void;
 }
 
@@ -57,12 +56,11 @@ function statusIcon(status: PreviewRunStatus) {
   }
 }
 
-/** Lightweight, persistent status feedback for the preview workspace. */
+/** Lightweight run feedback for the preview workspace, with recovery owned by Chat. */
 export function PreviewRunStatusBar({
   projectId,
   conversationId,
   messages,
-  onRetry,
   onViewDetails,
 }: Props) {
   const { t } = useI18n();
@@ -142,11 +140,11 @@ export function PreviewRunStatusBar({
 
   const elapsed = formatPreviewRunElapsed(displayed.elapsedMs);
   const isFailure = displayed.phase === 'failed';
-  const trackClick = (element: 'retry' | 'view_details') => {
+  const trackClick = () => {
     trackPreviewRunStatusClick(analytics.track, {
       page_name: 'file_manager',
       area: 'preview_run_status',
-      element,
+      element: 'view_details',
       status: displayed.phase,
       ...(displayed.message.resultDeliveryState
         ? { delivery_state: displayed.message.resultDeliveryState }
@@ -160,43 +158,31 @@ export function PreviewRunStatusBar({
 
   return (
     <section
-      className={`${styles.root}${leaving ? ` ${styles.leaving}` : ''}`}
+      className={`${styles.root}${isFailure ? ` ${styles.failure}` : ''}${leaving ? ` ${styles.leaving}` : ''}`}
       data-testid="preview-run-status"
-      aria-live={isFailure ? 'assertive' : 'polite'}
+      aria-live="polite"
       aria-label={t(statusLabelKey(displayed))}
     >
       <div className={`${styles.card} ${styles[displayed.phase]}`}>
         <span className={styles.icon}>{statusIcon(displayed)}</span>
         <div className={styles.copy}>
           <span className={styles.label}>{t(statusLabelKey(displayed))}</span>
-          <span className={styles.elapsed}>{t('previewRunStatus.elapsed', { time: elapsed })}</span>
+          {isFailure ? null : (
+            <span className={styles.elapsed}>{t('previewRunStatus.elapsed', { time: elapsed })}</span>
+          )}
           {(displayed.phase === 'generating' || displayed.phase === 'verifying') ? (
             <span className={styles.tip}>{t('previewRunStatus.tip')}</span>
           ) : null}
         </div>
         {isFailure ? (
           <div className={styles.actions}>
-            {onRetry ? (
-              <Button
-                variant="primary-ghost"
-                className={styles.action}
-                data-testid="preview-run-status-retry"
-                onClick={() => {
-                  trackClick('retry');
-                  onRetry(displayed.message);
-                }}
-              >
-                <Icon name="refresh" size={14} />
-                {t('previewRunStatus.retry')}
-              </Button>
-            ) : null}
             {onViewDetails ? (
               <Button
                 variant="ghost"
                 className={styles.action}
                 data-testid="preview-run-status-view-details"
                 onClick={() => {
-                  trackClick('view_details');
+                  trackClick();
                   onViewDetails();
                 }}
               >

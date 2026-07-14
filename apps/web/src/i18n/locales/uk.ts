@@ -2415,7 +2415,6 @@ export const uk: Dict = {
   'previewRunStatus.failed': 'Доставка потребує уваги',
   'previewRunStatus.elapsed': 'Минуло {time}',
   'previewRunStatus.tip': 'Поки результат готується, ви можете продовжувати перегляд.',
-  'previewRunStatus.retry': 'Повторити',
   'previewRunStatus.viewDetails': 'Переглянути деталі',
   'workspace.designFilesLink': 'Файли дизайну',
   'workspace.loadingSketch': 'Завантаження ескізу…',

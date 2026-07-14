@@ -2415,7 +2415,6 @@ export const de: Dict = {
   'previewRunStatus.failed': 'Auslieferung erfordert Aufmerksamkeit',
   'previewRunStatus.elapsed': 'Verstrichen {time}',
   'previewRunStatus.tip': 'Du kannst weiter erkunden, während dein Ergebnis vorbereitet wird.',
-  'previewRunStatus.retry': 'Erneut versuchen',
   'previewRunStatus.viewDetails': 'Details ansehen',
   'workspace.designFilesLink': 'Design-Dateien',
   'workspace.loadingSketch': 'Sketch wird geladen…',

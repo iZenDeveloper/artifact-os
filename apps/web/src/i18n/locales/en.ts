@@ -2429,7 +2429,6 @@ export const en: Dict = {
   'previewRunStatus.failed': 'Delivery needs attention',
   'previewRunStatus.elapsed': 'Elapsed {time}',
   'previewRunStatus.tip': 'You can keep exploring while your result is prepared.',
-  'previewRunStatus.retry': 'Retry',
   'previewRunStatus.viewDetails': 'View details',
   'workspace.designFilesLink': 'Design Files',
   'workspace.loadingSketch': 'Loading sketch…',
