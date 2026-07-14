@@ -157,6 +157,35 @@ describe('PreviewDrawOverlay redraw sync (issue #549)', () => {
     expect(frame!.strokePaths[0]!.segments).toBeGreaterThan(0);
   });
 
+  it('ignores the abandoned pointer’s pointerup while a new pointer is mid-stroke (multi-touch)', () => {
+    const { canvas, paint, getByRole } = renderOverlay();
+
+    // Finger 1 starts a box drag; finger 2 taps the toolbar and switches to
+    // Pen (clearing the draft); finger 3 begins the new pen stroke while
+    // finger 1 is still down.
+    fireEvent.pointerDown(canvas, { clientX: 20, clientY: 20, pointerId: 1 });
+    fireEvent.pointerMove(canvas, { clientX: 80, clientY: 80, pointerId: 1 });
+    switchMarkTool(getByRole, 'Box select', 'Pen');
+    fireEvent.pointerDown(canvas, { clientX: 100, clientY: 100, pointerId: 3 });
+
+    // Finger 1 finally lifts. Pointer capture routes its pointerup here; it
+    // must not commit-and-clear the stroke finger 3 is still drawing.
+    fireEvent.pointerUp(canvas, { clientX: 80, clientY: 80, pointerId: 1 });
+
+    fireEvent.pointerMove(canvas, { clientX: 130, clientY: 130, pointerId: 3 });
+    fireEvent.pointerMove(canvas, { clientX: 160, clientY: 160, pointerId: 3 });
+    fireEvent.pointerUp(canvas, { clientX: 160, clientY: 160, pointerId: 3 });
+    flushAnimationFrames();
+
+    // The full stroke (down + both moves) survives as one committed path; the
+    // abandoned drag leaves no box behind.
+    const frame = paint.lastFrame();
+    expect(frame).not.toBeNull();
+    expect(frame!.boxes).toBe(0);
+    expect(frame!.strokePaths).toHaveLength(1);
+    expect(frame!.strokePaths[0]!.segments).toBe(2);
+  });
+
   it('does not grow ghost ink from hover moves after a pen stroke was abandoned by a tool switch', () => {
     const { canvas, paint, getByRole } = renderOverlay();
     switchMarkTool(getByRole, 'Box select', 'Pen');

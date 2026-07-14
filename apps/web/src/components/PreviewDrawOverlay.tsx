@@ -145,6 +145,13 @@ export function PreviewDrawOverlay({
   const strokesRef = useRef<Stroke[]>([]);
   const undoneStrokesRef = useRef<Stroke[]>([]);
   const drawingRef = useRef<Stroke | null>(null);
+  // The pointer that owns the in-flight ink gesture. Pointer capture keeps
+  // routing an abandoned pointer's events here after a mid-gesture tool
+  // switch (touch: finger 1 drags, finger 2 switches tools, finger 3 starts
+  // the new stroke before finger 1 lifts), so move/up/cancel from any other
+  // pointer must be ignored or finger 1's late pointerup would commit-and-
+  // clear the stroke finger 3 is still drawing.
+  const gesturePointerIdRef = useRef<number | null>(null);
   // Box-select accumulates: each drag commits another region, so the user can
   // mark several areas in one pass instead of one box replacing the last.
   const selectionBoxesRef = useRef<NormalizedRect[]>([]);
@@ -355,6 +362,7 @@ export function PreviewDrawOverlay({
   // never appears on screen), and a hanging pen stroke keeps growing from
   // bare hover moves — both read as "annotations stop updating" (issue #549).
   function cancelActiveGesture() {
+    gesturePointerIdRef.current = null;
     if (!boxDraftRef.current && !drawingRef.current) return;
     commitInkMutation(() => {
       boxDraftRef.current = null;
@@ -449,6 +457,18 @@ export function PreviewDrawOverlay({
       setEditingTextId(id);
       return;
     }
+    // First pointer down owns the gesture; a second finger landing while a
+    // draft/stroke is in flight must not hijack and restart it. Ownership is
+    // stale once nothing is in flight (e.g. undo discarded the draft), so a
+    // fresh pointer may then claim it even if the old owner never lifted.
+    if (
+      gesturePointerIdRef.current !== null &&
+      gesturePointerIdRef.current !== e.pointerId &&
+      (boxDraftRef.current || drawingRef.current)
+    ) {
+      return;
+    }
+    gesturePointerIdRef.current = e.pointerId;
     (e.target as Element).setPointerCapture?.(e.pointerId);
     const point = pointFromEvent(e);
     if (markTool === 'box') {
@@ -466,6 +486,7 @@ export function PreviewDrawOverlay({
     if (!active) return;
     e.preventDefault();
     if (sending) return;
+    if (gesturePointerIdRef.current !== e.pointerId) return;
     if (boxDraftRef.current) {
       const draft = boxDraftRef.current;
       commitInkMutation(() => {
@@ -483,6 +504,8 @@ export function PreviewDrawOverlay({
     if (!active) return;
     e.preventDefault();
     if (sending) return;
+    if (gesturePointerIdRef.current !== e.pointerId) return;
+    gesturePointerIdRef.current = null;
     if (boxDraftRef.current) {
       const draft = boxDraftRef.current;
       commitInkMutation(() => {
