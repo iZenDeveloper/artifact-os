@@ -41,6 +41,18 @@ describe('cjkPromotedFontFamily', () => {
     expect(promoted!.split(',')[0].trim()).toBe('"Noto Sans SC"');
   });
 
+  test('a Latin prefix followed by a CJK suffix still promotes (combined-text contract)', () => {
+    // promoteCjkTypefaces feeds the resolver an element's COMBINED direct text, so
+    // bilingual markup split across text nodes (`Product Launch<br>产品发布`) whose
+    // Latin chunk comes first must still resolve to the CJK typeface.
+    expect(cjkPromotedFontFamily(SANS, 'Product Launch产品发布')!.split(',')[0].trim()).toBe(
+      '"Noto Sans SC"',
+    );
+    expect(cjkPromotedFontFamily(SANS, 'Welcome to Open Design 欢迎')!.split(',')[0].trim()).toBe(
+      '"Noto Sans SC"',
+    );
+  });
+
   test('promotes the serif CJK family for serif stacks', () => {
     const promoted = cjkPromotedFontFamily(SERIF, '演示文稿');
     expect(promoted!.split(',')[0].trim()).toBe('"Noto Serif SC"');
@@ -98,7 +110,10 @@ describe('runDomToPptx CJK typeface wiring', () => {
     // pure helper above genuinely governs the exported deck. (Type annotations are
     // erased by the transpiler, so match the runtime call shape.)
     expect(source).toContain('promoteCjkTypefaces(slides');
-    expect(source).toContain('cjkPromotedFontFamily(getComputedStyle(el).fontFamily');
+    // The walk aggregates an element's combined direct text before resolving, so a
+    // CJK chunk after a Latin one is never skipped (multi-text-node regression).
+    expect(source).toContain('child.nodeType === Node.TEXT_NODE');
+    expect(source).toContain('cjkPromotedFontFamily(getComputedStyle(el).fontFamily, combined)');
   });
 
   test('the injected export wrapper is syntactically valid JS', () => {

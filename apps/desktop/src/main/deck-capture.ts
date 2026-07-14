@@ -1132,17 +1132,24 @@ export async function runDomToPptx(slideSelector: string): Promise<{ b64?: strin
   // the Latin webfont that leads our template stacks) before dom-to-pptx reads it,
   // so PowerPoint/WPS/Keynote all resolve the same real font. See
   // cjkPromotedFontFamily for the why. Keyed on the element that directly owns the
-  // text so a container that only holds Latin markup is never rewritten.
+  // text so a container that only holds Latin markup is never rewritten. Decide on
+  // the element's COMBINED direct text: bilingual markup often splits one element
+  // across text nodes (`Product Launch<br>产品发布`, `Welcome <strong>…</strong> 欢迎`),
+  // so a later CJK chunk must still win even when a Latin chunk comes first.
   function promoteCjkTypefaces(slides: HTMLElement[]): void {
     const touched = new Set<HTMLElement>();
     for (const slide of slides) {
       const walker = document.createTreeWalker(slide, NodeFilter.SHOW_TEXT);
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-        const value = node.nodeValue || "";
         const el = node.parentElement;
-        if (!el || touched.has(el) || !value.trim()) continue;
+        if (!el || touched.has(el)) continue;
         touched.add(el);
-        const promoted = cjkPromotedFontFamily(getComputedStyle(el).fontFamily, value);
+        let combined = "";
+        for (const child of el.childNodes) {
+          if (child.nodeType === Node.TEXT_NODE) combined += child.nodeValue || "";
+        }
+        if (!combined.trim()) continue;
+        const promoted = cjkPromotedFontFamily(getComputedStyle(el).fontFamily, combined);
         if (promoted) el.style.setProperty("font-family", promoted, "important");
       }
     }
