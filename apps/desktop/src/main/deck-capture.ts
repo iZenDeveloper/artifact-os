@@ -1329,11 +1329,11 @@ function showSlide(slideSelector: string, index: number): Promise<{ x: number; y
 
 // Serialized into the page: overlays a capture-only clone of the active slide in
 // the top-left viewport for decks that position the real slide elsewhere
-// (translated carousel strip). The real DOM tree stays in place so authored
-// transforms on the slide or its wrappers keep providing the clone offset, but
-// the source slide itself must stop painting while the clone is present. Leaving
-// a transparent source visible underneath the clone renders every child twice
-// (most noticeably large deck titles) in PNG/PDF/PPTX exports.
+// (translated carousel strip). The source slide itself must stop painting while
+// the clone is present, or every child renders twice. Align from the CLONE's live
+// rect after insertion: cloning outside a translated parent drops that parent's
+// transform, so reusing the source rect would apply the lost offset a second time
+// and move every off-stage clone out of the capture viewport.
 export function restackActiveSlide(slideSelector: string, index: number, w: number, h: number): void {
   document.getElementById("__od_export_active_slide_capture")?.remove();
   const slides = Array.prototype.slice
@@ -1341,7 +1341,6 @@ export function restackActiveSlide(slideSelector: string, index: number, w: numb
     .filter((el) => !(el as HTMLElement).closest(".mini-slide, .overview, .notes-overlay, .thumb"));
   const el = slides[index] as HTMLElement | undefined;
   if (!el) return;
-  const rect = el.getBoundingClientRect();
   const layer = document.createElement("div");
   layer.id = "__od_export_active_slide_capture";
   layer.setAttribute("aria-hidden", "true");
@@ -1365,7 +1364,6 @@ export function restackActiveSlide(slideSelector: string, index: number, w: numb
     "top:0",
     `width:${w}px`,
     `height:${h}px`,
-    `transform:${activeSlideCaptureOffsetTransform(rect)}`,
     "transform-origin:top left",
   ].join("!important;") + "!important";
 
@@ -1379,4 +1377,6 @@ export function restackActiveSlide(slideSelector: string, index: number, w: numb
   offset.appendChild(clone);
   layer.appendChild(offset);
   document.body.appendChild(layer);
+  const cloneRect = clone.getBoundingClientRect();
+  offset.style.setProperty("transform", activeSlideCaptureOffsetTransform(cloneRect), "important");
 }

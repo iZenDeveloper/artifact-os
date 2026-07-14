@@ -144,6 +144,8 @@ describe('deck capture DOM prep', () => {
       parentElement: FakeElement | null = null;
       style = new FakeStyle();
 
+      constructor(private readonly rect: { x: number; y: number } = { x: 32, y: 24 }) {}
+
       appendChild(child: FakeElement): FakeElement {
         child.parentElement = this;
         this.children.push(child);
@@ -151,7 +153,9 @@ describe('deck capture DOM prep', () => {
       }
 
       cloneNode(): FakeElement {
-        const clone = new FakeElement();
+        // The source is off-stage because its parent deck is translated. Once
+        // cloned outside that parent, the clone itself starts at the origin.
+        const clone = new FakeElement({ x: 0, y: 0 });
         clone.style = this.style.clone();
         return clone;
       }
@@ -161,7 +165,7 @@ describe('deck capture DOM prep', () => {
       }
 
       getBoundingClientRect(): DOMRect {
-        return { x: 32, y: 24 } as DOMRect;
+        return this.rect as DOMRect;
       }
 
       remove(): void {
@@ -206,9 +210,14 @@ describe('deck capture DOM prep', () => {
     expect(slide.style.getPropertyPriority('opacity')).toBe('important');
 
     const layer = findById(body, '__od_export_active_slide_capture');
-    const clone = layer?.children[0]?.children[0];
+    const offset = layer?.children[0];
+    const clone = offset?.children[0];
     expect(clone?.style.getPropertyValue('opacity')).toBe('1');
     expect(clone?.style.getPropertyPriority('opacity')).toBe('important');
+    // Align from the clone's live rect. Reusing the source rect would apply the
+    // translated parent's offset a second time and move this clone off-screen.
+    expect(offset?.style.getPropertyValue('transform')).toBe('translate(0px, 0px)');
+    expect(offset?.style.getPropertyPriority('transform')).toBe('important');
   });
 });
 
