@@ -19,6 +19,7 @@ import {
   trackTabLauncherClick,
 } from '../analytics/events';
 import { deriveUploadCohort } from '../analytics/upload-tracking';
+import { STAGE_ATTACHMENT_EVENT, type StageAttachmentEventDetail } from './ChatComposer';
 import { useT } from '../i18n';
 import { isMacPlatform } from '../utils/platform';
 import {
@@ -170,8 +171,6 @@ interface Props {
   ) => Promise<{ message?: string; url?: string } | void> | { message?: string; url?: string } | void;
   activePluginActionPaths?: Set<string>;
   hiddenPluginActionPaths?: Set<string>;
-  preferredPreviewFile?: string | null;
-  autoPreviewDesignArtifacts?: boolean;
   focusMode?: boolean;
   onFocusModeChange?: (next: boolean) => void;
   designSystemProject?: DesignSystemSummary | null;
@@ -448,8 +447,6 @@ export function FileWorkspace({
   onPluginFolderAgentAction,
   activePluginActionPaths,
   hiddenPluginActionPaths,
-  preferredPreviewFile = null,
-  autoPreviewDesignArtifacts = false,
   focusMode = false,
   onFocusModeChange,
   designSystemProject = null,
@@ -1923,7 +1920,7 @@ export function FileWorkspace({
               title={t('dsManager.tabDesignSystem')}
             >
               <span className="tab-icon" aria-hidden>
-                <Icon name="blocks" size={13} />
+                <Icon name="blocks" size={14} />
               </span>
               <span className="ws-tab-label">{t('dsManager.tabDesignSystem')}</span>
             </button>
@@ -1939,7 +1936,7 @@ export function FileWorkspace({
             title={t('workspace.designFiles')}
           >
             <span className="tab-icon" aria-hidden>
-              <Icon name="grid" size={13} />
+              <Icon name="grid" size={14} />
             </span>
             <span className="ws-tab-label">{t('workspace.designFiles')}</span>
           </button>
@@ -1955,7 +1952,7 @@ export function FileWorkspace({
               title={t('questions.tabLabel')}
             >
               <span className="tab-icon" aria-hidden>
-                <Icon name="help-circle" size={13} />
+                <Icon name="help-circle" size={14} />
               </span>
               <span className="ws-tab-label">{t('questions.tabLabel')}</span>
             </button>
@@ -2177,6 +2174,15 @@ export function FileWorkspace({
               onRefreshFiles={onRefreshFiles}
               onOpenFile={openFile}
               onPageInfoChange={(info) => updateBrowserTabInfo(browserTab.id, info)}
+              onAddImageToChat={(attachment) => {
+                // The panel already wrote the capture into the project; hand
+                // the ready ChatAttachment to the composer's staging listener.
+                window.dispatchEvent(
+                  new CustomEvent<StageAttachmentEventDetail>(STAGE_ATTACHMENT_EVENT, {
+                    detail: { attachments: [attachment] },
+                  }),
+                );
+              }}
             />
           </div>
         ))}
@@ -2222,7 +2228,6 @@ export function FileWorkspace({
             projectId={projectId}
             rootDirName={rootDirName}
             reloading={reloading}
-            running={Boolean(streaming)}
             files={visibleFiles}
             folders={projectFolders}
             liveArtifacts={liveArtifactEntries}
@@ -2310,8 +2315,6 @@ export function FileWorkspace({
             }}
             uploadError={uploadError}
             onClearUploadError={() => setUploadError(null)}
-            preferredPreviewFile={preferredPreviewFile}
-            autoPreviewDesignArtifacts={autoPreviewDesignArtifacts}
             onPluginFolderAgentAction={onPluginFolderAgentAction}
             activePluginActionPaths={activePluginActionPaths}
             hiddenPluginActionPaths={hiddenPluginActionPaths}
@@ -3066,7 +3069,7 @@ function DesignSystemProjectPanel({
             onClick={() => toggleSection(instanceId)}
           />
           <span className="ds-project-section-title">
-            <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={13} />
+            <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={14} />
             <span>
               <strong>{section.title}</strong>
               <small>{section.subtitle}</small>
@@ -3097,7 +3100,7 @@ function DesignSystemProjectPanel({
                 setExpandedSections((current) => ({ ...current, [instanceId]: false }));
               }}
             >
-              <Icon name="check" size={13} />
+              <Icon name="check" size={14} />
               {t('ds.reviewLooksGood')}
             </button>
             <button
@@ -3106,7 +3109,7 @@ function DesignSystemProjectPanel({
               data-testid={`design-system-review-work-${slugForTestId(section.title)}`}
               onClick={() => openNeedsWorkFeedback(section.title, instanceId)}
             >
-              <Icon name="comment" size={13} />
+              <Icon name="comment" size={14} />
               {t('ds.reviewNeedsWorkEllipsis')}
             </button>
             {editableFile ? (
@@ -3117,7 +3120,7 @@ function DesignSystemProjectPanel({
                 title={t('ds.reviewEditFile', { file: editableFile.name })}
                 onClick={() => onOpenFile(editableFile.name)}
               >
-                <Icon name="edit" size={13} />
+                <Icon name="edit" size={14} />
                 {t('common.edit')}
               </button>
             ) : null}
@@ -3366,12 +3369,12 @@ function DesignSystemProjectPanel({
               disabled={githubConnected === undefined}
               onClick={onConnectRepo}
             >
-              <Icon name="github" size={13} />
+              <Icon name="github" size={14} />
               {repoCopy.buttonLabel}
             </Button>
           ) : githubEvidence.hasSourceManifest ? (
             <Button variant="ghost" className="compact" onClick={() => onOpenFile('context/source-context.md')}>
-              <Icon name="file" size={13} />
+              <Icon name="file" size={14} />
               {t('ds.openSourceContext')}
             </Button>
           ) : null}
@@ -3395,7 +3398,7 @@ function DesignSystemProjectPanel({
           </span>
           {manifestFileName ? (
             <Button variant="ghost" className="compact" onClick={() => onOpenFile(manifestFileName)}>
-              <Icon name="file" size={13} />
+              <Icon name="file" size={14} />
               {t('ds.openManifest')}
             </Button>
           ) : null}
@@ -5122,7 +5125,7 @@ function Tab({
     >
       {iconName ? (
         <span className="tab-icon" aria-hidden>
-          <Icon name={iconName} size={13} />
+          <Icon name={iconName} size={14} />
         </span>
       ) : null}
       <span className="ws-tab-text">
@@ -5150,7 +5153,7 @@ function Tab({
           data-tooltip-placement="bottom"
           aria-label={t('workspace.closeTab')}
         >
-          <Icon name="close" size={11} />
+          <Icon name="close" size={14} />
         </button>
       ) : null}
     </div>

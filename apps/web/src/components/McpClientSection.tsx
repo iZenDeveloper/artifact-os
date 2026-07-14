@@ -479,7 +479,7 @@ export const McpClientSection = forwardRef<McpClientSectionHandle, Props>(
           }}
           aria-expanded={pickerOpen}
         >
-          <Icon name="sparkles" size={13} />
+          <Icon name="sparkles" size={14} />
           <span>{t('mcpClient.addServer')}</span>
         </button>
       </div>
@@ -691,7 +691,7 @@ function PickerPanel({
           onClick={onPickBlank}
         >
           <span className="mcp-picker-item-head">
-            <Icon name="settings" size={13} />
+            <Icon name="settings" size={14} />
             <strong>Custom server</strong>
           </span>
           <span className="mcp-picker-desc">
@@ -719,7 +719,7 @@ function PickerCard({
         title={tpl.description}
       >
         <span className="mcp-picker-item-head">
-          <Icon name="link" size={13} />
+          <Icon name="link" size={14} />
           <strong>{tpl.label}</strong>
           <span className="mcp-picker-transport">{tpl.transport}</span>
         </span>
@@ -739,7 +739,7 @@ function PickerCard({
           rel="noreferrer noopener"
           title={tpl.homepage}
         >
-          <Icon name="external-link" size={11} />
+          <Icon name="external-link" size={14} />
           <span>Homepage</span>
         </a>
       ) : null}
@@ -837,7 +837,7 @@ function McpRow({ row, idx, total, template, onChange, onRemove, onMoveUp, onMov
             aria-label={expanded ? 'Collapse this MCP server' : 'Expand this MCP server'}
             title={expanded ? 'Collapse' : 'Expand'}
           >
-            <Icon name="chevron-down" size={13} />
+            <Icon name="chevron-down" size={14} />
           </Button>
         </div>
       </div>
@@ -859,7 +859,7 @@ function McpRow({ row, idx, total, template, onChange, onRemove, onMoveUp, onMov
                     title={template.homepage}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <Icon name="external-link" size={11} />
+                    <Icon name="external-link" size={14} />
                     <span>Homepage</span>
                   </a>
                 ) : null}

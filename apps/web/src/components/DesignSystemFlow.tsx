@@ -1188,7 +1188,7 @@ export function DesignSystemCreationFlow({
                       className="ds-design-md-reference-link"
                     >
                       {t('dsCreate.reference')}
-                      <Icon name="external-link" size={12} />
+                      <Icon name="external-link" size={14} />
                     </a>
                   </span>
                   <div className="ds-design-md-actions" aria-label={t('dsCreate.designMdViewMode')}>
@@ -4577,7 +4577,7 @@ function readableTextColor(hex: string): string {
 
 function cssFontFamily(family: string): string {
   const clean = family.replace(/["'`]/g, '').trim();
-  if (!clean) return 'Inter, ui-sans-serif, system-ui, sans-serif';
+  if (!clean) return '"Albert Sans", "PingFang SC", "Microsoft YaHei", sans-serif';
   const head = /\s/.test(clean) ? `'${clean}'` : clean;
   return `${head}, ui-sans-serif, system-ui, sans-serif`;
 }

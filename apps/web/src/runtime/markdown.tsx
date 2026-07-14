@@ -262,7 +262,7 @@ function renderBlock(block: Block, key: number, options?: RenderMarkdownOptions)
             return (
               <li key={i} className="md-task-item" data-checked={checked ? 'true' : 'false'}>
                 <span className="md-task-check" aria-hidden>
-                  {checked ? <Icon name="check" size={11} /> : null}
+                  {checked ? <Icon name="check" size={14} /> : null}
                 </span>
                 <span>{renderInline(task[2] ?? '', options)}</span>
               </li>
@@ -460,7 +460,7 @@ function MarkdownCodeBlock({ body, lang }: { body: string; lang: string | null }
               aria-label={collapsed ? t('designFiles.expandGroup') : t('designFiles.collapseGroup')}
               title={collapsed ? t('designFiles.expandGroup') : t('designFiles.collapseGroup')}
             >
-              <Icon name={collapsed ? 'chevron-right' : 'chevron-down'} size={13} />
+              <Icon name={collapsed ? 'chevron-right' : 'chevron-down'} size={14} />
             </button>
           ) : null}
           <button
@@ -470,7 +470,7 @@ function MarkdownCodeBlock({ body, lang }: { body: string; lang: string | null }
             aria-label={copyLabel}
             title={copyLabel}
           >
-            <Icon name={copied ? 'check' : 'copy'} size={12} />
+            <Icon name={copied ? 'check' : 'copy'} size={14} />
             <span>{copyLabel}</span>
           </button>
         </div>

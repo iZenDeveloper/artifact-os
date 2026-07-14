@@ -54,7 +54,7 @@ export function CreditsPanel({ open, onClose, info, onUpgrade, memberCreditNotic
             <Icon name="sparkles" size={15} />
             剩余积分
             <span className="credits-panel__help" title={info.grantTip} aria-label={info.grantTip}>
-              <Icon name="info" size={13} />
+              <Icon name="info" size={14} />
             </span>
           </span>
           <span className="credits-panel__row-value">{fmt(info.balance)}</span>

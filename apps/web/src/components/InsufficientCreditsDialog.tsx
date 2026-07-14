@@ -174,7 +174,7 @@ export function InsufficientCreditsDialog({
               );
             })}
             <p className="credit-upgrade__prorate">
-              <Icon name="info" size={13} />
+              <Icon name="info" size={14} />
               {cycle === 'annual' ? '按年付费，立省 20%；' : '按月付费；'}
               升级按当前周期已使用天数补差价，立即生效。
             </p>

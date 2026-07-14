@@ -157,7 +157,6 @@ import {
   useCritiqueTheaterEnabled,
 } from './Theater';
 import {
-  ACCENT_SWATCHES,
   DEFAULT_ACCENT_COLOR,
   applyAppearanceToDocument,
   normalizeAccentColor,
@@ -3115,7 +3114,7 @@ export function SettingsDialog({
                 aria-busy="true"
                 data-testid={`settings-agent-model-loading-${selected.id}`}
               >
-                <Icon name="spinner" size={13} className="icon-spin" />
+                <Icon name="spinner" size={14} className="icon-spin" />
                 <span>{t('common.loading')}</span>
               </div>
             </div>
@@ -3280,7 +3279,7 @@ export function SettingsDialog({
               </select>
               <Icon
                 name="chevron-down"
-                size={12}
+                size={14}
                 className="agent-model-select-chevron"
               />
             </div>
@@ -3342,17 +3341,17 @@ export function SettingsDialog({
           >
             {autosaveStatus === 'saving' || autosaveStatus === 'pending' ? (
               <>
-                <Icon name="spinner" size={12} className="icon-spin" />
+                <Icon name="spinner" size={14} className="icon-spin" />
                 <span>{t('settings.autosaveSaving')}</span>
               </>
             ) : autosaveStatus === 'saved' ? (
               <>
-                <Icon name="check" size={12} />
+                <Icon name="check" size={14} />
                 <span>{t('settings.autosaveSaved')}</span>
               </>
             ) : autosaveStatus === 'error' ? (
               <>
-                <Icon name="close" size={12} />
+                <Icon name="close" size={14} />
                 <span>{t('settings.autosaveError')}</span>
               </>
             ) : null}
@@ -3445,7 +3444,7 @@ export function SettingsDialog({
               className={`settings-nav-item${activeSection === 'execution' ? ' active' : ''}`}
               onClick={() => setActiveSection('execution')}
             >
-              <Icon name="sliders" size={18} />
+              <Icon name="sliders-filled" size={18} />
               <span>
                 <strong>{t('settings.envConfigure')}</strong>
                 <small>{`${t('settings.localCli')} / ${t('settings.modeApiMeta')}`}</small>
@@ -3456,7 +3455,7 @@ export function SettingsDialog({
               className={`settings-nav-item${activeSection === 'general' ? ' active' : ''}`}
               onClick={() => setActiveSection('general')}
             >
-              <Icon name="settings" size={18} />
+              <Icon name="settings-filled" size={18} />
               <span>
                 <strong>通用</strong>
                 <small>语言、外观与个性化</small>
@@ -3467,7 +3466,7 @@ export function SettingsDialog({
               className={`settings-nav-item${activeSection === 'instructions' ? ' active' : ''}`}
               onClick={() => setActiveSection('instructions')}
             >
-              <Icon name="edit" size={18} />
+              <Icon name="edit-filled" size={18} />
               <span>
                 <strong>{t('settings.instructionsTitle')}</strong>
                 <small>{t('settings.instructionsNavSub')}</small>
@@ -3478,7 +3477,7 @@ export function SettingsDialog({
               className={`settings-nav-item${activeSection === 'memory' ? ' active' : ''}`}
               onClick={() => setActiveSection('memory')}
             >
-              <Icon name="history" size={18} />
+              <Icon name="history-filled" size={18} />
               <span>
                 <strong>{t('settings.memory')}</strong>
                 <small>{t('settings.memoryHint')}</small>
@@ -3489,7 +3488,7 @@ export function SettingsDialog({
               className={`settings-nav-item${activeSection === 'media' ? ' active' : ''}`}
               onClick={() => setActiveSection('media')}
             >
-              <Icon name="image" size={18} />
+              <Icon name="image-filled" size={18} />
               <span>
                 <strong>{t('settings.mediaProviders')}</strong>
                 <small>Image / video / audio</small>
@@ -3500,7 +3499,7 @@ export function SettingsDialog({
               className={`settings-nav-item${activeSection === 'integrations' ? ' active' : ''}`}
               onClick={() => setActiveSection('integrations')}
             >
-              <Icon name="link" size={18} />
+              <Icon name="link-filled" size={18} />
               <span>
                 <strong>{t('settings.mcpServerTitle')}</strong>
                 <small>{t('settings.mcpServerHint')}</small>
@@ -3511,7 +3510,7 @@ export function SettingsDialog({
               className={`settings-nav-item${activeSection === 'privacy' ? ' active' : ''}`}
               onClick={() => setActiveSection('privacy')}
             >
-              <Icon name="eye" size={18} />
+              <Icon name="eye-filled" size={18} />
               <span>
                 <strong>{t('settings.privacy')}</strong>
                 <small>{t('settings.privacyHint')}</small>
@@ -3522,7 +3521,7 @@ export function SettingsDialog({
               className={`settings-nav-item${activeSection === 'about' ? ' active' : ''}`}
               onClick={() => setActiveSection('about')}
             >
-              <Icon name="settings" size={18} />
+              <Icon name="settings-filled" size={18} />
               <span>
                 <strong>{t('settings.about')}</strong>
                 <small>{t('settings.aboutHint')}</small>
@@ -3777,7 +3776,7 @@ export function SettingsDialog({
                             <>
                               <Icon
                                 name="spinner"
-                                size={13}
+                                size={14}
                                 className="icon-spin"
                               />
                               <span>{t('settings.rescanRunning')}</span>
@@ -4017,7 +4016,7 @@ export function SettingsDialog({
                                   >
                                     <Icon
                                       name={amrWalletRefreshing ? 'spinner' : 'refresh'}
-                                      size={13}
+                                      size={14}
                                       className={amrWalletRefreshing ? 'icon-spin' : undefined}
                                     />
                                     <VisuallyHidden>{t('settings.amrWalletRefresh')}</VisuallyHidden>
@@ -4089,7 +4088,7 @@ export function SettingsDialog({
                                       <>
                                         <Icon
                                           name="spinner"
-                                          size={13}
+                                          size={14}
                                           className="icon-spin"
                                         />
                                         <span>{t('settings.test')}</span>
@@ -4150,7 +4149,7 @@ export function SettingsDialog({
                                             className="ghost icon-btn settings-test-btn"
                                             onClick={() => void handleTestAgent()}
                                           >
-                                            <Icon name="reload" size={13} />
+                                            <Icon name="reload" size={14} />
                                             <span>{t('settings.testRetry')}</span>
                                           </button>
                                         </div>
@@ -4435,7 +4434,7 @@ export function SettingsDialog({
                         aria-describedby="settings-byok-no-file-tools-tooltip"
                         data-testid="settings-byok-no-file-tools-trigger"
                       >
-                        <Icon name="info" size={13} />
+                        <Icon name="info" size={14} />
                       </button>
                       <span
                         id="settings-byok-no-file-tools-tooltip"
@@ -5385,7 +5384,7 @@ export function ConnectorSection({
             onClick={() => onConnectorsTabClick?.('get_api_key')}
           >
             {t('settings.connectorsGetApiKey')}
-            <Icon name="external-link" size={11} />
+            <Icon name="external-link" size={14} />
           </a>
         </span>
         <div className="field-row">
@@ -5444,12 +5443,12 @@ export function ConnectorSection({
           >
             {keySaveStatus === 'saving' ? (
               <>
-                <Icon name="spinner" size={12} className="icon-spin" />
+                <Icon name="spinner" size={14} className="icon-spin" />
                 <span>{t('settings.connectorsKeySaving')}</span>
               </>
             ) : keySaveStatus === 'saved' ? (
               <>
-                <Icon name="check" size={12} />
+                <Icon name="check" size={14} />
                 <span>{t('settings.connectorsKeySaved')}</span>
               </>
             ) : (
@@ -5526,7 +5525,7 @@ export function ConnectorSection({
                   onClick={handleClearContinue}
                 >
                   {t('settings.connectorsClearConfirmContinue')}
-                  <Icon name="chevron-right" size={12} />
+                  <Icon name="chevron-right" size={14} />
                 </button>
               ) : (
                 <button
@@ -5546,7 +5545,7 @@ export function ConnectorSection({
                       t('settings.connectorsClearFinalConfirm')
                     ) : (
                       <>
-                        <Icon name="spinner" size={12} className="icon-spin" />
+                        <Icon name="spinner" size={14} className="icon-spin" />
                         {t('settings.connectorsClearArming')}
                       </>
                     )}
@@ -5564,7 +5563,7 @@ export function ConnectorSection({
         >
           {composioConfigLoading ? (
             <>
-              <Icon name="spinner" size={11} className="icon-spin" />
+              <Icon name="spinner" size={14} className="icon-spin" />
               <span>{t('settings.connectorsLoadingSavedKey')}</span>
             </>
           ) : keySaveStatus === 'error'
@@ -6038,7 +6037,7 @@ function OrbitSection({
               data-testid="orbit-config-gate-action"
             >
               <span>{t(gateActionKey)}</span>
-              <Icon name="chevron-right" size={13} />
+              <Icon name="chevron-right" size={14} />
             </button>
           </div>
         </div>
@@ -6063,7 +6062,7 @@ function OrbitSection({
             role="note"
             aria-label={t('settings.orbit.controlsLockedHint')}
           >
-            <Icon name="link" size={12} />
+            <Icon name="link" size={14} />
             <span className="orbit-automation-lock-badge">
               {t('settings.orbit.controlsLockedBadge')}
             </span>
@@ -6172,7 +6171,7 @@ function OrbitSection({
                 className="orbit-automation-sub orbit-automation-sub-warning"
                 role="status"
               >
-                <Icon name="history" size={11} />
+                <Icon name="history" size={14} />
                 <span>
                   {t('settings.orbit.templateMissing', { id: effectiveTemplateSkillId })}{' '}
                   {orbitTemplates.length === 0
@@ -6269,7 +6268,7 @@ function OrbitSection({
                 </select>
                 <Icon
                   name="chevron-down"
-                  size={12}
+                  size={14}
                   className="orbit-template-select-chevron"
                 />
               </div>
@@ -6289,7 +6288,7 @@ function OrbitSection({
           <div className="orbit-receipt-head">
             <div className="orbit-receipt-head-left">
               <span className="orbit-receipt-eyebrow">
-                <Icon name="history" size={12} />
+                <Icon name="history" size={14} />
                 {t('settings.orbit.lastRun')}
               </span>
               <span
@@ -6311,7 +6310,7 @@ function OrbitSection({
               className={`orbit-inline-notice is-${notice.kind}`}
               role={notice.kind === 'error' ? 'alert' : 'status'}
             >
-              <Icon name={notice.kind === 'error' ? 'close' : 'check'} size={12} />
+              <Icon name={notice.kind === 'error' ? 'close' : 'check'} size={14} />
               <span>{notice.message}</span>
             </div>
           ) : null}
@@ -6372,7 +6371,7 @@ function OrbitSection({
           className={`orbit-inline-notice is-${notice.kind}`}
           role={notice.kind === 'error' ? 'alert' : 'status'}
         >
-          <Icon name={notice.kind === 'error' ? 'close' : 'check'} size={12} />
+          <Icon name={notice.kind === 'error' ? 'close' : 'check'} size={14} />
           <span>{notice.message}</span>
         </div>
       ) : null}
@@ -6410,12 +6409,12 @@ function OrbitSection({
               >
                 {copied ? (
                   <>
-                    <Icon name="check" size={13} />
+                    <Icon name="check" size={14} />
                     <span>{t('settings.orbit.copied')}</span>
                   </>
                 ) : (
                   <>
-                    <Icon name="copy" size={13} />
+                    <Icon name="copy" size={14} />
                     <span>{t('settings.orbit.copy')}</span>
                   </>
                 )}
@@ -6429,14 +6428,14 @@ function OrbitSection({
                 rel="noreferrer"
               >
                 <span>{t('settings.orbit.openArtifact')}</span>
-                <Icon name="external-link" size={13} />
+                <Icon name="external-link" size={14} />
               </a>
             ) : null}
           </div>
           {lastRun.markdown ? (
             <details className="orbit-artifact-peek">
               <summary>
-                <Icon name="chevron-right" size={12} />
+                <Icon name="chevron-right" size={14} />
                 <span>{t('settings.orbit.sourceMarkdown')}</span>
               </summary>
               <pre>{lastRun.markdown}</pre>
@@ -6743,7 +6742,7 @@ function MediaProvidersSection({
                 className="ghost-link"
               >
                 {t('settings.agentInstall.docs')}
-                <Icon name="external-link" size={11} />
+                <Icon name="external-link" size={14} />
               </a>
             ) : null}
           </div>
@@ -7306,7 +7305,7 @@ function IntegrationsSection() {
                         <span className="ds-picker-item-title">{c.label}</span>
                         <span
                           style={{
-                            fontSize: 11,
+                            fontSize: 12,
                             color: 'var(--text-muted)',
                           }}
                         >
@@ -7478,10 +7477,9 @@ function AppearanceSection({
   const { t } = useI18n();
   const analytics = useAnalytics();
   const current = cfg.theme ?? 'system';
+  // The accent-color picker was removed; keep applying the stored/default
+  // accent so the theme still renders with a stable accent.
   const currentAccent = normalizeAccentColor(cfg.accentColor) ?? DEFAULT_ACCENT_COLOR;
-  const accentLabel = t('pet.fieldAccent');
-  const defaultAccentLabel = t('pet.fieldAccentDefault');
-  const customAccentLabel = t('pet.fieldAccentCustom');
 
   // Apply the draft theme immediately so the user sees a live preview
   // before hitting Save. SettingsDialog's cleanup reverts this on cancel.
@@ -7491,10 +7489,6 @@ function AppearanceSection({
       accentColor: currentAccent,
     });
   }, [current, currentAccent]);
-
-  const setAccentColor = (color: string) => {
-    setCfg((c) => ({ ...c, accentColor: normalizeAccentColor(color) ?? c.accentColor ?? DEFAULT_ACCENT_COLOR }));
-  };
 
   return (
     <section className="settings-section">
@@ -7523,41 +7517,6 @@ function AppearanceSection({
             <span className="seg-title">{t(labelKey)}</span>
           </button>
         ))}
-      </div>
-      <div className="field">
-        <span className="field-label">{accentLabel}</span>
-        <div className="pet-swatches" role="radiogroup" aria-label={accentLabel}>
-          {ACCENT_SWATCHES.map((color) => {
-            const active = currentAccent === color;
-            return (
-              <button
-                key={color}
-                type="button"
-                className={`pet-swatch${active ? ' active' : ''}`}
-                style={{ background: color }}
-                aria-label={color === DEFAULT_ACCENT_COLOR ? defaultAccentLabel : color}
-                aria-checked={active}
-                role="radio"
-                onClick={() => {
-                  trackSettingsAppearanceClick(analytics.track, {
-                    page_name: 'settings',
-                    area: 'appearance',
-                    element: 'accent_color',
-                    color,
-                  });
-                  setAccentColor(color);
-                }}
-              />
-            );
-          })}
-          <input
-            type="color"
-            aria-label={customAccentLabel}
-            className="pet-swatch-picker"
-            value={currentAccent}
-            onChange={(e) => setAccentColor(e.target.value)}
-          />
-        </div>
       </div>
     </section>
   );

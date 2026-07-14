@@ -301,7 +301,7 @@ export function PluginLoopHome({ onSubmit }: Props) {
                       >
                         <Icon
                           name={p.sourceKind === 'github' ? 'github' : 'external-link'}
-                          size={11}
+                          size={14}
                         />
                         <span>{links.sourceLabel}</span>
                       </a>
@@ -317,7 +317,7 @@ export function PluginLoopHome({ onSubmit }: Props) {
                     data-testid={`view-details-${p.id}`}
                     title="View plugin details"
                   >
-                    <Icon name="eye" size={12} />
+                    <Icon name="eye" size={14} />
                     <span>Details</span>
                   </button>
                   <button

@@ -55,8 +55,10 @@ interface Props {
    *   - 'footer': the home composer input-card footer pill.
    *   - 'home': the borderless trigger in the home composer's row below the
    *     card, sitting flush with the working-directory picker.
+   *   - 'icon': a text-free palette icon button matching the composer
+   *     toolbar's "+" icon-button, sitting inline in the send-button row.
    */
-  variant?: 'project' | 'footer' | 'home';
+  variant?: 'project' | 'footer' | 'home' | 'icon';
   /** Footer variant: visually-hidden label for the trigger button. */
   label?: string;
   /** Hide the recursive "Create" action when the picker is already on create. */
@@ -275,7 +277,7 @@ export function DesignSystemPicker({
               className="project-ds-picker-option-check"
               data-testid={`project-ds-picker-option-${d.id}-check`}
             >
-              <Icon name="check" size={13} strokeWidth={2} />
+              <Icon name="check" size={14} strokeWidth={2} />
             </span>
           ) : null}
         </div>
@@ -306,7 +308,7 @@ export function DesignSystemPicker({
   // slice of a system's palette often grabs only its neutrals (background/ink)
   // and drops the brand accent, so the pill read as a different colour scheme
   // than the full preview. The name + on-open preview convey the system instead.
-  const triggerSwatches = <Icon name="palette" size={13} />;
+  const triggerSwatches = <Icon name="palette" size={14} />;
 
   const popover: ReactNode =
     open && anchor && typeof document !== 'undefined'
@@ -325,7 +327,7 @@ export function DesignSystemPicker({
             }}
           >
             <div className="project-ds-picker-search">
-              <Icon name="search" size={12} />
+              <Icon name="search" size={14} />
               <input
                 ref={inputRef}
                 type="text"
@@ -349,7 +351,7 @@ export function DesignSystemPicker({
                   data-testid="project-ds-picker-create"
                   onClick={createDesignSystem}
                 >
-                  <Icon name="plus" size={12} strokeWidth={2} />
+                  <Icon name="plus" size={14} strokeWidth={2} />
                   <span>{t('common.create')}</span>
                 </button>
               ) : null}
@@ -382,7 +384,7 @@ export function DesignSystemPicker({
                         className="project-ds-picker-option-check"
                         data-testid="project-ds-picker-option-none-check"
                       >
-                        <Icon name="check" size={13} strokeWidth={2} />
+                        <Icon name="check" size={14} strokeWidth={2} />
                       </span>
                     ) : null}
                   </div>
@@ -436,7 +438,7 @@ export function DesignSystemPicker({
                       data-testid="project-ds-picker-preview-expand"
                       onClick={() => openSystemPreview(previewSystem)}
                     >
-                      <Icon name="eye" size={13} strokeWidth={1.9} />
+                      <Icon name="eye" size={14} strokeWidth={1.9} />
                       <span>{t('designSystemPicker.openPreview')}</span>
                     </button>
                   </div>
@@ -486,7 +488,7 @@ export function DesignSystemPicker({
                           title={t('designSystemPicker.openPreview')}
                           aria-label={t('designSystemPicker.openPreview')}
                         >
-                          <Icon name="eye" size={13} strokeWidth={1.9} />
+                          <Icon name="eye" size={14} strokeWidth={1.9} />
                           <span>{t('designSystemPicker.openPreview')}</span>
                         </button>
                       </div>
@@ -519,6 +521,37 @@ export function DesignSystemPicker({
     />
   ) : null;
 
+  if (variant === 'icon') {
+    return (
+      <div
+        ref={wrapRef}
+        className="composer-ds-icon"
+        data-testid="composer-design-system-picker"
+      >
+        <button
+          ref={triggerRef}
+          type="button"
+          className={`icon-btn composer-ds-icon-trigger od-tooltip${open ? ' is-active' : ''}${selected ? ' is-picked' : ''}`}
+          data-testid="composer-design-system-trigger"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label={selected?.title ?? t('designSystemPicker.noneTitle')}
+          data-tooltip={selected?.title ?? t('designSystemPicker.noneTitle')}
+          disabled={loading}
+          title={selected?.title ?? t('designSystemPicker.noneTitle')}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <Icon name="palette" size={16} />
+          {selected ? (
+            <span className="composer-ds-icon-trigger-label">{selected.title}</span>
+          ) : null}
+        </button>
+        {popover}
+        {previewModal}
+      </div>
+    );
+  }
+
   if (variant === 'home') {
     return (
       <div
@@ -537,13 +570,13 @@ export function DesignSystemPicker({
           title={selected?.title ?? t('designSystemPicker.noneTitle')}
           onClick={() => setOpen((v) => !v)}
         >
-          <Icon name="palette" size={13} className="home-hero__ds-row-trigger-icon" />
+          <Icon name="palette" size={14} className="home-hero__ds-row-trigger-icon" />
           <span className="home-hero__ds-row-trigger-label">
             {loading
               ? t('designSystemPicker.loading')
               : selected?.title ?? t('designSystemPicker.noneTitle')}
           </span>
-          <Icon name="chevron-down" size={11} className="home-hero__ds-row-trigger-chevron" />
+          <Icon name="chevron-down" size={14} className="home-hero__ds-row-trigger-chevron" />
         </button>
         {popover}
         {previewModal}
@@ -575,7 +608,7 @@ export function DesignSystemPicker({
               ? t('designSystemPicker.loading')
               : selected?.title ?? t('designSystemPicker.noneTitle')}
           </span>
-          <Icon name="chevron-down" size={12} aria-hidden />
+          <Icon name="chevron-down" size={14} aria-hidden />
         </button>
         {popover}
         {previewModal}
@@ -604,7 +637,7 @@ export function DesignSystemPicker({
             ? t('designSystemPicker.loading')
             : selected?.title ?? t('designSystemPicker.select')}
         </span>
-        <Icon name="chevron-down" size={11} />
+        <Icon name="chevron-down" size={14} />
       </button>
       {popover}
       {previewModal}

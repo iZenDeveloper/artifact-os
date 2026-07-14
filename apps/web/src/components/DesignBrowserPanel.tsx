@@ -32,6 +32,7 @@ import { registerBrandBrowser, type BrandBrowserHandle } from '../runtime/brand-
 import { captureHostRegionSnapshot } from '../runtime/exports';
 import { buildBoardCommentAttachments, commentsToAttachments } from '../comments';
 import type {
+  ChatAttachment,
   ChatCommentAttachment,
   PreviewAnnotationStyle,
   PreviewComment,
@@ -203,6 +204,10 @@ type WebviewFaviconEvent = Event & {
   favicons?: string[];
 };
 
+type WebviewConsoleMessageEvent = Event & {
+  message?: string;
+};
+
 interface DesignBrowserPanelProps {
   initialIconUrl?: string;
   initialTitle?: string;
@@ -216,6 +221,7 @@ interface DesignBrowserPanelProps {
   onSavePreviewComment?: (target: PreviewCommentTarget, note: string, attachAfterSave: boolean, images?: File[]) => Promise<PreviewComment | null>;
   onRemovePreviewComment?: (commentId: string) => Promise<void>;
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[], images?: File[]) => Promise<boolean | void> | boolean | void;
+  onAddImageToChat?: (attachment: ChatAttachment) => void;
   onRequestBrowserUsePrompt?: (prompt: string) => void;
   sendDisabled?: boolean;
   /** Workspace tab id. When set, this panel registers its live webview in the
@@ -239,6 +245,124 @@ const EMPTY_PREVIEW_COMMENTS: PreviewComment[] = [];
 // Hovering/typing origins used to accumulate them and their Set entries forever.
 const WARMED_ORIGIN_LIMIT = 32;
 const warmedOrigins = new Map<string, HTMLLinkElement[]>();
+const ADD_IMAGE_TO_CHAT_MESSAGE = '__open_design_add_image_to_chat__:';
+const BROWSER_IMAGE_HOVER_SCRIPT = String.raw`(() => {
+  const rootId = '__open_design_image_hover_layer__';
+  window.__openDesignImageHoverCleanup?.();
+  document.getElementById(rootId)?.remove();
+  const controller = new AbortController();
+
+  const layer = document.createElement('div');
+  layer.id = rootId;
+  layer.setAttribute('aria-hidden', 'true');
+  Object.assign(layer.style, {
+    position: 'fixed',
+    zIndex: '2147483646',
+    display: 'none',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-end',
+    padding: '10px',
+    // No dim/frost wash over the image — the layer is an invisible flex
+    // frame that pins the button to the hovered image's top-right corner.
+    background: 'transparent',
+    pointerEvents: 'none',
+    borderRadius: '6px',
+    boxSizing: 'border-box',
+  });
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = '添加到 Chat';
+  button.setAttribute('aria-label', '添加到 Chat');
+  Object.assign(button.style, {
+    height: '34px',
+    padding: '0 14px',
+    border: 'none',
+    borderRadius: '6px',
+    background: 'rgba(24,24,25,.92)',
+    color: '#00ff04',
+    boxShadow: '0 8px 24px rgba(0,0,0,.28)',
+    font: '600 13px/1 system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
+    letterSpacing: '0',
+    cursor: 'pointer',
+    pointerEvents: 'auto',
+  });
+  layer.appendChild(button);
+  document.documentElement.appendChild(layer);
+
+  let activeImage = null;
+  const eligibleImage = (node) => {
+    const image = node instanceof Element ? node.closest('img') : null;
+    if (!(image instanceof HTMLImageElement)) return null;
+    const rect = image.getBoundingClientRect();
+    if (rect.width < 72 || rect.height < 56 || rect.bottom <= 0 || rect.right <= 0) return null;
+    return image;
+  };
+  const positionLayer = () => {
+    if (!activeImage || !activeImage.isConnected) {
+      activeImage = null;
+      layer.style.display = 'none';
+      return;
+    }
+    const rect = activeImage.getBoundingClientRect();
+    if (rect.width < 72 || rect.height < 56 || rect.bottom <= 0 || rect.top >= innerHeight) {
+      layer.style.display = 'none';
+      return;
+    }
+    Object.assign(layer.style, {
+      display: 'flex',
+      left: Math.max(0, rect.left) + 'px',
+      top: Math.max(0, rect.top) + 'px',
+      width: Math.max(0, Math.min(innerWidth, rect.right) - Math.max(0, rect.left)) + 'px',
+      height: Math.max(0, Math.min(innerHeight, rect.bottom) - Math.max(0, rect.top)) + 'px',
+    });
+  };
+  document.addEventListener('pointermove', (event) => {
+    if (button.contains(event.target)) return;
+    const image = eligibleImage(event.target);
+    if (image === activeImage) return;
+    activeImage = image;
+    positionLayer();
+  }, { capture: true, signal: controller.signal });
+  // No capture: pointerleave does not bubble, so this fires only when the
+  // pointer leaves the document itself. A capturing listener would also fire
+  // when the pointer crosses from the image onto the overlay button, hiding
+  // the layer and clearing activeImage before the button can be clicked.
+  document.addEventListener('pointerleave', () => {
+    activeImage = null;
+    layer.style.display = 'none';
+  }, { signal: controller.signal });
+  addEventListener('scroll', positionLayer, { capture: true, signal: controller.signal });
+  addEventListener('resize', positionLayer, { capture: true, signal: controller.signal });
+
+  button.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!activeImage) return;
+    const rect = activeImage.getBoundingClientRect();
+    const payload = {
+      x: Math.max(0, rect.left),
+      y: Math.max(0, rect.top),
+      width: Math.max(1, Math.min(innerWidth, rect.right) - Math.max(0, rect.left)),
+      height: Math.max(1, Math.min(innerHeight, rect.bottom) - Math.max(0, rect.top)),
+      alt: activeImage.alt || '',
+      src: activeImage.currentSrc || activeImage.src || '',
+    };
+    layer.style.display = 'none';
+    // Let the guest paint the hidden overlay before notifying the host;
+    // the host's own rAF wait cannot see guest frames, so capturing too
+    // early bakes the dimmed layer and button into the snapshot.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      console.info('${ADD_IMAGE_TO_CHAT_MESSAGE}' + JSON.stringify(payload));
+    }));
+  }, { signal: controller.signal });
+  window.__openDesignImageHoverCleanup = () => {
+    controller.abort();
+    layer.remove();
+    delete window.__openDesignImageHoverCleanup;
+  };
+  return true;
+})()`;
 
 function browserHomeNavigationEntry(): BrowserNavigationEntry {
   return { title: 'Reference Board', url: EMPTY_URL };
@@ -707,6 +831,7 @@ export function DesignBrowserPanel({
   onSavePreviewComment,
   onRemovePreviewComment,
   onSendBoardCommentAttachments,
+  onAddImageToChat,
   onRequestBrowserUsePrompt,
   sendDisabled = false,
   browserTabId,
@@ -1376,6 +1501,110 @@ export function DesignBrowserPanel({
       return null;
     }
   }
+
+  const addBrowserImageToChat = useCallback(async (payload: {
+    alt?: string;
+    height: number;
+    src?: string;
+    width: number;
+    x: number;
+    y: number;
+  }) => {
+    const node = webviewNode;
+    if (!node || !onAddImageToChat) return;
+    const frame = node.getBoundingClientRect();
+    const left = Math.max(frame.left, frame.left + payload.x);
+    const top = Math.max(frame.top, frame.top + payload.y);
+    const right = Math.min(frame.right, frame.left + payload.x + payload.width);
+    const bottom = Math.min(frame.bottom, frame.top + payload.y + payload.height);
+    if (right <= left || bottom <= top) return;
+
+    try {
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      );
+      const snapshot = await captureHostRegionSnapshot({
+        left,
+        top,
+        width: right - left,
+        height: bottom - top,
+      });
+      if (!snapshot) throw new Error('Could not capture this image');
+
+      animateImageIntoChat(snapshot.dataUrl, { left, top, width: right - left, height: bottom - top });
+      const base64 = snapshot.dataUrl.split(',', 2)[1] ?? '';
+      const file = await writeProjectBase64File(
+        projectId,
+        browserFileName('chat-image', currentUrl, 'png'),
+        base64,
+      );
+      if (!file) throw new Error('Could not save this image');
+      await onRefreshFiles();
+      onAddImageToChat({
+        path: file.path || file.name,
+        name: payload.alt?.trim() || file.name.split('/').pop() || file.name,
+        kind: 'image',
+        size: file.size,
+      });
+      setStatusMessage('图片已添加到 Chat');
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : 'Could not add image to Chat');
+    }
+  }, [currentUrl, onAddImageToChat, onRefreshFiles, projectId, webviewNode]);
+
+  useEffect(() => {
+    const node = webviewNode;
+    if (!node || !onAddImageToChat || isBlank) return;
+
+    const injectHoverLayer = () => {
+      // executeJavaScript throws synchronously until the webview emits
+      // dom-ready; the dom-ready/did-stop-loading listeners re-inject then.
+      try {
+        void node.executeJavaScript(BROWSER_IMAGE_HOVER_SCRIPT, true).catch(() => undefined);
+      } catch {
+        // Webview not attached/ready yet.
+      }
+    };
+    const onConsoleMessage = (event: Event) => {
+      const message = (event as WebviewConsoleMessageEvent).message ?? '';
+      if (!message.startsWith(ADD_IMAGE_TO_CHAT_MESSAGE)) return;
+      try {
+        const payload = JSON.parse(message.slice(ADD_IMAGE_TO_CHAT_MESSAGE.length)) as {
+          alt?: string;
+          height?: number;
+          src?: string;
+          width?: number;
+          x?: number;
+          y?: number;
+        };
+        if (
+          !Number.isFinite(payload.x) || !Number.isFinite(payload.y) ||
+          !Number.isFinite(payload.width) || !Number.isFinite(payload.height) ||
+          Number(payload.width) <= 0 || Number(payload.height) <= 0
+        ) return;
+        void addBrowserImageToChat({
+          alt: payload.alt,
+          height: Number(payload.height),
+          src: payload.src,
+          width: Number(payload.width),
+          x: Number(payload.x),
+          y: Number(payload.y),
+        });
+      } catch {
+        // Ignore unrelated or malformed guest console messages.
+      }
+    };
+
+    node.addEventListener('dom-ready', injectHoverLayer);
+    node.addEventListener('did-stop-loading', injectHoverLayer);
+    node.addEventListener('console-message', onConsoleMessage);
+    injectHoverLayer();
+    return () => {
+      node.removeEventListener('dom-ready', injectHoverLayer);
+      node.removeEventListener('did-stop-loading', injectHoverLayer);
+      node.removeEventListener('console-message', onConsoleMessage);
+    };
+  }, [addBrowserImageToChat, isBlank, onAddImageToChat, webviewNode]);
 
   async function savePageBrief() {
     if (!webviewNode || isBlank) {
@@ -2102,7 +2331,7 @@ function BrowserUseMenu({
         <small>{t('browserUse.summary', { count: BROWSER_USE_ACTION_TOTAL })}</small>
       </div>
       <label className="db-browser-use-search">
-        <Icon name="search" size={13} />
+        <Icon name="search" size={14} />
         <input
           type="search"
           value={query}
@@ -2127,7 +2356,7 @@ function BrowserUseMenu({
                 className="db-browser-use-action"
                 onClick={() => onPick(action)}
               >
-                <Icon name="sparkles" size={13} />
+                <Icon name="sparkles" size={14} />
                 <span className="db-browser-use-action-copy">
                   <span>{action.label}</span>
                   <small>{t(browserUseActionOutputKey(action))}</small>
@@ -2189,7 +2418,7 @@ function BrowserViewportControls({
           className="db-viewport-icon"
         />
         <span className="db-viewport-label">{activePreset.label}</span>
-        <RemixIcon name="arrow-down-s-line" size={13} />
+        <RemixIcon name="arrow-down-s-line" size={14} />
       </IconTooltipButton>
       {open ? (
         <div className="db-viewport-menu" role="listbox" aria-label="Browser viewport">
@@ -2209,7 +2438,7 @@ function BrowserViewportControls({
                 <RemixIcon name={browserViewportIcon(preset.id)} size={14} />
                 <span>{preset.label}</span>
               </span>
-              {preset.id === viewport ? <Icon name="check" size={13} /> : null}
+              {preset.id === viewport ? <Icon name="check" size={14} /> : null}
             </button>
           ))}
         </div>
@@ -2325,7 +2554,7 @@ function BrowserCommentComposer({
           <span title={target.selector}>{target.selector}</span>
         </div>
         <button type="button" className="ghost" onClick={onClose} aria-label="Close browser comment">
-          <Icon name="close" size={12} />
+          <Icon name="close" size={14} />
         </button>
       </div>
       {notes.length > 0 ? (
@@ -2404,7 +2633,7 @@ function BrowserInspectPanel({
           <code title={target.selector}>{target.label || target.selector}</code>
         </div>
         <button type="button" className="ghost" onClick={onClose} aria-label="Close browser tune">
-          <Icon name="close" size={12} />
+          <Icon name="close" size={14} />
         </button>
       </header>
 
@@ -2736,7 +2965,7 @@ function DesignBrowserStart({
         </div>
         <div className="db-reference-search">
           <span className="db-reference-search-icon" aria-hidden>
-            <Icon name="search" size={13} />
+            <Icon name="search" size={14} />
           </span>
           <input
             ref={searchRef}
@@ -2773,7 +3002,7 @@ function DesignBrowserStart({
                 searchRef.current?.focus();
               }}
             >
-              <Icon name="close" size={12} />
+              <Icon name="close" size={14} />
             </button>
           ) : null}
         </div>
@@ -2821,7 +3050,7 @@ function DesignBrowserStart({
                     <p>{site.detail}</p>
                     <div className="db-reference-actions">
                       <button type="button" onClick={() => openSite(site)}>
-                        <Icon name="globe" size={13} />
+                        <Icon name="globe" size={14} />
                         Open
                       </button>
                     </div>
@@ -2852,7 +3081,7 @@ function BrowserSiteIcon({
       {cleanUrl && !failed ? (
         <img alt="" src={cleanUrl} onError={() => setFailed(true)} />
       ) : (
-        <Icon name={fallback} size={13} />
+        <Icon name={fallback} size={14} />
       )}
     </span>
   );
@@ -3079,6 +3308,66 @@ function imageSizeFromDataUrl(dataUrl: string): Promise<{ w: number; h: number }
     img.onerror = () => resolve(null);
     img.src = dataUrl;
   });
+}
+
+function animateImageIntoChat(
+  dataUrl: string,
+  source: { left: number; top: number; width: number; height: number },
+): void {
+  const target = document.querySelector<HTMLElement>(
+    '.split-chat-slot:not([hidden]) [data-testid="chat-composer"] .composer-input-wrap',
+  ) ?? document.querySelector<HTMLElement>('[data-testid="chat-composer"]');
+  if (!target) return;
+  const destination = target.getBoundingClientRect();
+  const image = document.createElement('img');
+  image.src = dataUrl;
+  image.alt = '';
+  Object.assign(image.style, {
+    position: 'fixed',
+    zIndex: '2147483647',
+    left: `${source.left}px`,
+    top: `${source.top}px`,
+    width: `${source.width}px`,
+    height: `${source.height}px`,
+    borderRadius: '8px',
+    boxShadow: '0 18px 46px rgba(0,0,0,.28)',
+    objectFit: 'cover',
+    pointerEvents: 'none',
+    transformOrigin: 'center center',
+  });
+  document.body.appendChild(image);
+
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !image.animate) {
+    image.remove();
+    return;
+  }
+  const sourceCenterX = source.left + source.width / 2;
+  const sourceCenterY = source.top + source.height / 2;
+  const targetCenterX = destination.left + destination.width / 2;
+  const targetCenterY = destination.top + destination.height / 2;
+  const translateX = targetCenterX - sourceCenterX;
+  const translateY = targetCenterY - sourceCenterY;
+  const scale = Math.max(
+    0.06,
+    Math.min(0.22, 32 / Math.max(source.width, source.height)),
+  );
+  const animation = image.animate(
+    [
+      { opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' },
+      {
+        offset: 0.72,
+        opacity: 0.92,
+        transform: `translate3d(${translateX * 0.78}px, ${translateY * 0.78 - 18}px, 0) scale(${Math.max(scale * 1.45, 0.12)})`,
+      },
+      {
+        opacity: 0.12,
+        transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${scale})`,
+      },
+    ],
+    { duration: 640, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' },
+  );
+  animation.addEventListener('finish', () => image.remove(), { once: true });
+  animation.addEventListener('cancel', () => image.remove(), { once: true });
 }
 
 export function browserFileName(prefix: string, url: string, extension: 'md' | 'png'): string {

@@ -403,7 +403,7 @@ export function NextStepActions({
                       <span className={styles.toolboxRowTitle}>{title}</span>
                       <span className={styles.toolboxRowDescription}>{description}</span>
                     </span>
-                    <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
+                    <Icon name="chevron-right" size={14} className={styles.toolboxRowArrow} />
                   </button>
                 );
               })
@@ -419,7 +419,7 @@ export function NextStepActions({
                 >
                   <Icon name={action.icon} size={14} className={styles.toolboxRowIcon} />
                   <span className={styles.toolboxRowTitle}>{action.title}</span>
-                  <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
+                  <Icon name="chevron-right" size={14} className={styles.toolboxRowArrow} />
                 </button>
               ))
             : null}
@@ -442,7 +442,7 @@ export function NextStepActions({
                     <span className={styles.toolboxRowTitle}>
                       {designToolboxActionTitle(action, t)}
                     </span>
-                    <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
+                    <Icon name="chevron-right" size={14} className={styles.toolboxRowArrow} />
                   </button>
                 );
               })
@@ -459,7 +459,7 @@ export function NextStepActions({
             >
               <Icon name="more-horizontal" size={14} className={styles.toolboxRowIcon} />
               <span className={styles.toolboxRowTitle}>{t('nextStep.more')}</span>
-              <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
+              <Icon name="chevron-right" size={14} className={styles.toolboxRowArrow} />
             </button>
           ) : null}
         </div>
@@ -528,7 +528,7 @@ export function NextStepActions({
                 >
                   <Icon name="lightbulb" size={14} className={styles.toolboxRowIcon} />
                   <span className={styles.toolboxRowTitle}>{t('chat.designToolbox.title')}</span>
-                  <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
+                  <Icon name="chevron-right" size={14} className={styles.toolboxRowArrow} />
                 </button>
               ) : null}
               {hasShareGroup ? (
@@ -542,7 +542,7 @@ export function NextStepActions({
                 >
                   <Icon name="share" size={14} className={styles.toolboxRowIcon} />
                   <span className={styles.toolboxRowTitle}>{t('nextStep.share')}</span>
-                  <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
+                  <Icon name="chevron-right" size={14} className={styles.toolboxRowArrow} />
                 </button>
               ) : null}
             </div>,
@@ -565,7 +565,7 @@ export function NextStepActions({
                 <span>{t('chat.designToolbox.title')}</span>
               </div>
               <div className={styles.flyoutSearch}>
-                <Icon name="search" size={13} />
+                <Icon name="search" size={14} />
                 <input
                   value={toolboxQuery}
                   onChange={(e) => setToolboxQuery(e.currentTarget.value)}

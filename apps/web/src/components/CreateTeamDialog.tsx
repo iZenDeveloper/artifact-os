@@ -60,7 +60,7 @@ export function CreateTeamDialog({ open, onClose, onCreate }: Props) {
               <span className="create-team__logo-initial">{initial}</span>
             )}
             <span className="create-team__logo-edit" aria-hidden>
-              <Icon name="image" size={13} />
+              <Icon name="image" size={14} />
             </span>
           </button>
           <input

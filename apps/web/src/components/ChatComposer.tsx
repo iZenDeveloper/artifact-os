@@ -12,6 +12,7 @@ import {
 } from "react";
 import { createPortal } from 'react-dom';
 import { Button } from '@open-design/components';
+import { captureHostPage, isOpenDesignHostAvailable } from '@open-design/host';
 import { useI18n, useT } from '../i18n';
 import { localizePluginDescription, localizePluginTitle } from './plugins-home/localization';
 import type { Dict, Locale } from '../i18n/types';
@@ -32,7 +33,6 @@ import type {
 } from '@open-design/contracts/analytics';
 import { deriveUploadCohort } from '../analytics/upload-tracking';
 import { projectRawUrl, uploadProjectFiles, openFolderDialog, fetchRecentLinkedDirs, pushRecentLinkedDir, dirExists, applyLibraryAsset, fetchLibraryAssetElementHtml } from "../providers/registry";
-import { WorkingDirPicker } from './WorkingDirPicker';
 import { patchProject } from "../state/projects";
 import { fetchMcpServers } from "../state/mcp";
 import type { McpServerConfig, McpTemplate } from "../state/mcp";
@@ -69,6 +69,7 @@ import {
   type DesignToolboxAction,
   type DesignToolboxActionId,
 } from '../runtime/design-toolbox';
+import { requestPreviewModuleCapture } from '../runtime/module-capture';
 import { ComposerPluginPreview } from './ComposerPluginPreview';
 import { computeToolboxDetailPosition } from './composer-detail-position';
 import { PluginDetailsModal } from "./PluginDetailsModal";
@@ -86,6 +87,18 @@ import {
 } from './composer/LexicalComposerInput';
 import { CaretFloatingLayer } from './composer/CaretFloatingLayer';
 import { ANNOTATION_EVENT, type AnnotationEventDetail } from "./PreviewDrawOverlay";
+
+/**
+ * Window event for staging attachments that are ALREADY uploaded to the
+ * project (ChatAttachment shape, not File). Mirrors ANNOTATION_EVENT's
+ * pattern; used by surfaces that materialize files themselves — e.g. the
+ * design browser's hover "添加到 Chat" capture, which writes the PNG via
+ * writeProjectBase64File before notifying the composer.
+ */
+export const STAGE_ATTACHMENT_EVENT = 'opendesign:stage-attachment';
+export interface StageAttachmentEventDetail {
+  attachments: ChatAttachment[];
+}
 import { DesignSystemSwitchPicker } from "./DesignSystemSwitchPicker";
 import { listenForConnectorsChanged } from './connectors-events';
 import { fetchConnectorCatalogSnapshot } from './connectors-state';
@@ -106,6 +119,8 @@ const USER_PLUGIN_SOURCE_KINDS = new Set<PluginSourceKind>([
   'url',
   'local',
 ]);
+
+let hostCommandScreenshotUploadInFlight = false;
 
 interface SlashCommand {
   id: string;
@@ -407,11 +422,15 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     // entries rather than ChatComposer remounts. See PR #2285 review
     // 2026-05-20 04:08 for the rationale.
     const [staged, setStaged] = useState<ChatAttachment[]>([]);
+    // Manual editor height set by dragging the shell's gray backdrop up/down.
+    // null = the default auto-grow min/max behavior.
+    const [manualEditorHeight, setManualEditorHeight] = useState<number | null>(null);
     const nextAttachmentOrderRef = useRef(0);
     const [libraryPickerOpen, setLibraryPickerOpen] = useState(false);
     const [figmaModalOpen, setFigmaModalOpen] = useState(false);
     const [stagedVisualComments, setStagedVisualComments] = useState<ChatCommentAttachment[]>([]);
     const streamingAnnotationSendPendingRef = useRef(false);
+    const hostCommandScreenshotUploadRef = useRef<() => Promise<boolean>>(async () => false);
     // Remembers the entry_from that the deferred streaming send must carry once
     // it flushes. The Mark draw-overlay tags 'mark' synchronously; without this
     // the flush effect would report the run as the default composer entry.
@@ -1472,6 +1491,100 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       }
     }
 
+    async function uploadHostCommandScreenshot() {
+      if (!isOpenDesignHostAvailable()) return false;
+      if (hostCommandScreenshotUploadInFlight) return false;
+      hostCommandScreenshotUploadInFlight = true;
+      try {
+        const result = await captureHostPage();
+        if (!result.ok) {
+          setUploadError(`Screenshot capture failed (${result.reason}).`);
+          return false;
+        }
+        const blob = await fetch(result.dataUrl).then((response) => response.blob());
+        const file = new File([blob], `command-screenshot-${Date.now()}.png`, {
+          type: blob.type || 'image/png',
+        });
+        await uploadFiles([file]);
+        return true;
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        setUploadError(`Screenshot capture failed (${detail}).`);
+        console.warn('Could not capture host screenshot', err);
+        return false;
+      } finally {
+        hostCommandScreenshotUploadInFlight = false;
+      }
+    }
+
+    hostCommandScreenshotUploadRef.current = uploadHostCommandScreenshot;
+
+    useEffect(() => {
+      const pressed = {
+        left: false,
+        right: false,
+        handled: false,
+      };
+      const reset = () => {
+        pressed.left = false;
+        pressed.right = false;
+        pressed.handled = false;
+      };
+      const onKeyDown = (event: KeyboardEvent) => {
+        if (inputDisabled) return;
+        if (event.code !== 'MetaLeft' && event.code !== 'MetaRight') return;
+        if (event.code === 'MetaLeft') pressed.left = true;
+        if (event.code === 'MetaRight') pressed.right = true;
+        if (!pressed.left || !pressed.right || pressed.handled) return;
+        pressed.handled = true;
+        event.preventDefault();
+        event.stopPropagation();
+        void (async () => {
+          // With a design-file preview open, double-Command captures the
+          // module the pointer is on (works on web too); the desktop host
+          // page screenshot remains the fallback everywhere else.
+          if (await requestPreviewModuleCapture()) return;
+          await hostCommandScreenshotUploadRef.current();
+        })();
+      };
+      const onKeyUp = (event: KeyboardEvent) => {
+        if (event.code === 'MetaLeft') pressed.left = false;
+        if (event.code === 'MetaRight') pressed.right = false;
+        if (!pressed.left || !pressed.right) pressed.handled = false;
+      };
+      const onVisibilityChange = () => {
+        if (document.visibilityState !== 'visible') reset();
+      };
+
+      window.addEventListener('keydown', onKeyDown, true);
+      window.addEventListener('keyup', onKeyUp, true);
+      window.addEventListener('blur', reset);
+      document.addEventListener('visibilitychange', onVisibilityChange);
+      return () => {
+        window.removeEventListener('keydown', onKeyDown, true);
+        window.removeEventListener('keyup', onKeyUp, true);
+        window.removeEventListener('blur', reset);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+      };
+    }, [inputDisabled]);
+
+    useEffect(() => {
+      // Already-uploaded attachments (ChatAttachment, not File) staged by
+      // other surfaces — e.g. the design browser's hover "添加到 Chat".
+      function onStageAttachment(e: Event) {
+        const detail = (e as CustomEvent<StageAttachmentEventDetail>).detail;
+        const attachments = detail?.attachments?.filter(
+          (item): item is ChatAttachment => Boolean(item && item.path && item.name),
+        );
+        if (!attachments || attachments.length === 0) return;
+        const orderStart = reserveAttachmentOrders(attachments.length);
+        appendOrderedStagedAttachments(assignChatAttachmentOrders(attachments, orderStart));
+        editorRef.current?.focus();
+      }
+      window.addEventListener(STAGE_ATTACHMENT_EVENT, onStageAttachment);
+      return () => window.removeEventListener(STAGE_ATTACHMENT_EVENT, onStageAttachment);
+    });
+
     useEffect(() => {
       function onAnnotation(e: Event) {
         const detail = (e as CustomEvent<AnnotationEventDetail>).detail;
@@ -1693,6 +1806,36 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       setDragActive(false);
       const files = Array.from(e.dataTransfer.files ?? []);
       if (files.length > 0) void uploadFiles(files);
+    }
+
+    // Dragging the shell's gray backdrop (not its children) vertically
+    // resizes the editor: up = taller. Dragging back at/below the default
+    // height clears the override and returns to auto-grow.
+    function handleShellResizeMouseDown(e: React.MouseEvent<HTMLDivElement>) {
+      if (e.target !== e.currentTarget) return;
+      if (e.button !== 0) return;
+      const editorEl = e.currentTarget.querySelector<HTMLElement>('.composer-input-editor');
+      if (!editorEl) return;
+      e.preventDefault();
+      const startY = e.clientY;
+      const startHeight = editorEl.getBoundingClientRect().height;
+      const DEFAULT_MIN = 72;
+      const onMove = (ev: MouseEvent) => {
+        const delta = startY - ev.clientY;
+        const max = Math.round(window.innerHeight * 0.6);
+        const next = Math.min(max, Math.max(DEFAULT_MIN, Math.round(startHeight + delta)));
+        setManualEditorHeight(next <= DEFAULT_MIN + 4 ? null : next);
+      };
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        document.body.style.removeProperty('cursor');
+        document.body.style.removeProperty('user-select');
+      };
+      document.body.style.cursor = 'ns-resize';
+      document.body.style.userSelect = 'none';
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
     }
 
     async function handleLinkFolder() {
@@ -2216,7 +2359,15 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         onDragLeave={() => setDragActive(false)}
         onDrop={inputDisabled ? undefined : handleDrop}
       >
-        <div className="composer-shell">
+        <div
+          className={`composer-shell${manualEditorHeight != null ? ' composer-shell--manual-height' : ''}`}
+          style={
+            manualEditorHeight != null
+              ? ({ '--composer-manual-h': `${manualEditorHeight}px` } as React.CSSProperties)
+              : undefined
+          }
+          onMouseDown={handleShellResizeMouseDown}
+        >
           {/*
             Spec §8.4 — context bar above the composer input. The
             section now behaves as a pure context bar: it renders the
@@ -2252,9 +2403,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
               }}
             />
           ) : null}
-          {designSystemPicker || selectedWorkspaceContexts.length > 0 || stagedSkills.length > 0 || stagedMcpServers.length > 0 || stagedConnectors.length > 0 || staged.length > 0 || activeAppliedPlugin ? (
+          {selectedWorkspaceContexts.length > 0 || stagedSkills.length > 0 || stagedMcpServers.length > 0 || stagedConnectors.length > 0 || staged.length > 0 || activeAppliedPlugin ? (
             <StagedRunContexts
-              designSystemPicker={designSystemPicker}
               workspaceItems={selectedWorkspaceContexts}
               currentWorkspaceContextId={visibleWorkspaceContext?.id ?? null}
               skills={stagedSkills}
@@ -2514,6 +2664,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                 />
               )}
             />
+            {designSystemPicker}
             {designToolboxOpen ? (
               <div className="composer-toolbox-standalone">
                 {/* Click-catcher backdrop. A <div> (not a <button>) so it never
@@ -2577,14 +2728,15 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
             {showStopButton ? (
               <button
                 type="button"
-                className="composer-send stop od-tooltip"
+                className="composer-send stop"
                 onClick={onStop}
-                title={t('chat.stop')}
-                data-tooltip={t('chat.stop')}
                 aria-label={t('chat.stop')}
               >
-                <Icon name="stop" size={13} />
-                <span>{t('chat.stop')}</span>
+                <ComposerRunIcon className="composer-run-glyph" />
+                <span className="composer-run-labels">
+                  <span className="composer-run-label">{t('assistant.thinking')}</span>
+                  <span className="composer-stop-label">{t('chat.stop')}</span>
+                </span>
               </button>
             ) : null}
             {showSendButton ? (
@@ -2605,38 +2757,11 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                 title={t('chat.send')}
                 data-tooltip={t('chat.send')}
               >
-                <Icon name="send" size={13} />
-                <span>{t('chat.send')}</span>
+                <Icon name="arrow-up" size={17} />
               </button>
             ) : null}
           </div>
         </div>
-        {projectId ? (
-          <div className="composer-workdir-row">
-            <WorkingDirPicker
-              placement="up"
-              workingDir={workingDir}
-              invalid={workingDirMissing}
-              recentDirs={recentDirs}
-              onOpen={() => void checkWorkingDir()}
-              onPickDirectory={() => {
-                // Fire on the click itself (intent), matching the home
-                // composer's working_dir* elements so one dashboard counts the
-                // action across both surfaces.
-                trackComposerBar({ element: 'working_dir' });
-                void handlePickWorkingDir();
-              }}
-              onSelectRecent={(dir) => {
-                trackComposerBar({ element: 'working_dir_recent' });
-                void setWorkingDirFolder(dir);
-              }}
-              onClear={() => {
-                trackComposerBar({ element: 'working_dir_clear' });
-                void clearWorkingDir();
-              }}
-            />
-          </div>
-        ) : null}
         {uploadError ? <span className="composer-hint">{uploadError}</span> : null}
         {detailsRecord ? (
           <PluginDetailsModal
@@ -2897,6 +3022,25 @@ function workspaceContextIcon(item: WorkspaceContextItem): IconName {
   return 'file';
 }
 
+/* 5×5 dot-matrix "cross expand" glyph shown inside the black send button while
+   a run is executing: a plus shape blooms outward from the center in Manhattan
+   steps (delay = 220ms × Manhattan distance from the middle dot); the faint
+   base grid stays static. Dots use currentColor so the glyph adapts to the
+   button's light-on-dark (and dark-mode inverted) fill. */
+function ComposerRunIcon({ className }: { className?: string }) {
+  return (
+    <video
+      className={className}
+      src="/composer-send.mp4"
+      autoPlay
+      loop
+      muted
+      playsInline
+      aria-hidden
+    />
+  );
+}
+
 function workspaceContextTitle(item: WorkspaceContextItem): string {
   return [
     workspaceContextKindLabel(item.kind),
@@ -3039,7 +3183,7 @@ function StagedRunContexts({
             aria-label={pluginChip.title}
           >
             <span className="staged-icon" aria-hidden>
-              <Icon name="sparkles" size={12} />
+              <Icon name="sparkles" size={14} />
             </span>
             <span className="staged-name">{pluginChip.title}</span>
           </button>
@@ -3051,7 +3195,7 @@ function StagedRunContexts({
             data-tooltip={t('common.delete')}
             aria-label={t('chat.removeAria', { name: pluginChip.title })}
           >
-            <Icon name="close" size={11} />
+            <Icon name="close" size={14} />
           </button>
         </div>
       ) : null}
@@ -3066,7 +3210,7 @@ function StagedRunContexts({
             className={`staged-chip staged-context staged-context--workspace staged-context--workspace-${workspaceItem.kind}`}
           >
             <span className="staged-icon" aria-hidden>
-              <Icon name={workspaceContextIcon(workspaceItem)} size={12} />
+              <Icon name={workspaceContextIcon(workspaceItem)} size={14} />
             </span>
             <span className="staged-name" title={workspaceContextTitle(workspaceItem)}>
               <span className="staged-context-kind">{kindLabel}</span>
@@ -3080,7 +3224,7 @@ function StagedRunContexts({
               data-tooltip={t('common.delete')}
               aria-label={t('chat.removeAria', { name: workspaceItem.label })}
             >
-              <Icon name="close" size={11} />
+              <Icon name="close" size={14} />
             </button>
           </div>
         );
@@ -3091,7 +3235,7 @@ function StagedRunContexts({
           className={`staged-chip staged-context staged-context--skill staged-skill-${s.source ?? 'built-in'}`}
         >
           <span className="staged-icon" aria-hidden>
-            <Icon name="sparkles" size={12} />
+            <Icon name="sparkles" size={14} />
           </span>
           <span className="staged-name" title={s.description || s.name}>
             @{s.name}
@@ -3104,7 +3248,7 @@ function StagedRunContexts({
             data-tooltip={t('common.delete')}
             aria-label={t('chat.removeAria', { name: s.name })}
           >
-            <Icon name="close" size={11} />
+            <Icon name="close" size={14} />
           </button>
         </div>
       ))}
@@ -3116,7 +3260,7 @@ function StagedRunContexts({
             className="staged-chip staged-context staged-context--mcp"
           >
             <span className="staged-icon" aria-hidden>
-              <Icon name="link" size={12} />
+              <Icon name="link" size={14} />
             </span>
             <span className="staged-name" title={server.command || server.url || server.id}>
               @{label}
@@ -3129,7 +3273,7 @@ function StagedRunContexts({
               data-tooltip={t('common.delete')}
               aria-label={t('chat.removeAria', { name: label })}
             >
-              <Icon name="close" size={11} />
+              <Icon name="close" size={14} />
             </button>
           </div>
         );
@@ -3140,7 +3284,7 @@ function StagedRunContexts({
           className="staged-chip staged-context staged-context--connector"
         >
           <span className="staged-icon" aria-hidden>
-            <Icon name="link" size={12} />
+            <Icon name="link" size={14} />
           </span>
           <span className="staged-name" title={connector.accountLabel ?? connector.provider}>
             @{connector.name}
@@ -3153,7 +3297,7 @@ function StagedRunContexts({
             data-tooltip={t('common.delete')}
             aria-label={t('chat.removeAria', { name: connector.name })}
           >
-            <Icon name="close" size={11} />
+            <Icon name="close" size={14} />
           </button>
         </div>
       ))}
@@ -3161,25 +3305,29 @@ function StagedRunContexts({
         const canPreview = a.kind === 'image' && Boolean(projectId);
         const imageUrl = canPreview ? projectRawUrl(projectId!, a.path) : null;
         return (
-          <div key={a.path} className={`staged-chip staged-${a.kind}`}>
+          <div
+            key={a.path}
+            className={`staged-chip staged-${a.kind}${canPreview && imageUrl ? ' staged-chip--image-file' : ''}`}
+          >
             <span className="staged-order" aria-label={`Attachment ${index + 1}`}>
               {index + 1}
             </span>
             {canPreview && imageUrl ? (
+              // Mirrors the home composer's image chips: thumbnail only, the
+              // filename lives in the tooltip / aria-label.
               <button
                 type="button"
                 className="staged-preview-trigger"
                 onClick={() => setPreview(a)}
-                title={a.path}
+                title={a.name}
                 aria-label={`Preview ${a.name}`}
               >
                 <img src={imageUrl} alt="" aria-hidden />
-                <span className="staged-name">{a.name}</span>
               </button>
             ) : (
               <>
                 <span className="staged-icon" aria-hidden>
-                  <Icon name="file" size={13} />
+                  <Icon name="file" size={14} />
                 </span>
                 <span className="staged-name" title={a.path}>
                   {a.name}
@@ -3194,7 +3342,7 @@ function StagedRunContexts({
               data-tooltip={t('common.delete')}
               aria-label={t('chat.removeAria', { name: a.name })}
             >
-              <Icon name="close" size={11} />
+              <Icon name="close" size={14} />
             </button>
           </div>
         );
@@ -3263,7 +3411,7 @@ function StagedCommentAttachments({
             data-tooltip={t('chat.comments.removeAttachment')}
             aria-label={t('chat.comments.removeAttachmentAria', { name: a.elementId })}
           >
-            <Icon name="close" size={11} />
+            <Icon name="close" size={14} />
           </button>
         </div>
       ))}
@@ -3374,7 +3522,7 @@ function ToolsPluginsPanel({
                 aria-busy={pendingId === p.id ? 'true' : undefined}
                 title={pluginDescription || pluginTitle}
               >
-                <Icon name="sparkles" size={12} />
+                <Icon name="sparkles" size={14} />
                 <span className="composer-tools-row-body">
                   <strong>{pluginTitle}</strong>
                   {pluginDescription ? (
@@ -3397,7 +3545,7 @@ function ToolsPluginsPanel({
                 title={`View details for ${pluginTitle}`}
                 aria-label={`View details for ${pluginTitle}`}
               >
-                <Icon name="eye" size={12} />
+                <Icon name="eye" size={14} />
               </button>
             </div>
             );
@@ -3459,7 +3607,7 @@ function ToolsMcpPanel({
               onClick={() => onInsert(s.id)}
               title={`Insert a hint that nudges the model to use ${s.label || s.id}`}
             >
-              <Icon name="link" size={12} />
+              <Icon name="link" size={14} />
               <span className="composer-tools-row-body">
                 <strong>{s.label || s.id}</strong>
                 <span className="composer-tools-row-meta">{s.transport}</span>
@@ -3481,7 +3629,7 @@ function ToolsMcpPanel({
               onClick={onManage}
               title={`Add ${tpl.label} from Settings`}
             >
-              <Icon name="plus" size={12} />
+              <Icon name="plus" size={14} />
               <span className="composer-tools-row-body">
                 <strong>{tpl.label}</strong>
                 <span className="composer-tools-row-meta">
@@ -3500,7 +3648,7 @@ function ToolsMcpPanel({
         onMouseDown={(e) => e.preventDefault()}
         onClick={onManage}
       >
-        <Icon name="settings" size={12} />
+        <Icon name="settings" size={14} />
         <span>Manage MCP servers…</span>
       </button>
     </>
@@ -3637,7 +3785,7 @@ function DesignToolboxPanel({
         </div>
       </div>
       <div className="plus-menu__search">
-        <Icon name="search" size={13} />
+        <Icon name="search" size={14} />
         <input
           value={query}
           onChange={(e) => setQuery(e.currentTarget.value)}
@@ -3867,7 +4015,7 @@ function ToolsSkillsPanel({
                 disabled={pendingId !== null}
                 title={localizeSkillDescription(locale, skill)}
               >
-                <Icon name={active ? 'check' : 'file'} size={12} />
+                <Icon name={active ? 'check' : 'file'} size={14} />
                 <span className="composer-tools-row-body">
                   <strong>{localizeSkillName(locale, skill)}</strong>
                   <span className="composer-tools-row-meta">
@@ -4649,7 +4797,7 @@ function SlashPopover({
             onClick={() => onPick(cmd)}
           >
             <span className="slash-item-icon" aria-hidden>
-              <Icon name={cmd.icon} size={13} />
+              <Icon name={cmd.icon} size={14} />
             </span>
             <span className="slash-item-body">
               <span className="slash-item-row">
@@ -4778,7 +4926,7 @@ function MentionPopover({
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => onPickFile(key)}
                 >
-                  <Icon name="file" size={12} />
+                  <Icon name="file" size={14} />
                   <span className="mention-item-body">
                     <strong>{projectFileMentionTitle(f, key)}</strong>
                     <span className="mention-meta mention-meta--desc mention-meta--path">
@@ -4812,7 +4960,7 @@ function MentionPopover({
                   onClick={() => onPickWorkspaceContext(item)}
                   title={workspaceContextTitle(item)}
                 >
-                  <Icon name={workspaceContextIcon(item)} size={12} />
+                  <Icon name={workspaceContextIcon(item)} size={14} />
                   <span className="mention-item-body">
                     <strong>{item.label}</strong>
                     <span className="mention-meta mention-meta--desc">
@@ -4846,7 +4994,7 @@ function MentionPopover({
                   onClick={() => onPickPlugin(p)}
                   title={pluginDescription || pluginTitle}
                 >
-                  <Icon name="sparkles" size={12} />
+                  <Icon name="sparkles" size={14} />
                   <span className="mention-item-body">
                     <strong>{pluginTitle}</strong>
                     <span className="mention-meta mention-meta--desc">
@@ -4879,7 +5027,7 @@ function MentionPopover({
                   onClick={() => onPickSkill(skill)}
                   title={localizeSkillDescription(locale, skill)}
                 >
-                  <Icon name={isCurrent ? 'check' : 'file'} size={12} />
+                  <Icon name={isCurrent ? 'check' : 'file'} size={14} />
                   <span className="mention-item-body">
                     <strong>{localizeSkillName(locale, skill)}</strong>
                     <span className="mention-meta mention-meta--desc">
@@ -4911,7 +5059,7 @@ function MentionPopover({
                   onClick={() => onPickMcp(server)}
                   title={t('chat.mentionUseMcpTitle', { name: server.label || server.id })}
                 >
-                  <Icon name="link" size={12} />
+                  <Icon name="link" size={14} />
                   <span className="mention-item-body">
                     <strong>{server.label || server.id}</strong>
                     <span className="mention-meta mention-meta--desc">
@@ -4943,7 +5091,7 @@ function MentionPopover({
                   onClick={() => onPickConnector(connector)}
                   title={t('chat.mentionUseConnectorTitle', { name: connector.name })}
                 >
-                  <Icon name="link" size={12} />
+                  <Icon name="link" size={14} />
                   <span className="mention-item-body">
                     <strong>{connector.name}</strong>
                     <span className="mention-meta mention-meta--desc">

@@ -418,7 +418,7 @@ export function BoardComposerPopover({
                   aria-label={t('chat.comments.remove')}
                   title={t('chat.comments.remove')}
                 >
-                  <Icon name="close" size={10} />
+                  <Icon name="close" size={14} />
                 </button>
               </span>
             ))}
@@ -473,7 +473,7 @@ export function BoardComposerPopover({
                     aria-label={t('chat.annotationAttachedRemove')}
                     title={t('chat.annotationAttachedRemove')}
                   >
-                    <Icon name="close" size={10} />
+                    <Icon name="close" size={14} />
                   </button>
                 </div>
               ))}
@@ -530,7 +530,7 @@ export function BoardComposerPopover({
                     title={t('chat.annotationAttachImage')}
                     aria-label={t('chat.annotationAttachImage')}
                   >
-                    <Icon name="attach" size={13} />
+                    <Icon name="attach" size={14} />
                   </button>
                 </>
               ) : null}
@@ -542,7 +542,7 @@ export function BoardComposerPopover({
                   title={t('common.delete')}
                   aria-label={t('common.delete')}
                 >
-                  <Icon name="trash" size={13} />
+                  <Icon name="trash" size={14} />
                 </button>
               ) : (
                 <button
@@ -552,7 +552,7 @@ export function BoardComposerPopover({
                   title={t('common.close')}
                   aria-label={t('common.close')}
                 >
-                  <Icon name="close" size={12} />
+                  <Icon name="close" size={14} />
                 </button>
               )}
             </div>

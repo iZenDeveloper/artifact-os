@@ -48,7 +48,7 @@ export function LanguageMenu({ compact = false }: { compact?: boolean } = {}) {
         {compact ? null : (
           <>
             <span>{LOCALE_LABEL[locale]}</span>
-            <Icon name="chevron-down" size={11} />
+            <Icon name="chevron-down" size={14} />
           </>
         )}
       </button>
@@ -87,7 +87,7 @@ export function LanguageMenu({ compact = false }: { compact?: boolean } = {}) {
                     <span className="lang-menu-code">{code}</span>
                     {active ? (
                       <span className="lang-menu-check" aria-hidden>
-                        <Icon name="check" size={12} />
+                        <Icon name="check" size={14} />
                       </span>
                     ) : null}
                   </motion.button>

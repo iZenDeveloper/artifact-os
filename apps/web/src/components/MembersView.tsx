@@ -180,7 +180,6 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
       <header className="entry-section__head members__head">
         <div className="members__head-text">
           <h1 className="entry-section__title">成员</h1>
-          <p className="members__subtitle">管理 Nexu 团队的成员与角色</p>
         </div>
         <button
           type="button"
@@ -231,7 +230,7 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
         <div className="members__seats-benefits">
           {TEAM_PLAN_COPY.map((item) => (
             <span key={item}>
-              <Icon name="check" size={12} /> {item}
+              <Icon name="check" size={14} /> {item}
             </span>
           ))}
         </div>
@@ -337,11 +336,11 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
                   >
                     {resentEmails.has(invite.email) ? (
                       <>
-                        <Icon name="check" size={13} /> 已发送
+                        <Icon name="check" size={14} /> 已发送
                       </>
                     ) : (
                       <>
-                        <Icon name="refresh" size={13} /> 重新发送
+                        <Icon name="refresh" size={14} /> 重新发送
                       </>
                     )}
                   </button>

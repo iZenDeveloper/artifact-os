@@ -567,7 +567,7 @@ export function DesignSystemsSection({
                               }}
                               onKeyDown={(e) => e.stopPropagation()}
                             >
-                              <Icon name="pencil" size={13} />
+                              <Icon name="pencil" size={14} />
                             </button>
                           ) : null}
                         </div>

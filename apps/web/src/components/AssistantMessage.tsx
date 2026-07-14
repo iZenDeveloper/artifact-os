@@ -231,7 +231,7 @@ function SkillPluginCandidateCard({
               disabled={disabled}
               onClick={() => void share("contribute-open-design")}
             >
-              <Icon name={busy === "contribute" ? "spinner" : "share"} size={13} />
+              <Icon name={busy === "contribute" ? "spinner" : "share"} size={14} />
               <span>{busy === "contribute" ? "Starting..." : t("skillPluginCandidate.contributeToMain")}</span>
             </button>
             <button
@@ -240,7 +240,7 @@ function SkillPluginCandidateCard({
               disabled={disabled}
               onClick={() => void createDraft()}
             >
-              <Icon name={busy === "draft" ? "spinner" : "plus"} size={13} />
+              <Icon name={busy === "draft" ? "spinner" : "plus"} size={14} />
               <span>{busy === "draft" ? "Creating..." : t("skillPluginCandidate.createForMe")}</span>
             </button>
           </div>
@@ -1024,13 +1024,6 @@ function AssistantFooter({
 }: AssistantFooterProps) {
   const t = useT();
   const elapsed = useLiveElapsed(streaming, startedAt, endedAt, usage?.durationMs);
-  const formattedCost =
-    typeof usage?.costUsd === "number" &&
-    Number.isFinite(usage.costUsd) &&
-    usage.costUsd > 0
-      ? usage.costUsd.toFixed(4)
-      : "";
-  const costLabel = formattedCost && formattedCost !== "0.0000" ? ` · $${formattedCost}` : "";
   if (
     !forceVisible &&
     !streaming &&
@@ -1063,13 +1056,9 @@ function AssistantFooter({
           ? t("assistant.unfinishedLabel")
           : t("assistant.doneLabel")}
       </span>
-      <span className="assistant-stats">
-        {elapsed}
-        {usage?.outputTokens != null
-          ? ` · ${t("assistant.outTokens", { n: usage.outputTokens })}`
-          : ""}
-        {costLabel}
-      </span>
+      {/* Stats stay time-only: token counts and cost are deliberately not
+          surfaced here. */}
+      <span className="assistant-stats">{elapsed}</span>
       {copyMarkdown || onFork || feedbackControls ? (
         <span className="assistant-footer-controls">
           {copyMarkdown ? <AssistantMarkdownCopyButton markdown={copyMarkdown} /> : null}
@@ -1109,7 +1098,7 @@ function AssistantForkButton({
       aria-label={label}
       title={label}
     >
-      <Icon name={disabled ? "spinner" : "fork"} size={13} />
+      <Icon name={disabled ? "spinner" : "fork"} size={14} />
     </button>
   );
 }
@@ -1151,7 +1140,7 @@ function AssistantMarkdownCopyButton({ markdown }: { markdown: string }) {
       aria-label={label}
       title={label}
     >
-      <Icon name={copied ? "check" : "copy"} size={13} />
+      <Icon name={copied ? "check" : "copy"} size={14} />
     </button>
   );
 }
@@ -1451,7 +1440,7 @@ function AssistantFeedback({
         title={t("assistant.feedbackPositive")}
         onClick={() => toggleFeedback("positive")}
       >
-        <Icon name="thumbs-up" size={13} />
+        <Icon name="thumbs-up" size={14} />
         {burstKey > 0 ? (
           <span
             key={burstKey}
@@ -1479,7 +1468,7 @@ function AssistantFeedback({
         title={t("assistant.feedbackNegative")}
         onClick={() => toggleFeedback("negative")}
       >
-        <Icon name="thumbs-down" size={13} />
+        <Icon name="thumbs-down" size={14} />
       </button>
     </span>
   );
@@ -1779,7 +1768,7 @@ function PluginActionPanel({
                 >
                   <Icon
                     name={actionBusy && busyKey === `install:${folder.path}` ? "spinner" : "plus"}
-                    size={13}
+                    size={14}
                   />
                   <span>
                     {actionBusy && busyKey === `install:${folder.path}` ? "Sending..." : "Add to My plugins"}
@@ -1794,7 +1783,7 @@ function PluginActionPanel({
                 >
                   <Icon
                     name={actionBusy && busyKey === `publish:${folder.path}` ? "spinner" : "github"}
-                    size={13}
+                    size={14}
                   />
                   <span>
                     {actionBusy && busyKey === `publish:${folder.path}` ? "Sending..." : "Publish repo"}
@@ -1809,7 +1798,7 @@ function PluginActionPanel({
                 >
                   <Icon
                     name={actionBusy && busyKey === `contribute:${folder.path}` ? "spinner" : "share"}
-                    size={13}
+                    size={14}
                   />
                   <span>
                     {actionBusy && busyKey === `contribute:${folder.path}`
@@ -1824,7 +1813,7 @@ function PluginActionPanel({
                     data-testid={`assistant-plugin-open-manifest-${folder.path}`}
                     onClick={() => onRequestOpenFile(folder.manifestPath)}
                   >
-                    <Icon name="file-code" size={13} />
+                    <Icon name="file-code" size={14} />
                     <span>Open manifest</span>
                   </button>
                 ) : null}
@@ -2178,7 +2167,7 @@ function SystemReminderBlock({
         type="button"
       >
         <span className="system-reminder-icon" aria-hidden>
-          <Icon name={isInjection ? "alert-triangle" : "settings"} size={12} />
+          <Icon name={isInjection ? "alert-triangle" : "settings"} size={14} />
         </span>
         <span className="system-reminder-label">
           {isInjection
@@ -2190,7 +2179,7 @@ function SystemReminderBlock({
           {!open && trimmed.length > preview.length ? "…" : ""}
         </span>
         <span className="system-reminder-chev">
-          <Icon name={open ? "chevron-down" : "chevron-right"} size={11} />
+          <Icon name={open ? "chevron-down" : "chevron-right"} size={14} />
         </span>
       </button>
       {open ? <pre className="system-reminder-body">{trimmed}</pre> : null}
@@ -2235,7 +2224,7 @@ function ThinkingBlock({ text, streaming }: { text: string; streaming?: boolean 
           {label}
         </span>
         <span className="thinking-chev">
-          <Icon name={open ? "chevron-down" : "chevron-right"} size={11} />
+          <Icon name={open ? "chevron-down" : "chevron-right"} size={14} />
         </span>
       </button>
       <div className={`accordion-collapsible${open ? ' open' : ''}`}>
@@ -2551,7 +2540,7 @@ function ToolGroupCard({
           {summary.label}
         </span>
         <span className="chev" aria-hidden>
-          <Icon name={open ? "chevron-down" : "chevron-right"} size={11} />
+          <Icon name={open ? "chevron-down" : "chevron-right"} size={14} />
         </span>
       </button>
       <div className={`accordion-collapsible${open ? ' open' : ''}`}>

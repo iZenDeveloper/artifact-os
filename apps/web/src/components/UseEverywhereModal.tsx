@@ -257,7 +257,7 @@ export function UseEverywhereGuidePanel({
               }}
               data-testid="use-everywhere-open-settings"
             >
-              <Icon name="settings" size={13} />
+              <Icon name="settings" size={14} />
               {t('useEverywhere.configureMcp')}
             </button>
           ) : null}
@@ -274,7 +274,7 @@ export function UseEverywhereGuidePanel({
             }}
             data-testid="use-everywhere-copy-guide"
           >
-            <Icon name="copy" size={13} />
+            <Icon name="copy" size={14} />
             {copyLabel(guideCopy, t('useEverywhere.copyGuide'), t)}
           </button>
         </div>
@@ -348,7 +348,7 @@ function SectionView({
                   onClick={() => onCopySnippet(key, snippet)}
                   aria-label={t('useEverywhere.copySnippetAria', { label: snippet.label })}
                 >
-                  <Icon name="copy" size={11} />
+                  <Icon name="copy" size={14} />
                   {copyLabel(state, t('useEverywhere.copy'), t)}
                 </button>
               </div>

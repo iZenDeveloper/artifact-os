@@ -189,7 +189,7 @@ export function PluginCard({
           <TrustBadge trust={record.trust} variant="overlay" />
           {isFeatured ? (
             <span className="plugins-home__overlay-featured" aria-hidden>
-              <Icon name="star" size={11} />
+              <Icon name="star" size={14} />
             </span>
           ) : null}
         </div>
@@ -219,7 +219,7 @@ export function PluginCard({
               aria-label={`View details for ${title}`}
               data-testid={`plugins-home-details-${record.id}`}
             >
-              <Icon name="eye" size={12} />
+              <Icon name="eye" size={14} />
               <span>Details</span>
             </button>
             <div
@@ -253,7 +253,7 @@ export function PluginCard({
                     aria-label={`Choose how to use ${title}`}
                     data-testid={`plugins-home-use-menu-${record.id}`}
                   >
-                    <Icon name="chevron-down" size={13} />
+                    <Icon name="chevron-down" size={14} />
                   </button>
                   {useMenuOpen ? (
                     <div
@@ -304,7 +304,7 @@ export function PluginCard({
               >
                 <Icon
                   name={sharePendingAction === 'publish-github' ? 'spinner' : 'github'}
-                  size={12}
+                  size={14}
                 />
                 <span>{sharePendingAction === 'publish-github' ? 'Starting…' : 'Publish'}</span>
               </button>
@@ -320,7 +320,7 @@ export function PluginCard({
               >
                 <Icon
                   name={sharePendingAction === 'contribute-open-design' ? 'spinner' : 'share'}
-                  size={12}
+                  size={14}
                 />
                 <span>{sharePendingAction === 'contribute-open-design' ? 'Starting…' : 'Contribute'}</span>
               </button>
@@ -344,7 +344,7 @@ export function PluginCard({
           title={isSaved ? 'Saved' : 'Save'}
           data-testid={`plugins-home-save-${record.id}`}
         >
-          <Icon name={isSaved ? 'check' : 'star'} size={12} />
+          <Icon name={isSaved ? 'check' : 'star'} size={14} />
           <VisuallyHidden>{isSaved ? 'Saved' : 'Save'}</VisuallyHidden>
         </button>
         <span className="plugins-home__card-title" title={title}>
@@ -356,7 +356,7 @@ export function PluginCard({
             shared ? 'plugins-home__visibility--shared' : 'plugins-home__visibility--private',
           ].join(' ')}
         >
-          <Icon name={shared ? 'share' : 'eye-off'} size={10} />
+          <Icon name={shared ? 'share' : 'eye-off'} size={14} />
           {shared ? '共享' : '私有'}
         </span>
         <button
@@ -367,7 +367,7 @@ export function PluginCard({
           data-testid={`plugins-home-share-${record.id}`}
           onClick={() => setVisibility(shared ? 'private' : 'shared')}
         >
-          <Icon name={shared ? 'eye-off' : 'share'} size={12} />
+          <Icon name={shared ? 'eye-off' : 'share'} size={14} />
           <span>{shared ? '设为私有' : '共享给团队'}</span>
         </button>
         <TrustBadge trust={record.trust} />

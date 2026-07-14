@@ -220,7 +220,7 @@ export function PluginMetaSections({ record, omit, compact, heading, variant = '
               className="plugin-details-modal__chip-btn"
               onClick={copyQuery}
             >
-              <Icon name="copy" size={12} />
+              <Icon name="copy" size={14} />
               {copied ? 'Copied' : 'Copy'}
             </button>
           }
@@ -500,7 +500,7 @@ export function PluginMetaSections({ record, omit, compact, heading, variant = '
             >
               <Icon
                 name={links.contributeOnGithub ? 'github' : 'external-link'}
-                size={12}
+                size={14}
               />
               Contribute
             </a>
@@ -686,7 +686,7 @@ function ExternalLink({ href, icon, children, testId }: ExternalLinkProps) {
       rel="noreferrer"
       data-testid={testId}
     >
-      <Icon name={icon} size={12} />
+      <Icon name={icon} size={14} />
       <span>{children}</span>
     </a>
   );

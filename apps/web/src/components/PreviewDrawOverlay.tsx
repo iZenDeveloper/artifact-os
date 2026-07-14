@@ -870,7 +870,7 @@ export function PreviewDrawOverlay({
                       padding: 0,
                     }}
                   >
-                    <Icon name="close" size={10} />
+                    <Icon name="close" size={14} />
                   </button>
                 </div>
               ))}
@@ -917,7 +917,7 @@ export function PreviewDrawOverlay({
               title={t('common.close')}
               style={closeButtonStyle}
             >
-              <Icon name="close" size={13} />
+              <Icon name="close" size={14} />
             </button>
             <div style={subToolGroupStyle} aria-label={t('fileViewer.markTool')}>
               <button
@@ -1142,10 +1142,10 @@ const tooltipStyle = `
     bottom: calc(100% + 8px);
     transform: translateX(-50%) translateY(2px);
     padding: 4px 7px;
-    border-radius: 6px;
+    border-radius: var(--radius-medium, 4px);
     background: rgba(20,20,20,0.94);
     color: #fff;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.2;
     opacity: 0;
     pointer-events: none;
@@ -1229,7 +1229,7 @@ function subToolButtonStyle(active: boolean): CSSProperties {
     background: active ? 'rgba(255,255,255,0.18)' : 'transparent',
     color: '#fff',
     fontSize: 12,
-    fontWeight: active ? 650 : 500,
+    fontWeight: active ? 600 : 500,
     cursor: 'pointer',
     whiteSpace: 'nowrap',
   };

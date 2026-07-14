@@ -394,7 +394,7 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
             onClick={startCreate}
             data-testid="skills-new"
           >
-            <Icon name="plus" size={13} />
+            <Icon name="plus" size={14} />
             <span>{t('settings.skillsNew')}</span>
           </button>
         </div>
@@ -654,7 +654,7 @@ function SkillRow({
                 title={t('settings.skillsEdit')}
                 data-testid="skills-edit"
               >
-                <Icon name="edit" size={13} />
+                <Icon name="edit" size={14} />
               </Button>
               {canDelete ? (
                 <Button
@@ -663,7 +663,7 @@ function SkillRow({
                   title={t('settings.skillsDelete')}
                   data-testid="skills-delete"
                 >
-                  <Icon name="close" size={13} />
+                  <Icon name="close" size={14} />
                 </Button>
               ) : null}
             </>
@@ -741,7 +741,7 @@ function SkillRow({
                   >
                     <Icon
                       name={entry.kind === 'directory' ? 'folder' : 'file'}
-                      size={12}
+                      size={14}
                     />
                     <span>{leafName(entry.path)}</span>
                     {entry.kind === 'file' && typeof entry.size === 'number' ? (

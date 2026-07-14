@@ -9,6 +9,7 @@
 
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -374,6 +375,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   // The scenario the placeholder carousel is currently showing. A Send on an
   // empty composer submits THIS scenario's text + template (see handleSend).
   const [carouselScenario, setCarouselScenario] = useState<PlaceholderScenario | null>(null);
+  const [carouselDismissedByInput, setCarouselDismissedByInput] = useState(false);
   const editorRef = useRef<LexicalComposerInputHandle | null>(null);
   const promptEditorRef = useRef<HTMLDivElement | null>(null);
   const mentionPickerRef = useRef<HTMLDivElement | null>(null);
@@ -415,6 +417,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   // the editor falls back to its own placeholder there.
   const carouselActive =
     active &&
+    !carouselDismissedByInput &&
     !submitting &&
     !submitDisabled &&
     prompt.trim().length === 0 &&
@@ -434,6 +437,9 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     carouselScenario !== null &&
     carouselScenarios.some((scenario) => scenario.id === carouselScenario.id);
   const sendEnabled = canSubmit || carouselSubmittable;
+  const dismissCarouselForInput = useCallback(() => {
+    setCarouselDismissedByInput(true);
+  }, []);
   function handleSend() {
     if (submitting || submitDisabled) return;
     if (canSubmit) {
@@ -1080,8 +1086,12 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
 
   return (
     <section className="home-hero" data-testid="home-hero">
+      <span className="home-hero__logo-wrap">
+        <img className="home-hero__logo" src="/logo-03.svg" alt="Open Design" />
+      </span>
       <h1 className="home-hero__title">{t('homeHero.title')}</h1>
 
+      <div className="home-hero__composer-card">
       <div
         className={`home-hero__input-card${
           authoringLayoutActive ? ' home-hero__input-card--compact-authoring' : ''
@@ -1127,18 +1137,20 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                           draggable={false}
                         />
                       ) : (
-                        <span className="home-hero__active-icon" aria-hidden>
-                          <Icon name={isImageFile(file) ? 'image' : 'file'} size={12} />
-                        </span>
+                        <>
+                          <span className="home-hero__active-icon" aria-hidden>
+                            <Icon name={isImageFile(file) ? 'image' : 'file'} size={14} />
+                          </span>
+                          <span className="home-hero__active-label">{file.name}</span>
+                          <span className="home-hero__active-meta">{formatFileSize(file.size)}</span>
+                        </>
                       )}
-                      <span className="home-hero__active-label">{file.name}</span>
-                      <span className="home-hero__active-meta">{formatFileSize(file.size)}</span>
                     </>
                   );
                   return (
                     <span
                       key={key}
-                      className="home-hero__active-chip home-hero__active-chip--context home-hero__active-chip--file"
+                      className={`home-hero__active-chip home-hero__active-chip--context home-hero__active-chip--file${previewUrl ? ' home-hero__active-chip--image-file' : ''}`}
                       title={`${file.name} · ${formatFileSize(file.size)}`}
                     >
                       <span className="home-hero__active-order" aria-label={`Attachment ${index + 1}`}>
@@ -1166,7 +1178,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                         title={t('homeHero.removeFile')}
                         data-tooltip={t('homeHero.removeFile')}
                       >
-                        <Icon name="close" size={9} />
+                        <Icon name="close" size={14} />
                       </button>
                     </span>
                   );
@@ -1191,7 +1203,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                   title={activePluginRecord ? t('homeHero.pluginTitle', { title: activePluginRecord.title }) : undefined}
                 >
                   <span className="home-hero__active-icon" aria-hidden>
-                    <Icon name="sliders" size={12} />
+                    <Icon name="sliders" size={14} />
                   </span>
                   <span className="home-hero__active-label">{activePluginTitle}</span>
                 </button>
@@ -1212,7 +1224,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                     title={t('homeHero.clearActivePlugin')}
                     data-tooltip={t('homeHero.clearActivePlugin')}
                   >
-                    <Icon name="close" size={9} />
+                    <Icon name="close" size={14} />
                   </button>
                 )}
               </span>
@@ -1223,7 +1235,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                 data-testid="home-hero-active-skill"
               >
                 <span className="home-hero__active-icon" aria-hidden>
-                  <Icon name="sparkles" size={12} />
+                  <Icon name="sparkles" size={14} />
                 </span>
                 <span className="home-hero__active-label">{t('homeHero.skillPrefix', { title: activeSkillTitle })}</span>
                 <button
@@ -1234,7 +1246,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                   title={t('homeHero.clearActiveSkill')}
                   data-tooltip={t('homeHero.clearActiveSkill')}
                 >
-                  <Icon name="close" size={9} />
+                  <Icon name="close" size={14} />
                 </button>
               </span>
             ) : null}
@@ -1244,7 +1256,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                 data-testid="home-hero-active-command"
               >
                 <span className="home-hero__active-icon" aria-hidden>
-                  <Icon name="terminal" size={12} />
+                  <Icon name="terminal" size={14} />
                 </span>
                 <span className="home-hero__active-label">{activeCommandTitle}</span>
                 <button
@@ -1255,7 +1267,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                   title={t('common.close')}
                   data-tooltip={t('common.close')}
                 >
-                  <Icon name="close" size={9} />
+                  <Icon name="close" size={14} />
                 </button>
               </span>
             ) : null}
@@ -1266,7 +1278,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                 data-testid={`home-hero-context-plugin-${plugin.id}`}
               >
                 <span className="home-hero__active-icon" aria-hidden>
-                  <Icon name="sliders" size={12} />
+                  <Icon name="sliders" size={14} />
                 </span>
                 <span className="home-hero__active-label">{plugin.title}</span>
                 <button
@@ -1278,7 +1290,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                   data-tooltip={t('common.close')}
                   data-testid={`home-hero-context-clear-${plugin.id}`}
                 >
-                  <Icon name="close" size={9} />
+                  <Icon name="close" size={14} />
                 </button>
               </span>
             ))}
@@ -1291,7 +1303,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                   data-testid={`home-hero-context-mcp-${server.id}`}
                 >
                   <span className="home-hero__active-icon" aria-hidden>
-                    <Icon name="sliders" size={12} />
+                    <Icon name="sliders" size={14} />
                   </span>
                   <span className="home-hero__active-label">{label}</span>
                   <button
@@ -1303,7 +1315,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                     data-tooltip={t('common.close')}
                     data-testid={`home-hero-context-clear-${server.id}`}
                   >
-                    <Icon name="close" size={9} />
+                    <Icon name="close" size={14} />
                   </button>
                 </span>
               );
@@ -1315,7 +1327,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                 data-testid={`home-hero-context-connector-${connector.id}`}
               >
                 <span className="home-hero__active-icon" aria-hidden>
-                  <Icon name="link" size={12} />
+                  <Icon name="link" size={14} />
                 </span>
                 <span className="home-hero__active-label">{connector.name}</span>
                 <button
@@ -1327,7 +1339,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                   data-tooltip={t('common.close')}
                   data-testid={`home-hero-context-clear-${connector.id}`}
                 >
-                  <Icon name="close" size={9} />
+                  <Icon name="close" size={14} />
                 </button>
               </span>
             ))}
@@ -1361,6 +1373,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                   onExamplePromptStatusChange?.(null);
                 }
               }}
+              onInputIntent={dismissCarouselForInput}
               onTrigger={handleTrigger}
               onEnterSend={handleSend}
               onPasteFiles={handleFiles}
@@ -1446,7 +1459,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                         disabled={item.disabled}
                       >
                         <span className="home-hero__plugin-option-icon" aria-hidden>
-                          <Icon name={item.icon} size={13} />
+                          <Icon name={item.icon} size={14} />
                         </span>
                         <span className="home-hero__plugin-option-main">
                           <span>{item.title}</span>
@@ -1662,8 +1675,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
               aria-label={submitting ? t('chat.comments.sending') : t('homeHero.run')}
               aria-busy={submitting}
             >
-              <Icon name="send" size={13} />
-              <span>{submitting ? t('chat.comments.sending') : t('chat.send')}</span>
+              <Icon name={submitting ? 'spinner' : 'arrow-up'} size={17} />
             </button>
           </div>
         </div>
@@ -1716,9 +1728,13 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
           ) : null}
         </div>
       ) : null}
+      </div>
 
       {activeCreateChip ? null : (
-        <div className="home-hero__template-section" data-testid="home-hero-template-section">
+        <div
+          className={`home-hero__template-section${templatesExpanded ? ' is-expanded' : ''}`}
+          data-testid="home-hero-template-section"
+        >
           <div className="home-hero__template-bar">
             <button
               type="button"
@@ -1727,7 +1743,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
               onClick={() => setTemplatesExpanded((v) => !v)}
             >
               {t('homeHero.startWithTemplate')}
-              <Icon name="chevron-down" size={13} aria-hidden />
+              <Icon name="chevron-down" size={14} aria-hidden />
             </button>
             <span className="home-hero__template-or">or</span>
             {onStartBlankProject ? (
@@ -1738,7 +1754,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                 onClick={onStartBlankProject}
               >
                 创建一个空白项目
-                <Icon name="chevron-right" size={13} aria-hidden />
+                <Icon name="chevron-right" size={14} aria-hidden />
               </button>
             ) : null}
           </div>
@@ -1978,7 +1994,7 @@ function PluginPromptPresetCard({
           />
           {active ? (
             <span className="home-hero__plugin-preset-check" aria-hidden>
-              <Icon name="check" size={12} />
+              <Icon name="check" size={14} />
             </span>
           ) : null}
         </span>
@@ -2365,7 +2381,7 @@ function FooterSelectOption({
         {selected?.modelIcon ? <ModelOptionIcon icon={selected.modelIcon} compact /> : null}
         {selected?.ratioIcon ? <RatioOptionIcon icon={selected.ratioIcon} compact /> : null}
         <span className="home-hero__footer-select-label">{selected?.label ?? value}</span>
-        <Icon name="chevron-down" size={12} aria-hidden />
+        <Icon name="chevron-down" size={14} aria-hidden />
       </button>
       {open ? (
         <div
@@ -2489,7 +2505,7 @@ function FooterOptionIcon({
       className={`home-hero__footer-option-icon${compact ? ' home-hero__footer-option-icon--compact' : ''}`}
       aria-hidden
     >
-      <Icon name={name} size={13} />
+      <Icon name={name} size={14} />
     </span>
   );
 }
@@ -2993,7 +3009,7 @@ function SubTypeRow({
             role="tab"
             aria-selected={isActive}
           >
-            <Icon name={sub.icon} size={13} className="home-hero__subtype-chip-icon" />
+            <Icon name={sub.icon} size={14} className="home-hero__subtype-chip-icon" />
             <span className="home-hero__subtype-chip-label">
               {pluginSubfacetLabel(sub.slug, sub.label, t)}
             </span>

@@ -109,7 +109,7 @@ export function WorkspaceInviteFlow({ scenario, initiallySignedIn = false }: Pro
               <div className={styles.inviterAvatar}>
                 <img src="/team-avatars/a1.png" alt="" aria-hidden />
                 <span className={styles.inviterBadge}>
-                  <Icon name="send" size={11} />
+                  <Icon name="send" size={14} />
                 </span>
               </div>
             </div>

@@ -164,7 +164,7 @@ export function UpgradeTeamDialog({
           <ul className="upgrade-team__benefits" aria-label="团队版能力">
             {TEAM_BENEFITS.map((benefit) => (
               <li key={benefit}>
-                <Icon name="check" size={13} />
+                <Icon name="check" size={14} />
                 <span>{benefit}</span>
               </li>
             ))}

@@ -113,7 +113,7 @@ export function InviteAcceptanceFlow({ open, role, onClose, onJoined, onDeclined
           return (
             <li key={s} className={`invite-accept__step is-${state}`}>
               <span className="invite-accept__step-dot">
-                {state === 'done' ? <Icon name="check" size={12} /> : i + 1}
+                {state === 'done' ? <Icon name="check" size={14} /> : i + 1}
               </span>
               <span className="invite-accept__step-label">{STEP_LABELS[s]}</span>
             </li>
@@ -137,7 +137,7 @@ export function InviteAcceptanceFlow({ open, role, onClose, onJoined, onDeclined
         {step === 'landing' ? (
           <div className="invite-accept__card invite-accept__card--landing">
             <p className="invite-accept__from-mail">
-              <Icon name="info" size={13} /> 来自邀请邮件 · 点击链接已为你打开此页面
+              <Icon name="info" size={14} /> 来自邀请邮件 · 点击链接已为你打开此页面
             </p>
             <div className="invite-accept__hero">
               <span className="invite-accept__ws-logo">{WORKSPACE.logo}</span>
@@ -156,7 +156,7 @@ export function InviteAcceptanceFlow({ open, role, onClose, onJoined, onDeclined
             <div className="invite-accept__ws-meta">
               <span>{WORKSPACE.members} 位成员</span>
               <span className="invite-accept__meta-sep" aria-hidden>·</span>
-              <span><Icon name="folder" size={13} /> {WORKSPACE.projects} 个共享项目</span>
+              <span><Icon name="folder" size={14} /> {WORKSPACE.projects} 个共享项目</span>
             </div>
             <div className="invite-accept__actions">
               <button type="button" className="invite-accept__btn is-primary" onClick={() => setStep('auth')}>
@@ -238,7 +238,7 @@ export function InviteAcceptanceFlow({ open, role, onClose, onJoined, onDeclined
             </div>
             <p className="invite-accept__confirm-perm">{meta.perm}</p>
             <p className="invite-accept__seat-note">
-              <Icon name="info" size={13} /> 加入后将占用该团队的 1 个席位。
+              <Icon name="info" size={14} /> 加入后将占用该团队的 1 个席位。
             </p>
             <div className="invite-accept__actions">
               <button type="button" className="invite-accept__btn is-primary" onClick={() => setStep('joined')}>

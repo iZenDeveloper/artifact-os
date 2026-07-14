@@ -168,7 +168,7 @@ export function PluginScenarioDetail({
                 aria-label={`More ways to ${pluginUsePrimaryAction(record, t).label}`}
                 data-testid={`plugin-details-use-${record.id}-menu`}
               >
-                <Icon name="chevron-down" size={12} />
+                <Icon name="chevron-down" size={14} />
               </button>
               {useMenuOpen ? (
                 <div className="plugin-details-modal__use-menu" role="menu">
