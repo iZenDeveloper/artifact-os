@@ -119,11 +119,37 @@ export type TelemetryDeliveryPurpose = 'object-registration' | 'final';
  *
  * Failed/canceled runs may emit a synthetic `terminal_fallback` report first,
  * then a later `final_message` once the assistant message is telemetry-finalized.
- * Those two deliveries must not share ingestion event ids / Vela idempotency
- * keys, or the complete report is treated as a retry of the partial fallback.
- * True transport retries for the same trigger stay stable.
+ * Those two deliveries must not share Langfuse body ids, ingestion event ids,
+ * or Vela idempotency keys: a slow out-of-order fallback would otherwise
+ * overwrite the canonical finalized trace for the same run. True transport
+ * retries for the same trigger stay stable.
  */
 export type TelemetryReportTrigger = 'final_message' | 'terminal_fallback';
+
+/**
+ * Scope Langfuse observation/trace body ids for a delivery.
+ *
+ * Terminal-fallback writes into a distinct entity namespace (`:tf`) so a late
+ * partial fallback cannot clobber the canonical finalized observations that
+ * share the original run-scoped ids. Object-registration keeps original ids
+ * so object authority stays keyed by installation + runId.
+ */
+export function scopedTelemetryBodyId(
+  baseId: string,
+  deliveryPurpose: TelemetryDeliveryPurpose = 'final',
+  reportTrigger: TelemetryReportTrigger = 'final_message',
+): string {
+  if (deliveryPurpose !== 'final' || reportTrigger !== 'terminal_fallback') {
+    return baseId;
+  }
+  const trimmed = baseId.trim() || 'body-unknown';
+  if (trimmed.endsWith(':tf')) return trimmed;
+  const candidate = `${trimmed}:tf`;
+  if (candidate.length <= 200) return candidate;
+  const digest = createHash('sha256').update(candidate).digest('hex').slice(0, 16);
+  const keep = 200 - 1 - digest.length;
+  return `${candidate.slice(0, Math.max(1, keep))}-${digest}`;
+}
 
 export type TelemetrySinkConfig =
   | {
@@ -1525,15 +1551,21 @@ export function buildTracePayload(
   const performanceDiagnostics = buildPerformanceDiagnostics(ctx);
 
   const success = ctx.run.status === 'succeeded';
-  const traceId = ctx.run.runId;
+  // Canonical run id stays in metadata for correlation; Langfuse entity body
+  // ids may be remapped for terminal_fallback so late partials cannot overwrite
+  // a completed final_message delivery for the same run.
+  const canonicalTraceId = ctx.run.runId;
+  const scopeBodyId = (baseId: string) =>
+    scopedTelemetryBodyId(baseId, deliveryPurpose, idReportTrigger);
+  const traceId = scopeBodyId(canonicalTraceId);
   const langfuseDelivery =
     ctx.langfuse ?? deriveLangfuseDeliveryState(ctx.prefs, readTelemetrySinkConfig());
-  const agentSpanId = `${ctx.run.runId}-agent`;
-  const generationId = `${ctx.run.runId}-gen`;
+  const agentSpanId = scopeBodyId(`${ctx.run.runId}-agent`);
+  const generationId = scopeBodyId(`${ctx.run.runId}-gen`);
   const createGeneration = shouldCreateGenerationObservation(ctx);
   const operationSpanId = createGeneration
     ? generationId
-    : `${ctx.run.runId}-runtime`;
+    : scopeBodyId(`${ctx.run.runId}-runtime`);
   const promptStack = ctx.promptTelemetry
     ? wantsTextContent
       ? ctx.promptTelemetry
@@ -1563,7 +1595,7 @@ export function buildTracePayload(
     status: ctx.run.status,
     error: ctx.run.error ?? undefined,
     error_code: ctx.run.errorCode,
-    langfuse_trace_id: traceId,
+    langfuse_trace_id: canonicalTraceId,
     identity_type: 'anonymous_installation',
     installation_id: ctx.installationId ?? undefined,
     ...langfuseDelivery,
@@ -1620,14 +1652,21 @@ export function buildTracePayload(
   // shows them in the dedicated Model Parameters card and filters work.
   const modelParameters: Record<string, unknown> | undefined =
     ctx.turn?.reasoning ? { reasoning: ctx.turn.reasoning } : undefined;
+  // Build phase spans with canonical run-scoped ids, then remap body ids into
+  // the delivery namespace so terminal_fallback gets `…:tf` suffixes (not
+  // `run:tf-phase-…` mid-string infixes).
   const timingSpanBodies = buildTimingSpanBodies(ctx, operationSpanId, {
     modelCallName: createGeneration ? 'agent-call' : 'runtime-call',
     ...(promptStack ? { promptStack } : {}),
-  });
+  }).map((span) => ({
+    ...span,
+    id: scopeBodyId(String(span.id)),
+    traceId,
+  }));
   const toolParentObservationId = timingSpanBodies.some(
     (span) => span.name === 'agent-call',
   )
-    ? `${ctx.run.runId}-phase-agent-call`
+    ? scopeBodyId(`${ctx.run.runId}-phase-agent-call`)
     : agentSpanId;
   const agentEventParentObservationId = toolParentObservationId;
 
@@ -1763,7 +1802,7 @@ export function buildTracePayload(
 
   if (ctx.agentEvents?.length) {
     for (const event of ctx.agentEvents) {
-      const eventBodyId = `${ctx.run.runId}-agent-event-${event.id}`;
+      const eventBodyId = scopeBodyId(`${ctx.run.runId}-agent-event-${event.id}`);
       batch.push({
         id: stableIngestionEventId(eventBodyId, deliveryPurpose, idReportTrigger),
         type: 'event-create',
@@ -1786,7 +1825,7 @@ export function buildTracePayload(
 
   if (ctx.tools?.length) {
     for (const tool of ctx.tools) {
-      const toolSpanId = `${ctx.run.runId}-tool-${tool.id}`;
+      const toolSpanId = scopeBodyId(`${ctx.run.runId}-tool-${tool.id}`);
       const toolStartedAt = new Date(tool.startedAt).toISOString();
       const toolEndedAt = new Date(tool.endedAt).toISOString();
       const toolDurationMs = durationMs(tool.startedAt, tool.endedAt);
@@ -1833,7 +1872,7 @@ export function buildTracePayload(
   }
 
   if (artifactsList && (artifactsList.length > 0 || artifactsTruncated)) {
-    const artifactsEventId = `${ctx.run.runId}-artifacts`;
+    const artifactsEventId = scopeBodyId(`${ctx.run.runId}-artifacts`);
     batch.push({
       id: stableIngestionEventId(artifactsEventId, deliveryPurpose, idReportTrigger),
       type: 'event-create',
@@ -1866,7 +1905,7 @@ export function buildTracePayload(
   }
 
   if (!success || ctx.eventsSummary.errors > 0) {
-    const errorEventId = `${ctx.run.runId}-error`;
+    const errorEventId = scopeBodyId(`${ctx.run.runId}-error`);
     batch.push({
       id: stableIngestionEventId(errorEventId, deliveryPurpose, idReportTrigger),
       type: 'event-create',
@@ -1892,22 +1931,17 @@ export function buildTracePayload(
 
 /**
  * Stable ingestion event id so retries reuse the same Langfuse/Vela event ids.
- * Distinct suffixes keep object-registration, terminal-fallback, and finalized
- * final deliveries from being treated as retries of each other.
+ * Object-registration uses a `:reg` suffix so it is not deduped against final
+ * delivery (same body ids). Terminal-fallback uniqueness comes from scoped
+ * body ids (`:tf`); this helper does not re-suffix those.
  */
 export function stableIngestionEventId(
   bodyId: string,
   deliveryPurpose: TelemetryDeliveryPurpose = 'final',
-  reportTrigger: TelemetryReportTrigger = 'final_message',
+  _reportTrigger: TelemetryReportTrigger = 'final_message',
 ): string {
   const trimmed = bodyId.trim() || 'ingest-unknown';
-  let suffix = '';
-  if (deliveryPurpose === 'object-registration') {
-    suffix = ':reg';
-  } else if (reportTrigger === 'terminal_fallback') {
-    // Late final_message for the same run must not reuse fallback event ids.
-    suffix = ':tf';
-  }
+  const suffix = deliveryPurpose === 'object-registration' ? ':reg' : '';
   const candidate = `${trimmed}${suffix}`;
   if (candidate.length <= 200) return candidate;
   // Preserve uniqueness when truncating long body ids.

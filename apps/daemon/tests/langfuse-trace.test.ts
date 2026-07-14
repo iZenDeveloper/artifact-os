@@ -15,6 +15,7 @@ import {
   readTelemetrySinkConfig,
   reportRunCompleted,
   reportRunFeedback,
+  scopedTelemetryBodyId,
   stableIngestionEventId,
   toVelaTelemetryEnvelope,
   type FeedbackReportContext,
@@ -1734,7 +1735,7 @@ describe('buildTracePayload', () => {
     expect(finalBatch[0]!.body.input).toBe('Make a landing page for a coffee shop.');
   });
 
-  it('uses distinct stable ids for terminal_fallback vs final_message late finalization', () => {
+  it('uses distinct body and event ids for terminal_fallback vs final_message', () => {
     const ctx = makeCtx({
       prefs: { metrics: true, content: true, artifactManifest: false },
     });
@@ -1742,24 +1743,38 @@ describe('buildTracePayload', () => {
       ctx,
       'final',
       'terminal_fallback',
-    ) as Array<{ id: string; body: Record<string, any> }>;
+    ) as Array<{ id: string; type: string; body: Record<string, any> }>;
     const finalizedBatch = buildTracePayload(
       ctx,
       'final',
       'final_message',
-    ) as Array<{ id: string; body: Record<string, any> }>;
+    ) as Array<{ id: string; type: string; body: Record<string, any> }>;
     const fallbackRetry = buildTracePayload(
       ctx,
       'final',
       'terminal_fallback',
-    ) as Array<{ id: string }>;
+    ) as Array<{ id: string; body: { id: string } }>;
 
-    // Body ids stay run-scoped so Langfuse can overwrite the same observations.
-    expect(fallbackBatch[0]!.body.id).toBe(finalizedBatch[0]!.body.id);
-    // Ingestion event ids must differ so Vela does not dedupe the late final.
-    expect(fallbackBatch[0]!.id).toBe(
-      stableIngestionEventId(fallbackBatch[0]!.body.id, 'final', 'terminal_fallback'),
+    // Body ids must differ so a late fallback cannot overwrite the canonical
+    // finalized Langfuse entities for the same run.
+    expect(fallbackBatch[0]!.body.id).toBe(
+      scopedTelemetryBodyId(String(finalizedBatch[0]!.body.id), 'final', 'terminal_fallback'),
     );
+    expect(fallbackBatch[0]!.body.id).toBe(`${finalizedBatch[0]!.body.id}:tf`);
+    expect(fallbackBatch[0]!.body.id).not.toBe(finalizedBatch[0]!.body.id);
+    // Correlation metadata still points at the original run id.
+    expect(fallbackBatch[0]!.body.metadata.langfuse_trace_id).toBe(ctx.run.runId);
+    expect(finalizedBatch[0]!.body.metadata.langfuse_trace_id).toBe(ctx.run.runId);
+
+    for (const event of fallbackBatch) {
+      expect(String(event.body.id)).toMatch(/:tf$/);
+      if ('traceId' in event.body) {
+        expect(event.body.traceId).toBe(fallbackBatch[0]!.body.id);
+      }
+      expect(event.id).toBe(
+        stableIngestionEventId(event.body.id, 'final', 'terminal_fallback'),
+      );
+    }
     expect(fallbackBatch[0]!.id).toBe(`${finalizedBatch[0]!.id}:tf`);
     expect(fallbackBatch.map((event) => event.id)).not.toEqual(
       finalizedBatch.map((event) => event.id),
@@ -1767,6 +1782,9 @@ describe('buildTracePayload', () => {
     // True transport retries of the same logical delivery stay stable.
     expect(fallbackRetry.map((event) => event.id)).toEqual(
       fallbackBatch.map((event) => event.id),
+    );
+    expect(fallbackRetry.map((event) => event.body.id)).toEqual(
+      fallbackBatch.map((event) => event.body.id),
     );
     expect(fallbackBatch[0]!.body.metadata.telemetry_report_trigger).toBe(
       'terminal_fallback',
@@ -2249,7 +2267,7 @@ describe('reportRunCompleted', () => {
     expect(key1['Idempotency-Key']).toBe(key2['Idempotency-Key']);
   });
 
-  it('uses distinct Vela event ids and idempotency keys for terminal_fallback vs final_message', async () => {
+  it('uses distinct Vela body ids, event ids, and idempotency keys for terminal_fallback vs final_message', async () => {
     const velaConfig = velaSink();
     const ctx = makeCtx({
       prefs: { metrics: true, content: true, artifactManifest: false },
@@ -2300,8 +2318,80 @@ describe('reportRunCompleted', () => {
     expect(fallbackBody.events[0].id).toMatch(/:tf$/);
     expect(finalizedBody.events[0].id).not.toMatch(/:tf$/);
     expect(fallbackBody.events[0].id).not.toBe(finalizedBody.events[0].id);
-    // Observation body ids remain stable for Langfuse overwrite semantics.
-    expect(fallbackBody.events[0].data.id).toBe(finalizedBody.events[0].data.id);
+    // Distinct Langfuse body ids so out-of-order fallback cannot clobber final.
+    expect(fallbackBody.events[0].data.id).toBe(`${finalizedBody.events[0].data.id}:tf`);
+    expect(fallbackBody.events[0].data.id).not.toBe(finalizedBody.events[0].data.id);
+  });
+
+  it('keeps finalized Langfuse body ids winning when fallback transport finishes later', async () => {
+    const ctx = makeCtx({
+      prefs: { metrics: true, content: true, artifactManifest: false },
+    });
+    let releaseFallback!: () => void;
+    const fallbackGate = new Promise<void>((resolve) => {
+      releaseFallback = resolve;
+    });
+    const posted: Array<{ reportTrigger: 'terminal_fallback' | 'final_message'; body: any }> =
+      [];
+
+    const fetchSpy = vi.fn(async (_url: string, init: RequestInit) => {
+      const payload = JSON.parse(String(init.body));
+      const firstBodyId = String(payload.batch?.[0]?.body?.id ?? '');
+      const isFallback = firstBodyId.endsWith(':tf');
+      if (isFallback) {
+        await fallbackGate;
+      }
+      posted.push({
+        reportTrigger: isFallback ? 'terminal_fallback' : 'final_message',
+        body: payload,
+      });
+      return new Response(JSON.stringify({ successes: [], errors: [] }), {
+        status: 200,
+      });
+    });
+
+    const fallbackPromise = reportRunCompleted(ctx, {
+      config: TEST_CONFIG,
+      fetchImpl: fetchSpy as any,
+      deliveryPurpose: 'final',
+      reportTrigger: 'terminal_fallback',
+    });
+    // Let the fallback request reach its delayed transport gate.
+    await vi.waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalled();
+    });
+
+    const finalizedResult = await reportRunCompleted(ctx, {
+      config: TEST_CONFIG,
+      fetchImpl: fetchSpy as any,
+      deliveryPurpose: 'final',
+      reportTrigger: 'final_message',
+    });
+    expect(finalizedResult.langfuse_delivery_status).toBe('accepted');
+    // Finalized payload has already been delivered while fallback is still gated.
+    expect(posted).toHaveLength(1);
+    expect(posted[0]!.reportTrigger).toBe('final_message');
+    expect(posted[0]!.body.batch[0].body.id).toBe(ctx.run.runId);
+    expect(posted[0]!.body.batch[0].body.output).toBe(
+      'Here is a landing page draft …',
+    );
+
+    releaseFallback();
+    const fallbackResult = await fallbackPromise;
+    expect(fallbackResult.langfuse_delivery_status).toBe('accepted');
+    expect(posted).toHaveLength(2);
+    expect(posted[1]!.reportTrigger).toBe('terminal_fallback');
+    // Late fallback writes a separate entity namespace and cannot replace the
+    // canonical run-scoped observations that final_message already sent.
+    expect(posted[1]!.body.batch[0].body.id).toBe(`${ctx.run.runId}:tf`);
+    expect(posted[1]!.body.batch[0].body.id).not.toBe(
+      posted[0]!.body.batch[0].body.id,
+    );
+    // Canonical finalized record still holds the completed payload.
+    expect(posted[0]!.body.batch[0].body.id).toBe(ctx.run.runId);
+    expect(posted[0]!.body.batch[0].body.output).toBe(
+      'Here is a landing page draft …',
+    );
   });
 
   it('does not anonymous-fallback on Vela 429/5xx or network errors', async () => {
