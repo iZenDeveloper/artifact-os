@@ -17,6 +17,7 @@ import {
   resetAcceptedFinalTraceBodyIdsForTests,
   scopedTelemetryBodyId,
 } from '../src/langfuse-trace.js';
+import { pinAssistantMessageOnRunCreate } from '../src/runtimes/chat-run-messages.js';
 
 describe('persisted telemetry accepted anchor', () => {
   let tempDir: string;
@@ -352,6 +353,78 @@ describe('persisted telemetry accepted anchor', () => {
     });
     expect(getRunFeedbackTelemetryAnchor(db, newRunId, 'assistant-1')).toEqual({
       runStatus: 'succeeded',
+      telemetryFinalized: true,
+      acceptedTraceBodyId: newRunId,
+      acceptedReportTrigger: 'final_message',
+    });
+  });
+
+  it('clears accepted telemetry anchors when run-pin reuses a message for a new run_id', () => {
+    const oldRunId = 'run-failed-pin-original';
+    const newRunId = 'run-retry-via-pin';
+    const staleBodyId = scopedTelemetryBodyId(oldRunId, 'final', 'terminal_fallback');
+    const db = openDatabase(tempDir, { dataDir: tempDir });
+    seedFailedAssistant(db, oldRunId);
+    expect(
+      setRunTelemetryAcceptedAnchor(db, {
+        runId: oldRunId,
+        assistantMessageId: 'assistant-1',
+        bodyId: staleBodyId,
+        reportTrigger: 'terminal_fallback',
+      }),
+    ).toBe(true);
+    expect(getRunFeedbackTelemetryAnchor(db, oldRunId, 'assistant-1')).toEqual({
+      runStatus: 'failed',
+      telemetryFinalized: true,
+      acceptedTraceBodyId: staleBodyId,
+      acceptedReportTrigger: 'terminal_fallback',
+    });
+
+    // Run creation pins existing assistant rows through a raw UPDATE, not
+    // upsertMessage — that path must also drop the previous :tf anchor.
+    pinAssistantMessageOnRunCreate(db, {
+      id: newRunId,
+      conversationId: 'conv-1',
+      assistantMessageId: 'assistant-1',
+      status: 'running',
+      createdAt: Date.now(),
+    });
+
+    expect(getRunFeedbackTelemetryAnchor(db, oldRunId, 'assistant-1')).toBeNull();
+    expect(getRunFeedbackTelemetryAnchor(db, newRunId, 'assistant-1')).toEqual({
+      // Terminal run_status is preserved by the pin CASE expression.
+      runStatus: 'failed',
+      telemetryFinalized: true,
+      acceptedTraceBodyId: null,
+      acceptedReportTrigger: null,
+    });
+    expect(
+      resolveFeedbackTraceId({
+        runId: newRunId,
+        runStatus: 'failed',
+        telemetryFinalized: true,
+        acceptedTraceBodyId: null,
+      }),
+    ).toBe(newRunId);
+
+    // Same run_id pin keeps an accepted anchor (idempotent re-pin).
+    expect(
+      setRunTelemetryAcceptedAnchor(db, {
+        runId: newRunId,
+        assistantMessageId: 'assistant-1',
+        bodyId: newRunId,
+        reportTrigger: 'final_message',
+      }),
+    ).toBe(true);
+    pinAssistantMessageOnRunCreate(db, {
+      id: newRunId,
+      conversationId: 'conv-1',
+      assistantMessageId: 'assistant-1',
+      status: 'running',
+      createdAt: Date.now(),
+    });
+    expect(getRunFeedbackTelemetryAnchor(db, newRunId, 'assistant-1')).toEqual({
+      runStatus: 'failed',
       telemetryFinalized: true,
       acceptedTraceBodyId: newRunId,
       acceptedReportTrigger: 'final_message',

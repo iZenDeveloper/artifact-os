@@ -281,9 +281,20 @@ function liveArtifactRefreshPhase(value: unknown): 'started' | 'succeeded' | 'fa
 export function pinAssistantMessageOnRunCreate(db: SqliteDb, run: ChatRunMessageState): void {
   if (!run.conversationId || !run.assistantMessageId) return;
   const existing = db
-    .prepare(`SELECT id FROM messages WHERE id = ?`)
-    .get(run.assistantMessageId);
+    .prepare(`SELECT id, run_id AS runId FROM messages WHERE id = ?`)
+    .get(run.assistantMessageId) as { id: string; runId?: string | null } | undefined;
   if (existing) {
+    // Side-chat retry reuses the failed assistant message id with a new
+    // run_id via this raw pin path (not upsertMessage). Drop accepted-
+    // telemetry anchors from the previous run so early feedback cannot
+    // score the old `${oldRunId}:tf` body.
+    const prevRunId =
+      typeof existing.runId === 'string' && existing.runId.trim()
+        ? existing.runId.trim()
+        : null;
+    const nextRunId =
+      typeof run.id === 'string' && run.id.trim() ? run.id.trim() : null;
+    const clearAcceptedTelemetryAnchor = prevRunId !== nextRunId;
     db.prepare(
       `UPDATE messages
           SET run_id = ?,
@@ -293,7 +304,15 @@ export function pinAssistantMessageOnRunCreate(db: SqliteDb, run: ChatRunMessage
               END,
               session_mode = ?,
               run_context_json = ?,
-              started_at = COALESCE(started_at, ?)
+              started_at = COALESCE(started_at, ?),
+              telemetry_accepted_body_id = CASE
+                WHEN ? THEN NULL
+                ELSE telemetry_accepted_body_id
+              END,
+              telemetry_accepted_report_trigger = CASE
+                WHEN ? THEN NULL
+                ELSE telemetry_accepted_report_trigger
+              END
         WHERE id = ?`,
     ).run(
       run.id,
@@ -301,6 +320,8 @@ export function pinAssistantMessageOnRunCreate(db: SqliteDb, run: ChatRunMessage
       run.sessionMode ?? null,
       run.context ? JSON.stringify(run.context) : null,
       run.createdAt,
+      clearAcceptedTelemetryAnchor ? 1 : 0,
+      clearAcceptedTelemetryAnchor ? 1 : 0,
       run.assistantMessageId,
     );
     return;
