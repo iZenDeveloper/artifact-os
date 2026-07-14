@@ -94,7 +94,7 @@ describe('silent updates currentTarget race', () => {
     event.currentTarget = null;
     try {
       // Same expression SettingsDialog used inside setCfg(current => ...)
-      void (event.currentTarget as HTMLInputElement).checked;
+      void (event.currentTarget as unknown as HTMLInputElement).checked;
     } catch (error) {
       thrown = error;
     }
