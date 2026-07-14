@@ -372,7 +372,7 @@ Options:
   --format <fmt>           One of: ${EXPORT_FORMATS.join(' | ')} (required)
   --out <path>             Write the file here (defaults to the suggested name)
   --image-format <fmt>     png | jpeg (for --format image)
-  --width <px>             Responsive layout width for PDF page exports
+  --width <px>             Responsive layout width for --format pdf --page
   --deck                   Treat the artifact as a multi-slide deck
   --page, --no-deck        Treat the artifact as a normal scrollable page
   --title <title>          Title used for metadata / default filename
@@ -455,6 +455,10 @@ async function runExport(args) {
     });
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));
+    process.exit(2);
+  }
+  if (width !== undefined && deckMode !== false) {
+    console.error('--width is only valid for page PDF exports; pass --page or --no-deck');
     process.exit(2);
   }
   const requestBody = buildExportCliRequestBody({
