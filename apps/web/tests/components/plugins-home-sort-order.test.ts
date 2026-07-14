@@ -18,12 +18,13 @@ function fixture(overrides: {
   installedAt?: number;
   updatedAt?: number;
   publishedAt?: string;
+  sourceKind?: InstalledPluginRecord['sourceKind'];
 }): InstalledPluginRecord {
   return {
     id: overrides.id,
     title: overrides.id,
     version: '0.1.0',
-    sourceKind: 'bundled',
+    sourceKind: overrides.sourceKind ?? 'bundled',
     source: '/tmp',
     trust: 'bundled',
     capabilitiesGranted: ['prompt:inject'],
@@ -178,6 +179,33 @@ describe('sortByNewest', () => {
       'installed-later',
       'published-recently',
       'garbage-date',
+    ]);
+  });
+
+  it('ranks a user-installed plugin by local recency even when its manifest carries an old publishedAt', () => {
+    // publishedAt is a catalog signal. A third-party manifest (github /
+    // local / marketplace install) may carry any publishedAt value, but
+    // for a plugin the user installed themselves "Newest" means install
+    // recency — a just-installed plugin tops the shelf instead of being
+    // buried behind bundled templates with newer catalog dates.
+    const records = [
+      fixture({
+        id: 'bundled-recent-catalog-date',
+        updatedAt: 1_000,
+        installedAt: 1_000,
+        publishedAt: '2026-01-01T00:00:00Z',
+      }),
+      fixture({
+        id: 'user-installed-old-manifest-date',
+        sourceKind: 'github',
+        updatedAt: Date.parse('2026-03-01T00:00:00Z'),
+        installedAt: Date.parse('2026-03-01T00:00:00Z'),
+        publishedAt: '2024-01-01T00:00:00Z',
+      }),
+    ];
+    expect(sortByNewest(records).map((r) => r.id)).toEqual([
+      'user-installed-old-manifest-date',
+      'bundled-recent-catalog-date',
     ]);
   });
 

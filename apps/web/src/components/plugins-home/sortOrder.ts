@@ -54,17 +54,23 @@ export function writeStoredSortOrder(order: PluginSortOrder): void {
 // stamps the whole bundled catalog milliseconds apart in folder-walk
 // order — "newest" would otherwise show reverse walk order (roughly
 // reverse-alphabetical), not publication recency (#1457).
+//
+// Catalog-only: for a plugin the user installed themselves (github /
+// local / marketplace / ...), "newest" means install recency, and a
+// third-party manifest may carry any `publishedAt` value — so only
+// bundled records take their freshness from it.
 function publishedAtMs(record: InstalledPluginRecord): number | null {
+  if (record.sourceKind !== 'bundled') return null;
   const raw = record.manifest?.publishedAt;
   if (typeof raw !== 'string') return null;
   const ms = Date.parse(raw);
   return Number.isFinite(ms) ? ms : null;
 }
 
-// Newest-first ordering. Freshness is the manifest publication date when
-// the plugin ships one, else `updatedAt` (which moves on
-// reinstall/upgrade — the right signal for user-installed plugins that
-// have no catalog date).
+// Newest-first ordering. Freshness is the manifest publication date for
+// bundled catalog records that ship one, else `updatedAt` (which moves on
+// install/reinstall/upgrade — the right signal for user-installed
+// plugins).
 //
 // Ties: when BOTH records ship the same usable `publishedAt` (one catalog
 // release stamps whole batches — hundreds of manifests — with a single
