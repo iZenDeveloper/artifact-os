@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ComponentProps } from 'react';
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ProjectView,
@@ -15,6 +15,7 @@ import {
   resolveSucceededRunStatus,
   selectPrimaryProjectFile,
   shouldClearActiveRunRefs,
+  shouldReplayTerminalRunMessage,
 } from '../../src/components/ProjectView';
 import type { Artifact, ChatMessage, ProjectFile } from '../../src/types';
 
@@ -184,7 +185,13 @@ const chatPaneSpy = vi.fn();
 vi.mock('../../src/components/ChatPane', () => ({
   ChatPane: (props: Record<string, unknown>) => {
     chatPaneSpy(props);
-    return null;
+    return (
+      <div className="pane">
+        <div className={`chat-log-wrap${props.chatLogTray ? ' has-chat-log-tray' : ''}`}>
+          {props.chatLogTray as ComponentProps<'div'>['children']}
+        </div>
+      </div>
+    );
   },
 }));
 
@@ -207,6 +214,12 @@ async function waitForReadyChatPaneProps() {
     expect(chatPaneSpy.mock.calls.at(-1)?.[0]?.sendDisabled).toBe(false);
   });
   return chatPaneSpy.mock.calls.at(-1)?.[0] as {
+    onBrandBrowserAssistConfirm?: (card: {
+      brandId: string;
+      browserTabId?: string;
+      reason?: string;
+      url?: string;
+    }) => Promise<{ ok: boolean; action?: string; message?: string } | void> | { ok: boolean; action?: string; message?: string } | void;
     onSend?: (prompt: string, attachments: unknown[], comments: unknown[]) => Promise<void>;
     initialDraft?: string;
   };
@@ -415,11 +428,13 @@ describe('retry target resolution', () => {
     });
   });
 
-  it('keeps earlier failed retry attempts visible while reusing the original user turn', () => {
+  it('keeps earlier delivery-failure retry attempts visible while reusing the original user turn', () => {
     const firstFailure: ChatMessage = {
       ...failedAssistant,
       id: 'assistant-1',
       content: 'First attempt produced partial output',
+      runStatus: 'succeeded',
+      resultDeliveryState: 'no_result',
       events: [{ kind: 'text', text: 'thinking before failure' }],
       producedFiles: [
         {
@@ -435,6 +450,8 @@ describe('retry target resolution', () => {
       ...failedAssistant,
       id: 'assistant-2',
       content: 'Retry failed too',
+      runStatus: 'succeeded',
+      resultDeliveryState: 'delivery_failed',
     };
 
     expect(resolveRetryTarget([userMessage, firstFailure, secondFailure], secondFailure.id)).toEqual({
@@ -545,6 +562,31 @@ describe('ProjectView daemon cleanup', () => {
     expect(resolveSucceededRunStatus(undefined)).toBe('succeeded');
     expect(resolveSucceededRunStatus('failed')).toBe('failed');
     expect(resolveSucceededRunStatus('canceled')).toBe('canceled');
+  });
+
+  it('replays an unverified terminal Design-mode result after reload', () => {
+    expect(
+      shouldReplayTerminalRunMessage({
+        id: 'msg-unverified-delivery',
+        role: 'assistant',
+        content: 'I finished the design.',
+        runId: 'run-unverified-delivery',
+        runStatus: 'succeeded',
+        sessionMode: 'design',
+        startedAt: 1,
+      }),
+    ).toBe(true);
+    expect(
+      shouldReplayTerminalRunMessage({
+        id: 'msg-chat-answer',
+        role: 'assistant',
+        content: 'Here is the answer.',
+        runId: 'run-chat-answer',
+        runStatus: 'succeeded',
+        sessionMode: 'chat',
+        startedAt: 1,
+      }),
+    ).toBe(false);
   });
 
   // Regression: a phantom 'running' row in DB (no runId, no matching active
@@ -930,6 +972,90 @@ describe('ProjectView daemon cleanup', () => {
     });
     expect(streamViaDaemon).not.toHaveBeenCalled();
     expect(window.sessionStorage.getItem('od:auto-send-first:brand-project')).toBeNull();
+  });
+
+  it('anchors the brand browser-assist download guide between the transcript and composer', async () => {
+    listConversations.mockResolvedValue([{ id: 'conv-brand', title: 'Conversation' }]);
+    listMessages.mockResolvedValue([]);
+    fetchPreviewComments.mockResolvedValue([]);
+    loadTabs.mockResolvedValue({ tabs: [], activeTabId: null });
+    fetchProjectFiles.mockResolvedValue([]);
+    fetchLiveArtifacts.mockResolvedValue([]);
+    fetchSkill.mockResolvedValue(null);
+    fetchDesignSystem.mockResolvedValue(null);
+    getTemplate.mockResolvedValue(null);
+    listActiveChatRuns.mockResolvedValue([]);
+    streamViaDaemon.mockResolvedValue(undefined);
+
+    chatPaneSpy.mockClear();
+    fileWorkspaceSpy.mockClear();
+
+    render(
+      <ProjectView
+        project={{
+          id: 'brand-project',
+          name: 'Refly Design System',
+          skillId: null,
+          designSystemId: null,
+          metadata: {
+            kind: 'brand',
+            importedFrom: 'brand-extraction',
+            brandId: 'refly-ai',
+            brandSourceUrl: 'https://refly.ai/',
+          },
+          createdAt: 1,
+          updatedAt: 1,
+        } as never}
+        routeFileName={null}
+        config={{ mode: 'daemon', agentId: 'agent-1', notifications: undefined, agentModels: {} } as never}
+        agents={[{ id: 'agent-1', name: 'OpenCode', models: [] } as never]}
+        skills={[]}
+        designTemplates={[]}
+        designSystems={[]}
+        daemonLive
+        onModeChange={() => {}}
+        onAgentChange={() => {}}
+        onAgentModelChange={() => {}}
+        onRefreshAgents={() => {}}
+        onOpenSettings={() => {}}
+        onBack={() => {}}
+        onClearPendingPrompt={() => {}}
+        onTouchProject={() => {}}
+        onProjectChange={() => {}}
+        onProjectsRefresh={() => {}}
+      />,
+    );
+
+    const chatProps = await waitForReadyChatPaneProps();
+    expect(chatProps.onBrandBrowserAssistConfirm).toBeTypeOf('function');
+
+    let result: { ok: boolean; action?: string; message?: string } | void = undefined;
+    await act(async () => {
+      result = await chatProps.onBrandBrowserAssistConfirm?.({
+        brandId: 'refly-ai',
+        browserTabId: 'brand-browser-tab',
+        reason: 'Cloudflare',
+        url: 'https://refly.ai/',
+      });
+    });
+
+    expect(result).toMatchObject({ ok: true, action: 'opened' });
+    await waitFor(() => {
+      expect(fileWorkspaceSpy.mock.calls.at(-1)?.[0]?.browserOpenRequest).toMatchObject({
+        tabId: 'brand-browser-tab',
+        url: 'https://refly.ai/',
+        attentionAction: 'download-page',
+      });
+    });
+
+    const toast = await waitFor(() => {
+      const node = document.querySelector('.od-toast');
+      expect(node?.textContent).toContain('chat.brandBrowserAssistDownloadGuideTitle');
+      return node as HTMLElement;
+    });
+    expect(toast.closest('.project-actions-toast-anchor')).toBeTruthy();
+    expect(toast.closest('.split-chat-slot')).toBeTruthy();
+    expect(toast.closest('.chat-log-wrap')?.className).toContain('has-chat-log-tray');
   });
 
   it('waits for pendingPrompt hydration before consuming an auto-send flag', async () => {

@@ -28,6 +28,7 @@ import {
   getDesignToolboxAction,
   type DesignToolboxActionId,
 } from '../runtime/design-toolbox';
+import { isRetryableAssistantTerminalFailure } from '../runtime/design-delivery';
 import type { Dict } from '../i18n/types';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
 import { projectRawUrl } from '../providers/registry';
@@ -656,6 +657,10 @@ interface Props {
   currentDesignSystemId?: string | null;
   onActiveDesignSystemChange?: (project: Project) => void;
   onShowToast?: (message: string) => void;
+  // Optional transient UI owned by the project shell. Rendering it inside the
+  // scroll-area wrapper keeps it structurally above the variable-height
+  // composer instead of guessing a bottom offset from outside ChatPane.
+  chatLogTray?: ReactNode;
   // Project header slot. The former standalone chrome header row was removed;
   // its back button, project title (editable) and design-system picker moved
   // into the top of the chat pane. ProjectView owns the project record so it
@@ -877,6 +882,7 @@ export function ChatPane({
   currentDesignSystemId,
   onActiveDesignSystemChange,
   onShowToast,
+  chatLogTray,
   onBack,
   backLabel,
   projectHeader,
@@ -2137,12 +2143,12 @@ export function ChatPane({
               <div className="chat-history-menu-head">
                 <span className="chat-history-menu-title">
                   {t('chat.conversationsHeading')}
-                </span>
-                <span className="chat-history-menu-count">
-                  <span data-testid="conversation-history-count">
-                  {filteredConversations.length === conversations.length
-                    ? compactCount(conversations.length)
-                    : `${compactCount(filteredConversations.length)} / ${compactCount(conversations.length)}`}
+                  <span className="chat-history-menu-count">
+                    <span data-testid="conversation-history-count">
+                    {filteredConversations.length === conversations.length
+                      ? compactCount(conversations.length)
+                      : `${compactCount(filteredConversations.length)} / ${compactCount(conversations.length)}`}
+                    </span>
                   </span>
                 </span>
                 {onNewConversation ? (
@@ -2219,7 +2225,7 @@ export function ChatPane({
       </div>
       {tab === 'chat' ? (
         <>
-          <div className="chat-log-wrap">
+          <div className={`chat-log-wrap${chatLogTray ? ' has-chat-log-tray' : ''}`}>
             <div
               className={[
                 'chat-log',
@@ -2639,6 +2645,7 @@ export function ChatPane({
                   the viewport, then shrinks as the reply streams in below. */}
               <div className="chat-log-tail-spacer" ref={tailSpacerRef} aria-hidden />
             </div>
+            {chatLogTray}
             {/* Always mounted so the CSS transition can play in both
                 directions; the `chat-jump-btn-active` class flips the
                 slide + opacity, and `aria-hidden` + `tabIndex={-1}`
@@ -3702,7 +3709,7 @@ export function retryableAssistantMessage(
   const last = messages[messages.length - 1];
   if (!last || last.role !== 'assistant') return null;
   if (last.id !== lastAssistantId) return null;
-  return last.runStatus === 'failed' ? last : null;
+  return isRetryableAssistantTerminalFailure(last) ? last : null;
 }
 
 export function isAssistantMessageStreaming(

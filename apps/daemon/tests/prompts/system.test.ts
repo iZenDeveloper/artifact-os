@@ -325,6 +325,24 @@ describe('composeSystemPrompt', () => {
     expect(prompt).not.toContain('## Media generation contract');
   });
 
+  it('pins the data chart discipline inside the deck framework (#907)', () => {
+    const prompt = composeSystemPrompt({ skillMode: 'deck' });
+
+    expect(prompt).toContain('## Data chart discipline');
+    expect(prompt).toContain('calc(var(--v) / var(--max)');
+    expect(prompt).toContain('visible category label AND value label');
+    expect(prompt).toContain('Mentally spot-check two bars');
+  });
+
+  it('pins the mermaid theme discipline inside the deck framework (dark decks)', () => {
+    const prompt = composeSystemPrompt({ skillMode: 'deck' });
+
+    expect(prompt).toContain('## Mermaid diagram theme discipline');
+    expect(prompt).toContain("theme: 'dark'");
+    expect(prompt).toContain('themeVariables');
+    expect(prompt).toContain('no dark-on-dark labels');
+  });
+
   it('resolves a non-media primary surface ahead of composed media mentions', () => {
     expect(resolveExclusiveSurface({
       skillMode: 'deck',
@@ -406,6 +424,20 @@ describe('composeSystemPrompt', () => {
       expect(prompt).toMatch(/Do not emit a source-code `<artifact>` block/i);
     });
 
+    it('defaults new deliverable filenames to semantic names instead of index.html', () => {
+      const prompt = composeSystemPrompt({
+        skillName: 'simple-deck',
+        skillBody: 'Copy assets/template.html to index.html, then fill the deck.',
+      });
+
+      expect(prompt).toContain('## Semantic output file names');
+      expect(prompt).toContain('Do not call every new artifact `index.html`');
+      expect(prompt).toContain('adapt the destination to a semantic filename');
+      expect(prompt.indexOf('## Semantic output file names')).toBeGreaterThan(
+        prompt.indexOf('## Active skill — simple-deck'),
+      );
+    });
+
     it('also keeps deck-mode prompts free of the unconditional emit line (DECK_FRAMEWORK_DIRECTIVE only stacks for deck projects)', () => {
       // The plain composeSystemPrompt({}) call does NOT include
       // DECK_FRAMEWORK_DIRECTIVE; that directive only stacks when
@@ -415,6 +447,8 @@ describe('composeSystemPrompt', () => {
       // path explicitly here.
       const deckPrompt = composeSystemPrompt({ skillMode: 'deck' });
       expect(deckPrompt).not.toMatch(/^7\.\s+Emit single <artifact>\s*$/m);
+      expect(deckPrompt).not.toContain('Copy the canonical skeleton below as index.html');
+      expect(deckPrompt).toContain('semantically named deck HTML file');
       expect(deckPrompt).toMatch(/Summarize the written or changed deck file/i);
     });
   });
