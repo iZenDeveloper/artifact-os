@@ -493,8 +493,8 @@ function readVelaTelemetrySinkConfig(
   const authSource: 'env' | 'file' = envControlKey ? 'env' : 'file';
   const context = readVelaControlApiContext(env, configuredEnv);
   const controlKey = context?.controlKey?.trim() ?? '';
-  if (!controlKey) return null;
-  const apiUrl = (context?.apiUrl?.trim() || 'https://amr-api.open-design.ai').replace(
+  if (!context || !controlKey) return null;
+  const apiUrl = (context.apiUrl?.trim() || 'https://amr-api.open-design.ai').replace(
     /\/+$/,
     '',
   );
