@@ -36,7 +36,7 @@ describe('workspace tabs chrome styles', () => {
     );
     const projectStrip = cssDeclarations(routinesCss, '.workspace-shell .workspace-tabs-strip');
 
-    expect(ruleValue(chrome, 'padding')).toBe('0 8px 0 6px');
+    expect(ruleValue(chrome, 'padding')).toBe('0 10px 0 8px');
     expect(ruleValue(traffic, 'margin-right')).toBe('var(--app-chrome-traffic-margin)');
     expect(ruleValue(projectChrome, 'padding')).toBe('0 8px 0 0');
     expect(ruleValue(projectStrip, 'align-items')).toBe('center');
@@ -261,26 +261,21 @@ describe('workspace tabs chrome styles', () => {
     expect(ruleValue(fixedToolbarSendDisabled, 'color')).toBe('var(--text-faint)');
   });
 
-  it('uses hairline dividers for the tab chrome and entry rail', () => {
+  it('keeps the tab chrome and entry rail borderless for the floating-panel redesign', () => {
     const chrome = cssDeclarations(shellCss, '.workspace-tabs-chrome.app-chrome-header');
-    const chromeDivider = cssDeclarations(shellCss, '.workspace-tabs-chrome.app-chrome-header::after');
     const projectChrome = cssDeclarations(
       routinesCss,
       '.workspace-shell .workspace-tabs-chrome.app-chrome-header',
     );
     const rail = cssDeclarations(entryLayoutCss, '.entry-nav-rail');
-    const railDivider = cssDeclarations(entryLayoutCss, '.entry-nav-rail::after');
 
-    const hairlineColor = 'color-mix(in srgb, var(--border) 64%, transparent)';
+    // The #5517 redesign drops the hairline `::after` dividers in favor of
+    // floating panels, so the chrome and rail carry no border of their own.
     expect(ruleValue(chrome, 'border-bottom')).toBe('0');
     expect(ruleValue(projectChrome, 'border-bottom')).toBe('0');
     expect(ruleValue(rail, 'border-right')).toBe('0');
-    expect(ruleValue(chromeDivider, 'height')).toBe('1px');
-    expect(ruleValue(chromeDivider, 'background')).toBe(hairlineColor);
-    expect(ruleValue(chromeDivider, 'transform')).toBe('scaleY(0.5)');
-    expect(ruleValue(railDivider, 'width')).toBe('1px');
-    expect(ruleValue(railDivider, 'background')).toBe(hairlineColor);
-    expect(ruleValue(railDivider, 'transform')).toBe('scaleX(0.5)');
+    expect(shellCss).not.toContain('.workspace-tabs-chrome.app-chrome-header::after');
+    expect(entryLayoutCss).not.toContain('.entry-nav-rail::after');
   });
 
   it('keeps workspace tabs compact and centered in the top chrome', () => {
@@ -298,14 +293,14 @@ describe('workspace tabs chrome styles', () => {
     const projectStrip = cssDeclarations(routinesCss, '.workspace-shell .workspace-tabs-strip');
     const sharedStrip = cssDeclarations(shellCss, '.workspace-tabs-strip');
 
-    expect(ruleValue(projectTab, 'height')).toBe('26px');
+    expect(ruleValue(projectTab, 'height')).toBe('32px');
     expect(ruleValue(projectTab, 'align-self')).toBe('center');
-    expect(ruleValue(projectTab, 'border-radius')).toBe('7px');
+    expect(ruleValue(projectTab, 'border-radius')).toBe('var(--radius-large, 8px)');
     // Tabs auto-shrink: flex-grow 0 (never balloon), flex-shrink 1 (squeeze to
     // fit) down to --workspace-tab-min-width before the strip scrolls.
     expect(ruleValue(projectTab, 'flex')).toBe('0 1 156px');
     expect(ruleValue(projectTab, 'min-width')).toBe('var(--workspace-tab-min-width, 56px)');
-    expect(ruleValue(activeProjectTab, 'background')).toBe('color-mix(in srgb, var(--bg-panel) 94%, var(--bg-subtle))');
+    expect(ruleValue(activeProjectTab, 'background')).toBe('#ffffff');
     expect(ruleValue(activeProjectTab, 'border-color')).toBe('var(--workspace-active-tab-border)');
     expect(ruleValue(activeProjectTab, 'box-shadow')).toContain('0 1px 2px');
     expect(ruleValue(activeProjectTab, 'box-shadow')).toContain('inset');
@@ -329,12 +324,12 @@ describe('workspace tabs chrome styles', () => {
     const pinnedProject = cssDeclarations(routinesCss, '.workspace-shell .workspace-tab.is-pinned');
 
     // Home never shrinks (flex-shrink 0) in either chrome…
-    expect(ruleValue(pinnedShared, 'flex')).toBe('0 0 96px');
+    expect(ruleValue(pinnedShared, 'flex')).toBe('0 0 52px');
     expect(ruleValue(pinnedProject, 'flex')).toBe('0 0 104px');
     // …and stays stuck to the left edge with an opaque background so scrolled
     // project tabs pass behind it instead of squeezing it.
     expect(ruleValue(pinnedShared, 'position')).toBe('sticky');
-    expect(ruleValue(pinnedShared, 'left')).toBe('0');
+    expect(ruleValue(pinnedShared, 'left')).toBe('var(--workspace-tabs-edge-inset)');
     expect(ruleValue(pinnedProject, 'position')).toBe('sticky');
     expect(ruleValue(pinnedProject, 'left')).toBe('0');
     expect(ruleValue(pinnedProject, 'background')).toBe('var(--workspace-tab-bar-bg)');
@@ -343,8 +338,8 @@ describe('workspace tabs chrome styles', () => {
   it('uses a rounded highlight for inactive workspace tab hover', () => {
     const hoverTab = cssDeclarations(routinesCss, '.workspace-shell .workspace-tab:not(.is-active):hover');
 
-    expect(ruleValue(hoverTab, 'border-radius')).toBe('7px');
-    expect(ruleValue(hoverTab, 'background')).toContain('calc(100% - 2px)');
+    expect(ruleValue(hoverTab, 'border-radius')).toBe('var(--radius-pill, 999px)');
+    expect(ruleValue(hoverTab, 'background')).toContain('color-mix(in srgb, var(--bg-panel) 78%, transparent)');
     expect(ruleValue(hoverTab, 'border-color')).toBe('transparent');
     expect(ruleValue(hoverTab, 'box-shadow')).toContain('inset 0 0 0 1px');
   });
@@ -371,7 +366,7 @@ describe('workspace tabs chrome styles', () => {
       // Opaque base layer keeps scrolled tabs from bleeding through…
       expect(background).toContain('var(--workspace-tab-bar-bg)');
       // …while the translucent hover wash still rides on top for the affordance.
-      expect(background).toContain('calc(100% - 2px)');
+      expect(background).toContain('color-mix(in srgb, var(--bg-panel) 78%, transparent)');
     }
   });
 
@@ -387,8 +382,10 @@ describe('workspace tabs chrome styles', () => {
     expect(ruleValue(dragging, 'transform')).toBe('translateY(-2px) scale(1.015)');
     expect(ruleValue(dragging, 'z-index')).toBe('3');
     expect(ruleValue(dragOverBefore, 'border-color')).not.toContain('var(--accent)');
-    expect(ruleValue(dragOverBefore, 'transform')).toBe('translateX(6px)');
-    expect(ruleValue(dragOverAfter, 'transform')).toBe('translateX(-6px)');
+    // #5517 swaps the neighbor translateX shift for a quiet drop-target
+    // highlight (border-strong wash) on the tab the drop would land beside.
+    expect(ruleValue(dragOverBefore, 'border-color')).toContain('var(--border-strong)');
+    expect(ruleValue(dragOverAfter, 'border-color')).toContain('var(--border-strong)');
     expect(ruleValue(projectDragging, 'box-shadow')).toContain('0 14px 30px');
     expect(shellCss).not.toContain('.workspace-tab.is-drag-over-before::after');
     expect(shellCss).not.toContain('.workspace-tab.is-drag-over-after::after');
