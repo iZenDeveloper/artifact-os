@@ -40,7 +40,7 @@ test('[P1] preview delivery status keeps persisted delivery-failure recovery in 
   const existingFileResponse = await page.request.post(`/api/projects/${projectId}/files`, {
     data: {
       name: 'existing-design.html',
-      content: '<!doctype html><html><body><p>Existing design</p></body></html>',
+      content: '<!doctype html><html><body style="min-height:100vh;margin:0;background:#121212;color:#fff"><p>Existing design</p></body></html>',
     },
   });
   expect(existingFileResponse.ok(), await existingFileResponse.text()).toBeTruthy();
@@ -84,7 +84,14 @@ test('[P1] preview delivery status keeps persisted delivery-failure recovery in 
   await expect(status.locator('xpath=ancestor::*[@data-testid="design-files-empty"]')).toHaveCount(0);
   await expect(status).not.toContainText('Elapsed');
   await expect(page.getByTestId('preview-run-status-retry')).toHaveCount(0);
-  await expect(page.getByTestId('preview-run-status-view-details')).toBeVisible();
+  const viewDetails = page.getByTestId('preview-run-status-view-details');
+  await expect(viewDetails).toBeVisible();
+  await expect(viewDetails).toHaveCSS('color', 'rgb(116, 113, 107)');
+  await viewDetails.hover();
+  await expect(viewDetails).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(viewDetails).toHaveCSS('border-top-color', 'rgba(0, 0, 0, 0)');
+  await viewDetails.focus();
+  await expect(viewDetails).toHaveCSS('outline-width', '2px');
   const chatRetry = page.locator('.chat-error-retry');
   await expect(chatRetry).toBeVisible();
 

@@ -50,10 +50,16 @@
 }
 
 .failed .label {
-  color: var(--danger);
+  /* The preview is intentionally a quiet, canvas-local hint. Keep the
+     failure label neutral here; the full Chat failure card carries the
+     semantic error treatment and recovery action. */
+  color: var(--text-muted);
 }
 
-.action {
+/* The shared ghost Button has a bordered, filled hover state. This action
+   lives over arbitrary generated content, so it must stay a text link in
+   every interaction state rather than becoming a floating app-chrome button. */
+.root button.action {
   display: inline-flex;
   align-items: baseline;
   min-height: 28px;
@@ -70,8 +76,11 @@
   text-underline-offset: 2px;
 }
 
-.action:hover {
+.root button.action:hover:not(:disabled) {
   color: var(--text);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 @keyframes preview-stage-enter {
