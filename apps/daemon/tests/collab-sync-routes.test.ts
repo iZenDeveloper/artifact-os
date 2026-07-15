@@ -548,6 +548,25 @@ describe('collab sync routes', () => {
     expect((await api.json('/api/projects/p1/collab/status')).body.syncState).toBe('local_only');
   });
 
+  it('registers a local placeholder when a member opens a not-yet-pulled shared project', async () => {
+    const projectStore = fakeProjectStore();
+    const api = await startSyncServer(undefined, {
+      projectStore,
+      resolveSharedProjectOwner: async () => 'other-owner',
+    });
+    expect(projectStore.has('shared-p')).toBe(false);
+    // The first status poll a member fires on opening the shared project must
+    // register the placeholder so the other project routes stop 404ing while
+    // the pull runs.
+    const res = await api.json('/api/projects/shared-p/collab/status');
+    expect(res.status).toBe(200);
+    expect(projectStore.registerCalls).toBe(1);
+    expect(projectStore.projects.get('shared-p')?.name).toBe('共享项目');
+    // Idempotent: subsequent polls do not re-register the now-known project.
+    await api.json('/api/projects/shared-p/collab/status');
+    expect(projectStore.registerCalls).toBe(1);
+  });
+
   it('drives the visibility-to-sync team-share intent through to synced', async () => {
     const api = await startSyncServer(fixedShareContextProvider(true));
     const intent = await api.json('/api/projects/p1/collab/sync-intent', {

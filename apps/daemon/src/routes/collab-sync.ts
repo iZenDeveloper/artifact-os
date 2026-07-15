@@ -377,6 +377,30 @@ export function registerCollabSyncRoutes(app: Express, deps: RegisterCollabSyncR
     projectStore.register(input);
   }
 
+  /**
+   * Register a minimal placeholder project record the moment a member opens a
+   * shared project they don't have locally yet — synchronously, with no hub
+   * round-trip. Without it `getProject` fails for the multi-second window before
+   * the resource pull materializes the project, and every project route
+   * (conversations, events SSE, tabs, files) 404s. The web answers those 404s
+   * with retry storms + EventSource reconnects — the request flood that made a
+   * shared project take tens of seconds to open. The post-pull
+   * `registerPulledProject` overwrites the placeholder name with the real one;
+   * this is a no-op once the project is known locally.
+   */
+  function ensureSharedProjectPlaceholder(projectId: string): void {
+    if (!projectStore || projectStore.has(projectId)) return;
+    const now = Date.now();
+    projectStore.register({
+      id: projectId,
+      name: PULLED_PROJECT_PLACEHOLDER_NAME,
+      skillId: null,
+      designSystemId: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
   app.post('/api/projects/:id/collab/changed', (req, res) => {
     scheduler.notifyChanged(req.params.id, 'change');
     res.json({ ok: true });
@@ -692,6 +716,13 @@ export function registerCollabSyncRoutes(app: Express, deps: RegisterCollabSyncR
     // composer) for tens of seconds before /collab/status confirmed ownership.
     const callerIsOwner =
       ownerMemberId != null && principal?.memberId != null && ownerMemberId === principal.memberId;
+    // A member viewing someone else's shared project: register the local
+    // placeholder now so the project's other routes stop 404ing while the pull
+    // runs (see ensureSharedProjectPlaceholder). The web polls /collab/status on
+    // open, so this fires before the conversations/events retry storm builds up.
+    if (ownerMemberId && !callerIsOwner) {
+      ensureSharedProjectPlaceholder(projectId);
+    }
     if (ownerMemberId && !callerIsOwner && resolveOwnerDisplayName) {
       try {
         const entry = await resolveOwnerDisplayName(ownerMemberId);
