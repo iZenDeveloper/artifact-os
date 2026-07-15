@@ -1130,6 +1130,7 @@ describe('AssistantMessage recovered produced files', () => {
     );
 
     expect(screen.getByTestId('file-ops-summary')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('file-ops-toggle'));
     expect(screen.getByTestId('file-ops-row-browser-war-deck-outline.md')).toBeTruthy();
     expect(screen.getByText(/Write 1/)).toBeTruthy();
   });
@@ -1159,6 +1160,7 @@ describe('AssistantMessage recovered produced files', () => {
     );
 
     expect(screen.getByTestId('file-ops-summary')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('file-ops-toggle'));
     expect(screen.getByTestId('file-ops-row-browser-war-deck-outline.md')).toBeTruthy();
   });
 
@@ -1215,6 +1217,7 @@ describe('AssistantMessage recovered produced files', () => {
       />,
     );
 
+    fireEvent.click(screen.getByTestId('file-ops-toggle'));
     expect(screen.getByText('iphone-device-reveal.mp4')).toBeTruthy();
   });
 
@@ -1282,6 +1285,7 @@ describe('AssistantMessage recovered produced files', () => {
       />,
     );
 
+    fireEvent.click(screen.getByTestId('file-ops-toggle'));
     expect(screen.getByText('diagram.svg')).toBeTruthy();
     expect(screen.queryByText('board.sketch.json')).toBeNull();
   });
@@ -1306,6 +1310,7 @@ describe('AssistantMessage recovered produced files', () => {
       />,
     );
 
+    fireEvent.click(screen.getByTestId('file-ops-toggle'));
     expect(screen.getByText('agent-sketch.sketch.json')).toBeTruthy();
   });
 });
