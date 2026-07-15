@@ -266,9 +266,10 @@ const DECK_INTENT_SIGNAL =
  * Whether the outgoing user request reads as a slide-deck brief. Gates the
  * ~20K maybe-deck framework injection for freeform (kind=other / no
  * metadata) projects: those runs previously carried the full framework on
- * every turn "just in case". Must be fed the SAME text the agent will see
- * (for transcript-resending agents that includes prior turns, so a deck
- * mention anywhere in the conversation keeps the framework present).
+ * every turn "just in case". Feed it USER-AUTHORED text only (see
+ * `extractUserAuthoredSignalText`) — assistant turns in a packed transcript
+ * offer deck vocabulary the user never chose; conversation persistence is
+ * the latch's job (`latchConversationIntentSignals`), not the scanner's.
  * Callers that cannot supply the request text should pass undefined to
  * `freeformDeckSignal`, which preserves the legacy always-inject behavior.
  */
@@ -323,6 +324,80 @@ export function detectMediaIntentSignal(
   return texts.some(
     (text) => typeof text === 'string' && MEDIA_INTENT_SIGNAL.test(text),
   );
+}
+
+// Genuine transcript turn boundaries are exactly these lines: the web
+// transcript builder writes `## <role>` verbatim and escapes any interior
+// look-alike line (`escapeTranscriptRoleDelimiters`,
+// apps/web/src/providers/daemon.ts), so an unescaped marker line in a packed
+// message is always a real boundary.
+const TRANSCRIPT_USER_MARKER = '## user';
+const TRANSCRIPT_ASSISTANT_MARKER = '## assistant';
+const TRANSCRIPT_ROLE_MARKER = /^## (?:user|assistant)$/m;
+const FORM_ANSWERS_HEADER = /^\[form answers — .+\]/;
+
+// `formatFormAnswers` (apps/web/src/artifacts/question-form.ts) echoes each
+// question as `- <question label>: <value>`. The label is the FORM's copy,
+// not the user's words — the real task-type form carries "For slide decks,
+// include speaker notes?" — so only the value part of each answer line may
+// feed the intent scan. Whether a gated block is introduced is decided by
+// what the user actually answered, not by what the form offered.
+function narrowFormAnswerSignalText(body: string): string {
+  const lines = body.split('\n');
+  const firstContent = lines.find((line) => line.trim().length > 0);
+  if (!firstContent || !FORM_ANSWERS_HEADER.test(firstContent.trim())) return body;
+  return lines
+    .map((line) => {
+      if (FORM_ANSWERS_HEADER.test(line.trim())) return '';
+      const answer = /^- .*?: (.*)$/.exec(line);
+      return answer ? answer[1] ?? '' : line;
+    })
+    .join('\n');
+}
+
+/**
+ * Reduce an outgoing request message to the text the USER actually authored,
+ * for intent-signal scanning. The three intent signals gate stable-region
+ * prompt blocks, and for transcript-resending clients `message` embeds the
+ * full packed conversation — assistant turns included. Assistant copy (most
+ * damagingly the turn-1 discovery form's own option copy: «幻灯 / 路演»,
+ * "Slide deck / pitch", «iOS / Android / 响应式») must never flip a signal:
+ * every flip changes the stable instruction hash and re-sends the whole
+ * stable block on resume.
+ *
+ * - Packed transcript (contains `## user` / `## assistant` marker lines):
+ *   returns only the bodies of `## user` sections; `## assistant` sections
+ *   and the leading `## context warning` block are dropped entirely.
+ * - Plain message (no role markers): returned unchanged (legacy whole-scan).
+ * - `[form answers — <id>]` blocks in either shape are narrowed to the value
+ *   part of each `- label: value` line (see narrowFormAnswerSignalText).
+ */
+export function extractUserAuthoredSignalText(
+  message: string | null | undefined,
+): string {
+  if (typeof message !== 'string' || message.length === 0) return '';
+  if (!TRANSCRIPT_ROLE_MARKER.test(message)) {
+    return narrowFormAnswerSignalText(message);
+  }
+  const userSections: string[][] = [];
+  // null = dropped region: pre-marker text (`## context warning` included)
+  // and `## assistant` sections.
+  let currentUserSection: string[] | null = null;
+  for (const line of message.split('\n')) {
+    if (line === TRANSCRIPT_USER_MARKER) {
+      currentUserSection = [];
+      userSections.push(currentUserSection);
+      continue;
+    }
+    if (line === TRANSCRIPT_ASSISTANT_MARKER) {
+      currentUserSection = null;
+      continue;
+    }
+    currentUserSection?.push(line);
+  }
+  return userSections
+    .map((lines) => narrowFormAnswerSignalText(lines.join('\n')))
+    .join('\n\n');
 }
 
 export const BASE_SYSTEM_PROMPT = renderOfficialDesignerPrompt('filesystem');
