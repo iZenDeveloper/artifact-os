@@ -4110,7 +4110,11 @@ export function SettingsDialog({
                   <span className="seg-meta">{t('settings.modeApi')}</span>
                 </button>
               </div>
-              {cfg.mode === 'daemon' ? (
+              {cfg.mode === 'daemon' && amrCardStatus?.loggedIn !== true ? (
+                // Only prompt to sign into Open Design Cloud when NOT already
+                // signed in — the AMR/vela session IS the cloud identity (one
+                // session drives both), so a logged-in user has nothing to do
+                // here and the callout was showing spuriously.
                 <div className="settings-cloud-signin-callout">
                   <div>
                     <strong>{t('settings.cloudCalloutTitle')}</strong>
