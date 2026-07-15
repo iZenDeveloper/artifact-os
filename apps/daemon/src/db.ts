@@ -194,6 +194,7 @@ function migrate(db: SqliteDb): void {
       telemetry_accepted_body_id TEXT,
       telemetry_accepted_report_trigger TEXT,
       telemetry_accepted_delivery_channel TEXT,
+      telemetry_accepted_vela_identity TEXT,
       started_at INTEGER,
       ended_at INTEGER,
       position INTEGER NOT NULL,
@@ -385,6 +386,9 @@ function migrate(db: SqliteDb): void {
   }
   if (!messageCols.some((c: DbRow) => c.name === 'telemetry_accepted_delivery_channel')) {
     db.exec(`ALTER TABLE messages ADD COLUMN telemetry_accepted_delivery_channel TEXT`);
+  }
+  if (!messageCols.some((c: DbRow) => c.name === 'telemetry_accepted_vela_identity')) {
+    db.exec(`ALTER TABLE messages ADD COLUMN telemetry_accepted_vela_identity TEXT`);
   }
   // Run-keyed accepted telemetry anchors survive assistant-row reuse. Message
   // columns alone are insufficient: when failed run A schedules
@@ -1591,6 +1595,10 @@ export function upsertMessage(db: SqliteDb, conversationId: string, m: DbRow) {
                 WHEN ? THEN NULL
                 ELSE telemetry_accepted_delivery_channel
               END,
+              telemetry_accepted_vela_identity = CASE
+                WHEN ? THEN NULL
+                ELSE telemetry_accepted_vela_identity
+              END,
               started_at = ?, ended_at = ?
         WHERE id = ?`,
     ).run(
@@ -1618,6 +1626,7 @@ export function upsertMessage(db: SqliteDb, conversationId: string, m: DbRow) {
       m.telemetryFinalized === true ? now : null,
       m.telemetryFinalized === true ? 1 : 0,
       now,
+      clearAcceptedTelemetryAnchor ? 1 : 0,
       clearAcceptedTelemetryAnchor ? 1 : 0,
       clearAcceptedTelemetryAnchor ? 1 : 0,
       clearAcceptedTelemetryAnchor ? 1 : 0,
@@ -2089,9 +2098,10 @@ export function setRunTelemetryAcceptedAnchor(
       `UPDATE messages
           SET telemetry_accepted_body_id = ?,
               telemetry_accepted_report_trigger = ?,
-              telemetry_accepted_delivery_channel = ?
+              telemetry_accepted_delivery_channel = ?,
+              telemetry_accepted_vela_identity = ?
         WHERE id = ?`,
-    ).run(bodyId, reportTrigger, deliveryChannel, messageId);
+    ).run(bodyId, reportTrigger, deliveryChannel, velaIdentity, messageId);
   }
   return true;
 }
@@ -2145,7 +2155,8 @@ export function getRunFeedbackTelemetryAnchor(
                 telemetry_finalized_at AS telemetryFinalizedAt,
                 telemetry_accepted_body_id AS acceptedTraceBodyId,
                 telemetry_accepted_report_trigger AS acceptedReportTrigger,
-                telemetry_accepted_delivery_channel AS acceptedDeliveryChannel
+                telemetry_accepted_delivery_channel AS acceptedDeliveryChannel,
+                telemetry_accepted_vela_identity AS acceptedVelaIdentity
            FROM messages
           WHERE id = ?
             AND run_id = ?
@@ -2163,7 +2174,8 @@ export function getRunFeedbackTelemetryAnchor(
               telemetry_finalized_at AS telemetryFinalizedAt,
               telemetry_accepted_body_id AS acceptedTraceBodyId,
               telemetry_accepted_report_trigger AS acceptedReportTrigger,
-              telemetry_accepted_delivery_channel AS acceptedDeliveryChannel
+              telemetry_accepted_delivery_channel AS acceptedDeliveryChannel,
+              telemetry_accepted_vela_identity AS acceptedVelaIdentity
          FROM messages
         WHERE run_id = ?
           AND role = 'assistant'

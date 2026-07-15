@@ -141,6 +141,49 @@ describe('persisted telemetry accepted anchor', () => {
     });
   });
 
+  it('dual-writes Vela identity onto the message row so message-only fallback cannot cross accounts', () => {
+    const runId = 'run-vela-message-fallback';
+    const velaIdentity = 'prod:fedcba9876543210';
+    const db = openDatabase(tempDir, { dataDir: tempDir });
+    seedFailedAssistant(db, runId);
+    expect(
+      setRunTelemetryAcceptedAnchor(db, {
+        runId,
+        assistantMessageId: 'assistant-1',
+        bodyId: runId,
+        reportTrigger: 'final_message',
+        deliveryChannel: 'vela',
+        velaIdentity,
+      }),
+    ).toBe(true);
+
+    // Drop the primary run-keyed row so only the message dual-write remains.
+    db.prepare(`DELETE FROM run_telemetry_accepted_anchors WHERE run_id = ?`).run(
+      runId,
+    );
+    const messageRow = db
+      .prepare(
+        `SELECT telemetry_accepted_delivery_channel AS channel,
+                telemetry_accepted_vela_identity AS identity
+           FROM messages
+          WHERE id = ?`,
+      )
+      .get('assistant-1') as { channel: string | null; identity: string | null };
+    expect(messageRow).toEqual({
+      channel: 'vela',
+      identity: velaIdentity,
+    });
+
+    expect(getRunFeedbackTelemetryAnchor(db, runId, 'assistant-1')).toEqual({
+      runStatus: 'failed',
+      telemetryFinalized: true,
+      acceptedTraceBodyId: runId,
+      acceptedReportTrigger: 'final_message',
+      acceptedDeliveryChannel: 'vela',
+      acceptedVelaIdentity: velaIdentity,
+    });
+  });
+
   it('does not demote an accepted final_message anchor with a later terminal_fallback write', () => {
     const runId = 'run-final-wins';
     const db = openDatabase(tempDir, { dataDir: tempDir });
@@ -973,7 +1016,8 @@ describe('persisted telemetry accepted anchor', () => {
           `UPDATE messages
               SET telemetry_accepted_body_id = NULL,
                   telemetry_accepted_report_trigger = NULL,
-                  telemetry_accepted_delivery_channel = NULL
+                  telemetry_accepted_delivery_channel = NULL,
+                  telemetry_accepted_vela_identity = NULL
             WHERE run_id = ?`,
         )
         .run(runId);

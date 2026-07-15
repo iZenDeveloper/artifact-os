@@ -357,6 +357,10 @@ export function pinAssistantMessageOnRunCreate(db: SqliteDb, run: ChatRunMessage
               telemetry_accepted_delivery_channel = CASE
                 WHEN ? THEN NULL
                 ELSE telemetry_accepted_delivery_channel
+              END,
+              telemetry_accepted_vela_identity = CASE
+                WHEN ? THEN NULL
+                ELSE telemetry_accepted_vela_identity
               END
         WHERE id = ?`,
     ).run(
@@ -373,6 +377,7 @@ export function pinAssistantMessageOnRunCreate(db: SqliteDb, run: ChatRunMessage
       clearAcceptedTelemetryAnchor ? 1 : 0,
       run.createdAt,
       run.createdAt,
+      clearAcceptedTelemetryAnchor ? 1 : 0,
       clearAcceptedTelemetryAnchor ? 1 : 0,
       clearAcceptedTelemetryAnchor ? 1 : 0,
       clearAcceptedTelemetryAnchor ? 1 : 0,
