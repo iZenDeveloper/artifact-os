@@ -26,6 +26,7 @@ import {
   resetPendingRunFeedbackForTests,
   resolveFeedbackTraceId,
   scopedTelemetryBodyId,
+  setLiveTelemetryPrefsReaderForTests,
   shouldDeferRunFeedback,
   stableIngestionEventId,
   TERMINAL_FALLBACK_LATE_FINAL_FEEDBACK_MS,
@@ -4407,6 +4408,61 @@ describe('reportRunFeedback', () => {
         if (value === undefined) delete process.env[key];
         else process.env[key] = value;
       }
+    }
+  });
+
+  it('drops deferred feedback when live telemetry consent is revoked before flush', async () => {
+    // Queued while metrics+content were on; user opts out before terminal_fallback
+    // accepts. Flush must re-check live prefs and drop without shipping the
+    // custom reason (stale submit-time prefs alone would still send).
+    resetAcceptedFinalTraceBodyIdsForTests();
+    resetPendingRunFeedbackForTests();
+    const runId = 'run-deferred-consent-revoked';
+    const fetchSpy = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ successes: [], errors: [] }), { status: 207 }),
+    );
+
+    try {
+      setLiveTelemetryPrefsReaderForTests(() => ({
+        metrics: true,
+        content: true,
+      }));
+      markRunAwaitingFinalAcceptance(runId);
+      await reportRunFeedback(
+        makeFeedbackCtx({
+          runId,
+          runStatus: 'failed',
+          telemetryFinalized: false,
+          rating: 'negative',
+          reasonCodes: [],
+          hasCustomReason: true,
+          customReason: 'secret free-text reason',
+        }),
+        { config: TEST_CONFIG, fetchImpl: fetchSpy as any },
+      );
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(hasPendingRunFeedbackForTests(runId)).toBe(true);
+
+      // Consent revoked during the terminal-fallback delay window.
+      setLiveTelemetryPrefsReaderForTests(() => ({
+        metrics: false,
+        content: false,
+      }));
+
+      rememberAcceptedFinalTraceBodyId(
+        runId,
+        scopedTelemetryBodyId(runId, 'final', 'terminal_fallback'),
+        'terminal_fallback',
+        'langfuse',
+      );
+
+      // Allow any async flush attempt to settle; network must stay silent.
+      await vi.waitFor(() => {
+        expect(hasPendingRunFeedbackForTests(runId)).toBe(false);
+      });
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      resetPendingRunFeedbackForTests();
     }
   });
 });

@@ -26,7 +26,7 @@
 
 import { createHash } from 'node:crypto';
 
-import type { TelemetryPrefs } from './app-config.js';
+import { readAppConfigSync, type TelemetryPrefs } from './app-config.js';
 import { readVelaControlApiContext } from './integrations/vela.js';
 import {
   buildPromptStackFlatMetadata,
@@ -261,9 +261,14 @@ export function clearRunAwaitingFinalAcceptance(
   const pending = pendingRunFeedbackByRunId.get(key);
   if (!pending) return;
   pendingRunFeedbackByRunId.delete(key);
+  // Same privacy gate as flushPendingRunFeedback: do not ship a delayed
+  // custom reason if live consent flipped off while waiting.
+  const flushPrefs = prefsForDeferredFeedbackFlush(pending.ctx.prefs);
+  if (flushPrefs == null) return;
   void reportRunFeedback(
     {
       ...pending.ctx,
+      prefs: flushPrefs,
       // Never invent `:tf` without acceptance; canonical is the legacy target.
       traceId: key,
     },
@@ -557,6 +562,69 @@ function flushReportOpts(
   return opts;
 }
 
+/**
+ * Optional test override for re-reading telemetry prefs at deferred-flush time.
+ * `undefined` means use the production reader (`OD_DATA_DIR` + app-config).
+ */
+let liveTelemetryPrefsReaderForTests:
+  | (() => TelemetryPrefs | null)
+  | undefined;
+
+/**
+ * Test-only: inject live telemetry prefs for deferred feedback flush gates.
+ * Pass `undefined` to restore the production `OD_DATA_DIR` reader.
+ */
+export function setLiveTelemetryPrefsReaderForTests(
+  reader: (() => TelemetryPrefs | null) | undefined,
+): void {
+  liveTelemetryPrefsReaderForTests = reader;
+}
+
+/**
+ * Re-read current telemetry prefs for a deferred feedback flush.
+ *
+ * Production uses the same sync app-config path as spawn-env consent checks
+ * (`OD_DATA_DIR` + `readAppConfigSync`). When no data dir is available (unit
+ * tests that never set one), returns null so the caller can fall back to the
+ * queued snapshot.
+ */
+function readLiveTelemetryPrefsForFlush(): TelemetryPrefs | null {
+  if (liveTelemetryPrefsReaderForTests !== undefined) {
+    return liveTelemetryPrefsReaderForTests();
+  }
+  const dataDir = process.env.OD_DATA_DIR?.trim();
+  if (!dataDir) return null;
+  try {
+    const cfg = readAppConfigSync(dataDir);
+    return cfg.telemetry ?? {};
+  } catch {
+    // Unreadable config during a delayed content send: fail closed.
+    return { metrics: false, content: false };
+  }
+}
+
+/**
+ * Prefs to ship with a deferred feedback flush.
+ *
+ * The queue captures prefs at submit time. Consent can flip off during the
+ * terminal-fallback / late-final window; re-check live prefs before the
+ * network send so a revoked opt-in does not leak custom reasons. Returns
+ * null when current consent is off (caller must drop without sending).
+ */
+function prefsForDeferredFeedbackFlush(
+  queued: TelemetryPrefs,
+): TelemetryPrefs | null {
+  let live: TelemetryPrefs | null;
+  try {
+    live = readLiveTelemetryPrefsForFlush();
+  } catch {
+    return null;
+  }
+  const effective = live ?? queued;
+  if (effective.metrics !== true || effective.content !== true) return null;
+  return effective;
+}
+
 function flushPendingRunFeedback(
   runId: string,
   acceptedBodyId: string,
@@ -569,6 +637,17 @@ function flushPendingRunFeedback(
   if (!key || !bodyId) return;
   const pending = pendingRunFeedbackByRunId.get(key);
   if (!pending) return;
+
+  // Privacy: re-check consent at flush time. Queued prefs can be stale after
+  // the terminal-fallback delay; a mid-window opt-out must not ship the raw
+  // custom reason (or retain it for a later final_message re-attach).
+  const flushPrefs = prefsForDeferredFeedbackFlush(pending.ctx.prefs);
+  if (flushPrefs == null) {
+    pendingRunFeedbackByRunId.delete(key);
+    cancelPendingTerminalFallbackQueueDrop(key);
+    return;
+  }
+
   // final_message owns the anchor: drop immediately. terminal_fallback keeps
   // the entry so a later final_message can re-attach onto the canonical body,
   // but only for a bounded late-final window (see
@@ -583,6 +662,7 @@ function flushPendingRunFeedback(
   void reportRunFeedback(
     {
       ...pending.ctx,
+      prefs: flushPrefs,
       traceId: bodyId,
       ...(deliveryChannel
         ? { acceptedDeliveryChannel: deliveryChannel }
@@ -607,6 +687,7 @@ export function resetPendingRunFeedbackForTests(): void {
   pendingRunFeedbackByRunId.clear();
   runsAwaitingFinalAcceptance.clear();
   awaitingFinalAcceptanceTokenSeq = 0;
+  liveTelemetryPrefsReaderForTests = undefined;
 }
 
 /** Test-only: whether deferred feedback is still queued for a run. */
