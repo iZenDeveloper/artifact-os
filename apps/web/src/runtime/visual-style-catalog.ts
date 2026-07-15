@@ -27,6 +27,15 @@ export interface VisualStyleCard {
   recommended?: boolean;
 }
 
+const STYLE_CATALOG_ASSET_BASE_URL = 'https://repo-assets.open-design.ai/style-catalog/v1';
+
+function styleCatalogPreview(filename: string, alt: string): VisualStylePreviewAsset {
+  return {
+    src: `${STYLE_CATALOG_ASSET_BASE_URL}/${filename}.webp`,
+    alt,
+  };
+}
+
 interface VisualStylePreset {
   match: RegExp;
   variant: VisualStyleVariant;
@@ -42,20 +51,20 @@ const DECK_PRESETS: VisualStylePreset[] = [
     variant: 'editorial',
     title: 'Editorial narrative',
     description: 'Strong hierarchy, considered pacing, confident typography.',
-    preview: {
-      src: '/style-catalog/v1/deck-editorial-narrative-v1.jpg',
-      alt: 'Three editorial narrative deck slides with warm paper and burnt orange accents.',
-    },
+    preview: styleCatalogPreview(
+      'deck-editorial-narrative-v1',
+      'Three editorial narrative deck slides with warm paper and burnt orange accents.',
+    ),
   },
   {
     match: /modern|minimal/i,
     variant: 'minimal',
     title: 'Product keynote',
     description: 'Quiet layouts, generous space, one clear idea per slide.',
-    preview: {
-      src: '/style-catalog/v1/deck-product-keynote-v1.jpg',
-      alt: 'Three minimal product keynote slides with white surfaces and cobalt accents.',
-    },
+    preview: styleCatalogPreview(
+      'deck-product-keynote-v1',
+      'Three minimal product keynote slides with white surfaces and cobalt accents.',
+    ),
     recommended: true,
   },
   {
@@ -69,10 +78,10 @@ const DECK_PRESETS: VisualStylePreset[] = [
     variant: 'utility',
     title: 'Data briefing',
     description: 'Dense but legible systems for metrics, diagrams, and decisions.',
-    preview: {
-      src: '/style-catalog/v1/deck-data-briefing-v1.jpg',
-      alt: 'Three data briefing slides with charts on graphite and sage surfaces.',
-    },
+    preview: styleCatalogPreview(
+      'deck-data-briefing-v1',
+      'Three data briefing slides with charts on graphite and sage surfaces.',
+    ),
   },
   {
     match: /luxury|refined/i,
@@ -106,10 +115,10 @@ const PROTOTYPE_PRESETS: VisualStylePreset[] = [
     variant: 'minimal',
     title: 'Quiet SaaS',
     description: 'Precise spacing, calm controls, and a focused product hierarchy.',
-    preview: {
-      src: '/style-catalog/v1/prototype-quiet-saas-v1.jpg',
-      alt: 'Three quiet SaaS desktop screens with calm white surfaces and cobalt accents.',
-    },
+    preview: styleCatalogPreview(
+      'prototype-quiet-saas-v1',
+      'Three quiet SaaS desktop screens with calm white surfaces and cobalt accents.',
+    ),
     recommended: true,
   },
   {
@@ -117,10 +126,10 @@ const PROTOTYPE_PRESETS: VisualStylePreset[] = [
     variant: 'playful',
     title: 'Expressive consumer',
     description: 'Friendly color, rounded interactions, and moments of delight.',
-    preview: {
-      src: '/style-catalog/v1/prototype-expressive-consumer-v1.jpg',
-      alt: 'Three expressive consumer mobile screens with coral, violet, and rounded cards.',
-    },
+    preview: styleCatalogPreview(
+      'prototype-expressive-consumer-v1',
+      'Three expressive consumer mobile screens with coral, violet, and rounded cards.',
+    ),
   },
   {
     match: /tech|utility/i,
@@ -133,10 +142,10 @@ const PROTOTYPE_PRESETS: VisualStylePreset[] = [
     variant: 'luxury',
     title: 'Premium commerce',
     description: 'Image-led layouts, refined details, and deliberate restraint.',
-    preview: {
-      src: '/style-catalog/v1/prototype-premium-commerce-v1.jpg',
-      alt: 'Three premium commerce screens with charcoal, cream, and muted gold product displays.',
-    },
+    preview: styleCatalogPreview(
+      'prototype-premium-commerce-v1',
+      'Three premium commerce screens with charcoal, cream, and muted gold product displays.',
+    ),
   },
   {
     match: /brutalist|experimental/i,

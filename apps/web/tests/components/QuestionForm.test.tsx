@@ -919,12 +919,12 @@ describe('QuestionFormView', () => {
       (screen.getByAltText(
         'Three editorial narrative deck slides with warm paper and burnt orange accents.',
       ) as HTMLImageElement).getAttribute('src'),
-    ).toBe('/style-catalog/v1/deck-editorial-narrative-v1.jpg');
+    ).toBe('https://repo-assets.open-design.ai/style-catalog/v1/deck-editorial-narrative-v1.webp');
     expect(
       (screen.getByAltText(
         'Three minimal product keynote slides with white surfaces and cobalt accents.',
       ) as HTMLImageElement).getAttribute('src'),
-    ).toBe('/style-catalog/v1/deck-product-keynote-v1.jpg');
+    ).toBe('https://repo-assets.open-design.ai/style-catalog/v1/deck-product-keynote-v1.webp');
     expect(document.querySelector('[data-artifact-type="deck"]')).toBeTruthy();
 
     fireEvent.click(screen.getByLabelText('Editorial narrative'));
@@ -1002,7 +1002,9 @@ describe('QuestionFormView', () => {
     const dialog = screen.getByRole('dialog', { name: 'Visual direction' });
     expect(dialog.querySelectorAll('.qf-visual-card input')).toHaveLength(6);
     expect(
-      dialog.querySelector('img[src="/style-catalog/v1/deck-editorial-narrative-v1.jpg"]'),
+      dialog.querySelector(
+        'img[src="https://repo-assets.open-design.ai/style-catalog/v1/deck-editorial-narrative-v1.webp"]',
+      ),
     ).toBeTruthy();
     expect(visibleLabels()).toHaveLength(4);
     const customInput = screen.getByLabelText('Custom answer') as HTMLInputElement;
