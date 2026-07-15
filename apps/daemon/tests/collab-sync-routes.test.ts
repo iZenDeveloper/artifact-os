@@ -567,6 +567,35 @@ describe('collab sync routes', () => {
     expect(projectStore.registerCalls).toBe(1);
   });
 
+  it('registers a local placeholder when the OWNER opens their own shared project not materialized on this machine', async () => {
+    const projectStore = fakeProjectStore();
+    const api = await startSyncServer(undefined, {
+      projectStore,
+      // The hub reports the caller themselves as the owner.
+      resolveSharedProjectOwner: async () => 'owner-self',
+    });
+    expect(projectStore.has('shared-owned')).toBe(false);
+    // An owner can hit a shared project that is NOT in this daemon's local DB —
+    // it was created/shared on another machine (or a smoke-test attributed it to
+    // them in the hub). Opening it must still register the placeholder, or
+    // conversations/events/tabs 404 and the left pane hangs for a minute. The
+    // owner never auto-pulls, so nothing else registers it. callerIsOwner=true
+    // here (owner member id === caller's own member id via the workspace header).
+    const ownerHeaders = {
+      'x-od-workspace-id': 'ws-1',
+      'x-od-workspace-member-id': 'owner-self',
+    };
+    const res = await api.json('/api/projects/shared-owned/collab/status', {
+      headers: ownerHeaders,
+    });
+    expect(res.status).toBe(200);
+    expect(projectStore.registerCalls).toBe(1);
+    expect(projectStore.projects.get('shared-owned')?.name).toBe('共享项目');
+    // Idempotent: the now-known project is not re-registered on the next poll.
+    await api.json('/api/projects/shared-owned/collab/status', { headers: ownerHeaders });
+    expect(projectStore.registerCalls).toBe(1);
+  });
+
   it('drives the visibility-to-sync team-share intent through to synced', async () => {
     const api = await startSyncServer(fixedShareContextProvider(true));
     const intent = await api.json('/api/projects/p1/collab/sync-intent', {

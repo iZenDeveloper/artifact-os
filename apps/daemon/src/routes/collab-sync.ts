@@ -716,11 +716,18 @@ export function registerCollabSyncRoutes(app: Express, deps: RegisterCollabSyncR
     // composer) for tens of seconds before /collab/status confirmed ownership.
     const callerIsOwner =
       ownerMemberId != null && principal?.memberId != null && ownerMemberId === principal.memberId;
-    // A member viewing someone else's shared project: register the local
-    // placeholder now so the project's other routes stop 404ing while the pull
-    // runs (see ensureSharedProjectPlaceholder). The web polls /collab/status on
-    // open, so this fires before the conversations/events retry storm builds up.
-    if (ownerMemberId && !callerIsOwner) {
+    // Anyone opening a shared project absent from this daemon's local DB needs
+    // the placeholder so the project's other routes stop 404ing while the pull
+    // runs (see ensureSharedProjectPlaceholder). This covers BOTH a member
+    // viewing someone else's shared project AND an owner opening their OWN shared
+    // project that was created/shared on another machine (or attributed to them
+    // by a smoke test) and never materialized here: the owner never auto-pulls,
+    // so without this its conversations/events/tabs 404 forever and the left pane
+    // hangs for a minute. ensureSharedProjectPlaceholder no-ops once the project
+    // is known locally, so an owner's normal local project is untouched. The web
+    // polls /collab/status on open, so this fires before the conversations/events
+    // retry storm builds up.
+    if (ownerMemberId) {
       ensureSharedProjectPlaceholder(projectId);
     }
     if (ownerMemberId && !callerIsOwner && resolveOwnerDisplayName) {
