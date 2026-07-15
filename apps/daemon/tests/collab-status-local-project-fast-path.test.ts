@@ -95,11 +95,16 @@ describe('collab/status local-only fast path', () => {
       return originalHead(projectId, principal as never);
     }) as CollabRuntime['publishedHead'];
 
+    let nameLookups = 0;
     const app = express();
     app.use(express.json());
     registerCollabSyncRoutes(app, {
       collab: runtime,
       resolveSharedProjectOwner: async () => 'member-owner', // someone else owns it
+      resolveOwnerDisplayName: async () => {
+        nameLookups += 1;
+        return { displayName: 'Owner', role: 'member' };
+      },
     });
     server = http.createServer(app);
     await new Promise<void>((resolve) => server!.listen(0, resolve));
@@ -113,8 +118,11 @@ describe('collab/status local-only fast path', () => {
     expect(res.status).toBe(200);
     expect(body.ownerMemberId).toBe('member-owner');
     expect(body.syncState).toBe('synced');
-    // A non-owner member needs the hub head for their auto-pull cursor.
+    expect(body.ownerDisplayName).toBe('Owner');
+    // A non-owner member needs the hub head for their auto-pull cursor and the
+    // owner's name for the "shared by X" banner.
     expect(headCalls).toBe(1);
+    expect(nameLookups).toBe(1);
   });
 
   it('skips publishedHead when the caller IS the owner of a shared project', async () => {
@@ -128,11 +136,16 @@ describe('collab/status local-only fast path', () => {
       return originalHead(projectId, principal as never);
     }) as CollabRuntime['publishedHead'];
 
+    let nameLookups = 0;
     const app = express();
     app.use(express.json());
     registerCollabSyncRoutes(app, {
       collab: runtime,
       resolveSharedProjectOwner: async () => 'member-owner', // caller owns it
+      resolveOwnerDisplayName: async () => {
+        nameLookups += 1;
+        return { displayName: 'Owner', role: 'member' };
+      },
     });
     server = http.createServer(app);
     await new Promise<void>((resolve) => server!.listen(0, resolve));
@@ -146,8 +159,10 @@ describe('collab/status local-only fast path', () => {
     expect(res.status).toBe(200);
     expect(body.ownerMemberId).toBe('member-owner');
     expect(body.syncState).toBe('synced');
-    // The owner is the single writer and never auto-pulls, so the expensive hub
-    // head lookup is skipped — their editable state resolves without waiting on it.
+    // The owner is the single writer, never auto-pulls, and sees an editable
+    // surface (no "shared by X" banner) — so BOTH the hub head lookup and the
+    // owner-name directory lookup are skipped; their editable state resolves fast.
     expect(headCalls).toBe(0);
+    expect(nameLookups).toBe(0);
   });
 });

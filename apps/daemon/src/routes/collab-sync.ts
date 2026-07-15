@@ -727,7 +727,17 @@ export function registerCollabSyncRoutes(app: Express, deps: RegisterCollabSyncR
         // Hub unavailable: fall back to the local state.
       }
     }
-    if (ownerMemberId && resolveOwnerDisplayName) {
+    // The caller owns the project when the resolved owner id matches their own
+    // member id. The owner is the single writer of their own project: the front
+    // end shows them an editable surface (not the "shared by X" banner) and they
+    // never auto-pull, so they need NEITHER the owner display-name directory
+    // lookup NOR the hub published-head round-trip. Both are uncached ~1-3s vela
+    // calls, and running them made a member's own shared project sit in the
+    // fail-closed "shared read-only" state (disabled history/share, disabled
+    // composer) for tens of seconds before /collab/status confirmed ownership.
+    const callerIsOwner =
+      ownerMemberId != null && principal?.memberId != null && ownerMemberId === principal.memberId;
+    if (ownerMemberId && !callerIsOwner && resolveOwnerDisplayName) {
       try {
         const entry = await resolveOwnerDisplayName(ownerMemberId);
         if (entry) {
@@ -739,17 +749,8 @@ export function registerCollabSyncRoutes(app: Express, deps: RegisterCollabSyncR
       }
     }
     // Only a NON-OWNER member of a shared project needs the hub-published head: it
-    // drives their auto-pull cursor. The owner is the single writer — their local
-    // copy is newest and they never pull — and a local-only project has no hub
-    // head at all. In both cases we answer the version from local state and skip
-    // the uncached ~3s publishedHead round-trip (and the resource-principal
-    // resolution that routes it). This stops the owner's OWN shared project from
-    // waiting seconds on a head lookup they never use before /collab/status
-    // confirms their ownership — the front end fails closed until then, so a slow
-    // status kept the "shared read-only" affordances (history/share, composer)
-    // disabled for the owner far too long.
-    const callerIsOwner =
-      ownerMemberId != null && principal?.memberId != null && ownerMemberId === principal.memberId;
+    // drives their auto-pull cursor. The owner reads their (newest) version from
+    // local state, and a local-only project has no hub head at all.
     const needsHubHead = (syncState !== 'local_only' || ownerMemberId != null) && !callerIsOwner;
     const head = needsHubHead
       ? await (async () => {
