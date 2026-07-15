@@ -115,6 +115,12 @@ import {
   pinAssistantMessageOnRunCreate,
 } from './runtimes/chat-run-messages.js';
 import {
+  agentActivityAnalyticsEvent,
+  createAgentActivityLifecycle,
+  isAgentActivityPayload,
+  normalizeAgentActivityPayload,
+} from './runtimes/agent-activity-lifecycle.js';
+import {
   createRunSideEffectLedger,
   foldEventIntoRunSideEffectLedger,
   resolveRunProjectKindForAnalytics,
@@ -2483,6 +2489,26 @@ export async function startServer({
       onEventEmitted: (run, record) => {
         if (!run.sideEffectLedger) run.sideEffectLedger = createRunSideEffectLedger();
         foldEventIntoRunSideEffectLedger(run.sideEffectLedger, record);
+        if (
+          record.event === 'agent' &&
+          isAgentActivityPayload(record.data) &&
+          run.analyticsContext
+        ) {
+          const analyticsEvent = agentActivityAnalyticsEvent(record.data, {
+            id: run.id,
+            projectId: run.projectId,
+            conversationId: run.conversationId,
+            agentId: run.agentId,
+            runtimeType: getAgentDef(run.agentId)?.streamFormat ?? 'plain',
+          });
+          if (analyticsEvent) {
+            analyticsService.capture({
+              ...analyticsEvent,
+              context: run.analyticsContext,
+              appVersion: telemetry.getCachedAppVersion()?.version ?? '0.0.0',
+            });
+          }
+        }
       },
     }),
     analytics: analyticsService,
@@ -5060,7 +5086,16 @@ export async function startServer({
     // extractor only needs the head of the reply.
     const MEMORY_REPLY_CAP = 32 * 1024;
     let memoryReplyText = '';
+    const agentActivityLifecycle = createAgentActivityLifecycle();
+    const agentActivityAttemptIndex = run.retryAttemptCount ?? 0;
     const send = (event, data) => {
+      if (event === 'agent' && isAgentActivityPayload(data)) {
+        data = normalizeAgentActivityPayload(data, {
+          runId: run.id,
+          attemptIndex: agentActivityAttemptIndex,
+        });
+        if (!agentActivityLifecycle.accept(data)) return;
+      }
       const lifecycleMarkers = runLifecycleMarkersForStreamEvent(event, data);
       if (lifecycleMarkers.firstModelEventType) {
         lifecycle.markFirstModelEvent(lifecycleMarkers.firstModelEventType);
@@ -5109,6 +5144,19 @@ export async function startServer({
       }
       persistRunEventToAssistantMessage(db, run, event, data);
       design.runs.emit(run, event, data);
+    };
+    const finalizeActiveAgentActivities = () => {
+      for (const activity of agentActivityLifecycle.terminalEvents()) {
+        send('agent', activity);
+      }
+    };
+    const previousActivityOnFinalize = run.onFinalize;
+    run.onFinalize = () => {
+      try {
+        finalizeActiveAgentActivities();
+      } finally {
+        previousActivityOnFinalize?.();
+      }
     };
     const retryAnalyticsBase = (decision, failure, errorCode) => {
       const runProjectKind = resolveRunProjectKindForAnalytics({
@@ -5236,6 +5284,7 @@ export async function startServer({
     // and finalizes the queued run, and the callback re-checks cancel/terminal
     // state in case it fires first.
     const scheduleRetryRestart = (delayMs) => {
+      finalizeActiveAgentActivities();
       tearDownAttemptForRetry();
       const wait = Number.isFinite(delayMs) && delayMs > 0 ? delayMs : 0;
       if (wait <= 0) {
