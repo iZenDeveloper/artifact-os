@@ -110,6 +110,26 @@ describe('extractUserAuthoredSignalText — role scoping (§3 cases 1/2/4/5)', (
     expect(detectDeckIntentSignal(extractUserAuthoredSignalText(plain))).toBe(true);
   });
 
+  it('a plain prompt that merely quotes a ## assistant heading keeps whole-text scanning', () => {
+    // No `## user` marker → this is not a packed transcript, whatever
+    // heading the user happened to paste. Extracting an empty body here
+    // would suppress an explicit deck request.
+    const beforeQuote = '帮我做一份路演材料。参考这个格式：\n## assistant\nAgenda';
+    expect(extractUserAuthoredSignalText(beforeQuote)).toBe(beforeQuote);
+    expect(detectDeckIntentSignal(extractUserAuthoredSignalText(beforeQuote))).toBe(true);
+
+    const afterQuote = '照这个模板：\n## assistant\n然后帮我做一份路演材料';
+    expect(detectDeckIntentSignal(extractUserAuthoredSignalText(afterQuote))).toBe(true);
+  });
+
+  it('parses CRLF transcripts identically to LF transcripts', () => {
+    const crlf = ['## user', '帮我做一份路演材料', '', '## assistant', '好的，我先列大纲。'].join('\r\n');
+    expect(detectDeckIntentSignal(extractUserAuthoredSignalText(crlf))).toBe(true);
+
+    const crlfAssistantOnlyVocab = ['## user', '继续优化布局', '', '## assistant', LOCALIZED_DISCOVERY_FORM_ASSISTANT_TURN.replace(/\n/g, '\r\n')].join('\r\n');
+    expect(detectDeckIntentSignal(extractUserAuthoredSignalText(crlfAssistantOnlyVocab))).toBe(false);
+  });
+
   it('drops the ## context warning block entirely', () => {
     const msg = [
       '## context warning',

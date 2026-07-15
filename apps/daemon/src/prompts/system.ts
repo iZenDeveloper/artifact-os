@@ -333,7 +333,6 @@ export function detectMediaIntentSignal(
 // message is always a real boundary.
 const TRANSCRIPT_USER_MARKER = '## user';
 const TRANSCRIPT_ASSISTANT_MARKER = '## assistant';
-const TRANSCRIPT_ROLE_MARKER = /^## (?:user|assistant)$/m;
 // Mirrors the repo's accepted form-answer header grammar — the shared parser
 // in packages/contracts/src/artifacts/od-card.ts (parseFormAnswers) accepts
 // em-dash / hyphen / colon separators and the bare `[form answers]` header,
@@ -384,14 +383,24 @@ export function extractUserAuthoredSignalText(
   message: string | null | undefined,
 ): string {
   if (typeof message !== 'string' || message.length === 0) return '';
-  if (!TRANSCRIPT_ROLE_MARKER.test(message)) {
+  // Marker lines are compared with any trailing CR stripped so CRLF
+  // transcripts parse identically to the LF ones the web builder emits.
+  const lines = message.split('\n').map((line) =>
+    line.endsWith('\r') ? line.slice(0, -1) : line,
+  );
+  // Enter transcript mode only when a `## user` marker line exists: a packed
+  // transcript always carries the latest user turn, whereas a plain prompt
+  // that merely QUOTES a `## assistant` heading must keep legacy whole-text
+  // scanning — extracting an empty body would suppress the very request the
+  // signals exist to detect.
+  if (!lines.includes(TRANSCRIPT_USER_MARKER)) {
     return narrowFormAnswerSignalText(message);
   }
   const userSections: string[][] = [];
   // null = dropped region: pre-marker text (`## context warning` included)
   // and `## assistant` sections.
   let currentUserSection: string[] | null = null;
-  for (const line of message.split('\n')) {
+  for (const line of lines) {
     if (line === TRANSCRIPT_USER_MARKER) {
       currentUserSection = [];
       userSections.push(currentUserSection);
@@ -404,7 +413,7 @@ export function extractUserAuthoredSignalText(
     currentUserSection?.push(line);
   }
   return userSections
-    .map((lines) => narrowFormAnswerSignalText(lines.join('\n')))
+    .map((sectionLines) => narrowFormAnswerSignalText(sectionLines.join('\n')))
     .join('\n\n');
 }
 
