@@ -875,7 +875,7 @@ describe('AssistantMessage question forms', () => {
     expect(screen.getByText('Editorial narrative')).toBeTruthy();
     expect(screen.getByRole('img', { name: 'Visual tone: Editorial narrative' })).toHaveAttribute(
       'src',
-      '/style-catalog/v1/deck-editorial-narrative-v1.jpg',
+      'https://repo-assets.open-design.ai/style-catalog/v1/deck-editorial-narrative-v1.webp',
     );
   });
 
