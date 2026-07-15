@@ -78,6 +78,16 @@ export function createCollabPublishWatcher(deps: CollabPublishWatcherDeps): Coll
           deps.notifyChanged(projectId);
         });
         subs.set(projectId, sub);
+        // Publish the CURRENT content once on first watch. The file watcher uses
+        // `ignoreInitial`, so files already on disk when watching begins (e.g.
+        // documents uploaded to a project before it was shared, or before the
+        // owner-check resolved) never fire a change event and would otherwise
+        // stay stranded at the initial share version — members would see the
+        // shared project but pull an empty/stale copy. Gated on `shouldPublish`
+        // (team-shared AND owned by me) above, so this only republishes a
+        // single-writer's own project and is loop-safe. Fires once per project
+        // per watch session (reconcile only subscribes not-yet-watched ids).
+        deps.notifyChanged(projectId);
       }
     } finally {
       reconciling = false;
