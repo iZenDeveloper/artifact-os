@@ -703,50 +703,56 @@ export function registerCollabSyncRoutes(app: Express, deps: RegisterCollabSyncR
 
   app.get('/api/projects/:id/collab/status', async (req, res) => {
     const projectId = req.params.id;
-    // The two principal resolutions and the owner/head lookups are independent
-    // remote round-trips; run them concurrently so a project view is not gated
-    // on ~5 serial vela calls. (Owner lookup reads the SWR-cached catalog.)
-    const [principal, resourcePrincipal] = await Promise.all([
-      principalForRequest(req),
-      resourcePrincipalForSharedProject(projectId, req),
-    ]);
+    const principal = await principalForRequest(req);
     let syncState = projectSyncState(projectId, principal);
     let ownerMemberId = projectOwnerMemberId(projectId, principal);
     let ownerDisplayName: string | undefined;
     let ownerRole: 'owner' | 'admin' | 'member' | undefined;
-    const ownerChain = (async () => {
-      if (ownerMemberId == null && resolveSharedProjectOwner) {
-        try {
-          const hubOwner = await resolveSharedProjectOwner(projectId);
-          if (hubOwner != null) {
-            if (syncState === 'local_only') syncState = 'synced';
-            ownerMemberId = hubOwner;
-          }
-        } catch {
-          // Hub unavailable: fall back to the local state.
-        }
-      }
-      if (ownerMemberId && resolveOwnerDisplayName) {
-        try {
-          const entry = await resolveOwnerDisplayName(ownerMemberId);
-          if (entry) {
-            ownerDisplayName = entry.displayName;
-            ownerRole = entry.role;
-          }
-        } catch {
-          /* directory unavailable: omit the name */
-        }
-      }
-    })();
-    const headPromise = (async () => {
+    // Resolve ownership first through the CACHED hub owner lookup. This decides
+    // whether the project is shared at all — and a project that is local-only AND
+    // unowned on the hub is a genuine personal project with no hub-published head.
+    // Answering its version from local state lets us skip the uncached ~2s
+    // publishedHead round-trip that otherwise ran on every status poll. That hub
+    // call was the reason a member's OWN project flashed the "shared read-only"
+    // notice for seconds after opening: the front end fails closed until
+    // /collab/status confirms ownership, so a slow status made the flash long.
+    if (ownerMemberId == null && resolveSharedProjectOwner) {
       try {
-        return await publishedHead(projectId, resourcePrincipal);
+        const hubOwner = await resolveSharedProjectOwner(projectId);
+        if (hubOwner != null) {
+          if (syncState === 'local_only') syncState = 'synced';
+          ownerMemberId = hubOwner;
+        }
       } catch {
-        return publishedVersion(projectId, principal);
+        // Hub unavailable: fall back to the local state.
       }
-    })();
-    await ownerChain;
-    const head = await headPromise;
+    }
+    if (ownerMemberId && resolveOwnerDisplayName) {
+      try {
+        const entry = await resolveOwnerDisplayName(ownerMemberId);
+        if (entry) {
+          ownerDisplayName = entry.displayName;
+          ownerRole = entry.role;
+        }
+      } catch {
+        /* directory unavailable: omit the name */
+      }
+    }
+    // Only a shared project has a hub-published head worth looking up — and only
+    // then do we need the resource principal that routes the head at the hub. A
+    // confirmed local-only, unowned project reads its (null) version from local
+    // state, skipping both the extra principal resolution and the head round-trip.
+    const projectIsShared = syncState !== 'local_only' || ownerMemberId != null;
+    const head = projectIsShared
+      ? await (async () => {
+          const resourcePrincipal = await resourcePrincipalForSharedProject(projectId, req);
+          try {
+            return await publishedHead(projectId, resourcePrincipal);
+          } catch {
+            return publishedVersion(projectId, principal);
+          }
+        })()
+      : publishedVersion(projectId, principal);
     res.json({
       publishedVersion: head,
       syncState,
