@@ -38,6 +38,8 @@ export interface Dict {
   'task.step.list': string;
   'task.step.command': string;
   'task.step.plan': string;
+  'task.step.outline': string;
+  'task.step.inspiration': string;
   'task.step.generate': string;
   'task.step.thinking': string;
   'task.step.tool': string;
@@ -53,6 +55,8 @@ export interface Dict {
   'task.computer.empty': string;
   'task.computer.stepCount': string;
   'task.computer.live': string;
+  'task.status.completed': string;
+  'task.status.failed': string;
   'task.status.stopped': string;
   'task.followUps.label': string;
   'task.deliverable.label': string;

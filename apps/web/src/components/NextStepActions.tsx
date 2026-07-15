@@ -230,6 +230,9 @@ interface Props {
   deliverActions?: readonly FlowDeliverAction[];
   deliveryReady?: boolean;
   variant?: NextStepActionsVariant;
+  /** Three lightweight, one-click follow-ups for a completed task round. */
+  followups?: ReadonlyArray<{ id: string; label: string; prompt: string }>;
+  onFollowup?: (prompt: string) => void;
 }
 
 const FLYOUT_GAP = 8;
@@ -342,6 +345,8 @@ export function NextStepActions({
   deliverActions = [],
   deliveryReady = false,
   variant = 'default',
+  followups = [],
+  onFollowup,
 }: Props) {
   const { t, locale } = useI18n();
   const analytics = useAnalytics();
@@ -644,6 +649,7 @@ export function NextStepActions({
   const showPlanRows = variant === 'plan' && visiblePlanActions.length > 0 && !!onPromptAction;
   const showProjectIncompleteRows = variant === 'project-incomplete' && !!onPromptAction;
   const showDesignSystemRows = variant === 'design-system' && !!onPromptAction;
+  const visibleFollowups = onFollowup ? followups.slice(0, 3) : [];
   const brandActions =
     variant === 'brand-ai-incomplete'
       ? BRAND_AI_EXTRACTION_INCOMPLETE_NEXT_STEP_ACTIONS
@@ -671,8 +677,21 @@ export function NextStepActions({
   return (
     <div className={styles.root} data-testid="next-step-actions">
       <div className={styles.label}>{t('nextStep.title')}</div>
-      {showDeliveryRows || showBrandRows || showPlanRows || showProjectIncompleteRows || showDesignSystemRows || showToolbox || hasMore ? (
+      {visibleFollowups.length > 0 || showDeliveryRows || showBrandRows || showPlanRows || showProjectIncompleteRows || showDesignSystemRows || showToolbox || hasMore ? (
         <div className={styles.toolboxList} data-testid="next-step-toolbox">
+          {visibleFollowups.map((followup) => (
+            <button
+              key={followup.id}
+              type="button"
+              className={styles.toolboxRow}
+              data-testid={`task-followup-${followup.id}`}
+              onClick={() => onFollowup?.(followup.prompt)}
+            >
+              <Icon name="sparkles" size={14} className={styles.toolboxRowIcon} />
+              <span className={styles.toolboxRowTitle}>{followup.label}</span>
+              <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
+            </button>
+          ))}
           {showDeliveryDownload ? (
             <button
               type="button"

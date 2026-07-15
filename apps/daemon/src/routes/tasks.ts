@@ -41,7 +41,14 @@ export function registerTaskRoutes(app: Express, deps: RegisterTaskRoutesDeps): 
         assistantMessageId: message.id,
         runId: message.runId ?? null,
         status: message.runStatus ?? (message.endedAt != null ? 'succeeded' : null),
-        steps: deriveTaskSteps(events),
+        startedAt: message.startedAt ?? null,
+        endedAt: message.endedAt ?? null,
+        steps: deriveTaskSteps({
+          events,
+          startedAt: message.startedAt,
+          createdAt: message.createdAt,
+          endedAt: message.endedAt,
+        }),
       });
     }
     const body: TaskRoundsResponse = { conversationId: id, rounds };

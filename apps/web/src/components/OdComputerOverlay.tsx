@@ -3,60 +3,68 @@
 // so it floats above the project split without touching the workspace tabs.
 
 import { createPortal } from 'react-dom';
-import type { PersistedAgentEvent } from '@open-design/contracts';
-import { OdComputerPanel, type OdComputerVariant } from './OdComputerPanel';
-import type { TaskRunStatus } from '../runtime/task-steps';
+import type { TrackingProjectKind } from '@open-design/contracts/analytics';
+import { OdComputerPanel } from './OdComputerPanel';
+import type { TaskRound } from '../runtime/task-steps';
+import type { ProjectFile } from '../types';
 import styles from './OdComputerOverlay.module.css';
 
 export function OdComputerOverlay({
   open,
-  variant,
-  onVariantChange,
   onClose,
-  events,
-  live,
-  status,
+  round,
+  initialStepId,
+  projectId,
+  projectKind,
+  projectFiles,
+  filesRefreshKey,
   projectFileNames,
   onRequestOpenFile,
+  onDock,
 }: {
   open: boolean;
-  variant: OdComputerVariant;
-  onVariantChange: (next: OdComputerVariant) => void;
   onClose: () => void;
-  events: PersistedAgentEvent[] | undefined;
-  live: boolean;
-  status: TaskRunStatus;
+  round: TaskRound | null;
+  initialStepId?: string;
+  projectId?: string | null;
+  projectKind?: TrackingProjectKind | null;
+  projectFiles?: ProjectFile[];
+  filesRefreshKey?: number;
   projectFileNames?: Set<string>;
   onRequestOpenFile?: (name: string) => void;
+  onDock?: (runId: string, stepId?: string) => void;
 }) {
   if (!open || typeof document === 'undefined') return null;
 
   return createPortal(
     <div
       className={styles.layer}
-      data-variant={variant}
+      data-variant="modal"
       role="dialog"
-      aria-modal={variant === 'modal'}
+      aria-modal="true"
       aria-label="Computer"
     >
-      {variant === 'modal' ? (
-        <button
-          type="button"
-          className={styles.backdrop}
-          aria-hidden
-          tabIndex={-1}
-          onClick={onClose}
-        />
-      ) : null}
-      <div className={styles.shell} data-variant={variant}>
+      <button
+        type="button"
+        className={styles.backdrop}
+        aria-hidden
+        tabIndex={-1}
+        onClick={onClose}
+      />
+      <div className={styles.shell} data-variant="modal">
         <OdComputerPanel
-          events={events}
-          live={live}
-          status={status}
-          variant={variant}
+          round={round}
+          variant="modal"
+          initialStepId={initialStepId}
+          projectId={projectId}
+          projectKind={projectKind}
+          projectFiles={projectFiles}
+          filesRefreshKey={filesRefreshKey}
           projectFileNames={projectFileNames}
           onRequestOpenFile={onRequestOpenFile}
-          onToggleView={() => onVariantChange(variant === 'side' ? 'modal' : 'side')}
+          onToggleView={(stepId) => {
+            if (round) onDock?.(round.runId, stepId);
+          }}
           onClose={onClose}
         />
       </div>

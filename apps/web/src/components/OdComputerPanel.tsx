@@ -6,50 +6,65 @@
 // active. Step content reuses the existing ToolCard family cards (search list /
 // read detail / plan / write), so the Computer and the transcript never drift.
 
-import { useMemo, useState } from 'react';
-import type { PersistedAgentEvent } from '@open-design/contracts';
+import { useEffect, useMemo, useState } from 'react';
+import type { TrackingProjectKind } from '@open-design/contracts/analytics';
 import { useT } from '../i18n';
 import {
-  computerStepsFromEvents,
+  computerStepsFromRound,
   taskStepBrief,
   taskStepGlyph,
+  taskStepTargetLabel,
   type ComputerStep,
-  type TaskRunStatus,
+  type TaskRound,
 } from '../runtime/task-steps';
+import type { ProjectFile } from '../types';
+import { FileViewer } from './FileViewer';
 import { ToolCard } from './ToolCard';
 import styles from './OdComputerPanel.module.css';
 
 export type OdComputerVariant = 'side' | 'modal';
 
 export function OdComputerPanel({
-  events,
-  live,
-  status = null,
+  round,
   variant,
+  initialStepId,
+  projectId,
+  projectKind,
+  projectFiles = [],
+  filesRefreshKey = 0,
   projectFileNames,
   onRequestOpenFile,
   onToggleView,
   onClose,
 }: {
-  /** The round's persisted agent events (from the assistant message). */
-  events: PersistedAgentEvent[] | undefined;
-  /** True while the round's run is still producing steps. */
-  live: boolean;
-  status?: TaskRunStatus;
+  round: TaskRound | null;
   variant: OdComputerVariant;
+  initialStepId?: string;
+  projectId?: string | null;
+  projectKind?: TrackingProjectKind | null;
+  projectFiles?: ProjectFile[];
+  filesRefreshKey?: number;
   projectFileNames?: Set<string>;
   onRequestOpenFile?: (name: string) => void;
   /** Toggle between docked side view and the global modal. */
-  onToggleView?: () => void;
+  onToggleView?: (stepId?: string) => void;
   onClose?: () => void;
 }) {
   const t = useT();
-  const steps = useMemo(() => computerStepsFromEvents(events), [events]);
+  const steps = useMemo(() => computerStepsFromRound(round), [round]);
   const total = steps.length;
 
   // `-1` = follow live (pinned to the newest step); any other value locks the
   // scrubber to a past step the user is inspecting.
   const [selected, setSelected] = useState(-1);
+  useEffect(() => {
+    if (!initialStepId) {
+      setSelected(-1);
+      return;
+    }
+    const requested = steps.findIndex(({ step }) => step.id === initialStepId);
+    setSelected(requested < 0 || requested === steps.length - 1 ? -1 : requested);
+  }, [initialStepId, round?.runId, steps]);
   const following = selected < 0;
   const index = total === 0 ? -1 : following ? total - 1 : Math.min(selected, total - 1);
   const active = index >= 0 ? steps[index] : undefined;
@@ -76,7 +91,9 @@ export function OdComputerPanel({
         <div className={styles.titles}>
           <span className={styles.title}>{t('task.computer.title')}</span>
           <span className={styles.status} data-testid="od-computer-status">
-            {active ? taskStepBrief(active.step, t) : t('task.computer.empty')}
+            {active
+              ? `${t('brand.appliedToChat', { name: active.step.tool ?? taskStepBrief(active.step, t) })} · ${taskStepTargetLabel(active.step, t)}`
+              : t('task.computer.empty')}
           </span>
         </div>
         <div className={styles.headerActions}>
@@ -84,7 +101,7 @@ export function OdComputerPanel({
             <button
               type="button"
               className={styles.iconBtn}
-              onClick={onToggleView}
+              onClick={() => onToggleView(active?.step.id)}
               aria-label={
                 variant === 'side' ? t('task.computer.expand') : t('task.computer.sideView')
               }
@@ -113,7 +130,11 @@ export function OdComputerPanel({
         {active ? (
           <StepBody
             computer={active}
-            live={live}
+            live={round?.live ?? false}
+            projectId={projectId}
+            projectKind={projectKind}
+            projectFiles={projectFiles}
+            filesRefreshKey={filesRefreshKey}
             projectFileNames={projectFileNames}
             onRequestOpenFile={onRequestOpenFile}
           />
@@ -156,7 +177,7 @@ export function OdComputerPanel({
           data-testid="od-computer-scrubber"
         />
         {following ? (
-          live ? (
+          round?.live ? (
             <span className={styles.liveState} data-testid="od-computer-live">
               <span className={styles.liveDot} aria-hidden />
               {t('task.computer.live')}
@@ -175,10 +196,15 @@ export function OdComputerPanel({
             onClick={() => setSelected(-1)}
             data-testid="od-computer-jump-live"
           >
-            <span className={styles.liveDot} data-live={live} aria-hidden />
+            <span className={styles.liveDot} data-live={round?.live ?? false} aria-hidden />
             {t('task.computer.jumpToLive')}
           </button>
         )}
+      </div>
+      <div className={styles.taskSummary} data-testid="od-computer-task-summary">
+        <span>{t('flow.title')}</span>
+        <span>{t('flow.stepOf', { current: Math.max(index + 1, 0), total: Math.max(total, 1) })}</span>
+        <span>{round?.live ? t('task.computer.live') : round?.status === 'failed' ? t('task.status.failed') : round?.status === 'canceled' ? t('task.status.stopped') : t('task.status.completed')}</span>
       </div>
     </section>
   );
@@ -187,16 +213,39 @@ export function OdComputerPanel({
 function StepBody({
   computer,
   live,
+  projectId,
+  projectKind,
+  projectFiles,
+  filesRefreshKey,
   projectFileNames,
   onRequestOpenFile,
 }: {
   computer: ComputerStep;
   live: boolean;
+  projectId?: string | null;
+  projectKind?: TrackingProjectKind | null;
+  projectFiles: ProjectFile[];
+  filesRefreshKey: number;
   projectFileNames?: Set<string>;
   onRequestOpenFile?: (name: string) => void;
 }) {
   const t = useT();
   const { step, use, result } = computer;
+  const artifactFile = findArtifactFile(projectFiles, step.artifact?.name ?? step.target);
+  if (artifactFile && projectId && projectKind && ['generate', 'inspiration', 'outline', 'write', 'edit'].includes(step.kind)) {
+    return (
+      <div className={styles.artifactViewer} data-testid="od-computer-artifact-viewer">
+        <FileViewer
+          projectId={projectId}
+          projectKind={projectKind}
+          file={artifactFile}
+          filesRefreshKey={filesRefreshKey}
+          isDeck={artifactFile.kind === 'presentation'}
+          streaming={live && step.status === 'running'}
+        />
+      </div>
+    );
+  }
   if (use) {
     return (
       <div className={styles.toolWrap}>
@@ -232,6 +281,15 @@ function StepBody({
     );
   }
   return <div className={styles.generic}>{taskStepBrief(step, t)}</div>;
+}
+
+function findArtifactFile(files: ProjectFile[], raw: string | undefined): ProjectFile | undefined {
+  if (!raw) return undefined;
+  const target = raw.replace(/^\.\//, '').replace(/\\/g, '/');
+  return files.find((file) => {
+    const name = (file.path || file.name).replace(/^\.\//, '').replace(/\\/g, '/');
+    return name === target || name.endsWith(`/${target}`) || target.endsWith(`/${name}`);
+  });
 }
 
 function ComputerGlyph() {

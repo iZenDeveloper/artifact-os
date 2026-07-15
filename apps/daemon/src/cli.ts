@@ -283,6 +283,11 @@ const SHARE_STRING_FLAGS = new Set([
 const SHARE_BOOLEAN_FLAGS = new Set([
   'help', 'h', 'json',
 ]);
+// Hoisted with the other dispatch-touched constants: `od task` is invoked by
+// the top-level SUBCOMMAND_MAP before later module declarations initialize.
+const TASK_STRING_FLAGS = new Set(['daemon-url', 'conversation', 'round']);
+const TASK_BOOLEAN_FLAGS = new Set(['json']);
+const TASK_STEP_ICONS = { running: '◔', done: '✓', error: '✕' };
 // Defined near the top because `runFigma` is reachable through the
 // top-of-file SUBCOMMAND_MAP dispatch during module evaluation; a `const`
 // further down would still be in TDZ when the handler reads it.
@@ -7554,14 +7559,16 @@ Common options:
 // ---------------------------------------------------------------------------
 // Subcommand: od task  (per-round task steps — the Computer replay timeline)
 // ---------------------------------------------------------------------------
-const TASK_STRING_FLAGS = new Set(['daemon-url', 'conversation', 'round']);
-const TASK_BOOLEAN_FLAGS = new Set(['json']);
-const TASK_STEP_ICONS = { running: '◔', done: '✓', error: '✕' };
-
 function taskStepLine(step) {
   const icon = TASK_STEP_ICONS[step.status] ?? '·';
-  const target = step.target ? ` ${step.target}` : '';
-  return `  ${icon} ${step.kind}${target}`;
+  return `  ${icon} ${step.brief || step.title || step.kind}`;
+}
+
+function writeTaskJson(payload) {
+  const json = JSON.stringify(payload, null, 2) + '\n';
+  return new Promise((resolve, reject) => {
+    process.stdout.write(json, (error) => (error ? reject(error) : resolve()));
+  });
 }
 
 async function runTask(args) {
@@ -7601,10 +7608,17 @@ Common options:
   let rounds = Array.isArray(data.rounds) ? data.rounds : [];
   if (flags.round !== undefined && flags.round !== '') {
     const target = Number(flags.round);
+    if (!Number.isInteger(target) || target < 0) {
+      console.error('--round must be a non-negative integer');
+      process.exit(2);
+    }
     rounds = rounds.filter((round) => round.index === target);
   }
   if (flags.json) {
-    return process.stdout.write(JSON.stringify({ ...data, rounds }, null, 2) + '\n');
+    // The top-level CLI router exits as soon as this promise resolves. Waiting
+    // for stdout's write callback keeps large replay timelines from being
+    // truncated when callers pipe the JSON through jq or another process.
+    return writeTaskJson({ ...data, rounds });
   }
   if (rounds.length === 0) {
     console.log('[task] no rounds for this conversation');

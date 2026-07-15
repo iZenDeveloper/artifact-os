@@ -134,6 +134,10 @@ button.computer:focus-visible {
   color: var(--danger, #d9534f);
 }
 
+.terminal.stopped {
+  color: var(--text-muted, var(--text));
+}
+
 .stepOf {
   flex: 0 0 auto;
   color: var(--text-muted, var(--text));
@@ -156,6 +160,60 @@ button.computer:focus-visible {
 
 .bodyInner {
   padding: 2px 0 10px;
+}
+
+.compactList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.compactList li,
+.compactList button {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.compactList li {
+  color: var(--text-muted, var(--text));
+}
+
+.compactList li[data-status='done'],
+.compactList li[data-status='completed'] {
+  color: var(--success, #2e9e5b);
+}
+
+.compactList li[data-status='error'],
+.compactList li[data-status='stopped'] {
+  color: var(--danger, #d9534f);
+}
+
+.compactList button {
+  width: 100%;
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.compactList button:disabled {
+  cursor: default;
+}
+
+.compactList button > span:last-child,
+.compactList li > span:last-child {
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @keyframes pinned-live-pulse {

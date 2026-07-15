@@ -1,21 +1,17 @@
 /**
- * Per-round task steps (specs/current/task-progress-and-computer-replay.zh-CN.md).
+ * Per-round task steps for the replayable Computer.
  *
- * A "task" is one user-prompt round (one run). Its steps are a curated,
- * ORDERED projection of the round's persisted agent events — every important
- * action (search, read, write, plan, generate, think) becomes one replayable
- * step. Derivation is pure and shared: the web Computer panel and the `od task`
- * CLI both call `deriveTaskSteps` so they can never disagree.
- *
- * The step carries STRUCTURED fields only (kind / tool / target / status). The
- * human one-liners are formatted at the edge (web with i18n, CLI plain) so this
- * layer stays free of localization — see `apps/web/src/runtime/task-steps.ts`.
+ * A task is one assistant run. Its steps are a deterministic projection of the
+ * already-persisted `messages.events_json`; no task/step table is required.
+ * This module deliberately stays pure TypeScript so the daemon route, CLI and
+ * web UI all consume the exact same timeline.
  */
 
-import type { PersistedAgentEvent } from './chat.js';
+import type { ChatRunStatus, PersistedAgentEvent } from './chat.js';
 
 export type TaskStepKind =
   | 'plan'
+  | 'outline'
   | 'search'
   | 'search-drilldown'
   | 'read'
@@ -30,48 +26,88 @@ export type TaskStepKind =
 
 export type TaskStepStatus = 'running' | 'done' | 'error';
 
-/** One round (assistant turn) with its derived steps. */
+export type TaskToolUseEvent = Extract<PersistedAgentEvent, { kind: 'tool_use' }>;
+export type TaskToolResultEvent = Extract<PersistedAgentEvent, { kind: 'tool_result' }>;
+
+export interface TaskStepArtifact {
+  action: 'created' | 'updated';
+  projectId: string;
+  artifactId: string;
+  title: string;
+}
+
+export interface TaskStep {
+  /** Tool-use id, or a stable synthetic id for thinking/artifact events. */
+  id: string;
+  kind: TaskStepKind;
+  status: TaskStepStatus;
+  /** Compact, durable fallback copy. The web may localize this at render time. */
+  brief: string;
+  /** Short label used by the Computer header and mini progress list. */
+  title: string;
+  /** Monotonic timestamp. Legacy events deterministically use runStart + index. */
+  ts: number;
+  toolUse?: TaskToolUseEvent;
+  toolResult?: TaskToolResultEvent;
+  artifact?: TaskStepArtifact;
+  /** Convenience fields for plain-text CLI/UI rendering. */
+  tool?: string;
+  target?: string;
+  isError?: boolean;
+}
+
+export interface TaskStepSource {
+  events?: readonly PersistedAgentEvent[];
+  startedAt?: number;
+  createdAt?: number;
+  endedAt?: number;
+}
+
+/** One round (assistant run) with its complete replay timeline. */
 export interface TaskRoundSummary {
   index: number;
   assistantMessageId: string;
   runId: string | null;
-  status: string | null;
+  status: ChatRunStatus | null;
+  startedAt: number | null;
+  endedAt: number | null;
   steps: TaskStep[];
 }
 
-/** `GET /api/conversations/:id/tasks` response — the per-round step timeline
- * that both the Computer panel and `od task steps` render. */
+/** GET /api/conversations/:id/tasks response. */
 export interface TaskRoundsResponse {
   conversationId: string;
   rounds: TaskRoundSummary[];
 }
 
-export interface TaskStep {
-  /** tool_use id, or a synthetic `synthetic:<n>` id for artifact/thinking steps. */
-  id: string;
-  kind: TaskStepKind;
-  status: TaskStepStatus;
-  /** Wire tool name (e.g. `WebSearch`, `Read`), when the step came from a tool. */
-  tool?: string;
-  /** The step's headline token: query / file path / url / command / artifact
-   * title / thinking snippet. Rendered into the localized brief + Computer header. */
-  target?: string;
-  /** True when the tool reported an error. */
-  isError?: boolean;
-}
-
-const PLAN_TOOL_NAMES = new Set(['TodoWrite', 'todowrite', 'todo_write', 'update_plan']);
+const PLAN_TOOL_NAMES = new Set([
+  'TodoWrite', 'todowrite', 'todo_write', 'update_plan',
+  'TaskCreate', 'TaskUpdate', 'task_create', 'task_update',
+]);
 const SEARCH_TOOL_NAMES = new Set(['WebSearch', 'web_search']);
 const FETCH_TOOL_NAMES = new Set(['WebFetch', 'web_fetch']);
 const READ_TOOL_NAMES = new Set(['Read', 'read_file']);
 const WRITE_TOOL_NAMES = new Set(['Write', 'write', 'create_file']);
 const EDIT_TOOL_NAMES = new Set(['Edit', 'str_replace_edit', 'MultiEdit', 'multi_edit']);
 const LIST_TOOL_NAMES = new Set(['Glob', 'list_files', 'Grep']);
-const COMMAND_TOOL_NAMES = new Set(['Bash']);
+const COMMAND_TOOL_NAMES = new Set(['Bash', 'bash', 'exec_command']);
 
-/** Classify a wire tool name into a task-step kind. Matches the web `toolFamily`
- * / `file-ops` conventions so the Computer, the transcript, and the CLI agree. */
-export function taskStepKindForTool(name: string): TaskStepKind {
+const PATH_KEYS = ['file_path', 'filePath', 'path', 'filename', 'target_path', 'targetPath', 'file'];
+const QUERY_KEYS = ['query', 'q', 'search', 'prompt'];
+const URL_KEYS = ['url', 'uri', 'href'];
+const COMMAND_KEYS = ['command', 'cmd', 'script'];
+
+function firstString(input: unknown, keys: readonly string[]): string | undefined {
+  if (!input || typeof input !== 'object') return undefined;
+  const record = input as Record<string, unknown>;
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
+function baseKindForTool(name: string): TaskStepKind {
   if (PLAN_TOOL_NAMES.has(name)) return 'plan';
   if (SEARCH_TOOL_NAMES.has(name)) return 'search';
   if (FETCH_TOOL_NAMES.has(name)) return 'search-drilldown';
@@ -83,22 +119,29 @@ export function taskStepKindForTool(name: string): TaskStepKind {
   return 'tool';
 }
 
-function firstString(input: unknown, keys: readonly string[]): string | undefined {
-  if (!input || typeof input !== 'object') return undefined;
-  const record = input as Record<string, unknown>;
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === 'string' && value.trim()) return value;
+function pathKind(kind: TaskStepKind, target: string | undefined): TaskStepKind {
+  if (!target) return kind;
+  const normalized = target.replace(/\\/gu, '/').toLowerCase();
+  if (kind === 'read' && /^https?:\/\//u.test(normalized)) return 'search-drilldown';
+  if (kind !== 'write' && kind !== 'edit') return kind;
+  if (/(^|\/)generated\/.*(?:outline|plan)\.mdx?$/u.test(normalized)) return 'outline';
+  if (/(^|\/)(?:outline|plan)\.mdx?$/u.test(normalized)) return 'outline';
+  if (/(^|\/)generated\/inspiration(?:\.|\/)/u.test(normalized)) return 'inspiration';
+  if (/(^|\/)inspiration\.(?:json|md|html)$/u.test(normalized)) return 'inspiration';
+  if (/(^|\/)generated\//u.test(normalized)) return 'generate';
+  if (/\.(?:html?|pptx?|pdf|docx?|xlsx?|png|jpe?g|webp|svg|mp4|mov|webm)$/u.test(normalized)) {
+    return 'generate';
   }
-  return undefined;
+  return kind;
 }
 
-const PATH_KEYS = ['file_path', 'filePath', 'path', 'filename', 'target_path', 'targetPath', 'file'];
-const QUERY_KEYS = ['query', 'q', 'search', 'prompt'];
-const URL_KEYS = ['url', 'uri', 'href'];
-const COMMAND_KEYS = ['command', 'cmd', 'script'];
+/** Classify a tool using the same family names consumed by ToolCard. */
+export function taskStepKindForTool(name: string, input?: unknown): TaskStepKind {
+  const base = baseKindForTool(name);
+  return pathKind(base, taskStepTargetForTool(base, input));
+}
 
-/** The headline token for a tool step (query / path / url / command). */
+/** Extract the headline token for a tool step (query / path / URL / command). */
 export function taskStepTargetForTool(kind: TaskStepKind, input: unknown): string | undefined {
   switch (kind) {
     case 'search':
@@ -108,7 +151,10 @@ export function taskStepTargetForTool(kind: TaskStepKind, input: unknown): strin
     case 'read':
     case 'write':
     case 'edit':
-      return firstString(input, PATH_KEYS);
+    case 'outline':
+    case 'inspiration':
+    case 'generate':
+      return firstString(input, PATH_KEYS) ?? firstString(input, URL_KEYS);
     case 'command':
       return firstString(input, COMMAND_KEYS);
     case 'list':
@@ -118,78 +164,168 @@ export function taskStepTargetForTool(kind: TaskStepKind, input: unknown): strin
   }
 }
 
+function clip(value: string, max = 120): string {
+  const clean = value.trim().replace(/\s+/gu, ' ');
+  return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
+}
+
+function basename(path: string): string {
+  const clean = path.split(/[?#]/u, 1)[0]?.replace(/[/\\]+$/u, '') ?? path;
+  return clean.split(/[/\\]/u).filter(Boolean).pop() ?? clean;
+}
+
+function todoHeadline(input: unknown): string | undefined {
+  if (!input || typeof input !== 'object') return undefined;
+  const record = input as { todos?: unknown; plan?: unknown };
+  const items = Array.isArray(record.todos) ? record.todos : Array.isArray(record.plan) ? record.plan : [];
+  for (const raw of items) {
+    if (!raw || typeof raw !== 'object') continue;
+    const item = raw as Record<string, unknown>;
+    if (item.status !== 'in_progress' && item.status !== 'pending') continue;
+    return firstString(item, ['activeForm', 'active_form', 'content', 'step', 'description', 'label', 'text']);
+  }
+  return undefined;
+}
+
+function stepTitle(kind: TaskStepKind, target: string | undefined, tool: string, input: unknown): string {
+  if (kind === 'plan') return clip(todoHeadline(input) ?? firstString(input, ['subject', 'description', 'title', 'task']) ?? 'Task plan', 80);
+  if (kind === 'thinking') return 'Thinking';
+  if (kind === 'outline') return target ? basename(target) : 'Outline';
+  if (kind === 'inspiration') return target ? basename(target) : 'Inspiration';
+  if (target) return clip(['read', 'write', 'edit', 'generate'].includes(kind) ? basename(target) : target, 80);
+  return tool || 'Task step';
+}
+
+function stepBrief(kind: TaskStepKind, title: string, tool: string): string {
+  switch (kind) {
+    case 'plan': return `Updated plan · ${title}`;
+    case 'outline': return `Prepared outline · ${title}`;
+    case 'search': return `Searched · ${title}`;
+    case 'search-drilldown': return `Opened result · ${title}`;
+    case 'read': return `Read · ${title}`;
+    case 'write': return `Created · ${title}`;
+    case 'edit': return `Edited · ${title}`;
+    case 'list': return `Inspected files · ${title}`;
+    case 'command': return `Ran command · ${title}`;
+    case 'inspiration': return `Prepared inspiration · ${title}`;
+    case 'generate': return `Generated · ${title}`;
+    case 'thinking': return title === 'Thinking' ? title : `Thought · ${title}`;
+    default: return `Used ${tool || title}`;
+  }
+}
+
+function sourceParts(source: readonly PersistedAgentEvent[] | TaskStepSource): {
+  events: readonly PersistedAgentEvent[];
+  baseTs: number;
+} {
+  if (Array.isArray(source)) return { events: source, baseTs: 0 };
+  const typed = source as TaskStepSource;
+  return {
+    events: typed.events ?? [],
+    baseTs: typed.startedAt ?? typed.createdAt ?? 0,
+  };
+}
+
+function eventTimestamp(event: PersistedAgentEvent, index: number, baseTs: number): number {
+  const meta = event as PersistedAgentEvent & { ts?: unknown; timestamp?: unknown };
+  const explicit = typeof meta.ts === 'number' ? meta.ts : typeof meta.timestamp === 'number' ? meta.timestamp : null;
+  return explicit != null && Number.isFinite(explicit) ? explicit : baseTs + index;
+}
+
 /**
- * Derive the ordered replayable steps for one round from its persisted events.
+ * Derive the ordered replay timeline for one round.
  *
- * - `tool_use` → one step, deduped by id (first occurrence wins), classified by
- *   tool name and joined with its `tool_result` (by id) for status.
- * - `live_artifact` (created/updated) → a `generate` step.
- * - consecutive `thinking` events collapse into a single `thinking` step.
- *
- * Ordering follows the event array (which the daemon appends in arrival order).
+ * Tool calls pair with their result by id; consecutive thinking deltas collapse
+ * into one step; live artifacts remain explicit replay points. Event order is
+ * preserved exactly and every returned step is self-contained for sharing.
  */
-export function deriveTaskSteps(events: readonly PersistedAgentEvent[]): TaskStep[] {
-  const resultByToolId = new Map<string, { isError: boolean }>();
+export function deriveTaskSteps(source: readonly PersistedAgentEvent[] | TaskStepSource): TaskStep[] {
+  const { events, baseTs } = sourceParts(source);
+  const resultByToolId = new Map<string, TaskToolResultEvent>();
   for (const event of events) {
-    if (event.kind === 'tool_result') {
-      resultByToolId.set(event.toolUseId, { isError: Boolean(event.isError) });
-    }
+    if (event.kind === 'tool_result') resultByToolId.set(event.toolUseId, event);
   }
 
   const steps: TaskStep[] = [];
   const seenToolIds = new Set<string>();
-  let synthetic = 0;
-  let pendingThinking: string[] = [];
+  let pendingThinking: { text: string; index: number; ts: number } | null = null;
 
   const flushThinking = () => {
-    if (pendingThinking.length === 0) return;
-    const text = pendingThinking.join('').trim();
-    pendingThinking = [];
+    if (!pendingThinking) return;
+    const text = clip(pendingThinking.text, 240);
+    const index = pendingThinking.index;
+    const ts = pendingThinking.ts;
+    pendingThinking = null;
     if (!text) return;
     steps.push({
-      id: `synthetic:thinking:${synthetic++}`,
+      id: `thinking:${index}`,
       kind: 'thinking',
       status: 'done',
-      target: text.slice(0, 240),
+      brief: text,
+      title: text,
+      target: text,
+      ts,
     });
   };
 
-  for (const event of events) {
+  events.forEach((event, index) => {
     if (event.kind === 'thinking') {
-      pendingThinking.push(event.text);
-      continue;
+      if (pendingThinking) pendingThinking.text += event.text;
+      else pendingThinking = { text: event.text, index, ts: eventTimestamp(event, index, baseTs) };
+      return;
     }
     flushThinking();
 
     if (event.kind === 'tool_use') {
-      if (seenToolIds.has(event.id)) continue;
+      if (seenToolIds.has(event.id)) return;
       seenToolIds.add(event.id);
-      const kind = taskStepKindForTool(event.name);
+      const baseKind = baseKindForTool(event.name);
+      const initialTarget = taskStepTargetForTool(baseKind, event.input);
+      const kind = pathKind(baseKind, initialTarget);
+      const target = taskStepTargetForTool(kind, event.input) ?? initialTarget;
       const result = resultByToolId.get(event.id);
-      const target = taskStepTargetForTool(kind, event.input);
+      const title = stepTitle(kind, target, event.name, event.input);
       const step: TaskStep = {
         id: event.id,
         kind,
-        tool: event.name,
         status: result ? (result.isError ? 'error' : 'done') : 'running',
+        brief: stepBrief(kind, title, event.name),
+        title,
+        ts: eventTimestamp(event, index, baseTs),
+        tool: event.name,
+        toolUse: event,
       };
-      if (target !== undefined) step.target = target;
+      if (target) step.target = target;
+      if (result) step.toolResult = result;
       if (result?.isError) step.isError = true;
       steps.push(step);
-      continue;
+      return;
     }
 
     if (event.kind === 'live_artifact' && event.action !== 'deleted') {
-      const step: TaskStep = {
-        id: `synthetic:artifact:${synthetic++}`,
+      const title = clip(event.title || event.artifactId, 80);
+      steps.push({
+        id: `artifact:${event.artifactId}:${index}`,
         kind: 'generate',
         status: 'done',
-      };
-      if (event.title) step.target = event.title;
-      steps.push(step);
+        brief: stepBrief('generate', title, 'live_artifact'),
+        title,
+        target: event.title,
+        ts: eventTimestamp(event, index, baseTs),
+        artifact: {
+          action: event.action,
+          projectId: event.projectId,
+          artifactId: event.artifactId,
+          title: event.title,
+        },
+      });
     }
-  }
+  });
   flushThinking();
-
+  let previousTs = Number.NEGATIVE_INFINITY;
+  for (const step of steps) {
+    if (step.ts <= previousTs) step.ts = previousTs + 1;
+    previousTs = step.ts;
+  }
   return steps;
 }

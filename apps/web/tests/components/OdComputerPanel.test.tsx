@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { PersistedAgentEvent } from '@open-design/contracts';
 import { OdComputerPanel } from '../../src/components/OdComputerPanel';
+import { deriveTaskRound } from '../../src/runtime/task-steps';
 
 afterEach(cleanup);
 
@@ -16,21 +17,31 @@ const threeSteps: PersistedAgentEvent[] = [
   { kind: 'tool_result', toolUseId: 't3', content: 'ok', isError: false },
 ];
 
+function round(events: PersistedAgentEvent[], live = false) {
+  return deriveTaskRound({
+    id: 'a1',
+    role: 'assistant',
+    runId: 'run-1',
+    runStatus: live ? 'running' : 'succeeded',
+    events,
+  });
+}
+
 describe('OdComputerPanel', () => {
   it('shows an empty state when the round has no steps', () => {
-    render(<OdComputerPanel events={[]} live={false} variant="side" />);
+    render(<OdComputerPanel round={round([])} variant="side" />);
     expect(screen.getByTestId('od-computer-body').textContent).toContain('Steps appear here');
   });
 
   it('follows live: the newest step is selected and the Live indicator shows', () => {
-    render(<OdComputerPanel events={threeSteps} live variant="side" />);
+    render(<OdComputerPanel round={round(threeSteps, true)} variant="side" />);
     // Newest step (Write deck.html) drives the header status line.
     expect(screen.getByTestId('od-computer-status').textContent).toContain('deck.html');
     expect(screen.getByTestId('od-computer-live')).toBeTruthy();
   });
 
   it('scrubs to a past step and offers Jump to live', () => {
-    render(<OdComputerPanel events={threeSteps} live variant="side" />);
+    render(<OdComputerPanel round={round(threeSteps, true)} variant="side" />);
     const scrubber = screen.getByTestId('od-computer-scrubber') as HTMLInputElement;
 
     fireEvent.change(scrubber, { target: { value: '0' } });
@@ -48,7 +59,7 @@ describe('OdComputerPanel', () => {
   });
 
   it('steps forward and backward through the timeline', () => {
-    render(<OdComputerPanel events={threeSteps} live variant="side" />);
+    render(<OdComputerPanel round={round(threeSteps, true)} variant="side" />);
     // Start following (newest = step 3). Prev → step 2 (Read notes.md).
     fireEvent.click(screen.getByLabelText('Previous step'));
     expect(screen.getByTestId('od-computer-status').textContent).toContain('notes.md');

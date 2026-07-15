@@ -239,8 +239,7 @@ import { PluginDetailsModal } from './PluginDetailsModal';
 import { DesignSystemPreviewModal } from './DesignSystemPreviewModal';
 import { ChatPane } from './ChatPane';
 import { OdComputerOverlay } from './OdComputerOverlay';
-import { deriveCurrentRound } from '../runtime/task-steps';
-import type { OdComputerVariant } from './OdComputerPanel';
+import { deriveCurrentRound, findTaskRound } from '../runtime/task-steps';
 import type { QuestionFormOpenRequest } from './AssistantMessage';
 import type { ChatSendMeta } from './ChatComposer';
 import {
@@ -1609,9 +1608,18 @@ export function ProjectView({
   const [liveArtifacts, setLiveArtifacts] = useState<LiveArtifactSummary[]>([]);
   const [liveArtifactEvents, setLiveArtifactEvents] = useState<LiveArtifactEventItem[]>([]);
   const [workspaceFocused, setWorkspaceFocused] = useState(false);
-  // Replayable Computer panel (spec §3.4): docked side view or global modal.
-  const [computerOpen, setComputerOpen] = useState(false);
-  const [computerVariant, setComputerVariant] = useState<OdComputerVariant>('side');
+  // Replayable Computer panel (spec §3.4): a durable workspace tab plus an
+  // optional focused modal for the same run/step.
+  const [computerOpenRequest, setComputerOpenRequest] = useState<{
+    runId: string;
+    stepId?: string;
+    nonce: number;
+  } | null>(null);
+  const [computerModalRequest, setComputerModalRequest] = useState<{
+    runId: string;
+    stepId?: string;
+  } | null>(null);
+  const computerOpenNonceRef = useRef(0);
   const [commentInspectorActive, setCommentInspectorActive] = useState(false);
   const commentInspectorPortalId = useId();
   const leftInspectorActive = commentInspectorActive;
@@ -1984,25 +1992,25 @@ export function ProjectView({
     () => deriveCurrentRound(messages, { streaming: currentConversationControlStreaming }),
     [messages, currentConversationControlStreaming],
   );
-  const currentRoundEvents = useMemo(
-    () =>
-      currentRound
-        ? messages.find((message) => message.id === currentRound.assistantMessageId)?.events
-        : undefined,
-    [messages, currentRound],
-  );
-  const handleOpenComputer = useCallback(() => setComputerOpen(true), []);
-  // Auto-enlarge on run start: the first time a staged-flow round goes live,
-  // dock the Computer side view so the user watches progress in real time. Keyed
-  // per round so it opens once, and never for plain chat turns.
+  const handleOpenComputer = useCallback((runId: string, stepId?: string) => {
+    computerOpenNonceRef.current += 1;
+    setComputerOpenRequest({ runId, ...(stepId ? { stepId } : {}), nonce: computerOpenNonceRef.current });
+  }, []);
+  const handleOpenComputerModal = useCallback((runId: string, stepId?: string) => {
+    setComputerModalRequest({ runId, ...(stepId ? { stepId } : {}) });
+  }, []);
+  // Auto-open once for every live round, including plain edit/chat turns. The
+  // user can still scrub away; only a new assistant run focuses Computer again.
   const autoOpenedComputerRoundRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!currentConversationControlStreaming || !flowSnapshot || !currentRound) return;
-    if (autoOpenedComputerRoundRef.current === currentRound.assistantMessageId) return;
-    autoOpenedComputerRoundRef.current = currentRound.assistantMessageId;
-    setComputerVariant('side');
-    setComputerOpen(true);
-  }, [currentConversationControlStreaming, flowSnapshot, currentRound]);
+    // The optimistic assistant message exists before the daemon attaches its
+    // real run id. Opening at that point would persist computer:<messageId>,
+    // then open computer:<runId> a moment later for the same turn.
+    if (!currentRound?.live || !currentRound.runAttached) return;
+    if (autoOpenedComputerRoundRef.current === currentRound.runId) return;
+    autoOpenedComputerRoundRef.current = currentRound.runId;
+    handleOpenComputer(currentRound.runId);
+  }, [currentRound, handleOpenComputer]);
   const currentConversationBusy = currentConversationLoading
     || currentConversationStreaming
     || currentConversationHasActiveRun;
@@ -9424,15 +9432,24 @@ export function ProjectView({
           )
         ) : null}
         <OdComputerOverlay
-          open={computerOpen}
-          variant={computerVariant}
-          onVariantChange={setComputerVariant}
-          onClose={() => setComputerOpen(false)}
-          events={currentRoundEvents}
-          live={currentRound?.live ?? false}
-          status={currentRound?.status ?? null}
+          open={computerModalRequest !== null}
+          onClose={() => setComputerModalRequest(null)}
+          round={computerModalRequest
+            ? findTaskRound(messages, computerModalRequest.runId, {
+                streamingRunId: currentRound?.live ? currentRound.runId : null,
+              })
+            : null}
+          initialStepId={computerModalRequest?.stepId}
+          projectId={project.id}
+          projectKind={projectKindFromMetadataToTracking(currentProject.metadata) ?? 'prototype'}
+          projectFiles={projectFiles}
+          filesRefreshKey={filesRefresh}
           projectFileNames={projectFileNames}
           onRequestOpenFile={requestOpenFile}
+          onDock={(runId, stepId) => {
+            setComputerModalRequest(null);
+            handleOpenComputer(runId, stepId);
+          }}
         />
         <FileWorkspace
           projectId={project.id}
@@ -9467,6 +9484,8 @@ export function ProjectView({
           designSystemActivityEvents={designSystemActivityEvents}
           tabsState={openTabsState}
           onTabsStateChange={persistTabsState}
+          computerOpenRequest={computerOpenRequest}
+          onOpenComputerModal={handleOpenComputerModal}
           previewComments={previewComments}
           onSavePreviewComment={savePreviewComment}
           onRemovePreviewComment={removePreviewComment}

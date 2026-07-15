@@ -269,6 +269,47 @@ describe('AssistantMessage feedback gate', () => {
   });
 });
 
+describe('AssistantMessage minimal task transcript', () => {
+  it('collapses completed tool detail into briefs, status, one deliverable, and three one-click follow-ups', () => {
+    const onOpenComputer = vi.fn();
+    const onTaskFollowup = vi.fn();
+    render(
+      <AssistantMessage
+        message={baseMessage({
+          runId: 'run-1',
+          content: 'The deck is ready.',
+          events: [
+            { kind: 'thinking', text: 'I should inspect references.' },
+            { kind: 'tool_use', id: 'search-1', name: 'WebSearch', input: { query: 'best pitch decks' } },
+            { kind: 'tool_result', toolUseId: 'search-1', content: 'results', isError: false },
+            { kind: 'tool_use', id: 'write-1', name: 'Write', input: { file_path: 'deck.html' } },
+            { kind: 'tool_result', toolUseId: 'write-1', content: 'ok', isError: false },
+            { kind: 'text', text: 'The deck is ready.' },
+          ],
+          producedFiles: [producedFile('deck.html'), producedFile('notes.html')],
+        })}
+        streaming={false}
+        projectId="proj-1"
+        isLast
+        onOpenComputer={onOpenComputer}
+        onTaskFollowup={onTaskFollowup}
+      />,
+    );
+
+    expect(screen.getByTestId('assistant-task-status').textContent).toContain('Task completed');
+    expect(screen.getByTestId('primary-deliverable').textContent).toContain('deck.html');
+    expect(screen.getByTestId('primary-deliverable').textContent).not.toContain('notes.html');
+    expect(screen.getAllByTestId(/^task-followup-/)).toHaveLength(3);
+
+    fireEvent.click(screen.getByRole('button', { name: /deck\.html/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Generated.*deck\.html/ }));
+    expect(onOpenComputer).toHaveBeenCalledWith('run-1', 'write-1');
+
+    fireEvent.click(screen.getAllByTestId(/^task-followup-/)[0]!);
+    expect(onTaskFollowup).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('AssistantMessage status badge updates (Bug A)', () => {
   // Regression coverage for the model-badge stale-detail bug. ACP agents
   // emit two `status: 'model'` events per turn:

@@ -70,6 +70,7 @@ import { filterImplicitProducedFiles } from "../produced-files";
 import type { FlowStageArtifactPaths } from '../runtime/flow-artifacts';
 import { FlowDeliveryActions } from './FlowDeliveryActions';
 import { FlowProgressCard } from './FlowProgressCard';
+import { deriveTaskSteps, taskStepBrief, taskStepGlyph, type TaskStep } from '../runtime/task-steps';
 import styles from './AssistantMessage.module.css';
 import type {
   AgentEvent,
@@ -404,6 +405,9 @@ interface Props {
   nextStepSkills?: SkillSummary[];
   toolboxSkillNames?: Partial<Record<DesignToolboxActionId, string | null>>;
   nextStepVariant?: NextStepActionsVariant;
+  /** Opens this run's replayable Computer timeline, optionally at one step. */
+  onOpenComputer?: (runId: string, stepId?: string) => void;
+  onTaskFollowup?: (prompt: string) => void;
 }
 
 // Props compared by reference to decide whether a memoized AssistantMessage can
@@ -428,6 +432,8 @@ const ASSISTANT_MESSAGE_COMPARED_PROPS: Array<keyof Props> = [
   'projectMetadata',
   'projectFileNames',
   'onRequestOpenFile',
+  'onOpenComputer',
+  'onTaskFollowup',
   'onRequestPluginFolderAgentAction',
   'activePluginActionPaths',
   'hiddenPluginActionPaths',
@@ -535,6 +541,8 @@ function AssistantMessageImpl({
   nextStepSkills,
   toolboxSkillNames,
   nextStepVariant = 'default',
+  onOpenComputer,
+  onTaskFollowup,
 }: Props) {
   const t = useT();
   const events =
@@ -544,6 +552,16 @@ function AssistantMessageImpl({
         ? ([{ kind: "text", text: message.content }] satisfies AgentEvent[])
         : [];
   const displayEvents = useMemo(() => dedupeToolUsesById(events), [events]);
+  const taskSteps = useMemo(
+    () => deriveTaskSteps({
+      events: displayEvents,
+      startedAt: message.startedAt,
+      createdAt: message.createdAt,
+      endedAt: message.endedAt,
+    }),
+    [displayEvents, message.createdAt, message.endedAt, message.startedAt],
+  );
+  const minimalTaskTranscript = Boolean(onOpenComputer && taskSteps.length > 0);
   // ChatPane renders the canonical TodoWrite card as a standalone chat row, so
   // we strip TodoWrite tool-groups out of the per-message flow to avoid the
   // same task list rendering twice.
@@ -775,6 +793,7 @@ function AssistantMessageImpl({
             : !!onToolboxAction ||
               !!onNextStepCreateDesignSystem ||
               (!!nextStepArtifactName && (!!onArtifactShare || !!onArtifactDownload));
+  const hasRoundFollowups = minimalTaskTranscript && runSucceeded && !!onTaskFollowup;
   // Terminal turns should leave the user with an actionable path, including
   // canceled/failed/no-artifact turns. Artifact-backed cards still wire Share
   // and Download to the chosen file; incomplete cards fall back to composer
@@ -783,7 +802,7 @@ function AssistantMessageImpl({
     !flowSnapshot &&
     !streaming &&
     runTerminal &&
-    ((!!isLast && hasNextStepPrimary) || showOpenDesignSubmission);
+    (hasRoundFollowups || (!!isLast && hasNextStepPrimary) || showOpenDesignSubmission);
   // Pre-output vs working: before any real content (text / thinking / tools /
   // files) the footer shimmers "Preparing…"; the moment content lands it
   // flips to "Working". The elapsed clock stays anchored to the persisted run
@@ -826,6 +845,13 @@ function AssistantMessageImpl({
         <span className="role-name">{roleName}</span>
       </div>
       <div className="assistant-flow">
+        {minimalTaskTranscript ? (
+          <TaskStepBriefList
+            steps={taskSteps}
+            collapsedByDefault={!streaming && Boolean(message.runStatus ? isTerminalRunStatus(message.runStatus) : message.endedAt)}
+            onOpenStep={(stepId) => onOpenComputer?.(message.runId ?? message.id, stepId)}
+          />
+        ) : null}
         {blocks.map((b, i) => {
           if (b.kind === "text")
             return (
@@ -848,7 +874,8 @@ function AssistantMessageImpl({
                 onBrandBrowserAssistConfirm={onBrandBrowserAssistConfirm}
               />
             );
-          if (b.kind === "thinking")
+          if (b.kind === "thinking") {
+            if (minimalTaskTranscript) return null;
             // Thinking is only "in progress" while this is the trailing block.
             // Once any block (prose / tools) lands after it, the model has
             // moved past thinking, so the block flips to its finished state.
@@ -859,7 +886,9 @@ function AssistantMessageImpl({
                 streaming={streaming && i === blocks.length - 1}
               />
             );
+          }
           if (b.kind === "tool-group") {
+            if (minimalTaskTranscript) return null;
             return (
               <ToolGroupCard
                 key={i}
@@ -872,6 +901,7 @@ function AssistantMessageImpl({
             );
           }
           if (b.kind === "live-tool") {
+            if (minimalTaskTranscript) return null;
             return <LiveCodeBox key={b.id} name={b.name} raw={b.raw} />;
           }
           if (b.kind === "plugin-candidate") {
@@ -929,7 +959,7 @@ function AssistantMessageImpl({
             ].join(":")}
           />
         ) : null}
-        {turnFileOps.length > 0 ? (
+        {!minimalTaskTranscript && turnFileOps.length > 0 ? (
           <FileOpsSummary
             entries={turnFileOps}
             streaming={streaming}
@@ -937,11 +967,18 @@ function AssistantMessageImpl({
             onRequestOpenFile={onRequestOpenFile}
           />
         ) : null}
-        {!streaming && turnFileOps.length === 0 && displayedProduced.length > 0 && projectId ? (
+        {!streaming && displayedProduced.length > 0 && projectId && (minimalTaskTranscript || turnFileOps.length === 0) ? (
           <ProducedFiles
-            files={displayedProduced}
+            files={minimalTaskTranscript ? primaryProducedFiles(displayedProduced) : displayedProduced}
             projectId={projectId}
             onRequestOpenFile={onRequestOpenFile}
+            prominent={minimalTaskTranscript}
+            onOpenPrimary={minimalTaskTranscript
+              ? () => {
+                  const artifactStep = [...taskSteps].reverse().find((step) => ['generate', 'write', 'edit', 'outline', 'inspiration'].includes(step.kind));
+                  onOpenComputer?.(message.runId ?? message.id, artifactStep?.id);
+                }
+              : undefined}
           />
         ) : null}
         {!streaming && projectId && pluginActionFolders.length > 0 ? (
@@ -986,6 +1023,7 @@ function AssistantMessageImpl({
         ) : null}
         {showCompletionRow ? (
           <div className="assistant-completion-row">
+            {runTerminal ? <TaskTerminalBadge status={message.runStatus ?? 'succeeded'} /> : null}
             {showFeedback ? (
               <AssistantFeedback
                 feedback={message.feedback}
@@ -1038,26 +1076,28 @@ function AssistantMessageImpl({
             fileName={isLast ? nextStepFileName : null}
             planFileName={isLast ? planNextStepName : null}
             artifactFileName={isLast ? nextStepArtifactName : null}
-            onShare={isLast && nextStepArtifactName && !isPlanNextStep ? onArtifactShare : undefined}
-            onToolboxAction={isLast ? onToolboxAction : undefined}
-            onPromptAction={isLast ? onNextStepPromptAction : undefined}
-            onAiOptimize={isLast ? onNextStepAiOptimize : undefined}
+            onShare={!hasRoundFollowups && isLast && nextStepArtifactName && !isPlanNextStep ? onArtifactShare : undefined}
+            onToolboxAction={!hasRoundFollowups && isLast ? onToolboxAction : undefined}
+            onPromptAction={!hasRoundFollowups && isLast ? onNextStepPromptAction : undefined}
+            onAiOptimize={!hasRoundFollowups && isLast ? onNextStepAiOptimize : undefined}
             aiOptimizeBusy={Boolean(isLast && nextStepAiOptimizeBusy)}
-            onContinueExtraction={isLast ? onNextStepContinueExtraction : undefined}
+            onContinueExtraction={!hasRoundFollowups && isLast ? onNextStepContinueExtraction : undefined}
             continueExtractionBusy={Boolean(isLast && nextStepContinueExtractionBusy)}
-            onContinueAiExtraction={isLast ? onNextStepContinueAiExtraction : undefined}
+            onContinueAiExtraction={!hasRoundFollowups && isLast ? onNextStepContinueAiExtraction : undefined}
             continueAiExtractionBusy={Boolean(isLast && nextStepContinueAiExtractionBusy)}
-            onCreateDesign={isLast ? onNextStepCreateDesign : undefined}
+            onCreateDesign={!hasRoundFollowups && isLast ? onNextStepCreateDesign : undefined}
             createDesignBusy={Boolean(isLast && nextStepCreateDesignBusy)}
-            onCreateDesignSystem={isLast ? onNextStepCreateDesignSystem : undefined}
+            onCreateDesignSystem={!hasRoundFollowups && isLast ? onNextStepCreateDesignSystem : undefined}
             createDesignSystemBusy={Boolean(isLast && nextStepCreateDesignSystemBusy)}
             onPickSkill={isLast ? onPickSkill : undefined}
-            onDownload={isLast && nextStepFileName ? onArtifactDownload : undefined}
+            onDownload={!hasRoundFollowups && isLast && nextStepFileName ? onArtifactDownload : undefined}
             skills={isLast ? nextStepSkills : undefined}
             toolboxSkillNames={isLast ? toolboxSkillNames : undefined}
-            onShareToOpenDesign={showOpenDesignSubmission ? onShareToOpenDesign : undefined}
+            onShareToOpenDesign={!hasRoundFollowups && showOpenDesignSubmission ? onShareToOpenDesign : undefined}
             shareToOpenDesignBusy={shareToOpenDesignBusy}
             variant={effectiveNextStepVariant}
+            followups={hasRoundFollowups ? taskRoundFollowups(t) : undefined}
+            onFollowup={hasRoundFollowups ? onTaskFollowup : undefined}
           />
         ) : null}
       </div>
@@ -2124,18 +2164,110 @@ function UnfinishedTodosPanel({
   );
 }
 
+function TaskStepBriefList({
+  steps,
+  onOpenStep,
+  collapsedByDefault,
+}: {
+  steps: TaskStep[];
+  onOpenStep: (stepId: string) => void;
+  collapsedByDefault?: boolean;
+}) {
+  const t = useT();
+  const [collapsed, setCollapsed] = useState(Boolean(collapsedByDefault));
+  useEffect(() => {
+    if (collapsedByDefault) setCollapsed(true);
+  }, [collapsedByDefault]);
+  const last = steps[steps.length - 1];
+  return (
+    <div className={styles.taskStepTranscript} data-collapsed={collapsed}>
+      {collapsed && last ? (
+        <button
+          type="button"
+          className={styles.taskStepSummary}
+          onClick={() => setCollapsed(false)}
+          aria-expanded="false"
+        >
+          <span className={styles.taskStepGlyph} aria-hidden>✓</span>
+          <span>{taskStepBrief(last, t)}</span>
+          <span>{steps.length}/{steps.length}</span>
+          <Icon name="chevron-down" size={11} />
+        </button>
+      ) : (
+        <>
+          {collapsedByDefault ? (
+            <button type="button" className={styles.taskStepCollapse} onClick={() => setCollapsed(true)}>
+              {t('designFiles.collapseGroup')}
+            </button>
+          ) : null}
+          <ol className={styles.taskStepBriefs} data-testid="assistant-task-step-briefs">
+            {steps.map((step) => (
+              <li key={step.id} data-status={step.status}>
+                <button type="button" onClick={() => onOpenStep(step.id)}>
+                  <span className={styles.taskStepGlyph} aria-hidden>{taskStepGlyph(step.kind)}</span>
+                  <span>{taskStepBrief(step, t)}</span>
+                  <Icon name="arrow-up" size={10} style={{ transform: 'rotate(90deg)' }} />
+                </button>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+    </div>
+  );
+}
+
+function TaskTerminalBadge({ status }: { status: ChatMessage['runStatus'] }) {
+  const t = useT();
+  const normalized = status === 'failed' ? 'failed' : status === 'canceled' ? 'canceled' : 'succeeded';
+  const label = normalized === 'failed'
+    ? t('task.status.failed')
+    : normalized === 'canceled'
+      ? t('task.status.stopped')
+      : t('task.status.completed');
+  return (
+    <span className={styles.taskTerminalBadge} data-status={normalized} data-testid="assistant-task-status">
+      <span aria-hidden>{normalized === 'succeeded' ? '✓' : normalized === 'failed' ? '✕' : '⊘'}</span>
+      {label}
+    </span>
+  );
+}
+
+function primaryProducedFiles(files: ProjectFile[]): ProjectFile[] {
+  if (files.length <= 1) return files;
+  const preferred = files.find(isPreviewableHtml)
+    ?? files.find((file) => file.kind === 'presentation' || file.kind === 'pdf' || file.kind === 'image')
+    ?? files[0];
+  return preferred ? [preferred] : [];
+}
+
+function taskRoundFollowups(t: TranslateFn) {
+  const improve = t('nextStep.planImproveArtifactTitle');
+  const align = t('nextStep.planMergeTitle');
+  const continueLabel = t('nextStep.projectContinueTitle');
+  return [
+    { id: 'improve', label: improve, prompt: improve },
+    { id: 'align', label: align, prompt: align },
+    { id: 'continue', label: continueLabel, prompt: continueLabel },
+  ];
+}
+
 function ProducedFiles({
   files,
   projectId,
   onRequestOpenFile,
+  prominent = false,
+  onOpenPrimary,
 }: {
   files: ProjectFile[];
   projectId: string;
   onRequestOpenFile?: (name: string) => void;
+  prominent?: boolean;
+  onOpenPrimary?: () => void;
 }) {
   const t = useT();
   return (
-    <div className="produced-files">
+    <div className={`produced-files${prominent ? ` ${styles.primaryDeliverable}` : ''}`} data-testid={prominent ? 'primary-deliverable' : undefined}>
       <div className="produced-files-label">{t("assistant.producedFiles")}</div>
       <div className="produced-files-list">
         {files.map((f) => (
@@ -2148,11 +2280,11 @@ function ProducedFiles({
             </span>
             <span className="produced-file-size">{humanBytes(f.size)}</span>
             <div className="produced-file-actions">
-              {onRequestOpenFile ? (
+              {onOpenPrimary || onRequestOpenFile ? (
                 <button
                   type="button"
                   className="ghost"
-                  onClick={() => onRequestOpenFile(f.name)}
+                  onClick={() => onOpenPrimary ? onOpenPrimary() : onRequestOpenFile?.(f.name)}
                 >
                   {t("assistant.openFile")}
                 </button>

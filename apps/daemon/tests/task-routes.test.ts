@@ -4,6 +4,7 @@ import http from 'node:http';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import type { TaskRoundsResponse } from '@open-design/contracts';
 
 import { registerTaskRoutes } from '../src/routes/tasks.js';
 import {
@@ -57,7 +58,7 @@ describe('task routes', () => {
       const res = await fetch(
         `http://127.0.0.1:${port}/api/conversations/${conversationId}/tasks`,
       );
-      const body = res.status === 200 ? await res.json() : null;
+      const body = res.status === 200 ? await res.json() as TaskRoundsResponse : null;
       return { status: res.status, body };
     } finally {
       server.close();
@@ -99,16 +100,16 @@ describe('task routes', () => {
     const { status, body } = await getTasks('conv-1');
 
     expect(status).toBe(200);
-    expect(body.conversationId).toBe('conv-1');
-    expect(body.rounds).toHaveLength(2);
+    expect(body?.conversationId).toBe('conv-1');
+    expect(body?.rounds).toHaveLength(2);
 
-    const [first, second] = body.rounds;
+    const [first, second] = body!.rounds;
     expect(first).toMatchObject({ index: 0, runId: 'run-1', status: 'succeeded' });
-    expect(first.steps.map((s: { kind: string }) => s.kind)).toEqual(['search', 'write']);
+    expect(first.steps.map((s: { kind: string }) => s.kind)).toEqual(['search', 'generate']);
     expect(first.steps[0]).toMatchObject({ target: 'pitch decks', status: 'done' });
 
     // The edit round is a separate task, still live, with an unresolved step.
     expect(second).toMatchObject({ index: 1, runId: 'run-2', status: 'running' });
-    expect(second.steps[0]).toMatchObject({ kind: 'edit', status: 'running' });
+    expect(second.steps[0]).toMatchObject({ kind: 'generate', status: 'running' });
   });
 });

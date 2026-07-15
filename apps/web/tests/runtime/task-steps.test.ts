@@ -41,9 +41,9 @@ describe('taskStepBrief', () => {
   const brief = (step: TaskStep) => taskStepBrief(step, t);
 
   it('uses the file basename for file steps and the raw query for search', () => {
-    expect(brief({ id: '1', kind: 'read', status: 'done', target: 'src/deep/app.ts' })).toContain('app.ts');
-    expect(brief({ id: '2', kind: 'search', status: 'done', target: 'hello world' })).toContain('hello world');
-    expect(brief({ id: '3', kind: 'plan', status: 'done' })).toBe('task.step.plan');
+    expect(brief({ id: '1', kind: 'read', status: 'done', target: 'src/deep/app.ts', brief: 'Read', title: 'app.ts', ts: 1 })).toContain('app.ts');
+    expect(brief({ id: '2', kind: 'search', status: 'done', target: 'hello world', brief: 'Search', title: 'hello world', ts: 2 })).toContain('hello world');
+    expect(brief({ id: '3', kind: 'plan', status: 'done', brief: 'Plan', title: 'Plan', ts: 3 })).toBe('task.step.plan');
   });
 });
 

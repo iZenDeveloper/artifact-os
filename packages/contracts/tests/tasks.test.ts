@@ -11,6 +11,8 @@ describe('taskStepKindForTool', () => {
     expect(taskStepKindForTool('Write')).toBe('write');
     expect(taskStepKindForTool('Edit')).toBe('edit');
     expect(taskStepKindForTool('TodoWrite')).toBe('plan');
+    expect(taskStepKindForTool('TaskCreate')).toBe('plan');
+    expect(taskStepKindForTool('TaskUpdate')).toBe('plan');
     expect(taskStepKindForTool('Bash')).toBe('command');
     expect(taskStepKindForTool('Glob')).toBe('list');
     expect(taskStepKindForTool('SomethingElse')).toBe('tool');

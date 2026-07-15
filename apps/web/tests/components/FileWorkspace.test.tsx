@@ -3281,3 +3281,71 @@ describe('FileWorkspace empty-project generation contract', () => {
     },
   );
 });
+
+describe('FileWorkspace Computer task tab', () => {
+  it('reconciles an optimistic message-id Computer tab with the attached run-id tab', () => {
+    render(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[]}
+        liveArtifacts={[]}
+        onRefreshFiles={vi.fn()}
+        isDeck={false}
+        tabsState={{
+          tabs: ['computer:message-1', 'computer:run-1', 'computer:run-1'],
+          active: 'computer:run-1',
+        }}
+        onTabsStateChange={vi.fn()}
+        messages={[{
+          id: 'message-1',
+          role: 'assistant',
+          content: '',
+          runId: 'run-1',
+          runStatus: 'running',
+          events: [],
+        }]}
+      />,
+    );
+
+    expect(screen.getAllByRole('tab', { name: 'Computer' })).toHaveLength(1);
+  });
+
+  it('opens a durable computer:<runId> tab and renders the requested replay step', async () => {
+    const onTabsStateChange = vi.fn();
+    const props: React.ComponentProps<typeof FileWorkspace> = {
+      projectId: 'project-1',
+      projectKind: 'prototype',
+      files: [],
+      liveArtifacts: [],
+      onRefreshFiles: vi.fn(),
+      isDeck: false,
+      tabsState: { tabs: [], active: DESIGN_FILES_TAB },
+      onTabsStateChange,
+      messages: [{
+        id: 'a1',
+        role: 'assistant',
+        content: '',
+        runId: 'run-1',
+        runStatus: 'running',
+        events: [{ kind: 'tool_use', id: 'search-1', name: 'WebSearch', input: { query: 'task replay' } }],
+      }],
+      streaming: true,
+      computerOpenRequest: { runId: 'run-1', stepId: 'search-1', nonce: 1 },
+    };
+    const { rerender } = render(
+      <FileWorkspace
+        {...props}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('od-computer-panel')).toBeTruthy());
+    rerender(<FileWorkspace {...props} tabsState={{ tabs: ['computer:run-1'], active: 'computer:run-1' }} />);
+    expect(screen.getByRole('tab', { name: 'Computer' })).toBeTruthy();
+    expect(screen.getByTestId('od-computer-status').textContent).toContain('task replay');
+    expect(onTabsStateChange).toHaveBeenCalledWith(expect.objectContaining({
+      tabs: ['computer:run-1'],
+      active: 'computer:run-1',
+    }));
+  });
+});

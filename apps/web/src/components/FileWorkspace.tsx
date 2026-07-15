@@ -81,9 +81,12 @@ import {
   type ChatAttachment,
   type ChatCommentAttachment,
   type Conversation,
+  computerTabId,
   conversationIdFromSideChatTabId,
+  isComputerTabId,
   isSideChatTabId,
   isTerminalTabId,
+  runIdFromComputerTabId,
   terminalIdFromTabId,
   liveArtifactSummaryToWorkspaceEntry,
   type LiveArtifactSummary,
@@ -128,6 +131,8 @@ import {
   type HardDeliverySignal,
 } from './FileViewer';
 import { Icon, type IconName } from './Icon';
+import { OdComputerPanel } from './OdComputerPanel';
+import { findTaskRound } from '../runtime/task-steps';
 import { Toast } from './Toast';
 import { TabLauncherMenu } from './workspace/TabLauncherMenu';
 import { buildLauncherActions, type LauncherContext } from './workspace/tab-launcher';
@@ -283,6 +288,8 @@ interface Props {
   onActiveContextChange?: (context: WorkspaceContextItem | null) => void;
   onWorkspaceContextsChange?: (contexts: WorkspaceContextItem[]) => void;
   messages?: ChatMessage[];
+  computerOpenRequest?: { runId: string; stepId?: string; nonce: number } | null;
+  onOpenComputerModal?: (runId: string, stepId?: string) => void;
   artifactHtml?: string | null;
   flowWorkspace?: FlowWorkspaceDescriptor | null;
   conversationError?: string | null;
@@ -1304,6 +1311,8 @@ export function FileWorkspace({
   onActiveContextChange,
   onWorkspaceContextsChange,
   messages = [],
+  computerOpenRequest = null,
+  onOpenComputerModal,
   artifactHtml = null,
   flowWorkspace = null,
   conversationId,
@@ -1342,7 +1351,24 @@ export function FileWorkspace({
   const defaultRootTab = designSystemProject ? DESIGN_SYSTEM_TAB : DESIGN_FILES_TAB;
   // Persisted tabs come from the parent. Active tab can transiently point
   // at a pending sketch — pending sketches are not in tabsState.tabs.
-  const persistedTabs = tabsState.tabs;
+  const canonicalComputerTabs = useMemo(() => {
+    const ids = new Set<string>();
+    for (const message of messages) {
+      if (message.role !== 'assistant') continue;
+      ids.add(computerTabId(message.runId ?? message.id));
+    }
+    return ids;
+  }, [messages]);
+  // Tab state can be hydrated from the route while an imperative open request
+  // for the same tab is already in flight. Treat tab ids as a set at this
+  // boundary. Once messages are present, also discard an optimistic
+  // computer:<messageId> superseded by the daemon's computer:<runId>.
+  const persistedTabs = useMemo(
+    () => Array.from(new Set(tabsState.tabs)).filter(
+      (name) => canonicalComputerTabs.size === 0 || !isComputerTabId(name) || canonicalComputerTabs.has(name),
+    ),
+    [canonicalComputerTabs, tabsState.tabs],
+  );
   // Launcher "create" actions (New Terminal / Side Chat) resolve
   // asynchronously; keep the latest committed tab state out of render
   // closures so opening the new tab appends to the freshest list instead of
@@ -1481,6 +1507,10 @@ export function FileWorkspace({
   const visibleFiles = useMemo(
     () => files.filter((file) => !isLiveArtifactImplementationPath(file.name)),
     [files],
+  );
+  const visibleFileNames = useMemo(
+    () => new Set(visibleFiles.map((file) => file.name)),
+    [visibleFiles],
   );
 
   const projectPagePresets = useMemo(
@@ -1678,7 +1708,12 @@ export function FileWorkspace({
     active: string | null,
     nextBrowserTabs = browserTabs,
   ): OpenTabsState {
-    const state: OpenTabsState = { tabs, active };
+    const normalizedTabs = Array.from(new Set(tabs)).filter(
+      (name) => canonicalComputerTabs.size === 0 || !isComputerTabId(name) || canonicalComputerTabs.has(name),
+    );
+    // Active may deliberately be a root, browser, Questions, or flow-stage
+    // tab that does not live in this file-tab array.
+    const state: OpenTabsState = { tabs: normalizedTabs, active };
     if (nextBrowserTabs.length > 0) state.browserTabs = nextBrowserTabs;
     return state;
   }
@@ -2067,6 +2102,14 @@ export function FileWorkspace({
     setActiveTab(name);
   }
   openFileRef.current = openFile;
+
+  useEffect(() => {
+    if (!computerOpenRequest) return;
+    openFile(computerTabId(computerOpenRequest.runId), { forcePersist: true });
+    // The nonce represents an imperative focus request; the tab-state writes
+    // inside openFile intentionally are not dependencies.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [computerOpenRequest?.nonce]);
 
   const handleBrowserPageSnapshotToast = useCallback((event: BrowserPageSnapshotToastEvent) => {
     const details = event.elapsedSeconds == null
@@ -3646,6 +3689,7 @@ export function FileWorkspace({
             const kind = liveArtifact ? 'live-artifact' : onDisk?.kind ?? (isSketchName(name) ? 'sketch' : 'text');
             const isTerminal = isTerminalTabId(name);
             const isSideChat = isSideChatTabId(name);
+            const isComputer = isComputerTabId(name);
             // Terminal and side-chat tabs are not files: give them a friendly
             // label + glyph instead of the raw `terminal:<id>` / `chat:<id>` id.
             let label: string;
@@ -3661,6 +3705,8 @@ export function FileWorkspace({
                 (c) => c.id === conversationIdFromSideChatTabId(name),
               );
               label = conv?.title?.trim() || t('workspace.sideChatDefaultTitle');
+            } else if (isComputer) {
+              label = t('task.computer.title');
             } else {
               label = `${liveArtifact?.title ?? name}${dirtyMark}`;
             }
@@ -3668,6 +3714,8 @@ export function FileWorkspace({
               ? 'terminal'
               : isSideChat
                 ? 'comment'
+                : isComputer
+                  ? 'sparkles'
                 : undefined;
             const handlers = tabHandlersFor(name);
             return (
@@ -4026,6 +4074,25 @@ export function FileWorkspace({
           ) : (
             <div className="viewer-empty">{t('workspace.loadingSketch')}</div>
           )
+        ) : isComputerTabId(activeTab) ? (
+          <OdComputerPanel
+            round={findTaskRound(messages, runIdFromComputerTabId(activeTab), {
+              streamingRunId: streaming ? runIdFromComputerTabId(activeTab) : null,
+            })}
+            variant="side"
+            initialStepId={
+              computerOpenRequest?.runId === runIdFromComputerTabId(activeTab)
+                ? computerOpenRequest.stepId
+                : undefined
+            }
+            projectId={projectId}
+            projectKind={projectKind}
+            projectFiles={visibleFiles}
+            filesRefreshKey={filesRefreshKey}
+            projectFileNames={visibleFileNames}
+            onRequestOpenFile={openFile}
+            onToggleView={(stepId) => onOpenComputerModal?.(runIdFromComputerTabId(activeTab), stepId)}
+          />
         ) : isSideChatTabId(activeTab) && chatConfig && chatAgentsById ? (
           <SideChatTab
             key={`${projectId}:${activeTab}`}
@@ -6410,6 +6477,7 @@ function isPrimaryWorkspaceTab(
     isBrowserTabId(name)
     || isTerminalTabId(name)
     || isSideChatTabId(name)
+    || isComputerTabId(name)
     || name === DESIGN_SYSTEM_TAB
     || name === QUESTIONS_TAB
     || name === FLOW_STAGE_TAB

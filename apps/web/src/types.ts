@@ -126,7 +126,8 @@ export type ProjectWorkspaceTabId =
   | string
   | LiveArtifactTabId
   | SideChatTabId
-  | TerminalTabId;
+  | TerminalTabId
+  | ComputerTabId;
 
 export function liveArtifactTabId(artifactId: string): LiveArtifactTabId {
   return `live:${artifactId}`;
@@ -174,6 +175,22 @@ export function isTerminalTabId(tabId: string): tabId is TerminalTabId {
 
 export function terminalIdFromTabId(tabId: TerminalTabId): string {
   return tabId.slice('terminal:'.length);
+}
+
+// Replayable task activity workspace. Each assistant run owns one durable
+// Computer tab so past rounds remain inspectable after newer turns arrive.
+export type ComputerTabId = `computer:${string}`;
+
+export function computerTabId(runId: string): ComputerTabId {
+  return `computer:${runId}`;
+}
+
+export function isComputerTabId(tabId: string): tabId is ComputerTabId {
+  return tabId.startsWith('computer:') && tabId.length > 'computer:'.length;
+}
+
+export function runIdFromComputerTabId(tabId: ComputerTabId): string {
+  return tabId.slice('computer:'.length);
 }
 
 export type LiveArtifactViewerTab =

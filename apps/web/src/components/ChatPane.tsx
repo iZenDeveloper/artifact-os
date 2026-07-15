@@ -47,6 +47,7 @@ import {
   isDesignSystemWorkspacePrompt,
 } from '../design-system-auto-prompt';
 import { isTodoWriteToolName, latestTodoWriteInputForPinnedCard } from '../runtime/todos';
+import { deriveCurrentRound } from '../runtime/task-steps';
 import type { AppConfig, ChatAttachment, ChatCommentAttachment, ChatMessage, ChatMessageFeedbackChange, Conversation, DesignSystemSummary, PreviewComment, Project, ProjectFile, ProjectMetadata, SkillSummary } from '../types';
 import { agentDisplayName } from '../utils/agentLabels';
 import { commentTargetDisplayName, commentsToAttachments, simplePositionLabel } from '../comments';
@@ -514,7 +515,7 @@ interface Props {
   // produced-file chips all call this.
   onRequestOpenFile?: (name: string) => void;
   /** Opens the replayable Computer panel from the pinned task-progress card. */
-  onOpenComputer?: () => void;
+  onOpenComputer?: (runId: string, stepId?: string) => void;
   onRequestPluginDetails?: (pluginId: string) => void;
   onRequestDesignSystemDetails?: (system: DesignSystemSummary) => void;
   onRequestPluginFolderAgentAction?: (
@@ -1095,6 +1096,9 @@ export function ChatPane({
       sessionMode: options?.sessionMode,
     });
   }, [onSessionModeChange, sessionMode]);
+  const handleTaskFollowup = useCallback((prompt: string) => {
+    onSend(prompt, [], []);
+  }, [onSend]);
   const handlePickSkill = useCallback((skillId: string) => {
     composerRef.current?.applyDesignToolboxSkill(skillId);
   }, []);
@@ -1237,6 +1241,15 @@ export function ChatPane({
     }
     return null;
   }, [displayMessages]);
+  const currentTaskRound = useMemo(
+    () => deriveCurrentRound(displayMessages, { streaming: streaming || hasActiveRunMessage }),
+    [displayMessages, hasActiveRunMessage, streaming],
+  );
+  const currentTaskTodoInput = useMemo(() => {
+    if (!currentTaskRound) return null;
+    const message = displayMessages.find((item) => item.id === currentTaskRound.assistantMessageId);
+    return message ? latestTodoWriteInputForPinnedCard([message]) : null;
+  }, [currentTaskRound, displayMessages]);
   const retryAssistant = retryableAssistantMessage(displayMessages, lastAssistantId, streaming);
   // The failed run's error event lives on the (persisted) assistant message, so
   // the error card + AMR card survive a reload — unlike the ephemeral global
@@ -2478,6 +2491,8 @@ export function ChatPane({
                 forkingMessageId={forkingMessageId}
                 t={t}
                 onOpenQuestions={onOpenQuestions}
+                onOpenComputer={onOpenComputer}
+                onTaskFollowup={handleTaskFollowup}
                 scrollContainerRef={logRef}
               />
               {displayError ? (
@@ -2797,15 +2812,17 @@ export function ChatPane({
                 }
               : undefined}
           />
-          {flowSnapshot ? (
+          {currentTaskRound ? (
             <PinnedTaskProgress
               flow={flowSnapshot}
-              live={streaming || hasActiveRunMessage}
+              round={currentTaskRound}
+              todoInput={currentTaskTodoInput}
+              live={currentTaskRound.live}
               status={lastAssistantRunStatus}
               stageArtifactPaths={stageArtifactPaths}
               stageActions={pinnedFlowStageActions}
               onOpenArtifact={onRequestOpenFile}
-              onOpenComputer={onOpenComputer}
+              onOpenComputer={(stepId) => onOpenComputer?.(currentTaskRound.runId, stepId)}
             />
           ) : null}
           <div
@@ -2937,6 +2954,8 @@ function ChatRows({
   forkingMessageId,
   t,
   onOpenQuestions,
+  onOpenComputer,
+  onTaskFollowup,
   scrollContainerRef,
 }: {
   messages: ChatMessage[];
@@ -2998,6 +3017,8 @@ function ChatRows({
   forkingMessageId?: string | null;
   t: TranslateFn;
   onOpenQuestions?: (request?: QuestionFormOpenRequest) => void;
+  onOpenComputer?: (runId: string, stepId?: string) => void;
+  onTaskFollowup?: (prompt: string) => void;
   scrollContainerRef: MutableRefObject<HTMLDivElement | null>;
 }) {
   const conversationTodoInput = useMemo(
@@ -3089,6 +3110,8 @@ function ChatRows({
         suppressDirectionForms={hasActiveDesignSystem}
         hasDesignSystemContext={hasActiveDesignSystem || !!activeDesignSystem}
         onOpenQuestions={onOpenQuestions}
+        onOpenComputer={onOpenComputer}
+        onTaskFollowup={onTaskFollowup}
         onBrandBrowserAssistConfirm={
           onBrandBrowserAssistConfirm
             ? (card) => assistantCallbacksRef.current.onBrandBrowserAssistConfirm?.(card)
