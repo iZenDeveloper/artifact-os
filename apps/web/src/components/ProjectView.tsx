@@ -1326,6 +1326,15 @@ function isOpenCodeByokChatProtocol(
 function projectEventToAgentEvent(evt: ProjectEvent): LiveArtifactEventItem['event'] | null {
   if (evt.type === 'file-changed') return null;
   if (evt.type === 'conversation-created') return null;
+  // Collab realtime hop-2 invalidations are handled directly in
+  // `handleProjectEvent` (they trigger targeted re-fetches, not artifact cards).
+  if (
+    evt.type === 'comment-changed' ||
+    evt.type === 'presence-changed' ||
+    evt.type === 'project-metadata-changed'
+  ) {
+    return null;
+  }
   if (evt.type === 'live_artifact') {
     return {
       kind: 'live_artifact',
@@ -2824,10 +2833,33 @@ export function ProjectView({
     refreshFilesAndDesignMd,
     { wait: 80, maxWait: 250 },
   );
+  // Collab realtime hop-2: poll-as-floor for the comment poll below. True while
+  // the project events SSE (which now also carries `comment-changed`) is live;
+  // the comment poll slows to a safety-net cadence while true and runs at full
+  // ~5s cadence while false (SSE unavailable — packaged old shell / tests).
+  const [projectEventsSseConnected, setProjectEventsSseConnected] = useState(false);
+  // Ref to the (later-defined) comment refresher so the SSE handler above can
+  // call it without a temporal-dead-zone reference.
+  const refreshPreviewCommentsRef = useRef<(() => Promise<void>) | null>(null);
   const handleProjectEvent = useCallback((evt: ProjectEvent) => {
     if (evt.type === 'file-changed') {
       iframeKeepAlivePool.evictProject(project.id);
       coalescedFileChangedRefresh();
+      return;
+    }
+    if (evt.type === 'comment-changed') {
+      // Collab realtime hop-2 (reference path): the daemon merged a teammate's
+      // comment change into local storage and pushed this thin signal. Re-fetch
+      // the comment list so it appears without waiting for the fallback poll.
+      // `refreshPreviewComments` is defined later in this component, so reach it
+      // through a ref to avoid a temporal-dead-zone reference here.
+      if (evt.projectId === project.id) void refreshPreviewCommentsRef.current?.();
+      return;
+    }
+    if (evt.type === 'presence-changed' || evt.type === 'project-metadata-changed') {
+      // Presence + project metadata refresh through their own poll loops
+      // (CollabClient status/heartbeat); nothing extra to do here yet, but we
+      // stop these from falling through to the live-artifact path.
       return;
     }
     if (evt.type === 'conversation-created') {
@@ -2876,7 +2908,9 @@ export function ProjectView({
     // also imply the conversation transcript changed.
     setDesignMdRefreshKey((n) => n + 1);
   }, [coalescedFileChangedRefresh, iframeKeepAlivePool, onProjectsRefresh, refreshLiveArtifacts, project.id]);
-  useProjectFileEvents(project.id, daemonLive, handleProjectEvent);
+  useProjectFileEvents(project.id, daemonLive, handleProjectEvent, {
+    onConnectedChange: setProjectEventsSseConnected,
+  });
 
   const activePromptContextSignature = useMemo(() => {
     const skill = project.skillId
@@ -3586,19 +3620,33 @@ export function ProjectView({
     );
   }, [project.id, activeConversationId]);
 
+  // Expose the latest refresher to the SSE handler (defined earlier) so a
+  // pushed `comment-changed` can re-fetch immediately.
+  useEffect(() => {
+    refreshPreviewCommentsRef.current = refreshPreviewComments;
+    return () => {
+      refreshPreviewCommentsRef.current = null;
+    };
+  }, [refreshPreviewComments]);
+
   // Cross-daemon comment sync: the daemon merges teammates' comments into the
   // local store on a background poll, but the web panel only shows what it last
-  // fetched. Re-pull on a ~5s cadence (matching the daemon's collab poll) plus on
-  // tab re-focus so the owner sees a member's freshly-synced comment appear
-  // without a manual refresh. Gated on `projectCollab.enabled` so a personal /
-  // off-team project never polls. This only replaces the loaded comment LIST —
-  // the composer / create-form drafts are separate local state, so an in-flight
-  // comment the user is typing is never clobbered.
+  // fetched. Collab realtime hop-2 makes this SSE-first: the daemon pushes a thin
+  // `comment-changed` on the project events stream when its poll merges a change,
+  // and `handleProjectEvent` re-fetches on receipt. This poll is the FLOOR — it
+  // slows to a safety-net cadence (30s) while the SSE is connected and runs at
+  // the original ~5s cadence while the SSE is unavailable (packaged old shell /
+  // tests), so a client whose stream never connects has zero regression.
+  // Gated on `projectCollab.enabled` so a personal / off-team project never
+  // polls. This only replaces the loaded comment LIST — the composer /
+  // create-form drafts are separate local state, so an in-flight comment the
+  // user is typing is never clobbered.
   useEffect(() => {
     if (!projectCollab.enabled || !activeConversationId) return undefined;
+    const pollMs = projectEventsSseConnected ? 30_000 : 5_000;
     const interval = setInterval(() => {
       void refreshPreviewComments();
-    }, 5_000);
+    }, pollMs);
     const onVisible = () => {
       if (document.visibilityState === 'visible') void refreshPreviewComments();
     };
@@ -3607,7 +3655,7 @@ export function ProjectView({
       clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [projectCollab.enabled, activeConversationId, refreshPreviewComments]);
+  }, [projectCollab.enabled, activeConversationId, refreshPreviewComments, projectEventsSseConnected]);
 
   const savePreviewComment = useCallback(
     async (

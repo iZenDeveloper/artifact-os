@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
-import type {
-  LiveArtifactRefreshSsePayload,
-  LiveArtifactSsePayload,
-  ProjectConversationCreatedSsePayload,
+import {
+  COLLAB_PROJECT_INVALIDATION_EVENTS,
+  type CollabProjectInvalidationSsePayload,
+  type LiveArtifactRefreshSsePayload,
+  type LiveArtifactSsePayload,
+  type ProjectConversationCreatedSsePayload,
 } from '@open-design/contracts';
 export interface ProjectFileChangeEvent {
   type: 'file-changed';
@@ -18,10 +20,17 @@ export type ProjectConversationCreatedEvent = ProjectConversationCreatedSsePaylo
 
 export type ProjectLiveArtifactEvent = LiveArtifactSsePayload | LiveArtifactRefreshSsePayload;
 
+// Collab realtime hop-2: project-scoped thin invalidation events multiplexed
+// onto this same stream (`comment-changed`, `presence-changed`,
+// `project-metadata-changed`). The consumer re-fetches the affected resource on
+// receipt — the event carries no body.
+export type ProjectCollabInvalidationEvent = CollabProjectInvalidationSsePayload;
+
 export type ProjectEvent =
   | ProjectFileChangeEvent
   | ProjectConversationCreatedEvent
-  | ProjectLiveArtifactEvent;
+  | ProjectLiveArtifactEvent
+  | ProjectCollabInvalidationEvent;
 
 export interface ProjectEventsConnectionOptions {
   /** Test seam: substitute a mock EventSource constructor. */
@@ -33,6 +42,13 @@ export interface ProjectEventsConnectionOptions {
   /** Test seam: setTimeout/clearTimeout substitutes for fake timers. */
   setTimeoutFn?: typeof setTimeout;
   clearTimeoutFn?: typeof clearTimeout;
+  /**
+   * Collab realtime hop-2 poll-as-floor signal. Fires `true` when the stream is
+   * live (the daemon's `ready` handshake) and `false` on error/disconnect, so a
+   * consumer can slow its fallback poll while the SSE is delivering and resume
+   * full-cadence polling when it drops.
+   */
+  onConnectedChange?: (connected: boolean) => void;
 }
 
 const DEFAULT_INITIAL_BACKOFF = 1000;
@@ -80,6 +96,7 @@ export function createProjectEventsConnection(
     source = es;
     es.addEventListener('ready', () => {
       backoff = initialBackoff;
+      options.onConnectedChange?.(true);
     });
     es.addEventListener('file-changed', (evt) => {
       try {
@@ -129,8 +146,30 @@ export function createProjectEventsConnection(
         }
       }
     });
+    // Collab realtime hop-2: forward the project-scoped thin invalidation events
+    // (`comment-changed`, `presence-changed`, `project-metadata-changed`). The
+    // consumer re-fetches the affected resource — this only signals what changed.
+    for (const eventName of COLLAB_PROJECT_INVALIDATION_EVENTS) {
+      es.addEventListener(eventName, (evt) => {
+        try {
+          const data = JSON.parse(
+            (evt as MessageEvent).data,
+          ) as ProjectCollabInvalidationEvent;
+          onChange(data);
+        } catch (err) {
+          if (
+            typeof process !== 'undefined' &&
+            process.env?.NODE_ENV === 'development'
+          ) {
+            // eslint-disable-next-line no-console
+            console.warn(`[project-events] malformed ${eventName} payload`, err);
+          }
+        }
+      });
+    }
     es.addEventListener('error', () => {
       if (cancelled) return;
+      options.onConnectedChange?.(false);
       es.close();
       if (source === es) source = null;
       const delay = backoff;
@@ -173,15 +212,30 @@ export function useProjectFileEvents(
     onChangeRef.current = onChange;
   }, [onChange]);
 
+  // Keep the poll-as-floor status callback in a ref so a fresh identity does not
+  // tear down and rebuild the SSE (which would churn the server sink).
+  const onConnectedChangeRef = useRef(options.onConnectedChange);
+  useEffect(() => {
+    onConnectedChangeRef.current = options.onConnectedChange;
+  }, [options.onConnectedChange]);
+
   useEffect(() => {
     if (!enabled || !projectId) return;
     if (typeof window === 'undefined') return;
     const conn = createProjectEventsConnection(
       projectId,
       (evt) => onChangeRef.current(evt),
-      options,
+      {
+        ...options,
+        onConnectedChange: (connected) => onConnectedChangeRef.current?.(connected),
+      },
     );
-    return () => conn.close();
+    return () => {
+      conn.close();
+      // Reset to "not connected" on teardown so a consumer's poll resumes full
+      // cadence between projects / when the stream is intentionally closed.
+      onConnectedChangeRef.current?.(false);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, enabled, options.EventSourceCtor, options.initialBackoffMs, options.maxBackoffMs]);
 }

@@ -4,12 +4,15 @@ import type {
   CollabCloudMemberDirectoryEntry,
   CollabCloudMembersResponse,
 } from '@open-design/contracts';
+import { useWorkspaceInvalidation } from './workspace-events';
 
 // Poll cadence for the collab-cloud member directory. ~15s is light enough to
 // keep a comment author's name / role fresh (a member registers on join) without
 // a heavy loop; it mirrors `useTeamProjects`'s cadence. The read is daemon-local
 // (the daemon caches the directory) so the poll just refetches the whole list.
 const TEAM_MEMBERS_POLL_MS = 15_000;
+// Poll-as-floor cadence while the workspace SSE is connected.
+const TEAM_MEMBERS_SSE_FLOOR_MS = 60_000;
 
 export interface TeamMembersState {
   members: CollabCloudMemberDirectoryEntry[];
@@ -57,15 +60,27 @@ export function useTeamMembers(): TeamMembersState {
     }
   }, []);
 
+  // Collab realtime hop-2: subscribe to the workspace SSE and re-fetch on a
+  // pushed `members-changed` (someone joined/left/changed role). The daemon's
+  // workspace-invalidation poller diffs the roster and pushes only on an actual
+  // change. `connected` drives poll-as-floor below.
+  const { connected: sseConnected } = useWorkspaceInvalidation(
+    { 'members-changed': () => void load() },
+    { onActive: () => void load() },
+  );
+
   useEffect(() => {
     void load();
+    // Poll-as-floor: slow the poll while the SSE is delivering, full cadence when
+    // the stream is unavailable so a non-SSE client has zero regression.
+    const intervalMs = sseConnected ? TEAM_MEMBERS_SSE_FLOOR_MS : TEAM_MEMBERS_POLL_MS;
     const interval = setInterval(() => {
       // Skip the poll while the tab is hidden — no point refreshing the member
       // directory for a backgrounded window.
       if (document.visibilityState === 'visible') void load();
-    }, TEAM_MEMBERS_POLL_MS);
+    }, intervalMs);
     return () => clearInterval(interval);
-  }, [load]);
+  }, [load, sseConnected]);
 
   const byId = useMemo(() => {
     const map = new Map<string, CollabCloudMemberDirectoryEntry>();

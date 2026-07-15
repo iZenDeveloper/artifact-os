@@ -8,6 +8,7 @@ import type {
   WorkspaceTeamProjectsResponse,
 } from '@open-design/contracts';
 import { coalescedGet } from '../lib/coalesced-get';
+import { useWorkspaceInvalidation } from './workspace-events';
 
 // One shared read of the workspace context (`GET /api/workspace/context`) for the
 // navigation shell. The daemon proxies B's `CurrentWorkspaceContext`; `context`
@@ -76,12 +77,24 @@ export function useWorkspaceContext(): WorkspaceContextState {
     void loadContext();
   }, [loadContext]);
 
+  // Collab realtime hop-2: subscribe to the workspace SSE and re-fetch on a
+  // pushed `workspace-context-changed`. `connected` drives poll-as-floor below.
+  // `loadContext` is the coalesced no-arg reader (it keeps the last-known context
+  // on failure rather than clearing), so the SSE re-fetch just calls it.
+  const { connected: sseConnected } = useWorkspaceInvalidation(
+    { 'workspace-context-changed': () => void loadContext() },
+    { onActive: () => void loadContext() },
+  );
+
   useEffect(() => {
+    // Poll-as-floor: slow the poll while the SSE is delivering, run it at full
+    // cadence when the stream is unavailable so there is no regression.
+    const intervalMs = sseConnected ? WORKSPACE_CONTEXT_SSE_FLOOR_MS : WORKSPACE_CONTEXT_POLL_MS;
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') void loadContext();
-    }, WORKSPACE_CONTEXT_POLL_MS);
+    }, intervalMs);
     return () => clearInterval(interval);
-  }, [loadContext]);
+  }, [loadContext, sseConnected]);
 
   useEffect(() => {
     const refresh = () => {
@@ -111,6 +124,9 @@ export function useWorkspaceContext(): WorkspaceContextState {
 }
 
 const WORKSPACE_CONTEXT_POLL_MS = 30_000;
+// Poll-as-floor cadence while the workspace SSE is connected — a slow safety net
+// behind the pushed `workspace-context-changed` events.
+const WORKSPACE_CONTEXT_SSE_FLOOR_MS = 120_000;
 export const WORKSPACE_CONTEXT_REFRESH_EVENT = 'od:workspace-context-refresh';
 const WORKSPACE_CONTEXT_REFRESH_STORAGE_KEY = 'od.workspaceContext.refreshAt';
 
@@ -158,6 +174,16 @@ export function useWorkspaceBilling(): WorkspaceBillingSummary | null {
   useEffect(() => {
     void loadBilling(true);
   }, [loadBilling]);
+
+  // Collab realtime hop-2: subscribe to `billing-changed` for a pushed refresh
+  // (e.g. after the daemon later gains a billing change source) and re-fetch on
+  // reconnect/visible via `onActive`. The poll cadence is intentionally left
+  // UNCHANGED: the daemon does not yet emit `billing-changed`, so slowing the
+  // poll would delay periodic billing updates — see the report's follow-ups.
+  useWorkspaceInvalidation(
+    { 'billing-changed': () => void loadBilling(false) },
+    { onActive: () => void loadBilling(false) },
+  );
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -226,6 +252,8 @@ export interface TeamProjectsState {
 // a teammate sees a newly shared project within a few seconds, while focus and
 // visibility changes still refresh immediately.
 const TEAM_PROJECTS_POLL_MS = 15_000;
+// Poll-as-floor cadence while the workspace SSE is connected.
+const TEAM_PROJECTS_SSE_FLOOR_MS = 60_000;
 export const TEAM_PROJECTS_CHANGED_EVENT = 'od:team-projects-changed';
 const TEAM_PROJECTS_CHANGED_STORAGE_KEY = 'od.teamProjects.changedAt';
 
@@ -283,19 +311,31 @@ export function useTeamProjects(): TeamProjectsState {
     void loadFull();
   }, [nonce, loadFull]);
 
+  // Collab realtime hop-2: subscribe to the workspace SSE and re-fetch on a
+  // pushed `team-projects-changed` (a teammate shared/unshared a project). The
+  // daemon's workspace-invalidation poller diffs the team list and pushes only
+  // on an actual change. `connected` drives poll-as-floor below.
+  const { connected: sseConnected } = useWorkspaceInvalidation(
+    { 'team-projects-changed': () => void loadFull() },
+    { onActive: () => void loadFull() },
+  );
+
   // Lightweight polling so teammates see each other's shares without refreshing.
   // A daemon-local read is cheap enough to just refetch; offline errors keep the
-  // last snapshot until the next tick.
+  // last snapshot until the next tick. Poll-as-floor: slow the poll while the SSE
+  // is delivering, run it at full cadence when the stream is unavailable so a
+  // client whose SSE never connects has zero regression.
   useEffect(() => {
+    const intervalMs = sseConnected ? TEAM_PROJECTS_SSE_FLOOR_MS : TEAM_PROJECTS_POLL_MS;
     const interval = setInterval(() => {
       // Only poll while the tab is actually visible — an idle/backgrounded tab
       // was refetching the whole team list (and cascading cover fetches) every
       // few seconds for nothing. Focus/visibility/changed-event handlers below
       // still refresh immediately, so a teammate's share shows up right away.
       if (document.visibilityState === 'visible') void loadFull();
-    }, TEAM_PROJECTS_POLL_MS);
+    }, intervalMs);
     return () => clearInterval(interval);
-  }, [loadFull]);
+  }, [loadFull, sseConnected]);
 
   // Demo and real team usage often switch between two browser windows after a
   // teammate shares a project. Refresh immediately on focus/visibility instead
