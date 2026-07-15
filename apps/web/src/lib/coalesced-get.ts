@@ -68,3 +68,12 @@ export function coalescedGet<T>(
   );
   return entry.value;
 }
+
+/**
+ * Drop every in-flight/settled entry. The module-level cache would otherwise
+ * leak a settled result from one test into the next same-key call within the
+ * share window; a global test `beforeEach` calls this so each test starts clean.
+ */
+export function resetCoalescedGet(): void {
+  entries.clear();
+}

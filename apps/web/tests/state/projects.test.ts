@@ -79,6 +79,27 @@ describe('listProjects', () => {
 
     await expect(listProjects({ throwOnError: true })).rejects.toThrow('projects 503');
   });
+
+  it('coalesces a burst of identical reads into a single request', async () => {
+    // A rapid tab switch (草稿 ↔ 全部项目) or several separately-mounted grids
+    // each call listProjects at once; without coalescing that is one vela-backed
+    // request — and one spawned CLI subprocess — per caller, which overwhelmed
+    // the daemon and hung the loader. Identical in-flight reads must share one.
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      new Response(JSON.stringify({ projects: [{ id: 'p1' }] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const [a, b, c] = await Promise.all([listProjects(), listProjects(), listProjects()]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(a).toEqual([{ id: 'p1' }]);
+    expect(b).toBe(a);
+    expect(c).toBe(a);
+  });
 });
 
 describe('createProject', () => {

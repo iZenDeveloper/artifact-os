@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { coalescedGet } from '../lib/coalesced-get';
 import { Button, VisuallyHidden } from '@open-design/components';
 import { useAnalytics } from '../analytics/provider';
 import {
@@ -333,11 +334,14 @@ export function DesignSystemsTab({
   // simply empty and the share action is available but a no-op.
   const refreshTeamShared = useCallback(async (options: { refreshSystems?: boolean } = {}) => {
     try {
-      const res = await fetch('/api/workspace/design-systems/team', { cache: 'no-store' });
-      if (!res.ok) return;
-      const body = (await res.json()) as { ids?: unknown };
-      if (Array.isArray(body.ids)) {
-        const next = new Set(body.ids.filter((id): id is string => typeof id === 'string'));
+      const ids = await coalescedGet('workspace-design-systems-team', async () => {
+        const res = await fetch('/api/workspace/design-systems/team', { cache: 'no-store' });
+        if (!res.ok) throw new Error(`design-systems-team ${res.status}`);
+        const body = (await res.json()) as { ids?: unknown };
+        return body.ids;
+      });
+      if (Array.isArray(ids)) {
+        const next = new Set(ids.filter((id): id is string => typeof id === 'string'));
         setTeamSharedIds((prev) => setsEqual(prev, next) ? prev : next);
         if (options.refreshSystems) await onSystemsRefresh?.();
       }

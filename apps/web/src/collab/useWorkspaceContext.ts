@@ -120,13 +120,13 @@ export function useWorkspaceBilling(): WorkspaceBillingSummary | null {
 
   const loadBilling = useCallback(async (clearOnFailure: boolean) => {
     try {
-      const res = await fetch('/api/workspace/billing', { cache: 'no-store' });
-      if (!res.ok) {
-        if (clearOnFailure && mountedRef.current) setSummary(null);
-        return;
-      }
-      const body = (await res.json()) as WorkspaceBillingResponse;
-      if (mountedRef.current) setSummary(body.summary ?? null);
+      const summary = await coalescedGet('workspace-billing', async () => {
+        const res = await fetch('/api/workspace/billing', { cache: 'no-store' });
+        if (!res.ok) throw new Error(`billing ${res.status}`);
+        const body = (await res.json()) as WorkspaceBillingResponse;
+        return body.summary ?? null;
+      });
+      if (mountedRef.current) setSummary(summary);
     } catch {
       if (clearOnFailure && mountedRef.current) setSummary(null);
     }
@@ -235,17 +235,14 @@ export function useTeamProjects(): TeamProjectsState {
   // background refresh has no spinner.
   const loadFull = useCallback(async () => {
     try {
-      const res = await fetch('/api/workspace/projects/team');
-      if (!res.ok) {
-        if (mountedRef.current) {
-          setProjects([]);
-          setLoading(false);
-        }
-        return;
-      }
-      const body = (await res.json()) as WorkspaceTeamProjectsResponse;
+      const projects = await coalescedGet('workspace-team-projects', async () => {
+        const res = await fetch('/api/workspace/projects/team');
+        if (!res.ok) throw new Error(`team-projects ${res.status}`);
+        const body = (await res.json()) as WorkspaceTeamProjectsResponse;
+        return body.projects ?? [];
+      });
       if (mountedRef.current) {
-        setProjects(body.projects ?? []);
+        setProjects(projects);
         setLoading(false);
       }
     } catch {

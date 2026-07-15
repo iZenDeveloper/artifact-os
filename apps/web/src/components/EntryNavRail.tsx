@@ -23,6 +23,7 @@
 // personal_byok workspace still has full team features.
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { coalescedGet } from '../lib/coalesced-get';
 import type {
   WorkspaceActiveResponse,
   WorkspaceBillingSummary,
@@ -226,13 +227,13 @@ export function EntryNavRail({
   async function loadWorkspaceDirectory() {
     setWorkspaceDirectoryLoading(true);
     try {
-      const response = await fetch('/api/workspace/directory', { cache: 'no-store' });
-      if (!response.ok) {
-        setWorkspaceItems([]);
-        return;
-      }
-      const body = (await response.json()) as WorkspaceDirectoryResponse;
-      setWorkspaceItems(body.items ?? []);
+      const items = await coalescedGet('workspace-directory', async () => {
+        const response = await fetch('/api/workspace/directory', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`directory ${response.status}`);
+        const body = (await response.json()) as WorkspaceDirectoryResponse;
+        return body.items ?? [];
+      });
+      setWorkspaceItems(items);
     } catch {
       setWorkspaceItems([]);
     } finally {

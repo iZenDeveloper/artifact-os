@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { coalescedGet } from '../lib/coalesced-get';
 import type {
   CollabCloudMemberDirectoryEntry,
   CollabCloudMembersResponse,
@@ -43,13 +44,13 @@ export function useTeamMembers(): TeamMembersState {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/workspace/members');
-      if (!res.ok) {
-        if (mountedRef.current) setMembers([]);
-        return;
-      }
-      const body = (await res.json()) as CollabCloudMembersResponse;
-      if (mountedRef.current) setMembers(body.members ?? []);
+      const members = await coalescedGet('workspace-members', async () => {
+        const res = await fetch('/api/workspace/members');
+        if (!res.ok) throw new Error(`members ${res.status}`);
+        const body = (await res.json()) as CollabCloudMembersResponse;
+        return body.members ?? [];
+      });
+      if (mountedRef.current) setMembers(members);
     } catch {
       // Personal / offline / daemon without the collab cloud: no directory.
       if (mountedRef.current) setMembers([]);

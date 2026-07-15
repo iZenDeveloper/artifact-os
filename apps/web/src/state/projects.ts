@@ -5,6 +5,7 @@
 // These helpers fail soft (returning null / [] on transport errors) so
 // the UI can stay rendered when the daemon is briefly unreachable.
 
+import { coalescedGet } from '../lib/coalesced-get';
 import type {
   AppliedPluginSnapshot,
   ApplyResult,
@@ -90,24 +91,31 @@ export async function listProjects(options?: {
   workspaceContext?: WorkspaceCollabContext | null;
   workspaceView?: WorkspaceProjectListView;
 }): Promise<Project[]> {
+  const context = options?.workspaceContext ?? null;
+  // Coalesce identical in-flight reads: a burst of tab switches or several
+  // separately-mounted grids asking for the same workspace+view collapses to a
+  // single vela-backed request instead of spawning one CLI subprocess each.
+  const key = context
+    ? `workspace-projects:${context.workspaceId}:${options?.workspaceView ?? 'drafts'}`
+    : 'local-projects';
   try {
-    const context = options?.workspaceContext ?? null;
-    const resp = context
-      ? await fetch(
-          `/api/workspaces/${encodeURIComponent(context.workspaceId)}/projects?view=${encodeURIComponent(options?.workspaceView ?? 'drafts')}`,
-          { headers: workspaceProjectHeaders(context) },
-        )
-      : await fetch('/api/projects');
-    if (!resp.ok) {
-      if (options?.throwOnError) throw new Error(`projects ${resp.status}`);
-      return [];
-    }
-    if (context) {
-      const json = (await resp.json()) as WorkspaceProjectsResponse;
-      return (json.projects ?? []).map((summary) => summary.project as Project);
-    }
-    const json = (await resp.json()) as { projects: Project[] };
-    return json.projects ?? [];
+    return await coalescedGet(key, async () => {
+      const resp = context
+        ? await fetch(
+            `/api/workspaces/${encodeURIComponent(context.workspaceId)}/projects?view=${encodeURIComponent(options?.workspaceView ?? 'drafts')}`,
+            { headers: workspaceProjectHeaders(context) },
+          )
+        : await fetch('/api/projects');
+      // Throw inside the coalesced run so a failed read is not cached — the next
+      // caller/poll retries immediately (see coalesced-get.ts).
+      if (!resp.ok) throw new Error(`projects ${resp.status}`);
+      if (context) {
+        const json = (await resp.json()) as WorkspaceProjectsResponse;
+        return (json.projects ?? []).map((summary) => summary.project as Project);
+      }
+      const json = (await resp.json()) as { projects: Project[] };
+      return json.projects ?? [];
+    });
   } catch (err) {
     if (options?.throwOnError) throw err;
     return [];
