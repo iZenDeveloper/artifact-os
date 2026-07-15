@@ -315,6 +315,27 @@ describe('AssistantMessage status badge updates (Bug A)', () => {
     expect(link.getAttribute('href')).toBe('https://open-design.ai/amr/wallet');
     expect(link.classList.contains('md-link')).toBe(true);
   });
+
+  it('renders context compaction status with a readable label and detail', () => {
+    render(
+      <AssistantMessage
+        message={baseMessage({
+          events: [
+            {
+              kind: 'status',
+              label: 'context_compaction',
+              detail: 'Compacting conversation history after a context-length error',
+            } as ChatMessage['events'][number],
+          ],
+        })}
+        streaming
+        projectId="proj-1"
+      />,
+    );
+
+    expect(screen.getByText('compacting context')).toBeTruthy();
+    expect(screen.getByText('Compacting conversation history after a context-length error')).toBeTruthy();
+  });
 });
 
 describe('AssistantMessage thinking blocks', () => {

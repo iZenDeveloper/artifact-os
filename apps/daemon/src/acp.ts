@@ -187,6 +187,14 @@ function extractAcpUpdateText(update: JsonObject): string | null {
   return null;
 }
 
+function extractAcpStatusDetail(update: JsonObject): string | undefined {
+  for (const key of ['message', 'detail']) {
+    const value = update[key];
+    if (typeof value === 'string' && value.trim()) return value;
+  }
+  return undefined;
+}
+
 function acpRawEventShape(update: JsonObject) {
   const content = update.content;
   const rawInput = update.rawInput;
@@ -305,6 +313,21 @@ function rpcErrorData(raw: unknown): unknown {
 function rpcErrorRetryable(data: unknown): boolean | undefined {
   const details = asObject(data);
   return typeof details?.retryable === 'boolean' ? details.retryable : undefined;
+}
+
+function inferRpcErrorRetryable(message: string, data: unknown): boolean | undefined {
+  const details = asObject(data);
+  const text = [
+    message,
+    details ? JSON.stringify(details) : '',
+  ].join('\n');
+  if (/\b(request_too_large|request body exceeds configured limit)\b/i.test(text)) {
+    return false;
+  }
+  if (/\b(upstream_error|stream idle timeout|no data received within configured window|temporarily unavailable|overloaded|gateway timeout|service unavailable)\b/i.test(text)) {
+    return true;
+  }
+  return undefined;
 }
 
 function promotedOpenCodeSessionErrorPayload(data: unknown, fallbackMessage: string) {
@@ -1378,7 +1401,8 @@ export function attachAcpSession({
         failWithPayload(promotedPayload);
         return;
       }
-      const retryable = rpcErrorRetryable(details);
+      const retryable = rpcErrorRetryable(details)
+        ?? inferRpcErrorRetryable(rpcErr, details);
       fail(rpcErr, {
         details,
         ...(retryable === undefined ? {} : { retryable }),
@@ -1399,9 +1423,11 @@ export function attachAcpSession({
         }
       }
       if (update.sessionUpdate !== 'agent_message_chunk' && update.sessionUpdate !== 'agent_thought_chunk') {
+        const detail = extractAcpStatusDetail(update);
         send('agent', {
           type: 'status',
           label: String(update.sessionUpdate || 'session_update'),
+          ...(detail ? { detail } : {}),
           elapsedMs: Date.now() - runStartedAt,
         });
         emitAcpRawShapeDiagnostic(update);

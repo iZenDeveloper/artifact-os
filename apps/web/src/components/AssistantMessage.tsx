@@ -2658,12 +2658,13 @@ function StatusPill({
 }) {
   const variant =
     label === "error" ? "error" : label === "warning" ? "warning" : undefined;
+  const displayLabel = label === "context_compaction" ? "compacting context" : label;
   return (
     <div
       className={`status-pill${variant ? ` is-${variant}` : ""}`}
       data-status={label}
     >
-      <span className="status-label">{label}</span>
+      <span className="status-label">{displayLabel}</span>
       {detail ? <span className="status-detail">{renderStatusDetail(detail)}</span> : null}
     </div>
   );

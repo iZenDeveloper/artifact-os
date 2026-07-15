@@ -201,6 +201,50 @@ describe('AMR (vela) ACP session resume — full server cycle', () => {
     expect(await readInvocations(logPath)).toEqual(['new', 'new']);
   });
 
+  it('clears a resumed AMR session after request_too_large so the next turn starts fresh', async () => {
+    binDir = await mkdtemp(path.join(os.tmpdir(), 'od-amr-largecontext-bin-'));
+    const logPath = path.join(binDir, 'invocations.jsonl');
+    const bin = await writeVelaWrapper(binDir, 'vela-largecontext', {
+      logPath,
+      promptErrorOnLoad: '[code=request_too_large] request body exceeds configured limit',
+    });
+
+    clearTelemetryEnv();
+    started = (await startServer({ port: 0, returnServer: true })) as StartedServer;
+    await putConfig(started.url, {
+      agentId: 'amr',
+      agentCliEnv: { amr: { VELA_BIN: bin } },
+      telemetry: { metrics: true, content: false, artifactManifest: false },
+      privacyDecisionAt: Date.now(),
+    });
+
+    const conversationId = await createConversation(started.url);
+
+    // Turn 1 captures the durable upstream OpenCode handle.
+    expect((await sendRunAndWait(started.url, conversationId, 'first request')).status)
+      .toBe('succeeded');
+
+    // Turn 2 resumes that handle, but the upstream request is now too large.
+    // The run should fail honestly, but the daemon must clear the handle so
+    // the next user retry does not load the same overgrown native session.
+    const turn2 = await sendRunAndWait(started.url, conversationId, 'second request');
+    expect(turn2.status).toBe('failed');
+    expect(turn2.error ?? '').toMatch(/request body exceeds configured limit/i);
+
+    const turn2Events = await readRunEvents(turn2.eventsLogPath);
+    expect(hasDiagnostic(turn2Events, {
+      type: 'agent_session_cleared_after_prompt_too_large',
+      reason: 'prompt_too_large',
+      stale_session_cleared: true,
+    })).toBe(true);
+
+    // Turn 3 proves the stale handle was discarded: it opens session/new and
+    // succeeds instead of session/load-ing the same oversized upstream session.
+    expect((await sendRunAndWait(started.url, conversationId, 'third request')).status)
+      .toBe('succeeded');
+    expect(await readInvocations(logPath)).toEqual(['new', 'load', 'new']);
+  });
+
   it('persists the concrete resolved model for a default turn (equivalent explicit follow-up resumes)', async () => {
     binDir = await mkdtemp(path.join(os.tmpdir(), 'od-amr-defaultmodel-bin-'));
     const logPath = path.join(binDir, 'invocations.jsonl');
@@ -270,7 +314,12 @@ describe('AMR (vela) ACP session resume — full server cycle', () => {
 async function writeVelaWrapper(
   dir: string,
   name: string,
-  opts: { logPath: string; resumeFailed?: boolean; omitHandle?: boolean },
+  opts: {
+    logPath: string;
+    resumeFailed?: boolean;
+    omitHandle?: boolean;
+    promptErrorOnLoad?: string;
+  },
 ): Promise<string> {
   const bin = path.join(dir, name);
   const lines = [
@@ -282,6 +331,9 @@ async function writeVelaWrapper(
   ];
   if (opts.resumeFailed) lines.push('export FAKE_VELA_RESUME_FAILED=1');
   if (opts.omitHandle) lines.push('export FAKE_VELA_OMIT_OPENCODE_SESSION_ID=1');
+  if (opts.promptErrorOnLoad) {
+    lines.push(`export FAKE_VELA_PROMPT_ERROR_ON_LOAD=${JSON.stringify(opts.promptErrorOnLoad)}`);
+  }
   lines.push(`exec ${JSON.stringify(process.execPath)} ${JSON.stringify(FAKE_VELA)} "$@"`, '');
   await writeFile(bin, lines.join('\n'), 'utf8');
   await chmod(bin, 0o755);

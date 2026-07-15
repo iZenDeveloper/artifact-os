@@ -306,6 +306,36 @@ test('attachAcpSession keeps incremental ACP message chunks unchanged', () => {
   assert.deepEqual(textDeltas, ['Agent Haven', ' — managed AI agents']);
 });
 
+test('attachAcpSession forwards ACP status message details', () => {
+  const child = new FakeAcpChild();
+  const events: Array<{ event: string; payload: unknown }> = [];
+
+  attachAcpSession({
+    child: child as never,
+    prompt: 'describe the project',
+    cwd: '/tmp/od-project',
+    model: null,
+    mcpServers: [],
+    send: (event, payload) => events.push({ event, payload }),
+  });
+
+  writeAcpResult(child, 1, {});
+  writeAcpResult(child, 2, { sessionId: 'session-1' });
+  writeAcpUpdate(child, {
+    sessionUpdate: 'context_compaction',
+    status: 'in_progress',
+    message: 'Compacting conversation history after a context-length error',
+  });
+  writeAcpResult(child, 3, { usage: { inputTokens: 1, outputTokens: 2 } });
+
+  const status = events
+    .filter((entry) => entry.event === 'agent')
+    .map((entry) => entry.payload as { type?: string; label?: string; detail?: string })
+    .find((payload) => payload.type === 'status' && payload.label === 'context_compaction');
+
+  assert.equal(status?.detail, 'Compacting conversation history after a context-length error');
+});
+
 test('attachAcpSession suppresses split duplicate DSML artifact text and preserves trailing prose', () => {
   const child = new FakeAcpChild();
   const events: Array<{ event: string; payload: unknown }> = [];
@@ -1424,6 +1454,46 @@ test('attachAcpSession preserves structured OpenCode session error details from 
       details,
     },
   });
+});
+
+test('attachAcpSession marks OpenCode upstream idle session errors retryable', () => {
+  const child = new FakeAcpChild();
+  const events: Array<{ event: string; payload: unknown }> = [];
+
+  attachAcpSession({
+    child: child as never,
+    prompt: 'hello',
+    cwd: '/tmp/od-project',
+    model: null,
+    mcpServers: [],
+    send: (event, payload) => events.push({ event, payload }),
+  });
+
+  const details = {
+    kind: 'opencode_prompt_error',
+    phase: 'event_stream',
+    runtime: 'opencode',
+    openCodeSessionId: 'ses_test',
+    lastEventType: 'tool_call_update',
+    lastToolKind: 'todowrite',
+  };
+
+  writeAcpResult(child, 1, {});
+  writeAcpResult(child, 2, { sessionId: 'session-1' });
+  writeAcpError(child, 3, {
+    code: -32600,
+    message:
+      'opencode event stream: {"type":"session.error","properties":{"error":{"data":{"message":"[code=upstream_error] stream idle timeout: no data received within configured window"}}}}',
+    data: details,
+  });
+
+  const errorEvents = events.filter((entry) => entry.event === 'error');
+  assert.equal(errorEvents.length, 1);
+  const payload = errorEvents[0]?.payload as {
+    error?: { retryable?: unknown; details?: unknown };
+  };
+  assert.equal(payload.error?.retryable, true);
+  assert.deepEqual(payload.error?.details, details);
 });
 
 test('attachAcpSession resumes via session/load when resumeSessionId is set', () => {
