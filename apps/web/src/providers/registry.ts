@@ -73,6 +73,7 @@ import {
   isOpenDesignHostAvailable,
   openHostExternalUrl,
 } from '@open-design/host';
+import { coalescedGet } from '../lib/coalesced-get';
 
 export const DEFAULT_DEPLOY_PROVIDER_ID = 'vercel-self';
 export const CLOUDFLARE_PAGES_PROVIDER_ID = 'cloudflare-pages';
@@ -1483,14 +1484,18 @@ export async function createSocialSharePayload(
 // Project files — all paths are scoped under .od/projects/<id>/ on disk.
 
 export async function fetchProjectFiles(projectId: string): Promise<ProjectFile[]> {
-  try {
-    const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}/files`);
-    if (!resp.ok) return [];
-    const json = (await resp.json()) as { files: ProjectFile[] };
-    return json.files ?? [];
-  } catch {
-    return [];
-  }
+  // Coalesced: the grid card, recents strip, and files panel all fetch the same
+  // project's files on a home-view mount burst — collapse the duplicates.
+  return coalescedGet(`project-files:${projectId}`, async () => {
+    try {
+      const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}/files`);
+      if (!resp.ok) return [];
+      const json = (await resp.json()) as { files: ProjectFile[] };
+      return json.files ?? [];
+    } catch {
+      return [];
+    }
+  });
 }
 
 export async function fetchProjectFolders(projectId: string): Promise<ProjectFolder[]> {
@@ -1539,17 +1544,21 @@ export async function deleteProjectFolder(
 }
 
 export async function fetchLiveArtifacts(projectId: string): Promise<LiveArtifactSummary[]> {
-  try {
-    const resp = await fetch(`/api/live-artifacts?projectId=${encodeURIComponent(projectId)}`);
-    if (!resp.ok) return [];
-    const json = (await resp.json()) as {
-      artifacts?: LiveArtifactSummary[];
-      liveArtifacts?: LiveArtifactSummary[];
-    };
-    return json.liveArtifacts ?? json.artifacts ?? [];
-  } catch {
-    return [];
-  }
+  // Coalesced: every project card fetches its live artifacts on the same
+  // navigation burst (twice per project in traces) — share one request.
+  return coalescedGet(`live-artifacts:${projectId}`, async () => {
+    try {
+      const resp = await fetch(`/api/live-artifacts?projectId=${encodeURIComponent(projectId)}`);
+      if (!resp.ok) return [];
+      const json = (await resp.json()) as {
+        artifacts?: LiveArtifactSummary[];
+        liveArtifacts?: LiveArtifactSummary[];
+      };
+      return json.liveArtifacts ?? json.artifacts ?? [];
+    } catch {
+      return [];
+    }
+  });
 }
 
 export async function fetchLiveArtifact(

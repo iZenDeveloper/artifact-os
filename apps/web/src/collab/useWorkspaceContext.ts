@@ -7,6 +7,7 @@ import type {
   WorkspaceContextResponse,
   WorkspaceTeamProjectsResponse,
 } from '@open-design/contracts';
+import { coalescedGet } from '../lib/coalesced-get';
 
 // One shared read of the workspace context (`GET /api/workspace/context`) for the
 // navigation shell. The daemon proxies B's `CurrentWorkspaceContext`; `context`
@@ -33,12 +34,14 @@ export function useWorkspaceContext(): WorkspaceContextState {
 
   const loadContext = useCallback(async (clearOnFailure: boolean) => {
     try {
-      const res = await fetch('/api/workspace/context', { cache: 'no-store' });
-      if (!res.ok) {
-        if (clearOnFailure && mountedRef.current) setState({ context: null, loading: false });
-        return;
-      }
-      const body = (await res.json()) as WorkspaceContextResponse;
+      // Coalesced: every mounted consumer of this hook (and every focus/pageshow
+      // refresh across them) fires the same read on a home-view burst — collapse
+      // them to one request. The nav shell tolerates sub-second staleness.
+      const body = await coalescedGet('workspace-context', async () => {
+        const res = await fetch('/api/workspace/context', { cache: 'no-store' });
+        if (!res.ok) throw new Error(`workspace-context ${res.status}`);
+        return (await res.json()) as WorkspaceContextResponse;
+      });
       if (mountedRef.current) setState({ context: body.context ?? null, loading: false });
     } catch {
       // Personal / offline / daemon without the B proxy: stay in the local state.
