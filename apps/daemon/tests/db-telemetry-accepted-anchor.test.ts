@@ -5,6 +5,9 @@ import path from 'node:path';
 
 import {
   closeDatabase,
+  deleteConversation,
+  deleteMessage,
+  deleteProject,
   getMessageTelemetryFinalizationState,
   getRunFeedbackTelemetryAnchor,
   insertConversation,
@@ -812,5 +815,140 @@ describe('persisted telemetry accepted anchor', () => {
         acceptedTraceBodyId: anchor!.acceptedTraceBodyId,
       }),
     ).toBe(expectedBodyId);
+  });
+
+  it('deletes run-keyed anchors with conversation/project/message delete paths', () => {
+    const runId = 'run-delete-with-owner';
+    const bodyId = scopedTelemetryBodyId(runId, 'final', 'final_message');
+    const db = openDatabase(tempDir, { dataDir: tempDir });
+    seedFailedAssistant(db, runId);
+    expect(
+      setRunTelemetryAcceptedAnchor(db, {
+        runId,
+        assistantMessageId: 'assistant-1',
+        conversationId: 'conv-1',
+        bodyId,
+        reportTrigger: 'final_message',
+        deliveryChannel: 'vela',
+        velaIdentity: 'prod:abcdef0123456789',
+      }),
+    ).toBe(true);
+    expect(getRunFeedbackTelemetryAnchor(db, runId)?.acceptedTraceBodyId).toBe(bodyId);
+
+    // Message delete removes the matching run-keyed anchor.
+    deleteMessage(db, 'assistant-1');
+    expect(getRunFeedbackTelemetryAnchor(db, runId)).toBeNull();
+    expect(
+      db
+        .prepare(
+          `SELECT COUNT(*) AS n FROM run_telemetry_accepted_anchors WHERE run_id = ?`,
+        )
+        .get(runId) as { n: number },
+    ).toEqual({ n: 0 });
+
+    // Recreate message + anchor, then conversation delete must prune ownership.
+    upsertMessage(db, 'conv-1', {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: 'partial',
+      runId,
+      runStatus: 'failed',
+      telemetryFinalized: true,
+      endedAt: Date.now(),
+    });
+    expect(
+      setRunTelemetryAcceptedAnchor(db, {
+        runId,
+        assistantMessageId: 'assistant-1',
+        conversationId: 'conv-1',
+        bodyId,
+        reportTrigger: 'final_message',
+        deliveryChannel: 'vela',
+        velaIdentity: 'prod:abcdef0123456789',
+      }),
+    ).toBe(true);
+    deleteConversation(db, 'conv-1');
+    expect(
+      db
+        .prepare(
+          `SELECT COUNT(*) AS n FROM run_telemetry_accepted_anchors WHERE run_id = ?`,
+        )
+        .get(runId) as { n: number },
+    ).toEqual({ n: 0 });
+
+    // Project delete also prunes anchors owned by its conversations.
+    insertConversation(db, {
+      id: 'conv-2',
+      projectId: 'proj-1',
+      title: 'Second',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    const runId2 = 'run-delete-with-project';
+    upsertMessage(db, 'conv-2', {
+      id: 'assistant-2',
+      role: 'assistant',
+      content: 'partial',
+      runId: runId2,
+      runStatus: 'succeeded',
+      telemetryFinalized: true,
+      endedAt: Date.now(),
+    });
+    expect(
+      setRunTelemetryAcceptedAnchor(db, {
+        runId: runId2,
+        assistantMessageId: 'assistant-2',
+        conversationId: 'conv-2',
+        bodyId: runId2,
+        reportTrigger: 'final_message',
+      }),
+    ).toBe(true);
+    deleteProject(db, 'proj-1');
+    expect(
+      db
+        .prepare(`SELECT COUNT(*) AS n FROM run_telemetry_accepted_anchors`)
+        .get() as { n: number },
+    ).toEqual({ n: 0 });
+  });
+
+  it('conversation delete removes rebinding orphan anchors with no live run_id row', () => {
+    const oldRunId = 'run-rebinding-orphan';
+    const newRunId = 'run-rebinding-current';
+    const staleBodyId = scopedTelemetryBodyId(oldRunId, 'final', 'terminal_fallback');
+    const db = openDatabase(tempDir, { dataDir: tempDir });
+    seedFailedAssistant(db, oldRunId);
+    expect(
+      setRunTelemetryAcceptedAnchor(db, {
+        runId: oldRunId,
+        assistantMessageId: 'assistant-1',
+        conversationId: 'conv-1',
+        bodyId: staleBodyId,
+        reportTrigger: 'terminal_fallback',
+      }),
+    ).toBe(true);
+
+    // Side-chat retry rebinds the assistant row; run-keyed A remains intentional
+    // while the conversation lives.
+    upsertMessage(db, 'conv-1', {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: '',
+      runId: newRunId,
+      runStatus: null,
+      telemetryFinalized: false,
+    });
+    expect(getRunFeedbackTelemetryAnchor(db, oldRunId)?.acceptedTraceBodyId).toBe(
+      staleBodyId,
+    );
+
+    // Deleting the conversation must not leave the orphaned run-keyed row behind.
+    deleteConversation(db, 'conv-1');
+    expect(
+      db
+        .prepare(
+          `SELECT COUNT(*) AS n FROM run_telemetry_accepted_anchors WHERE run_id = ?`,
+        )
+        .get(oldRunId) as { n: number },
+    ).toEqual({ n: 0 });
   });
 });

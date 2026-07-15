@@ -1170,6 +1170,7 @@ export async function reportRunCompletedFromDaemon(
         setRunTelemetryAcceptedAnchor(db as Parameters<typeof setRunTelemetryAcceptedAnchor>[0], {
           runId: run.id,
           assistantMessageId: run.assistantMessageId ?? null,
+          conversationId: run.conversationId ?? null,
           bodyId: scopedTelemetryBodyId(run.id, 'final', reportTrigger),
           reportTrigger,
           deliveryChannel: delivery.langfuse_delivery_channel ?? null,

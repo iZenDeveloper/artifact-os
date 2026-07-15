@@ -53,6 +53,71 @@ export function closeDatabase() {
   dbFile = null;
 }
 
+/**
+ * Ensure run_telemetry_accepted_anchors has conversation ownership and prune
+ * rows that no longer belong to a live conversation.
+ *
+ * Early revisions of this table were keyed only by run_id. Without an owner,
+ * conversation/project deletes left accepted-body metadata (and Vela identity
+ * fingerprints) behind forever. Rebuild when conversation_id is missing, then
+ * delete anchors that cannot be attributed to any remaining conversation.
+ */
+function migrateRunTelemetryAcceptedAnchors(db: SqliteDb): void {
+  const cols = db
+    .prepare(`PRAGMA table_info(run_telemetry_accepted_anchors)`)
+    .all() as DbRow[];
+  if (cols.length === 0) return;
+
+  if (!cols.some((c: DbRow) => c.name === 'conversation_id')) {
+    db.exec(`
+      CREATE TABLE run_telemetry_accepted_anchors__new (
+        run_id TEXT PRIMARY KEY,
+        conversation_id TEXT,
+        accepted_body_id TEXT NOT NULL,
+        report_trigger TEXT NOT NULL,
+        delivery_channel TEXT,
+        vela_identity TEXT,
+        updated_at INTEGER NOT NULL,
+        FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+      );
+      INSERT INTO run_telemetry_accepted_anchors__new (
+        run_id, conversation_id, accepted_body_id, report_trigger,
+        delivery_channel, vela_identity, updated_at
+      )
+      SELECT a.run_id,
+             (
+               SELECT m.conversation_id
+                 FROM messages m
+                WHERE m.run_id = a.run_id
+                ORDER BY m.position DESC
+                LIMIT 1
+             ),
+             a.accepted_body_id,
+             a.report_trigger,
+             a.delivery_channel,
+             a.vela_identity,
+             a.updated_at
+        FROM run_telemetry_accepted_anchors a;
+      DROP TABLE run_telemetry_accepted_anchors;
+      ALTER TABLE run_telemetry_accepted_anchors__new
+        RENAME TO run_telemetry_accepted_anchors;
+    `);
+  }
+
+  // Drop true orphans: no owning conversation, or conversation already gone.
+  // Rebinding survivors that still belong to a live conversation keep their
+  // conversation_id and are retained until that conversation is deleted.
+  db.exec(`
+    DELETE FROM run_telemetry_accepted_anchors
+     WHERE conversation_id IS NULL
+        OR conversation_id NOT IN (SELECT id FROM conversations);
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_run_telemetry_accepted_anchors_conversation
+      ON run_telemetry_accepted_anchors(conversation_id);
+  `);
+}
+
 function migrate(db: SqliteDb): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS projects (
@@ -325,16 +390,22 @@ function migrate(db: SqliteDb): void {
   // columns alone are insufficient: when failed run A schedules
   // terminal_fallback and upsert rebinds the only assistant row to run B, the
   // delayed accepted write for A would find no run_id=A row.
+  // conversation_id owns lifecycle: project/conversation delete cascades here
+  // (and delete paths also prune explicitly so rebinding orphans leave with the
+  // conversation even when no messages still carry the original run_id).
   db.exec(`
     CREATE TABLE IF NOT EXISTS run_telemetry_accepted_anchors (
       run_id TEXT PRIMARY KEY,
+      conversation_id TEXT,
       accepted_body_id TEXT NOT NULL,
       report_trigger TEXT NOT NULL,
       delivery_channel TEXT,
       vela_identity TEXT,
-      updated_at INTEGER NOT NULL
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
     );
   `);
+  migrateRunTelemetryAcceptedAnchors(db);
   const routineRunCols = db.prepare(`PRAGMA table_info(routine_runs)`).all() as DbRow[];
   if (!routineRunCols.some((c: DbRow) => c.name === 'error_code')) {
     db.exec(`ALTER TABLE routine_runs ADD COLUMN error_code TEXT`);
@@ -892,7 +963,26 @@ export function updateProject(db: SqliteDb, id: string, patch: DbRow) {
 }
 
 export function deleteProject(db: SqliteDb, id: string) {
-  db.prepare(`DELETE FROM projects WHERE id = ?`).run(id);
+  const tx = db.transaction(() => {
+    // Prune run-keyed anchors before cascading conversation/message deletes so
+    // rebinding survivors (no live messages.run_id) still leave with the project.
+    db.prepare(
+      `DELETE FROM run_telemetry_accepted_anchors
+        WHERE conversation_id IN (
+          SELECT id FROM conversations WHERE project_id = ?
+        )
+           OR run_id IN (
+             SELECT m.run_id
+               FROM messages m
+               INNER JOIN conversations c ON c.id = m.conversation_id
+              WHERE c.project_id = ?
+                AND m.run_id IS NOT NULL
+                AND TRIM(m.run_id) != ''
+           )`,
+    ).run(id, id);
+    db.prepare(`DELETE FROM projects WHERE id = ?`).run(id);
+  });
+  tx();
 }
 
 function normalizeProject(row: DbRow) {
@@ -1270,7 +1360,22 @@ export function updateConversation(db: SqliteDb, id: string, patch: DbRow) {
 }
 
 export function deleteConversation(db: SqliteDb, id: string) {
-  db.prepare(`DELETE FROM conversations WHERE id = ?`).run(id);
+  const tx = db.transaction(() => {
+    // Explicit prune covers ownership by conversation_id (rebinding orphans)
+    // and current message run_ids (legacy rows without conversation_id).
+    db.prepare(
+      `DELETE FROM run_telemetry_accepted_anchors
+        WHERE conversation_id = ?
+           OR run_id IN (
+             SELECT run_id FROM messages
+              WHERE conversation_id = ?
+                AND run_id IS NOT NULL
+                AND TRIM(run_id) != ''
+           )`,
+    ).run(id, id);
+    db.prepare(`DELETE FROM conversations WHERE id = ?`).run(id);
+  });
+  tx();
 }
 
 // ---------- agent sessions ----------
@@ -1794,11 +1899,67 @@ function mergeFeedbackTelemetryAnchor(
  * cannot later attach via a different backend. `velaIdentity` fingerprints the
  * accepting Vela profile/key so scores cannot follow a later account switch.
  */
+function resolveConversationIdForRunAnchor(
+  db: SqliteDb,
+  runId: string,
+  assistantMessageId?: string | null,
+  explicitConversationId?: string | null,
+): string | null {
+  const explicit =
+    typeof explicitConversationId === 'string' ? explicitConversationId.trim() : '';
+  if (explicit) {
+    const exists = db
+      .prepare(`SELECT 1 AS ok FROM conversations WHERE id = ?`)
+      .get(explicit) as DbRow | undefined;
+    if (exists) return explicit;
+  }
+
+  const assistantId =
+    typeof assistantMessageId === 'string' ? assistantMessageId.trim() : '';
+  // Prefer the assistant message id: after rebinding, run_id no longer matches
+  // but the row still carries the owning conversation.
+  if (assistantId) {
+    const byMessage = db
+      .prepare(
+        `SELECT conversation_id AS conversationId
+           FROM messages
+          WHERE id = ?`,
+      )
+      .get(assistantId) as DbRow | undefined;
+    if (
+      byMessage &&
+      typeof byMessage.conversationId === 'string' &&
+      byMessage.conversationId.trim()
+    ) {
+      return byMessage.conversationId.trim();
+    }
+  }
+
+  const byRun = db
+    .prepare(
+      `SELECT conversation_id AS conversationId
+         FROM messages
+        WHERE run_id = ?
+        ORDER BY position DESC
+        LIMIT 1`,
+    )
+    .get(runId) as DbRow | undefined;
+  if (
+    byRun &&
+    typeof byRun.conversationId === 'string' &&
+    byRun.conversationId.trim()
+  ) {
+    return byRun.conversationId.trim();
+  }
+  return null;
+}
+
 export function setRunTelemetryAcceptedAnchor(
   db: SqliteDb,
   opts: {
     runId: string;
     assistantMessageId?: string | null;
+    conversationId?: string | null;
     bodyId: string;
     reportTrigger: TelemetryAcceptedReportTrigger;
     deliveryChannel?: TelemetryAcceptedDeliveryChannel | null;
@@ -1825,19 +1986,35 @@ export function setRunTelemetryAcceptedAnchor(
     return false;
   }
 
+  const conversationId = resolveConversationIdForRunAnchor(
+    db,
+    runId,
+    opts.assistantMessageId,
+    opts.conversationId,
+  );
+
   const now = Date.now();
   db.prepare(
     `INSERT INTO run_telemetry_accepted_anchors (
-        run_id, accepted_body_id, report_trigger, delivery_channel,
+        run_id, conversation_id, accepted_body_id, report_trigger, delivery_channel,
         vela_identity, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(run_id) DO UPDATE SET
+        conversation_id = COALESCE(excluded.conversation_id, run_telemetry_accepted_anchors.conversation_id),
         accepted_body_id = excluded.accepted_body_id,
         report_trigger = excluded.report_trigger,
         delivery_channel = excluded.delivery_channel,
         vela_identity = excluded.vela_identity,
         updated_at = excluded.updated_at`,
-  ).run(runId, bodyId, reportTrigger, deliveryChannel, velaIdentity, now);
+  ).run(
+    runId,
+    conversationId,
+    bodyId,
+    reportTrigger,
+    deliveryChannel,
+    velaIdentity,
+    now,
+  );
 
   // Best-effort dual-write onto the current assistant row when it still belongs
   // to this run. Failure to find a row is not an error — run-keyed storage is
@@ -2028,7 +2205,20 @@ export function appendMessageAgentEvent(db: SqliteDb, messageId: string, event: 
 }
 
 export function deleteMessage(db: SqliteDb, id: string) {
-  db.prepare(`DELETE FROM messages WHERE id = ?`).run(id);
+  const tx = db.transaction(() => {
+    const row = db
+      .prepare(`SELECT run_id AS runId FROM messages WHERE id = ?`)
+      .get(id) as DbRow | undefined;
+    const runId =
+      typeof row?.runId === 'string' && row.runId.trim() ? row.runId.trim() : null;
+    if (runId) {
+      db.prepare(
+        `DELETE FROM run_telemetry_accepted_anchors WHERE run_id = ?`,
+      ).run(runId);
+    }
+    db.prepare(`DELETE FROM messages WHERE id = ?`).run(id);
+  });
+  tx();
 }
 
 // ---------- preview comments ----------
