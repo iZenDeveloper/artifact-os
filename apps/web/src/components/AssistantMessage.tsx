@@ -2891,6 +2891,19 @@ function FormBlock({
         submittingRef.current = false;
         setSubmitting(false);
       };
+      const rejectSubmission = async () => {
+        if (attachments.length > 0) {
+          pendingUploadCleanupRef.current = attachments;
+          if (!(await rollbackPendingUploads())) {
+            setUploadError(
+              t("questions.uploadFailed", {
+                failed: Math.max(1, pendingUploadCleanupRef.current.length),
+              }),
+            );
+          }
+        }
+        releaseSubmitLock();
+      };
       const acceptSubmission = () => {
         clearInlineQuestionFormDraft(formKey);
         setDraftAnswers(undefined);
@@ -2902,18 +2915,18 @@ function FormBlock({
             ? onSubmit?.(submittedText, attachments, context)
             : onSubmit?.(submittedText);
       } catch {
-        releaseSubmitLock();
+        void rejectSubmission();
         return;
       }
       void Promise.resolve(submitOutcome).then(
         (started) => {
           if (started === false) {
-            releaseSubmitLock();
+            void rejectSubmission();
             return;
           }
           acceptSubmission();
         },
-        releaseSubmitLock,
+        () => void rejectSubmission(),
       );
     },
     [analytics.track, form, formKey, onSubmit, projectId, rollbackPendingUploads, t],

@@ -605,6 +605,75 @@ describe('AssistantMessage question forms', () => {
     });
   });
 
+  it('rolls back successful inline uploads when the host rejects a send before it starts', async () => {
+    const uploadProjectFilesMock = vi
+      .spyOn(registry, 'uploadProjectFiles')
+      .mockResolvedValue({
+        uploaded: [
+          {
+            name: 'mood.png',
+            path: 'uploads/mood.png',
+            kind: 'image' as const,
+            size: 4,
+          },
+        ],
+        failed: [],
+      });
+    const deleteProjectFileMock = vi.spyOn(registry, 'deleteProjectFile').mockResolvedValue(true);
+    const form = [
+      '<question-form id="references" title="References">',
+      JSON.stringify({
+        questions: [
+          {
+            id: 'assets',
+            label: 'Reference assets',
+            type: 'file',
+            required: true,
+            accept: 'image/*',
+          },
+        ],
+      }),
+      '</question-form>',
+    ].join('\n');
+    const onSubmitQuestionForm = vi
+      .fn()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+    const { container } = render(
+      <AssistantMessage
+        message={baseMessage({
+          content: form,
+          events: [{ kind: 'text', text: form } as ChatMessage['events'][number]],
+        })}
+        streaming={false}
+        projectId="proj-1"
+        conversationId="conv-1"
+        isLast
+        onSubmitQuestionForm={onSubmitQuestionForm}
+      />,
+    );
+    const input = container.querySelector('input[type="file"]');
+    if (!(input instanceof HTMLInputElement)) throw new Error('expected file input');
+    const file = new File(['mood'], 'mood.png', { type: 'image/png' });
+    fireEvent.change(input, { target: { files: [file] } });
+    const send = screen.getByRole('button', { name: 'Send answers' }) as HTMLButtonElement;
+    fireEvent.click(send);
+
+    await waitFor(() => {
+      expect(onSubmitQuestionForm).toHaveBeenCalledTimes(1);
+      expect(deleteProjectFileMock).toHaveBeenCalledWith('proj-1', 'uploads/mood.png');
+    });
+    expect(send.disabled).toBe(false);
+
+    fireEvent.click(send);
+
+    await waitFor(() => {
+      expect(uploadProjectFilesMock).toHaveBeenCalledTimes(2);
+      expect(onSubmitQuestionForm).toHaveBeenCalledTimes(2);
+    });
+    expect(deleteProjectFileMock).toHaveBeenCalledTimes(1);
+  });
+
   it('cleans up partial file uploads before retrying an inline answer', async () => {
     const uploadProjectFilesMock = vi
       .spyOn(registry, 'uploadProjectFiles')
