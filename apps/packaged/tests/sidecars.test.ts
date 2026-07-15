@@ -414,6 +414,37 @@ describe('buildPackagedDaemonSpawnEnv', () => {
     expect(env.OPEN_DESIGN_AMR_PROFILE).toBe('test');
   });
 
+  it('enables the vela-cli workspace-team transport for a feature-test build', () => {
+    const env = buildPackagedDaemonSpawnEnv(fakePaths(), {
+      appVersion: null,
+      amrProfile: 'feature-test',
+      daemonCliEntry: null,
+      legacyDataDir: null,
+      requireDesktopAuth: true,
+    });
+    expect(env.OPEN_DESIGN_AMR_PROFILE).toBe('feature-test');
+    expect(env.OD_WORKSPACE_CONTEXT_SOURCE).toBe('vela');
+    expect(env.OD_TEAM_PROJECTS_TRANSPORT).toBe('vela-cli');
+    expect(env.OD_COLLAB_TRANSPORT).toBe('vela-cli');
+    expect(env.OD_RESOURCE_TRANSPORT).toBe('vela-cli');
+  });
+
+  it('leaves the workspace-team transport off for non-feature-test builds', () => {
+    for (const amrProfile of ['prod', 'test', null] as const) {
+      const env = buildPackagedDaemonSpawnEnv(fakePaths(), {
+        appVersion: null,
+        amrProfile,
+        daemonCliEntry: null,
+        legacyDataDir: null,
+        requireDesktopAuth: true,
+      });
+      expect('OD_WORKSPACE_CONTEXT_SOURCE' in env).toBe(false);
+      expect('OD_TEAM_PROJECTS_TRANSPORT' in env).toBe(false);
+      expect('OD_COLLAB_TRANSPORT' in env).toBe(false);
+      expect('OD_RESOURCE_TRANSPORT' in env).toBe(false);
+    }
+  });
+
   it('forwards POSTHOG_KEY/POSTHOG_HOST to the daemon spawn env when baked into the bundle', () => {
     const env = buildPackagedDaemonSpawnEnv(fakePaths(), {
       appVersion: null,

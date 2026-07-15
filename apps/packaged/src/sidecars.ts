@@ -382,6 +382,21 @@ export function buildPackagedDaemonSpawnEnv(
     ...(options.amrProfile == null || options.amrProfile.length === 0
       ? {}
       : { OPEN_DESIGN_AMR_PROFILE: options.amrProfile }),
+    // Enable the vela-cli workspace-team transport for feature-test builds. That
+    // AMR profile targets the amr-feature backend where the team workspace
+    // feature is deployed, so the packaged app can drive team projects / collab /
+    // resource sharing there (the daemon otherwise leaves the transport off, and
+    // team features are dormant). Prod builds stay off until workspace-team ships
+    // to the prod backend; the vela endpoints themselves come from the AMR
+    // profile (feature-test => amr-feature) resolved in the daemon.
+    ...(options.amrProfile === "feature-test"
+      ? {
+          OD_WORKSPACE_CONTEXT_SOURCE: "vela",
+          OD_TEAM_PROJECTS_TRANSPORT: "vela-cli",
+          OD_COLLAB_TRANSPORT: "vela-cli",
+          OD_RESOURCE_TRANSPORT: "vela-cli",
+        }
+      : {}),
     ...(options.appVersion == null ? {} : { OD_APP_VERSION: options.appVersion }),
     ...(options.telemetryRelayUrl == null || options.telemetryRelayUrl.length === 0
       ? {}
