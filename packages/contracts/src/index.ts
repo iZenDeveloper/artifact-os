@@ -54,6 +54,7 @@ export * from './design-systems/derived-token-outputs.js';
 export * from './design-systems/token-schema.js';
 export * from './sse/common.js';
 export * from './sse/chat.js';
+export * from './sse/collab.js';
 export * from './sse/proxy.js';
 export * from './prompts/system.js';
 export * from './prompts/plugin-block.js';
