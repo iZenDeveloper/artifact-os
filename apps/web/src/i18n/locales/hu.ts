@@ -2415,6 +2415,7 @@ export const hu: Dict = {
   'previewRunStatus.succeeded': 'A terv elkészült',
   'previewRunStatus.failed': 'A kézbesítés figyelmet igényel',
   'previewRunStatus.elapsed': 'Eltelt idő {time}',
+  'previewRunStatus.viewDetails': 'Részletek',
   'workspace.designFilesLink': 'Designfájlok',
   'workspace.loadingSketch': 'Vázlat betöltése…',
   'workspace.newTab': 'Új lap',

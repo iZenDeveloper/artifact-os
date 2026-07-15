@@ -3216,6 +3216,7 @@ export interface Dict {
   'previewRunStatus.succeeded': string;
   'previewRunStatus.failed': string;
   'previewRunStatus.elapsed': string;
+  'previewRunStatus.viewDetails': string;
   'designFiles.title': string;
   'designFiles.upload': string;
   'designFiles.pasteText': string;

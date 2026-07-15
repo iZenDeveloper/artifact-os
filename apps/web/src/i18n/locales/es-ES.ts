@@ -2415,6 +2415,7 @@ export const esES: Dict = {
   'previewRunStatus.succeeded': 'Diseño listo',
   'previewRunStatus.failed': 'La entrega necesita atención',
   'previewRunStatus.elapsed': 'Transcurrido {time}',
+  'previewRunStatus.viewDetails': 'Ver detalles',
   'workspace.designFilesLink': 'Archivos de diseño',
   'workspace.loadingSketch': 'Cargando boceto…',
   'workspace.newTab': 'Nueva pestaña',
