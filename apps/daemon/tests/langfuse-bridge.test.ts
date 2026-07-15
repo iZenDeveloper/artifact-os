@@ -2557,9 +2557,11 @@ describe('langfuse-bridge.reportRunFeedbackFromDaemon', () => {
     expect(String(fetchSpy.mock.calls[0]![0])).toContain(
       '/api/v1/open-design/telemetry',
     );
-    expect(String(fetchSpy.mock.calls[0]![1].headers?.Authorization ?? '')).toBe(
-      'Bearer ck_logged_in_later',
-    );
+    expect(
+      String(
+        (fetchSpy.mock.calls[0]![1].headers as Record<string, string>)?.Authorization ?? '',
+      ),
+    ).toBe('Bearer ck_logged_in_later');
   });
 
   it('ships cold finalized/no-anchor feedback on the canonical body (no indefinite defer)', async () => {

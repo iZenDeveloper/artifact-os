@@ -4081,7 +4081,8 @@ describe('reportRunFeedback', () => {
         '/api/v1/open-design/telemetry',
       );
       const auth = String(
-        (fetchSpy.mock.calls[0]![1] as RequestInit).headers?.Authorization ?? '',
+        ((fetchSpy.mock.calls[0]![1] as RequestInit).headers as Record<string, string>)
+          ?.Authorization ?? '',
       );
       expect(auth).not.toContain('ck_stale_profile_a');
       const body = JSON.parse(
@@ -4505,9 +4506,11 @@ describe('reportRunFeedback', () => {
         '/api/v1/open-design/telemetry',
       );
       // Live env key B — not the stale submit-time key A.
-      expect(String(fetchSpy.mock.calls[0]![1].headers?.Authorization ?? '')).toBe(
-        'Bearer ck_accepted_after_switch',
-      );
+      expect(
+        String(
+          (fetchSpy.mock.calls[0]![1].headers as Record<string, string>)?.Authorization ?? '',
+        ),
+      ).toBe('Bearer ck_accepted_after_switch');
       const envelope = JSON.parse(fetchSpy.mock.calls[0]![1].body as string);
       expect(envelope.version).toBe(1);
       expect(envelope.installationId).toBe('install-uuid-1');
@@ -4840,9 +4843,11 @@ describe('reportRunFeedback', () => {
           }),
         ]),
       );
-      expect(String(fetchSpy.mock.calls[0]![1].headers?.Authorization ?? '')).toBe(
-        'Bearer ck_new_after_switch',
-      );
+      expect(
+        String(
+          (fetchSpy.mock.calls[0]![1].headers as Record<string, string>)?.Authorization ?? '',
+        ),
+      ).toBe('Bearer ck_new_after_switch');
     } finally {
       for (const [key, value] of Object.entries(previous)) {
         if (value === undefined) delete process.env[key];
