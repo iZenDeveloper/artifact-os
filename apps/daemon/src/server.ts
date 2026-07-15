@@ -649,6 +649,7 @@ import {
 } from './collab/resource-principal.js';
 import { createCollabCloudClientFromEnv } from './integrations/collab-cloud.js';
 import { createCollabCloudService } from './collab/collab-cloud-service.js';
+import { createWorkspaceInvalidationPoller } from './collab/workspace-invalidation-poller.js';
 import { createVelaCliCollabClientFromEnv } from './collab/vela-cli-collab-client.js';
 import {
   createVelaCliTeamProjectCatalogClientFromEnv,
@@ -1003,6 +1004,12 @@ async function refreshAndPersistToken(dataDir, serverId, current) {
 
 const activeChatAgentEventSinks = new Map();
 const activeProjectEventSinks = new Map();
+// Collab realtime hop-2: subscribers to the WORKSPACE-scoped invalidation SSE
+// (`GET /api/workspace/events`). Workspace scope is singular per daemon (one
+// signed-in identity), so this is a flat set of sinks rather than a per-id map
+// like `activeProjectEventSinks`. Each sink forwards a thin
+// `WorkspaceInvalidationSsePayload` to one connected web client.
+const workspaceEventSinks = new Set<(payload: unknown) => void>();
 // Per-chat-run handles, keyed by runId. Lets non-stream side effects
 // (live-artifact create, project events) reach back into the chat
 // run's local state — currently used by the artifact quiet-period
@@ -1085,6 +1092,23 @@ function emitProjectEvent(projectId, payload) {
     }
   }
   if (sinks.size === 0) activeProjectEventSinks.delete(projectId);
+  return true;
+}
+
+// Broadcast a thin WORKSPACE-scoped invalidation to every SSE subscriber on
+// `/api/workspace/events`. The payload's `type` becomes the SSE event name (see
+// routes/collab-context.ts). Producers: the workspace-invalidation poller
+// (team-projects/members/context changes). Consumers re-fetch the affected
+// workspace resource through their existing loader — the event carries no body.
+function emitWorkspaceEvent(payload: { type: string; at?: number }): boolean {
+  if (workspaceEventSinks.size === 0) return false;
+  for (const sink of Array.from(workspaceEventSinks)) {
+    try {
+      sink(payload);
+    } catch {
+      workspaceEventSinks.delete(sink);
+    }
+  }
   return true;
 }
 
@@ -2639,6 +2663,13 @@ export async function startServer({
     onError: ({ projectId, principal }) => {
       persistWorkspaceProjectSyncState(projectId, principal?.teamId, 'sync_failed');
     },
+    // Collab realtime hop-2: a member joined/left this project's presence set
+    // (fires only on explicit join/leave, not on every heartbeat). Push a thin
+    // `presence-changed` onto the project's existing events SSE so the open
+    // project view re-fetches presence instead of waiting for its poll tick.
+    onPresenceChange: ({ projectId }) => {
+      emitProjectEvent(projectId, { type: 'presence-changed', projectId, at: Date.now() });
+    },
   });
   for (const share of listTeamWorkspaceProjectShares(db)) {
     const ownerMemberId = share.createdByWorkspaceMemberId ?? share.updatedByWorkspaceMemberId;
@@ -2682,6 +2713,19 @@ export async function startServer({
         mergeComment: ({ projectId, conversationId, comment }) =>
           mergeSyncedPreviewComment(db, projectId, conversationId, comment),
         onError: (error) => console.warn('[od] collab cloud poll error:', error),
+        // Collab realtime hop-2 (reference path): when the ~5s comment self-poll
+        // merges any teammate change into local storage (a new comment, a
+        // strictly-newer edit/status change, or a delete tombstone all count),
+        // push a thin `comment-changed` onto the project's existing events SSE.
+        // The open project view re-fetches the comment list on receipt, so the
+        // owner sees a member's freshly-synced comment without waiting for the
+        // web poll tick.
+        onMerged: ({ projectId }) =>
+          emitProjectEvent(projectId, {
+            type: 'comment-changed',
+            projectId,
+            at: Date.now(),
+          }),
       })
     : null;
   // Register this member in the directory now, then keep the poller refreshing it
@@ -2902,7 +2946,23 @@ export async function startServer({
     // Expose the collab-cloud member directory so the web client can resolve
     // comment authors + owner names to a name + role.
     ...(teamMembersCache ? { listMembers: teamMembersCache } : {}),
+    // Collab realtime hop-2: the workspace-scoped invalidation SSE. The route
+    // registers/deregisters its sink here; the poller below feeds them.
+    createSseResponse,
+    workspaceEventSinks,
   });
+  // Collab realtime hop-2: daemon-side change source for the workspace SSE.
+  // Diffs the same reads the web polls (context / team projects / members) and
+  // emits a thin signal only on an actual change. Runs IN ADDITION to the web
+  // polls (poll-as-floor), so a client whose SSE never connects is unaffected.
+  const workspaceInvalidationPoller = createWorkspaceInvalidationPoller({
+    getWorkspaceContext: () => collab.workspaceContext.current({}),
+    listTeamProjects: teamProjectsDisplayCache,
+    listMembers: teamMembersCache ? () => teamMembersCache() : async () => [],
+    emit: (payload) => emitWorkspaceEvent(payload),
+    onError: (error) => console.warn('[od] workspace invalidation poll error:', error),
+  });
+  workspaceInvalidationPoller.start();
   registerTeamResourceRoutes(app, { teamResources: collab.teamResources });
 
   // Team resource sharing: promote a personal design system, plugin, or skill
@@ -9384,6 +9444,7 @@ export async function startServer({
       composioConnectorProvider.stopCatalogRefreshLoop();
       orbitService.stop();
       routineService?.stop();
+      workspaceInvalidationPoller.stop();
     };
     const shutdownDaemonRuns = async () => {
       if (daemonShutdownStarted) return;

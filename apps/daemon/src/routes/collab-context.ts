@@ -77,6 +77,17 @@ export interface RegisterCollabContextRoutesDeps {
   };
   /** Injectable for tests; defaults to the Vela workspace directory API. */
   listWorkspaceDirectory?: () => Promise<WorkspaceDirectoryItem[]>;
+  /**
+   * Collab realtime hop-2 — the workspace-scoped invalidation SSE seams. When
+   * both are provided the daemon registers `GET /api/workspace/events`; the route
+   * adds its per-connection sink to `workspaceEventSinks` (fed by the
+   * workspace-invalidation poller) and drops it on disconnect. Omitted in tests
+   * that do not exercise the stream — the route then 404s cleanly.
+   */
+  createSseResponse?: (res: unknown, opts?: unknown) => {
+    send: (event: string, data: unknown, id?: string | number | null) => boolean;
+  };
+  workspaceEventSinks?: Set<(payload: unknown) => void>;
 }
 
 const ASSIGNABLE_ROLES = new Set<WorkspaceInviteRole>(['admin', 'member']);
@@ -196,6 +207,36 @@ export function registerCollabContextRoutes(app: Express, deps: RegisterCollabCo
     const body: WorkspaceContextResponse = { context };
     res.json(body);
   });
+
+  // Collab realtime hop-2: workspace-scoped invalidation SSE. Carries thin
+  // `WorkspaceInvalidationSsePayload` signals (`team-projects-changed`,
+  // `members-changed`, `workspace-context-changed`, `billing-changed`); the web
+  // re-fetches the affected resource on receipt. Modeled on the project events
+  // SSE (`/api/projects/:id/events`): one flat sink set, dropped on disconnect
+  // via `res.on('close')`. No event buffer — a disconnect gap is closed by the
+  // client's reconnect snapshot re-fetch, not a server-side replay.
+  const { createSseResponse, workspaceEventSinks } = deps;
+  if (createSseResponse && workspaceEventSinks) {
+    app.get('/api/workspace/events', (_req, res) => {
+      const sse = createSseResponse(res);
+      const sink = (payload: unknown) => {
+        const type =
+          payload && typeof payload === 'object' && 'type' in payload
+            ? String((payload as { type: unknown }).type)
+            : 'message';
+        sse.send(type, payload);
+      };
+      workspaceEventSinks.add(sink);
+      // Handshake so the client treats the stream as live and resets its
+      // reconnect backoff immediately (mirrors the project stream's `ready`).
+      sse.send('ready', { at: Date.now() });
+      const cleanup = () => {
+        workspaceEventSinks.delete(sink);
+      };
+      res.on('close', cleanup);
+      res.on('finish', cleanup);
+    });
+  }
 
   app.get('/api/workspace/directory', async (req, res) => {
     const authorization = req.header('authorization') ?? undefined;

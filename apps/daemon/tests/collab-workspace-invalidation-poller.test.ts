@@ -1,0 +1,143 @@
+import { describe, expect, it } from 'vitest';
+import type {
+  CollabCloudMemberDirectoryEntry,
+  TeamProject,
+  WorkspaceCollabContext,
+  WorkspaceInvalidationSsePayload,
+} from '@open-design/contracts';
+import { createWorkspaceInvalidationPoller } from '../src/collab/workspace-invalidation-poller.js';
+
+// Minimal team context — `isTeamContext` only reads `workspaceType`/`teamId`,
+// and `contextSignature` stringifies the whole object, so a partial cast is a
+// faithful stand-in for the diff logic under test.
+function teamContext(overrides: Partial<WorkspaceCollabContext> = {}): WorkspaceCollabContext {
+  return {
+    workspaceId: 'ws-1',
+    workspaceType: 'team',
+    workspaceMemberId: 'wm-1',
+    role: 'member',
+    ...overrides,
+  } as WorkspaceCollabContext;
+}
+
+function personalContext(): WorkspaceCollabContext {
+  return { workspaceId: 'ws-1', workspaceType: 'personal', workspaceMemberId: 'wm-1', role: 'member' } as WorkspaceCollabContext;
+}
+
+function project(id: string, extra: Partial<TeamProject> = {}): TeamProject {
+  return { projectId: id, ownerMemberId: 'wm-1', sharedAt: '2026-01-01T00:00:00Z', ...extra };
+}
+
+function member(id: string, extra: Partial<CollabCloudMemberDirectoryEntry> = {}): CollabCloudMemberDirectoryEntry {
+  return { memberId: id, displayName: id, role: 'member', ...extra } as CollabCloudMemberDirectoryEntry;
+}
+
+interface Harness {
+  emitted: WorkspaceInvalidationSsePayload[];
+  types: () => string[];
+  context: WorkspaceCollabContext | null;
+  projects: TeamProject[] | null; // null simulates a transient read failure
+  members: CollabCloudMemberDirectoryEntry[] | null;
+  teamListCalls: number;
+  poller: ReturnType<typeof createWorkspaceInvalidationPoller>;
+}
+
+function harness(initial: {
+  context?: WorkspaceCollabContext | null;
+  projects?: TeamProject[] | null;
+  members?: CollabCloudMemberDirectoryEntry[] | null;
+}): Harness {
+  const h: Harness = {
+    emitted: [],
+    types: () => h.emitted.map((e) => e.type),
+    context: initial.context ?? teamContext(),
+    projects: initial.projects ?? [],
+    members: initial.members ?? [],
+    teamListCalls: 0,
+    poller: null as unknown as ReturnType<typeof createWorkspaceInvalidationPoller>,
+  };
+  h.poller = createWorkspaceInvalidationPoller({
+    getWorkspaceContext: async () => h.context,
+    listTeamProjects: async () => {
+      h.teamListCalls += 1;
+      if (h.projects === null) throw new Error('team-projects read failed');
+      return h.projects;
+    },
+    listMembers: async () => {
+      if (h.members === null) throw new Error('members read failed');
+      return h.members;
+    },
+    emit: (payload) => h.emitted.push(payload),
+  });
+  return h;
+}
+
+describe('workspace invalidation poller', () => {
+  it('establishes a baseline on the first cycle without emitting', async () => {
+    const h = harness({ projects: [project('p1')], members: [member('m1')] });
+    await h.poller.pollOnce();
+    expect(h.emitted).toEqual([]);
+  });
+
+  it('emits only team-projects-changed when the shared project list changes', async () => {
+    const h = harness({ projects: [project('p1')] });
+    await h.poller.pollOnce(); // baseline
+    h.projects = [project('p1'), project('p2')];
+    await h.poller.pollOnce();
+    expect(h.types()).toEqual(['team-projects-changed']);
+  });
+
+  it('does not emit when the team list is reordered but unchanged', async () => {
+    const h = harness({ projects: [project('a'), project('b')] });
+    await h.poller.pollOnce();
+    h.projects = [project('b'), project('a')];
+    await h.poller.pollOnce();
+    expect(h.emitted).toEqual([]);
+  });
+
+  it('emits only members-changed when the roster changes', async () => {
+    const h = harness({ members: [member('m1')] });
+    await h.poller.pollOnce();
+    h.members = [member('m1'), member('m2')];
+    await h.poller.pollOnce();
+    expect(h.types()).toEqual(['members-changed']);
+  });
+
+  it('emits workspace-context-changed when the context changes', async () => {
+    const h = harness({ context: teamContext({ role: 'member' }) });
+    await h.poller.pollOnce();
+    h.context = teamContext({ role: 'admin' });
+    await h.poller.pollOnce();
+    expect(h.types()).toEqual(['workspace-context-changed']);
+  });
+
+  it('never reads team projects/members while off-team', async () => {
+    const h = harness({ context: personalContext(), projects: [project('p1')] });
+    await h.poller.pollOnce();
+    await h.poller.pollOnce();
+    expect(h.teamListCalls).toBe(0);
+  });
+
+  it('folds team projects/members to empty when leaving a team', async () => {
+    const h = harness({ context: teamContext(), projects: [project('p1')], members: [member('m1')] });
+    await h.poller.pollOnce(); // baseline: team with 1 project + 1 member
+    h.context = personalContext();
+    await h.poller.pollOnce();
+    // The team list + roster clear, and the context itself changed.
+    expect(h.types().sort()).toEqual(
+      ['members-changed', 'team-projects-changed', 'workspace-context-changed'].sort(),
+    );
+  });
+
+  it('keeps the last baseline on a transient read failure (no spurious emit)', async () => {
+    const h = harness({ projects: [project('p1')] });
+    await h.poller.pollOnce(); // baseline
+    h.projects = null; // read fails this cycle
+    await h.poller.pollOnce();
+    expect(h.types()).toEqual([]);
+    // Recovery with the SAME list must not emit either — baseline was preserved.
+    h.projects = [project('p1')];
+    await h.poller.pollOnce();
+    expect(h.types()).toEqual([]);
+  });
+});
