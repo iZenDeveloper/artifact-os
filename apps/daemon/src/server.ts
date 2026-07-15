@@ -590,7 +590,11 @@ import { createWorkspaceContextProviderFromEnv } from './collab/vela-workspace-c
 import { createCollabPublishWatcher } from './collab/collab-publish-watcher.js';
 import { resolveProjectShareDir } from './collab/project-share-dir.js';
 import { createTeamProjectsLister } from './collab/team-projects.js';
-import { createTeamResourceShareService } from './collab/team-resource-share.js';
+import {
+  createTeamResourceShareService,
+  type TeamResourceShareRecord,
+  type TeamResourceShareService,
+} from './collab/team-resource-share.js';
 import {
   contextToResourceHubPrincipal,
   type ResourceHubPrincipal,
@@ -4201,6 +4205,20 @@ export async function startServer({
         }
       : {}),
   });
+  // Stale-while-revalidate the member directory keyed on the active workspace.
+  // The web shell re-reads members on every navigation (and several mounted
+  // consumers fetch it at once); the underlying collab-cloud read is ~1.5s, so
+  // without this a home/drafts load serialized 5-7 slow member reads behind the
+  // 6-connection cap. SWR serves the roster instantly after the first load and
+  // refreshes in the background, so a member who joins still resolves within a
+  // poll tick.
+  const teamMembersCache = collabCloud
+    ? createSwrCache(
+        () => collabCloud.listMembers(),
+        () => activeWorkspace.get() ?? '',
+        3000,
+      )
+    : null;
   registerCollabContextRoutes(app, {
     workspaceContext: collab.workspaceContext,
     activeWorkspace,
@@ -4212,7 +4230,7 @@ export async function startServer({
     listTeamProjects: teamProjectsDisplayCache,
     // Expose the collab-cloud member directory so the web client can resolve
     // comment authors + owner names to a name + role.
-    ...(collabCloud ? { listMembers: () => collabCloud.listMembers() } : {}),
+    ...(teamMembersCache ? { listMembers: teamMembersCache } : {}),
   });
   registerTeamResourceRoutes(app, { teamResources: collab.teamResources });
 
@@ -4331,72 +4349,97 @@ export async function startServer({
       await fs.promises.rm(stagedFolder, { recursive: true, force: true }).catch(() => undefined);
     }
   }
+  // Stale-while-revalidate a kind's `/team` listing (hub read + resource
+  // materialization) keyed on the active workspace. The workspace shell reads
+  // all three kinds on navigation; without this each read re-hit the hub on the
+  // request path (~1.5-2.5s each) and serialized behind the browser's
+  // 6-connection cap. Materialization still runs, but on the background refresh
+  // rather than the hot read.
+  const cachedTeamResourceList = (
+    share: TeamResourceShareService,
+    sync?: (resource: TeamResourceShareRecord) => Promise<void>,
+  ) =>
+    createSwrCache(
+      async () => {
+        const resources = await share.sharedResources();
+        if (sync) await Promise.all(resources.map((resource) => sync(resource)));
+        return { ids: resources.map((resource) => resource.id), resources };
+      },
+      () => activeWorkspace.get() ?? '',
+      3000,
+    );
+  const designSystemsTeamShare = createTeamResourceShareService({
+    kind: 'design_system',
+    idPrefix: 'ds',
+    resolveDir: (id) =>
+      path.join(USER_DESIGN_SYSTEMS_DIR, stripPrefixAndValidateId(id, 'user:') ?? '__invalid__'),
+    describeResource: async (id) => {
+      const system = (await listAllDesignSystems()).find((candidate) => candidate.id === id);
+      return {
+        localId: id,
+        ...(system?.title ? { title: system.title } : {}),
+        ...(system?.summary ? { description: system.summary } : {}),
+      };
+    },
+    getPrincipal: teamShareGetPrincipal,
+    getCanShare: teamShareGetCanShare,
+  });
   registerTeamResourceShareRoutes(app, {
     basePath: 'design-systems',
     syncSharedResource: syncSharedTeamDesignSystem,
-    share: createTeamResourceShareService({
-      kind: 'design_system',
-      idPrefix: 'ds',
-      resolveDir: (id) =>
-        path.join(USER_DESIGN_SYSTEMS_DIR, stripPrefixAndValidateId(id, 'user:') ?? '__invalid__'),
-      describeResource: async (id) => {
-        const system = (await listAllDesignSystems()).find((candidate) => candidate.id === id);
-        return {
-          localId: id,
-          ...(system?.title ? { title: system.title } : {}),
-          ...(system?.summary ? { description: system.summary } : {}),
-        };
-      },
-      getPrincipal: teamShareGetPrincipal,
-      getCanShare: teamShareGetCanShare,
-    }),
+    share: designSystemsTeamShare,
+    listTeam: cachedTeamResourceList(designSystemsTeamShare, syncSharedTeamDesignSystem),
+  });
+  const pluginsTeamShare = createTeamResourceShareService({
+    kind: 'plugin',
+    idPrefix: 'plugin',
+    resolveDir: (id) => {
+      const plugin = getInstalledPlugin(db, id);
+      if (!plugin || typeof plugin.fsPath !== 'string') throw new Error('plugin not found');
+      return plugin.fsPath;
+    },
+    describeResource: (id) => {
+      const plugin = getInstalledPlugin(db, id);
+      if (!plugin) return null;
+      return {
+        localId: id,
+        title: plugin.manifest?.title ?? plugin.manifest?.name ?? plugin.title ?? id,
+        ...(plugin.manifest?.description ? { description: plugin.manifest.description } : {}),
+      };
+    },
+    getPrincipal: teamShareGetPrincipal,
+    getCanShare: teamShareGetCanShare,
   });
   registerTeamResourceShareRoutes(app, {
     basePath: 'plugins',
     syncSharedResource: syncSharedTeamPlugin,
-    share: createTeamResourceShareService({
-      kind: 'plugin',
-      idPrefix: 'plugin',
-      resolveDir: (id) => {
-        const plugin = getInstalledPlugin(db, id);
-        if (!plugin || typeof plugin.fsPath !== 'string') throw new Error('plugin not found');
-        return plugin.fsPath;
-      },
-      describeResource: (id) => {
-        const plugin = getInstalledPlugin(db, id);
-        if (!plugin) return null;
-        return {
-          localId: id,
-          title: plugin.manifest?.title ?? plugin.manifest?.name ?? plugin.title ?? id,
-          ...(plugin.manifest?.description ? { description: plugin.manifest.description } : {}),
-        };
-      },
-      getPrincipal: teamShareGetPrincipal,
-      getCanShare: teamShareGetCanShare,
-    }),
+    share: pluginsTeamShare,
+    listTeam: cachedTeamResourceList(pluginsTeamShare, syncSharedTeamPlugin),
+  });
+  const skillsTeamShare = createTeamResourceShareService({
+    kind: 'skill',
+    idPrefix: 'skill',
+    resolveDir: async (id) => {
+      const skill = findSkillById(await listAllSkills(), id);
+      if (!skill || typeof skill.dir !== 'string') throw new Error('skill not found');
+      return skill.dir;
+    },
+    describeResource: async (id) => {
+      const skill = findSkillById(await listAllSkills(), id);
+      if (!skill) return null;
+      return {
+        localId: id,
+        title: skill.name || id,
+        ...(skill.description ? { description: skill.description } : {}),
+      };
+    },
+    getPrincipal: teamShareGetPrincipal,
+    getCanShare: teamShareGetCanShare,
   });
   registerTeamResourceShareRoutes(app, {
     basePath: 'skills',
-    share: createTeamResourceShareService({
-      kind: 'skill',
-      idPrefix: 'skill',
-      resolveDir: async (id) => {
-        const skill = findSkillById(await listAllSkills(), id);
-        if (!skill || typeof skill.dir !== 'string') throw new Error('skill not found');
-        return skill.dir;
-      },
-      describeResource: async (id) => {
-        const skill = findSkillById(await listAllSkills(), id);
-        if (!skill) return null;
-        return {
-          localId: id,
-          title: skill.name || id,
-          ...(skill.description ? { description: skill.description } : {}),
-        };
-      },
-      getPrincipal: teamShareGetPrincipal,
-      getCanShare: teamShareGetCanShare,
-    }),
+    share: skillsTeamShare,
+    listTeam: cachedTeamResourceList(skillsTeamShare),
   });
 
   registerMemoryRoutes(app, {

@@ -5,12 +5,25 @@ import {
   type TeamResourceShareService,
 } from '../collab/team-resource-share.js';
 
+export interface TeamResourceShareListing {
+  ids: string[];
+  resources: TeamResourceShareRecord[];
+}
+
 export interface RegisterTeamResourceShareRoutesDeps {
   /** URL segment for this resource kind: `design-systems` | `plugins` | `skills`. */
   basePath: string;
   share: TeamResourceShareService;
   /** Optional materialization hook for shared team resources. */
   syncSharedResource?: (resource: TeamResourceShareRecord) => Promise<void>;
+  /**
+   * Optional stale-while-revalidate provider for the `/team` list. Each GET
+   * otherwise hits the resource hub (and re-materializes every shared resource)
+   * on the request path — slow when the workspace shell re-reads all three kinds
+   * on navigation. When provided, the route serves this cached listing instead,
+   * so warm reads return instantly and refresh in the background.
+   */
+  listTeam?: () => Promise<TeamResourceShareListing>;
 }
 
 /**
@@ -30,6 +43,10 @@ export function registerTeamResourceShareRoutes(
 
   // Ids shared to the team — drives the "team" collection for this kind.
   app.get(`${root}/team`, async (_req, res) => {
+    if (deps.listTeam) {
+      res.json(await deps.listTeam());
+      return;
+    }
     const resources = await share.sharedResources();
     if (deps.syncSharedResource) {
       await Promise.all(resources.map((resource) => deps.syncSharedResource?.(resource)));
