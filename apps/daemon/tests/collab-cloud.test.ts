@@ -329,7 +329,7 @@ describe('createCollabCloudService', () => {
     service.dispose();
   });
 
-  it('registers the member on each poll from the workspace context', async () => {
+  it('registers the member once across polls, not on every cycle', async () => {
     const { client, registered } = fakeClient();
     const service = createCollabCloudService({
       client,
@@ -338,8 +338,14 @@ describe('createCollabCloudService', () => {
       resolveLocalConversationId: () => null,
       mergeComment: () => false,
     });
+    // The identity is stable across cycles, so we must register exactly once
+    // instead of spawning a `vela member register` process on every 5s tick.
     await service.pollOnce();
-    expect(registered).toContainEqual({ teamId: 'team-1', memberId: 'm-self', displayName: '琼羽', role: 'owner' });
+    await service.pollOnce();
+    await service.pollOnce();
+    expect(registered).toEqual([
+      { teamId: 'team-1', memberId: 'm-self', displayName: '琼羽', role: 'owner' },
+    ]);
     service.dispose();
   });
 

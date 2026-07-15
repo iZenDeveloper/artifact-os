@@ -55,6 +55,10 @@ export const zhCN: Dict = {
   "workspaceInvite.sending": "邀请中……",
   "workspaceInvite.confirm": "确认并邀请",
   "workspaceInvite.submitFailed": "邀请发送失败，请稍后重试。",
+  "workspaceInvite.errorAlreadyMember": "该邮箱已是团队成员或已有待处理的邀请。",
+  "workspaceInvite.errorNoSession": "请先登录你的 Vela 账号再邀请成员。",
+  "workspaceInvite.errorNoWorkspace": "当前还没有可邀请成员的团队空间。",
+  "workspaceInvite.errorUnreachable": "邀请未能送达，请稍后重试。",
   "chat.amrCard.switchTitle": "模型调用失败，当前任务已暂停",
   "chat.amrCard.switchBody":
     "可切换到 Open Design Cloud 官方模型服务，无需配置 API Key。完成登录、授权和充值后，将自动重试当前任务。",

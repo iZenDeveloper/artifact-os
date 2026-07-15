@@ -85,6 +85,10 @@ export interface Dict {
   'workspaceInvite.sending': string;
   'workspaceInvite.confirm': string;
   'workspaceInvite.submitFailed': string;
+  'workspaceInvite.errorAlreadyMember': string;
+  'workspaceInvite.errorNoSession': string;
+  'workspaceInvite.errorNoWorkspace': string;
+  'workspaceInvite.errorUnreachable': string;
   // Common
   'common.cancel': string;
   'chat.selectFromLibrary': string;

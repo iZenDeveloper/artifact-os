@@ -123,6 +123,10 @@ export function createCollabCloudService(deps: CollabCloudServiceDeps): CollabCl
   const etags = new Map<string, string | null>();
   let timer: NodeJS.Timeout | null = null;
   let running = false;
+  // The identity we last pushed to the member directory. Re-registering only
+  // when this changes keeps `pollOnce` from spawning a `vela member register`
+  // process on every 5s tick (see pollOnce).
+  let lastRegisteredKey: string | null = null;
 
   async function teamIdentity(): Promise<{
     teamId: string;
@@ -214,16 +218,24 @@ export function createCollabCloudService(deps: CollabCloudServiceDeps): CollabCl
   async function pollOnce(): Promise<void> {
     const identity = await teamIdentity();
     if (!identity) return;
-    // Refresh our own directory entry each cycle so the name/role stays current
-    // even if the team context was set (via PUT /api/workspace/context) after
-    // startup. Best-effort — a directory hiccup must not block comment pull.
-    try {
-      await deps.client.registerMember(identity.teamId, identity.memberId, {
-        displayName: identity.displayName,
-        role: identity.role,
-      });
-    } catch (error) {
-      deps.onError?.(error);
+    // Refresh our own directory entry only when the identity actually changes
+    // (first time it resolves, or a rename/role change via PUT
+    // /api/workspace/context after startup) rather than every 5s cycle — a
+    // per-cycle re-register spawned a `vela member register` process on every
+    // tick and scaled badly. Best-effort — a directory hiccup must not block
+    // comment pull, and a failure leaves `lastRegisteredKey` unset so the next
+    // cycle retries.
+    const identityKey = `${identity.teamId}:${identity.memberId}:${identity.role}:${identity.displayName}`;
+    if (identityKey !== lastRegisteredKey) {
+      try {
+        await deps.client.registerMember(identity.teamId, identity.memberId, {
+          displayName: identity.displayName,
+          role: identity.role,
+        });
+        lastRegisteredKey = identityKey;
+      } catch (error) {
+        deps.onError?.(error);
+      }
     }
     for (const projectId of deps.listProjectIds()) {
       try {

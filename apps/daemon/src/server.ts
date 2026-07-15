@@ -2668,7 +2668,15 @@ export async function startServer({
     ? createCollabCloudService({
         client: collabCloudClient,
         workspaceContext: collab.workspaceContext,
-        listProjectIds: () => listProjects(db).map((project: { id: string }) => project.id),
+        // Only poll comments for projects the UI is actively viewing — those
+        // have a live `/api/projects/:id/events` SSE subscriber, so their id is
+        // a key in activeProjectEventSinks. Polling every local project each 5s
+        // cycle spawned one `vela collab comment pull` subprocess per project
+        // and did not scale: a workspace with many shared projects turned every
+        // tick into a spawn storm that starved the pull the open project was
+        // waiting on. A member picks up a project's comments when they open it
+        // (a fresh sink) and stops polling it once they navigate away.
+        listProjectIds: () => [...activeProjectEventSinks.keys()],
         resolveLocalConversationId: (projectId) =>
           getLatestConversationIdForProject(db, projectId),
         mergeComment: ({ projectId, conversationId, comment }) =>

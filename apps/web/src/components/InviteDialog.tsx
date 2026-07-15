@@ -82,6 +82,25 @@ export function InviteDialog({ open, onClose, freePlan = false, onSubmit, canAss
   const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
   const hasValidEmail = rows.some((r) => isEmail(r.email));
 
+  // Map the daemon's typed per-invite failure code to a reason-specific
+  // message. `create_409` means the person is already a member (or already
+  // invited), for which "retry later" is misleading; only an unreachable relay
+  // is actually worth retrying.
+  function inviteErrorMessage(code: string | undefined): string {
+    switch (code) {
+      case 'create_409':
+        return t('workspaceInvite.errorAlreadyMember');
+      case 'no_session':
+        return t('workspaceInvite.errorNoSession');
+      case 'no_workspace':
+        return t('workspaceInvite.errorNoWorkspace');
+      case 'create_unreachable':
+        return t('workspaceInvite.errorUnreachable');
+      default:
+        return t('workspaceInvite.submitFailed');
+    }
+  }
+
   async function handleConfirm() {
     const valid = rows.filter((r) => isEmail(r.email));
     if (valid.length === 0 || submitting || success) return;
@@ -97,13 +116,17 @@ export function InviteDialog({ open, onClose, freePlan = false, onSubmit, canAss
       });
       if (!res.ok) throw new Error('request_failed');
       const body = (await res.json().catch(() => null)) as
-        | { results?: Array<{ ok?: boolean }> }
+        | { results?: Array<{ ok?: boolean; error?: string }> }
         | null;
       const results = body?.results ?? [];
       // Any failed row means the invite batch needs user attention; keep the
-      // dialog open instead of closing with a misleading success state.
-      if (results.some((r) => r.ok === false)) {
-        throw new Error('invite_failed');
+      // dialog open with a reason-specific message instead of a misleading
+      // success state or a blanket "retry later".
+      const failed = results.find((r) => r.ok === false);
+      if (failed) {
+        setError(inviteErrorMessage(failed.error));
+        setSubmitting(false);
+        return;
       }
       setSuccess(true);
       onSubmit?.(valid);
