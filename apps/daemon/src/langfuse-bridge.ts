@@ -17,6 +17,7 @@ import { modelIdForTracking } from '@open-design/contracts/analytics';
 import { agentCliEnvForAgent, readAppConfig } from './app-config.js';
 import type { AppVersionInfo } from './app-version.js';
 import { listMessages } from './db.js';
+import { normalizeOpenDesignTelemetryRelayUrl } from './integrations/telemetry-relay.js';
 import {
   deriveLangfuseDeliveryState,
   readFeedbackTelemetrySinkConfig,
@@ -187,14 +188,21 @@ function inferObjectRegistrationRelayUrl(env: NodeJS.ProcessEnv = process.env): 
   const objectRelayUrl = env.OPEN_DESIGN_OBJECT_RELAY_URL?.trim();
   if (!objectRelayUrl) {
     const telemetryRelayUrl = env.OPEN_DESIGN_TELEMETRY_RELAY_URL?.trim();
-    return telemetryRelayUrl ? telemetryRelayUrl.replace(/\/+$/, '') : null;
+    return telemetryRelayUrl
+      ? normalizeOpenDesignTelemetryRelayUrl(telemetryRelayUrl)
+      : null;
   }
+  const normalizedObjectRelayUrl = normalizeOpenDesignTelemetryRelayUrl(
+    objectRelayUrl,
+  );
   try {
-    const url = new URL(objectRelayUrl);
+    const url = new URL(normalizedObjectRelayUrl);
     url.pathname = url.pathname.replace(/\/api\/objects\/batch\/?$/, '/api/langfuse');
     return url.toString().replace(/\/+$/, '');
   } catch {
-    return objectRelayUrl.replace(/\/api\/objects\/batch\/?$/, '/api/langfuse').replace(/\/+$/, '');
+    return normalizedObjectRelayUrl
+      .replace(/\/api\/objects\/batch\/?$/, '/api/langfuse')
+      .replace(/\/+$/, '');
   }
 }
 

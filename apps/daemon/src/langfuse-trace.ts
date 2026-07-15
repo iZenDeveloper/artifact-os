@@ -19,6 +19,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 import type { TelemetryPrefs } from './app-config.js';
+import { normalizeOpenDesignTelemetryRelayUrl } from './integrations/telemetry-relay.js';
 import { readVelaControlApiContext } from './integrations/vela.js';
 import {
   buildPromptStackFlatMetadata,
@@ -401,7 +402,7 @@ export function readTelemetrySinkConfig(
   if (relayUrl) {
     return {
       kind: 'relay',
-      relayUrl: relayUrl.replace(/\/+$/, ''),
+      relayUrl: normalizeOpenDesignTelemetryRelayUrl(relayUrl),
       timeoutMs: parsePositiveInt(
         env.OPEN_DESIGN_TELEMETRY_TIMEOUT_MS ?? env.LANGFUSE_TIMEOUT_MS,
         DEFAULT_FETCH_TIMEOUT_MS,

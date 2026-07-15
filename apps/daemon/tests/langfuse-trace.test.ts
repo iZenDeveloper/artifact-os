@@ -188,6 +188,17 @@ describe('readTelemetrySinkConfig', () => {
     });
   });
 
+  it('migrates the legacy self-host test relay hostname', () => {
+    const cfg = readTelemetrySinkConfig({
+      OPEN_DESIGN_TELEMETRY_RELAY_URL:
+        'https://telemetry-selfhost.open-design.ai/api/langfuse',
+    });
+    expect(cfg).toMatchObject({
+      kind: 'relay',
+      relayUrl: 'https://telemetry-test.open-design.ai/api/langfuse',
+    });
+  });
+
   it('falls back to direct Langfuse config for local smoke tests', () => {
     const cfg = readTelemetrySinkConfig({
       LANGFUSE_PUBLIC_KEY: 'pk',
