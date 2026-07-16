@@ -110,6 +110,11 @@ async function main(): Promise<void> {
   // Must also land before whenReady — see the helper's docblock for the
   // connection-pool deadlock it prevents (electron/electron#47097).
   applyLoopbackConnectionLimitSwitch(app);
+  // Belt-and-braces duplicate of the helper above: the packaged outer
+  // shell can outlive auto-updates that only refresh inner resources, so
+  // the deadlock fix must not depend on which desktop build the shell
+  // happens to bundle. appendSwitch is idempotent for the same key.
+  app.commandLine.appendSwitch("ignore-connections-limit", "127.0.0.1,localhost");
 
   const config = await readPackagedConfig();
   const afterQuit = parseLauncherAfterQuitArgs(process.argv.slice(1));

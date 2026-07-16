@@ -71,6 +71,32 @@ describe('od:// protocol proxy', () => {
     expect(response.headers.get('content-type')).toBe('font/ttf');
   });
 
+  // net.fetch decompresses the upstream body but leaves the encoding
+  // headers in place; forwarding them makes renderer-side consumers that
+  // honor them (the font loader) gunzip plain bytes and fail. The proxy
+  // must strip the stale framing headers.
+  it('strips stale content-encoding/length/transfer-encoding from proxied responses', async () => {
+    const fetchImpl: typeof fetch = async () =>
+      new Response('plain-after-decode', {
+        status: 200,
+        headers: {
+          'content-type': 'font/ttf',
+          'content-encoding': 'gzip',
+          'content-length': '99999',
+          'transfer-encoding': 'chunked',
+        },
+      });
+
+    const request = new Request('od://app/remixicon.ttf');
+    const response = await handleOdRequest(request, 'http://127.0.0.1:17579/', fetchImpl);
+
+    expect(response.headers.get('content-encoding')).toBeNull();
+    expect(response.headers.get('content-length')).toBeNull();
+    expect(response.headers.get('transfer-encoding')).toBeNull();
+    expect(response.headers.get('content-type')).toBe('font/ttf');
+    expect(await response.text()).toBe('plain-after-decode');
+  });
+
   it('stamps CORS allowance on bodyless upstream responses too', async () => {
     const fetchImpl: typeof fetch = async () => new Response(null, { status: 204 });
 

@@ -72,16 +72,25 @@ const defaultRetryDelay = (ms: number): Promise<void> =>
  *     tears down) aborts the upstream too.
  */
 /**
- * Font loads (CSS `@font-face` and the FontFace API) are CORS-mode requests
- * per the CSS Fonts spec even when same-origin-looking, and Chromium's CORS
- * check for custom-scheme documents fails closed when the response carries
- * no ACAO header — every packaged icon glyph rendered as a tofu square while
- * plain fetch() of the same TTF URL returned 200. od:// is reachable only
- * from this app's own renderer (the protocol handler exists in no other
- * process), so a blanket wildcard leaks nothing.
+ * Two response-header repairs every proxied response needs:
+ *
+ * 1. Drop `content-encoding`/`content-length`/`transfer-encoding`. The
+ *    main-process fetch has ALREADY decompressed the upstream body, but the
+ *    stale headers ride along, so Chromium's renderer-side consumers that
+ *    honor them (the font loader chief among them) try to gunzip plain
+ *    bytes and fail with a generic network error. That is exactly why every
+ *    packaged icon font rendered as tofu squares while plain fetch() of the
+ *    same TTF returned 200 — the fetch path never re-decodes. Classic
+ *    protocol.handle-proxy pitfall.
+ * 2. Stamp `Access-Control-Allow-Origin: *`. Font loads are CORS-mode
+ *    requests per the CSS Fonts spec; od:// is reachable only from this
+ *    app's own renderer, so the wildcard leaks nothing.
  */
-function withCorsAllowance(headers: Headers): Headers {
+function sanitizeProxyResponseHeaders(headers: Headers): Headers {
   const out = new Headers(headers);
+  out.delete("content-encoding");
+  out.delete("content-length");
+  out.delete("transfer-encoding");
   out.set("Access-Control-Allow-Origin", "*");
   return out;
 }
@@ -112,7 +121,7 @@ async function fetchOdTargetOnce(
     return new Response(null, {
       status: upstream.status,
       statusText: upstream.statusText,
-      headers: withCorsAllowance(upstream.headers),
+      headers: sanitizeProxyResponseHeaders(upstream.headers),
     });
   }
   const reader = upstream.body.getReader();
@@ -139,7 +148,7 @@ async function fetchOdTargetOnce(
   return new Response(body, {
     status: upstream.status,
     statusText: upstream.statusText,
-    headers: withCorsAllowance(upstream.headers),
+    headers: sanitizeProxyResponseHeaders(upstream.headers),
   });
 }
 
