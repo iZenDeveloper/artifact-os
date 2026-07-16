@@ -32,6 +32,7 @@ import type {
   WorkspaceDirectoryResponse,
 } from '@open-design/contracts';
 import { Icon } from './Icon';
+import { RemixIcon } from './RemixIcon';
 import { InviteDialog } from './InviteDialog';
 import { CreditsPanel } from './CreditsPanel';
 import { LOCALE_LABEL, LOCALES, useI18n } from '../i18n';
@@ -600,7 +601,7 @@ export function EntryNavRail({
           onClick={() => selectView('home')}
           testId="entry-nav-home"
         >
-          <Icon name="file-history-filled" size={18} />
+          <RemixIcon name="file-history-fill" size={18} />
         </NavButton>
         <NavButton
           active={view === 'community'}
@@ -609,7 +610,7 @@ export function EntryNavRail({
           onClick={() => selectView('community')}
           testId="entry-nav-community"
         >
-          <Icon name="globe-filled" size={18} />
+          <RemixIcon name="global-fill" size={18} />
         </NavButton>
 
         {context ? (
@@ -695,7 +696,7 @@ export function EntryNavRail({
               onClick={() => selectView('drafts')}
               testId="entry-nav-drafts"
             >
-              <Icon name="file-filled" size={18} />
+              <RemixIcon name="file-fill" size={18} />
             </NavButton>
             <NavButton
               active={view === 'all-projects'}
@@ -704,7 +705,7 @@ export function EntryNavRail({
               onClick={() => selectView('all-projects')}
               testId="entry-nav-all-projects"
             >
-              <Icon name="grid-filled" size={18} />
+              <RemixIcon name="grid-fill" size={18} />
             </NavButton>
             <NavButton
               active={view === 'design-systems'}
@@ -713,7 +714,7 @@ export function EntryNavRail({
               onClick={() => selectView('design-systems')}
               testId="entry-nav-design-systems"
             >
-              <Icon name="palette-filled" size={18} />
+              <RemixIcon name="palette-fill" size={18} />
             </NavButton>
             <NavButton
               active={view === 'plugins'}
@@ -722,7 +723,7 @@ export function EntryNavRail({
               onClick={() => selectView('plugins')}
               testId="entry-nav-plugins"
             >
-              <Icon name="puzzle-filled" size={18} />
+              <RemixIcon name="puzzle-fill" size={18} />
             </NavButton>
             {/* Workspace management (成员 / 数据大盘 / Workspace 设置) lives in
                 B's vela/web console — link OUT, don't route to in-client views.
@@ -738,7 +739,7 @@ export function EntryNavRail({
                 data-testid="entry-nav-members"
               >
                 <span className="entry-nav-rail__btn-icon" aria-hidden>
-                  <Icon name="users-filled" size={18} />
+                  <RemixIcon name="group-fill" size={18} />
                 </span>
                 <span className="entry-nav-rail__btn-label">{t('entry.navMembers')}</span>
               </a>
@@ -753,7 +754,7 @@ export function EntryNavRail({
                 data-testid="entry-nav-dashboard"
               >
                 <span className="entry-nav-rail__btn-icon" aria-hidden>
-                  <Icon name="dashboard-filled" size={18} />
+                  <RemixIcon name="dashboard-fill" size={18} />
                 </span>
                 <span className="entry-nav-rail__btn-label">{t('entry.navDashboard')}</span>
               </a>
@@ -768,7 +769,7 @@ export function EntryNavRail({
                 data-testid="entry-nav-workspace-settings"
               >
                 <span className="entry-nav-rail__btn-icon" aria-hidden>
-                  <Icon name="settings-filled" size={18} />
+                  <RemixIcon name="settings-3-fill" size={18} />
                 </span>
                 <span className="entry-nav-rail__btn-label">{t('entry.navWorkspaceSettings')}</span>
               </a>
@@ -784,7 +785,7 @@ export function EntryNavRail({
               onClick={() => selectView('design-systems')}
               testId="entry-nav-design-systems"
             >
-              <Icon name="palette-filled" size={18} />
+              <RemixIcon name="palette-fill" size={18} />
             </NavButton>
             <NavButton
               active={view === 'plugins'}
@@ -793,7 +794,7 @@ export function EntryNavRail({
               onClick={() => selectView('plugins')}
               testId="entry-nav-plugins"
             >
-              <Icon name="puzzle-filled" size={18} />
+              <RemixIcon name="puzzle-fill" size={18} />
             </NavButton>
           </>
         )}
