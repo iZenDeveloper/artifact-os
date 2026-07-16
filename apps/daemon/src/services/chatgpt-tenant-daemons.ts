@@ -40,6 +40,12 @@ interface TenantEntry {
   lastUsedAtMs: number;
 }
 
+interface CapabilityAuthorization {
+  subject: string;
+  accessToken: string;
+  expiresAtMs: number;
+}
+
 const DEFAULT_REFRESH_SKEW_MS = 5 * 60_000;
 const DEFAULT_IDLE_TTL_MS = 30 * 60_000;
 const DEFAULT_MAX_ACTIVE_TENANTS = 8;
@@ -57,6 +63,7 @@ export class ManagedChatGptTenantManager {
   readonly #entries = new Map<string, TenantEntry>();
   readonly #pending = new Map<string, Promise<string>>();
   readonly #reaping = new Map<string, Promise<void>>();
+  readonly #capabilityAuthorizations = new Map<string, CapabilityAuthorization>();
 
   constructor(options: ManagedChatGptTenantManagerOptions) {
     this.#options = options;
@@ -93,8 +100,21 @@ export class ManagedChatGptTenantManager {
     return starting;
   }
 
+  async resolveCapability(tenantKey: string): Promise<string> {
+    const authorization = this.#capabilityAuthorizations.get(tenantKey);
+    if (!authorization || authorization.expiresAtMs <= this.#now()) {
+      if (authorization) this.#capabilityAuthorizations.delete(tenantKey);
+      throw new Error('The ChatGPT artifact link has expired. Return to ChatGPT and refresh the result.');
+    }
+    return this.resolve(authorization.subject, authorization.accessToken);
+  }
+
   async reapIdle(): Promise<number> {
-    const cutoff = this.#now() - (this.#options.idleTtlMs ?? DEFAULT_IDLE_TTL_MS);
+    const now = this.#now();
+    for (const [tenantKey, authorization] of this.#capabilityAuthorizations) {
+      if (authorization.expiresAtMs <= now) this.#capabilityAuthorizations.delete(tenantKey);
+    }
+    const cutoff = now - (this.#options.idleTtlMs ?? DEFAULT_IDLE_TTL_MS);
     const stale = [...this.#entries.entries()].filter(
       ([subject, entry]) =>
         entry.lastUsedAtMs <= cutoff &&
@@ -119,6 +139,7 @@ export class ManagedChatGptTenantManager {
     await Promise.allSettled([...this.#reaping.values()]);
     const entries = [...this.#entries.values()];
     this.#entries.clear();
+    this.#capabilityAuthorizations.clear();
     await Promise.allSettled(entries.map((entry) => entry.daemon.stop()));
   }
 
@@ -145,6 +166,11 @@ export class ManagedChatGptTenantManager {
       daemon,
       credentialExpiresAtMs,
       lastUsedAtMs: this.#now(),
+    });
+    this.#capabilityAuthorizations.set(chatGptTenantKey(subject), {
+      subject,
+      accessToken,
+      expiresAtMs: credentialExpiresAtMs,
     });
     return daemon.url;
   }

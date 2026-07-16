@@ -1,10 +1,22 @@
 import { timingSafeEqual } from 'node:crypto';
+import { Readable } from 'node:stream';
 
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { Express, Request, Response as ExpressResponse } from 'express';
 import { createRemoteJWKSet, customFetch, jwtVerify } from 'jose';
 
 import { chatGptV1RequiredScopes, createOpenDesignMcpServer } from '../mcp.js';
+import {
+  CHATGPT_STUDIO_COOKIE,
+  chatGptCapabilitySecret,
+  chatGptCapabilityTtlSeconds,
+  chatGptStudioCookieToken,
+  createChatGptCapabilityToken,
+  encodeChatGptCapabilityPath,
+  verifyChatGptCapabilityToken,
+  type ChatGptCapabilityClaims,
+} from '../services/chatgpt-capabilities.js';
+import { chatGptTenantKey } from '../services/chatgpt-tenant-daemons.js';
 
 export const CHATGPT_MCP_SCOPES = [
   'openid',
@@ -28,6 +40,7 @@ export interface RegisterChatGptMcpRoutesDeps {
     principal: ChatGptMcpPrincipal,
     accessToken: string,
   ) => Promise<string>;
+  resolveTenantDaemonByKey?: (tenantKey: string) => Promise<string>;
   env?: NodeJS.ProcessEnv;
   fetchImpl?: typeof fetch;
 }
@@ -120,6 +133,206 @@ function widgetFrameDomains(env: NodeJS.ProcessEnv): string[] {
       }
       return [];
     });
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function entryFileFromPreviewUrl(value: unknown): string | null {
+  const url = stringValue(value);
+  if (!url) return null;
+  try {
+    const marker = '/raw/';
+    const pathname = new URL(url).pathname;
+    const index = pathname.indexOf(marker);
+    return index >= 0 ? decodeURIComponent(pathname.slice(index + marker.length)) : null;
+  } catch {
+    return null;
+  }
+}
+
+function conversationIdFromStudioUrl(value: unknown): string | null {
+  const url = stringValue(value);
+  if (!url) return null;
+  try {
+    const match = new URL(url).pathname.match(/\/conversations\/([^/]+)/u);
+    return match?.[1] ? decodeURIComponent(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function rewriteManagedTenantResultUrls(input: {
+  result: any;
+  subject: string;
+  publicOrigin: string;
+  env: NodeJS.ProcessEnv;
+}): any {
+  const structured = input.result?.structuredContent;
+  if (!structured || typeof structured !== 'object' || Array.isArray(structured)) return input.result;
+  const next = { ...structured } as Record<string, unknown>;
+  const projectRecord = next.project && typeof next.project === 'object' && !Array.isArray(next.project)
+    ? next.project as Record<string, unknown>
+    : null;
+  const projectId = stringValue(next.projectId) ?? stringValue(projectRecord?.id);
+  if (!projectId) return input.result;
+
+  const entryFile = stringValue(next.entryFile) ?? entryFileFromPreviewUrl(next.previewUrl);
+  const conversationId = stringValue(next.conversationId)
+    ?? conversationIdFromStudioUrl(next.studioUrl);
+  const secret = chatGptCapabilitySecret(input.env);
+  const ttlSeconds = chatGptCapabilityTtlSeconds(input.env);
+  const tenantKey = chatGptTenantKey(input.subject);
+
+  // Never allow the child daemon's loopback URLs to escape the managed
+  // gateway. Replace them only with signed, subject-bound public routes.
+  delete next.previewUrl;
+  delete next.studioUrl;
+  if (entryFile) {
+    const previewToken = createChatGptCapabilityToken({
+      purpose: 'preview',
+      tenantKey,
+      projectId,
+      entryFile,
+    }, secret, { ttlSeconds });
+    next.entryFile = entryFile;
+    next.previewUrl = `${input.publicOrigin}/chatgpt/preview/${previewToken}/raw/${encodeChatGptCapabilityPath(entryFile)}`;
+  }
+  if (conversationId) {
+    const studioToken = createChatGptCapabilityToken({
+      purpose: 'studio',
+      tenantKey,
+      projectId,
+      conversationId,
+      entryFile,
+    }, secret, { ttlSeconds });
+    next.studioUrl = `${input.publicOrigin}/chatgpt/studio/${studioToken}`;
+  }
+
+  return {
+    ...input.result,
+    structuredContent: next,
+    content: Array.isArray(input.result.content)
+      ? input.result.content.map((item: any) => item?.type === 'text'
+        ? { ...item, text: JSON.stringify(next, null, 2) }
+        : item)
+      : input.result.content,
+  };
+}
+
+function capabilityClaims(
+  token: string,
+  purpose: ChatGptCapabilityClaims['purpose'],
+  env: NodeJS.ProcessEnv,
+): ChatGptCapabilityClaims | null {
+  const claims = verifyChatGptCapabilityToken(token, chatGptCapabilitySecret(env));
+  return claims?.purpose === purpose ? claims : null;
+}
+
+function responseHeaderAllowed(name: string): boolean {
+  return [
+    'accept-ranges',
+    'cache-control',
+    'content-encoding',
+    'content-language',
+    'content-length',
+    'content-range',
+    'content-security-policy',
+    'content-type',
+    'etag',
+    'last-modified',
+  ].includes(name.toLowerCase());
+}
+
+async function pipeUpstreamResponse(
+  upstream: globalThis.Response,
+  response: ExpressResponse,
+): Promise<void> {
+  response.status(upstream.status);
+  upstream.headers.forEach((value, name) => {
+    if (responseHeaderAllowed(name)) response.setHeader(name, value);
+  });
+  if (!upstream.body || upstream.status === 204 || upstream.status === 304) {
+    response.end();
+    return;
+  }
+  await new Promise<void>((resolve, reject) => {
+    const stream = Readable.fromWeb(upstream.body as any);
+    stream.once('error', reject);
+    response.once('error', reject);
+    response.once('finish', resolve);
+    stream.pipe(response);
+  });
+}
+
+function proxyRequestHeaders(request: Request): Headers {
+  const headers = new Headers();
+  const blocked = new Set([
+    'authorization',
+    'connection',
+    'content-length',
+    'cookie',
+    'forwarded',
+    'host',
+    'origin',
+    'referer',
+    'x-forwarded-for',
+    'x-forwarded-host',
+    'x-forwarded-proto',
+  ]);
+  for (const [name, rawValue] of Object.entries(request.headers)) {
+    if (blocked.has(name.toLowerCase())) continue;
+    if (Array.isArray(rawValue)) headers.set(name, rawValue.join(', '));
+    else if (typeof rawValue === 'string') headers.set(name, rawValue);
+  }
+  return headers;
+}
+
+async function proxyStudioApiRequest(input: {
+  request: Request;
+  response: ExpressResponse;
+  daemonUrl: string;
+  fetchImpl: typeof fetch;
+}): Promise<void> {
+  if (!input.request.originalUrl.startsWith('/api')) {
+    throw new Error('Studio proxy accepts only Open Design API paths.');
+  }
+  const daemonOrigin = new URL(input.daemonUrl);
+  const upstreamUrl = new URL(input.request.originalUrl, `${daemonOrigin.origin}/`);
+  if (upstreamUrl.origin !== daemonOrigin.origin) {
+    throw new Error('Studio proxy rejected a cross-origin upstream URL.');
+  }
+  const method = input.request.method.toUpperCase();
+  const headers = proxyRequestHeaders(input.request);
+  let body: string | Request | undefined;
+  let duplex: 'half' | undefined;
+  if (method !== 'GET' && method !== 'HEAD') {
+    if (input.request.is('application/json') && input.request.body !== undefined) {
+      body = JSON.stringify(input.request.body);
+      headers.set('content-type', 'application/json');
+    } else {
+      body = input.request;
+      duplex = 'half';
+    }
+  }
+  const upstream = await input.fetchImpl(upstreamUrl, {
+    method,
+    headers,
+    body,
+    redirect: 'manual',
+    ...(duplex ? { duplex } : {}),
+  } as RequestInit & { duplex?: 'half' });
+  await pipeUpstreamResponse(upstream, input.response);
+}
+
+function studioRedirectPath(claims: ChatGptCapabilityClaims): string {
+  let path = `/projects/${encodeURIComponent(claims.projectId)}`;
+  if (claims.conversationId) {
+    path += `/conversations/${encodeURIComponent(claims.conversationId)}`;
+    if (claims.entryFile) path += `/files/${encodeChatGptCapabilityPath(claims.entryFile)}`;
+  }
+  return path;
 }
 
 function oauthChallenge(request: Request, env: NodeJS.ProcessEnv, error?: string, scope?: string): string {
@@ -386,10 +599,131 @@ export function registerChatGptMcpRoutes(
   {
     getDaemonUrl,
     resolveTenantDaemonUrl,
+    resolveTenantDaemonByKey,
     env = process.env,
     fetchImpl = fetch,
   }: RegisterChatGptMcpRoutesDeps,
 ): void {
+  if (resolveTenantDaemonByKey) {
+    // A ChatGPT iframe cannot attach an OAuth bearer to nested HTML/CSS/JS
+    // requests. Signed preview capabilities expose only one tenant project and
+    // keep the child daemon on loopback.
+    app.get('/chatgpt/preview/:token/raw/*splat', async (request, response) => {
+      let claims: ChatGptCapabilityClaims | null = null;
+      try {
+        claims = capabilityClaims(String(request.params.token ?? ''), 'preview', env);
+      } catch {
+        response.status(503).send('Open Design preview signing is not configured.');
+        return;
+      }
+      if (!claims) {
+        response.status(401).send('This Open Design preview link is invalid or expired.');
+        return;
+      }
+      const rawSplat = request.params.splat;
+      const segments = (Array.isArray(rawSplat) ? rawSplat : [rawSplat])
+        .filter((segment): segment is string => typeof segment === 'string' && segment.length > 0);
+      if (segments.length === 0 || segments.some((segment) => segment === '.' || segment === '..')) {
+        response.status(400).send('Invalid Open Design preview path.');
+        return;
+      }
+      try {
+        const daemonUrl = await resolveTenantDaemonByKey(claims.tenantKey);
+        const upstreamUrl = new URL(
+          `/api/projects/${encodeURIComponent(claims.projectId)}/raw/${segments.map(encodeURIComponent).join('/')}`,
+          `${daemonUrl.replace(/\/+$/u, '')}/`,
+        );
+        const upstream = await fetchImpl(upstreamUrl, {
+          headers: proxyRequestHeaders(request),
+          redirect: 'manual',
+        });
+        await pipeUpstreamResponse(upstream, response);
+      } catch (error) {
+        if (!response.headersSent) {
+          response.status(410).send(error instanceof Error ? error.message : 'Open Design preview is unavailable.');
+        }
+      }
+    });
+
+    // Exchange the signed Studio link for an HttpOnly cookie, then remove the
+    // capability from browser history via a same-origin redirect.
+    app.get('/chatgpt/studio/:token', (request, response) => {
+      let claims: ChatGptCapabilityClaims | null = null;
+      try {
+        claims = capabilityClaims(String(request.params.token ?? ''), 'studio', env);
+      } catch {
+        response.status(503).send('Open Design Studio signing is not configured.');
+        return;
+      }
+      if (!claims) {
+        response.status(401).send('This Open Design Studio link is invalid or expired.');
+        return;
+      }
+      const maxAge = Math.max(1, claims.exp - Math.floor(Date.now() / 1000));
+      const secure = requestOrigin(request, env).startsWith('https:') ? '; Secure' : '';
+      response.setHeader(
+        'Set-Cookie',
+        `${CHATGPT_STUDIO_COOKIE}=${encodeURIComponent(String(request.params.token))}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`,
+      );
+      response.setHeader('Cache-Control', 'no-store');
+      response.setHeader('Referrer-Policy', 'no-referrer');
+      response.redirect(303, studioRedirectPath(claims));
+    });
+
+    // The shared static web bundle stays on the gateway, while every API call
+    // from a signed Studio session is routed to that OAuth subject's daemon.
+    app.use('/api', async (request, response, next) => {
+      const token = chatGptStudioCookieToken(request.headers.cookie);
+      if (!token) {
+        next();
+        return;
+      }
+      let claims: ChatGptCapabilityClaims | null = null;
+      try {
+        claims = capabilityClaims(token, 'studio', env);
+      } catch {
+        response.status(503).json({ error: { code: 'CHATGPT_STUDIO_NOT_CONFIGURED' } });
+        return;
+      }
+      if (!claims) {
+        response.setHeader(
+          'Set-Cookie',
+          `${CHATGPT_STUDIO_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`,
+        );
+        response.status(401).json({
+          error: {
+            code: 'CHATGPT_STUDIO_SESSION_EXPIRED',
+            message: 'Return to ChatGPT and open the latest Open Design result.',
+          },
+        });
+        return;
+      }
+      const browserOrigin = request.get('origin');
+      if (browserOrigin && browserOrigin !== requestOrigin(request, env)) {
+        response.status(403).json({
+          error: {
+            code: 'CHATGPT_STUDIO_ORIGIN_REJECTED',
+            message: 'Open Design Studio accepts only same-origin API requests.',
+          },
+        });
+        return;
+      }
+      try {
+        const daemonUrl = await resolveTenantDaemonByKey(claims.tenantKey);
+        await proxyStudioApiRequest({ request, response, daemonUrl, fetchImpl });
+      } catch (error) {
+        if (!response.headersSent) {
+          response.status(503).json({
+            error: {
+              code: 'CHATGPT_STUDIO_TENANT_UNAVAILABLE',
+              message: error instanceof Error ? error.message : 'Open Design Studio is unavailable.',
+            },
+          });
+        }
+      }
+    });
+  }
+
   const metadataHandler = (request: Request, response: ExpressResponse) => {
     const issuer = String(env.OD_CHATGPT_OAUTH_ISSUER ?? '').trim();
     response.json({
@@ -439,7 +773,25 @@ export function registerChatGptMcpRoutes(
 
     const server = createOpenDesignMcpServer({
       daemonUrl,
-      widgetFrameDomains: widgetFrameDomains(env),
+      widgetFrameDomains: [
+        ...widgetFrameDomains(env),
+        ...(authorization.principal.mode === 'oauth' && resolveTenantDaemonByKey
+          ? [requestOrigin(request, env)]
+          : []),
+      ],
+      widgetRedirectDomains: authorization.principal.mode === 'oauth' && resolveTenantDaemonByKey
+        ? [requestOrigin(request, env), 'https://open-design.ai']
+        : [],
+      ...(authorization.principal.mode === 'oauth' && resolveTenantDaemonByKey
+        ? {
+            transformToolResult: (_toolName: string, result: any) => rewriteManagedTenantResultUrls({
+              result,
+              subject: authorization.principal.subject,
+              publicOrigin: requestOrigin(request, env),
+              env,
+            }),
+          }
+        : {}),
     });
     const transport = new StreamableHTTPServerTransport();
     try {

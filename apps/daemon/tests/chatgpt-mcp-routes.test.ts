@@ -10,7 +10,10 @@ import {
   CHATGPT_MCP_SCOPES,
   registerChatGptMcpRoutes,
   resolveChatGptMcpDaemonUrl,
+  rewriteManagedTenantResultUrls,
 } from '../src/routes/chatgpt-mcp.js';
+import { createChatGptCapabilityToken } from '../src/services/chatgpt-capabilities.js';
+import { chatGptTenantKey } from '../src/services/chatgpt-tenant-daemons.js';
 
 describe('ChatGPT Streamable HTTP MCP', () => {
   const servers: Array<{ close: (callback: (error?: Error) => void) => void }> = [];
@@ -197,6 +200,114 @@ describe('ChatGPT Streamable HTTP MCP', () => {
       authorization_servers: ['https://auth.open-design.ai'],
       scopes_supported: CHATGPT_MCP_SCOPES,
     });
+  });
+
+  it('serves signed tenant previews and exchanges Studio links for an isolated API session', async () => {
+    const tenantKey = chatGptTenantKey('managed-user-123');
+    const signingSecret = 'test-chatgpt-capability-secret-1234567890';
+    const daemon = express();
+    daemon.use(express.json());
+    daemon.get('/api/projects/:id/raw/*splat', (request, response) => {
+      response.type('html').send(`<main data-project="${request.params.id}">${request.params.splat}</main>`);
+    });
+    daemon.get('/api/projects', (request, response) => {
+      if (request.get('origin')) return response.status(403).json({ error: 'origin leaked' });
+      return response.json({
+        projects: [{ id: 'tenant-only', name: 'Tenant project' }],
+      });
+    });
+    const daemonServer = daemon.listen(0, '127.0.0.1');
+    servers.push(daemonServer);
+    await new Promise<void>((resolve) => daemonServer.once('listening', resolve));
+    const daemonPort = (daemonServer.address() as AddressInfo).port;
+
+    const resolveTenantDaemonByKey = vi.fn(async (key: string) => {
+      if (key !== tenantKey) throw new Error('wrong tenant');
+      return `http://127.0.0.1:${daemonPort}`;
+    });
+    const app = express();
+    app.use(express.json());
+    registerChatGptMcpRoutes(app, {
+      getDaemonUrl: () => 'http://127.0.0.1:9',
+      resolveTenantDaemonByKey,
+      env: {
+        OD_PUBLIC_BASE_URL: 'https://mcp.open-design.ai',
+        OD_CHATGPT_CAPABILITY_SIGNING_SECRET: signingSecret,
+      },
+    });
+    const httpServer = app.listen(0, '127.0.0.1');
+    servers.push(httpServer);
+    await new Promise<void>((resolve) => httpServer.once('listening', resolve));
+    const { port } = httpServer.address() as AddressInfo;
+    const origin = `http://127.0.0.1:${port}`;
+
+    const previewToken = createChatGptCapabilityToken({
+      purpose: 'preview',
+      tenantKey,
+      projectId: 'tenant-only',
+      entryFile: 'site/index.html',
+    }, signingSecret);
+    const preview = await fetch(`${origin}/chatgpt/preview/${previewToken}/raw/site/index.html`);
+    expect(preview.status).toBe(200);
+    expect(await preview.text()).toContain('data-project="tenant-only"');
+    expect(resolveTenantDaemonByKey).toHaveBeenCalledWith(tenantKey);
+    expect((await fetch(`${origin}/chatgpt/preview/${previewToken}x/raw/site/index.html`)).status).toBe(401);
+    expect((await fetch(`${origin}/chatgpt/studio/${previewToken}`, { redirect: 'manual' })).status).toBe(401);
+
+    const studioToken = createChatGptCapabilityToken({
+      purpose: 'studio',
+      tenantKey,
+      projectId: 'tenant-only',
+      conversationId: 'conversation-1',
+      entryFile: 'site/index.html',
+    }, signingSecret);
+    const studio = await fetch(`${origin}/chatgpt/studio/${studioToken}`, { redirect: 'manual' });
+    expect(studio.status).toBe(303);
+    expect(studio.headers.get('location')).toBe(
+      '/projects/tenant-only/conversations/conversation-1/files/site/index.html',
+    );
+    const cookie = studio.headers.get('set-cookie')?.split(';')[0];
+    expect(cookie).toContain('od_chatgpt_studio=');
+
+    const projects = await fetch(`${origin}/api/projects`, { headers: { cookie: String(cookie) } });
+    expect(projects.status).toBe(200);
+    await expect(projects.json()).resolves.toEqual({
+      projects: [{ id: 'tenant-only', name: 'Tenant project' }],
+    });
+    const crossOrigin = await fetch(`${origin}/api/projects`, {
+      headers: { cookie: String(cookie), origin: 'https://attacker.example' },
+    });
+    expect(crossOrigin.status).toBe(403);
+  });
+
+  it('replaces managed child loopback URLs with signed public result links', () => {
+    const result = rewriteManagedTenantResultUrls({
+      subject: 'managed-user-123',
+      publicOrigin: 'https://mcp.open-design.ai',
+      env: {
+        OD_CHATGPT_CAPABILITY_SIGNING_SECRET: 'test-chatgpt-capability-secret-1234567890',
+      },
+      result: {
+        structuredContent: {
+          id: 'run-1',
+          projectId: 'tenant-only',
+          conversationId: 'conversation-1',
+          status: 'succeeded',
+          entryFile: 'site/index.html',
+          previewUrl: 'http://127.0.0.1:4101/api/projects/tenant-only/raw/site/index.html',
+          studioUrl: 'http://127.0.0.1:7456/projects/tenant-only/conversations/conversation-1/files/site/index.html',
+        },
+        content: [{ type: 'text', text: 'old loopback result' }],
+      },
+    });
+
+    expect(result.structuredContent.previewUrl).toMatch(
+      /^https:\/\/mcp\.open-design\.ai\/chatgpt\/preview\/.+\/raw\/site\/index\.html$/u,
+    );
+    expect(result.structuredContent.studioUrl).toMatch(
+      /^https:\/\/mcp\.open-design\.ai\/chatgpt\/studio\/.+$/u,
+    );
+    expect(JSON.stringify(result)).not.toContain('127.0.0.1');
   });
 
   it('runs only the Cloud V1 workflows and removes daemon-private progress data', async () => {

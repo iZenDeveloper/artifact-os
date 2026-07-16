@@ -337,6 +337,8 @@ interface RunMcpOptions { daemonUrl: string | URL }
 export interface CreateOpenDesignMcpServerOptions {
   daemonUrl: string | URL;
   widgetFrameDomains?: string[];
+  widgetRedirectDomains?: string[];
+  transformToolResult?: (toolName: string, result: any) => any | Promise<any>;
 }
 interface CatalogItem { id: string; name?: string; title?: string; description?: string; summary?: string }
 interface SkillsPayload { skills?: CatalogItem[] }
@@ -1130,6 +1132,8 @@ export async function runMcpStdio({ daemonUrl }: RunMcpOptions): Promise<void> {
 export function createOpenDesignMcpServer({
   daemonUrl,
   widgetFrameDomains = [],
+  widgetRedirectDomains = [],
+  transformToolResult,
 }: CreateOpenDesignMcpServerOptions): Server {
   const baseUrl = String(daemonUrl).replace(/\/$/, '');
   const frameDomains = [...new Set(['https://open-design.ai', ...widgetFrameDomains])];
@@ -1185,6 +1189,13 @@ export function createOpenDesignMcpServer({
                 frameDomains,
               },
             },
+            ...(widgetRedirectDomains.length > 0
+              ? {
+                  'openai/widgetCSP': {
+                    redirect_domains: [...new Set(widgetRedirectDomains)],
+                  },
+                }
+              : {}),
           },
         }],
       };
@@ -1206,7 +1217,8 @@ export function createOpenDesignMcpServer({
       return errorResult(`tool is outside the Open Design ChatGPT V1 scope: ${String(name ?? '')}`);
     }
     const args = (request.params?.arguments ?? {}) as McpArgs;
-    return handleChatGptV1ToolCall(baseUrl, name, args);
+    const result = await handleChatGptV1ToolCall(baseUrl, name, args);
+    return transformToolResult ? transformToolResult(name, result) : result;
   });
   return server;
 }

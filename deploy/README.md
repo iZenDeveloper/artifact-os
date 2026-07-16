@@ -99,12 +99,24 @@ one loopback-only child daemon per active OAuth subject, bounded by
 `OD_CHATGPT_TENANT_MAX_ACTIVE`; the overlay raises the default container memory
 and process limits accordingly.
 
-The public TLS reverse proxy must expose only `POST /mcp` and the two OAuth
-protected-resource metadata paths. Keep `/api/*`, tenant child ports, and the
-Vela credential exchange off the public proxy. The child daemons receive
-personal, expiring Vela credentials and persist through the gateway's resolved
-daemon data root; see root `AGENTS.md` → **Daemon data directory contract** for
-the storage invariant.
+The public TLS reverse proxy must expose `POST /mcp`, the two OAuth
+protected-resource metadata paths, and the gateway's signed Artifact/Studio
+surface. The latter consists of `GET /chatgpt/preview/*`,
+`GET /chatgpt/studio/*`, the static web application, and `/api/*` for requests
+that carry the gateway-issued HttpOnly Studio cookie. Keep tenant child ports
+and the Vela credential exchange off the public proxy. Always configure a
+private `OD_API_TOKEN` on this deployment and do not set
+`OPEN_DESIGN_DISABLE_API_AUTH=1`: ordinary public `/api/*` requests must remain
+401, while the daemon accepts only a valid, expiring Studio capability cookie
+and proxies that session to the matching subject daemon.
+
+Child loopback URLs never leave the gateway. MCP results replace them with
+short-lived HMAC capability URLs; preview asset paths preserve the capability
+prefix so relative HTML/CSS/JS stay in the same tenant. Opening Studio exchanges
+the URL capability for an HttpOnly, SameSite cookie and redirects away from the
+token-bearing path. The child daemons receive personal, expiring Vela
+credentials and persist through the gateway's resolved daemon data root; see
+root `AGENTS.md` → **Daemon data directory contract** for the storage invariant.
 
 ## Linux: mounting host agent CLIs
 

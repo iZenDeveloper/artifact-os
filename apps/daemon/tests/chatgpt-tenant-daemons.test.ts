@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   chatGptTenantDataDir,
+  chatGptTenantKey,
   ManagedChatGptTenantManager,
   type ChatGptTenantCredentials,
   type ChatGptTenantDaemon,
@@ -48,6 +49,8 @@ describe('ManagedChatGptTenantManager', () => {
     expect(await manager.resolve('user-a', 'token-user-a')).toBe(userAUrl);
     const userBUrl = await manager.resolve('user-b', 'token-user-b');
 
+    expect(await manager.resolveCapability(chatGptTenantKey('user-a'))).toBe(userAUrl);
+
     expect(userBUrl).not.toBe(userAUrl);
     expect(exchangeCredentials).toHaveBeenCalledTimes(2);
     expect(startDaemon).toHaveBeenCalledTimes(2);
@@ -58,6 +61,33 @@ describe('ManagedChatGptTenantManager', () => {
 
     now += 31 * 60_000;
     expect(await manager.reapIdle()).toBe(2);
+    expect(await manager.resolveCapability(chatGptTenantKey('user-a'))).toBe(
+      'http://127.0.0.1:4103',
+    );
+    expect(exchangeCredentials).toHaveBeenCalledTimes(3);
+  });
+
+  it('rejects unknown and expired capability tenant keys', async () => {
+    let now = Date.parse('2026-07-16T09:00:00.000Z');
+    const manager = new ManagedChatGptTenantManager({
+      dataRoot: '/runtime',
+      now: () => now,
+      exchangeCredentials: async () => credentials('user-a', now + 60_000),
+      startDaemon: async () => ({
+        url: 'http://127.0.0.1:4501',
+        isRunning: () => true,
+        stop: async () => {},
+      }),
+    });
+
+    await expect(manager.resolveCapability(chatGptTenantKey('unknown'))).rejects.toThrow(
+      'expired',
+    );
+    await manager.resolve('user-a', 'oauth-token');
+    now += 60_001;
+    await expect(manager.resolveCapability(chatGptTenantKey('user-a'))).rejects.toThrow(
+      'expired',
+    );
   });
 
   it('fails closed when Vela returns credentials for another subject', async () => {

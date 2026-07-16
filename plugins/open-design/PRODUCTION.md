@@ -110,12 +110,22 @@ RFC 7662 introspection remains available as a compatibility fallback:
 | `OD_CHATGPT_TENANT_MODE` | Set to `managed` to run isolated per-subject child daemons on the gateway host. |
 | `OD_CHATGPT_TENANT_CREDENTIAL_URL` | Optional Vela credential-exchange override; normally derived from the OAuth issuer origin. |
 | `OD_CHATGPT_TENANT_GATEWAY_SECRET` | Long random backend secret shared only with Vela's `OPENDESIGN_CHATGPT_GATEWAY_SECRET`. |
+| `OD_CHATGPT_CAPABILITY_SIGNING_SECRET` | Optional independent 32+ byte HMAC secret for expiring preview and Studio links. Defaults to the tenant gateway secret. |
+| `OD_CHATGPT_CAPABILITY_TTL_SECONDS` | Lifetime of signed preview/Studio capabilities; defaults to one hour and is capped at 24 hours. |
 | `OD_CHATGPT_TENANT_DAEMON_ENTRY` | Optional daemon CLI entrypoint override for packaged/container deployments. |
 | `OD_CHATGPT_TENANT_MAX_ACTIVE` | Maximum concurrently resident tenant daemons on one gateway host; defaults to `8` and fails closed at capacity. |
 | `OD_CHATGPT_MCP_TENANT_URL_TEMPLATE` | Alternative external per-user backend URL containing `{sub}`, for example `https://{sub}.tenant.open-design.internal`. |
 | `OD_CHATGPT_WIDGET_FRAME_DOMAINS` | Comma-separated HTTPS origins allowed to render hosted Artifact previews inside the card. |
 
 For the Vela deployment, set `OD_CHATGPT_OAUTH_ISSUER` to its Better Auth issuer (for example `https://<vela-api>/api/auth`) and set `OD_CHATGPT_MCP_RESOURCE_URL` to the same exact public MCP URL used by Vela's `OPENDESIGN_CHATGPT_MCP_RESOURCE_URL`. The protected-resource document is served at both `/.well-known/oauth-protected-resource` and `/.well-known/oauth-protected-resource/mcp`. JWT validation checks the Vela issuer, signature, expiry, exact MCP audience, required per-tool scope, and a non-empty subject. OAuth mode refuses to use shared storage: it requires either managed tenant mode or the external tenant URL template.
+
+Managed mode rewrites every child-daemon loopback preview and Studio URL before
+it reaches ChatGPT. Preview iframes use a signed, project-scoped capability path;
+Studio links exchange a signed capability for an HttpOnly, SameSite session and
+route all web API calls to that OAuth subject's daemon. The public reverse proxy
+must preserve the original public `Host`, expose the signed ChatGPT paths plus
+the static Studio and `/api/*`, and leave `OD_API_TOKEN` enabled. Requests with
+neither the private daemon bearer nor a valid Studio cookie must receive 401.
 
 Each published tool also declares its minimum OAuth scope in its descriptor. The server emits both the current top-level `securitySchemes` form and the `_meta.securitySchemes` compatibility form because the repository's MCP SDK currently preserves extension metadata while older MCP clients may strip unknown top-level fields. Runtime authorization reuses the same tool-to-scope mapping, so the consent description and enforcement cannot drift independently.
 
@@ -132,6 +142,8 @@ The ChatGPT V1 server exposes only account, catalog, project creation, Cloud gen
 - Insufficient balance offers recharge first and local Code Agent/BYOK as a handoff, without exposing credentials.
 - Progress survives repeated polling and a ChatGPT conversation restart.
 - The completed Artifact card shows a real preview.
+- Preview and Studio URLs contain no loopback host, raw OAuth subject, OAuth token, or Vela runtime credential; tampered and expired capabilities fail closed.
+- Opening Studio routes API reads and writes to the same subject and project that produced the ChatGPT result.
 - Version list/restore works against the correct artifact.
 - Source ZIP downloads in ChatGPT; rendered PDF/image/PPTX export opens or downloads from the hosted Open Design renderer.
 - Revoked or expired tokens return an OAuth challenge and never fall back to another user.
