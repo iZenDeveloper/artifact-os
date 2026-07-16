@@ -907,7 +907,7 @@ export interface QuestionsFormClickProps {
   form_id?: string;
   question_id?: string;
   style_id?: string;
-  style_context?: 'deck' | 'prototype';
+  style_context?: 'deck' | 'prototype' | 'document' | 'image' | 'video';
   interaction_source?: 'inline' | 'gallery';
   category_id?: 'all' | 'business' | 'editorial' | 'creative' | 'minimal';
   step_index?: number;

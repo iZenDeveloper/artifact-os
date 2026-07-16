@@ -1091,17 +1091,32 @@ describe('QuestionFormView', () => {
     );
   });
 
-  it('exposes all uploaded style previews for both artifact types', () => {
+  it('exposes all uploaded style previews for every supported artifact type', () => {
     const deckCards = visualStyleCardsForContext('deck');
     const prototypeCards = visualStyleCardsForContext('prototype');
+    const documentCards = visualStyleCardsForContext('document');
+    const imageCards = visualStyleCardsForContext('image');
+    const videoCards = visualStyleCardsForContext('video');
 
     expect(deckCards).toHaveLength(22);
     expect(prototypeCards).toHaveLength(22);
+    expect(documentCards).toHaveLength(8);
+    expect(imageCards).toHaveLength(16);
+    expect(videoCards).toHaveLength(8);
     expect(deckCards.find((card) => card.value === 'deck-bento')?.preview.src).toBe(
       'https://repo-assets.open-design.ai/style-catalog/v1/deck-bento-v1.webp',
     );
     expect(
       prototypeCards.find((card) => card.value === 'prototype-photojournal')?.preview.src,
     ).toBe('https://repo-assets.open-design.ai/style-catalog/v1/prototype-photojournal-v1.webp');
+    expect(
+      documentCards.find((card) => card.value === 'document-docs-reference')?.preview.src,
+    ).toBe('https://repo-assets.open-design.ai/style-catalog/v1/document-docs-reference-v1.webp');
+    expect(
+      imageCards.find((card) => card.value === 'image-poster-clay-3d')?.preview.src,
+    ).toBe('https://repo-assets.open-design.ai/style-catalog/v1/image-poster-clay-3d-v1.webp');
+    expect(
+      videoCards.find((card) => card.value === 'video-swiss-pulse')?.preview.src,
+    ).toBe('https://repo-assets.open-design.ai/style-catalog/v1/video-swiss-pulse-v1.webp');
   });
 });
