@@ -31,6 +31,16 @@ const project: Project = {
   status: { value: 'not_started' },
 };
 
+function stubCoverProbe(status = 200, statusText = 'OK') {
+  const fetchMock = vi.fn(async () => ({
+    ok: status >= 200 && status < 300,
+    status,
+    statusText,
+  }) as Response);
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
 describe('DesignsTab select mode', () => {
   beforeAll(() => {
     if (window.localStorage) return;
@@ -48,11 +58,13 @@ describe('DesignsTab select mode', () => {
 
   beforeEach(() => {
     window.localStorage.clear();
+    stubCoverProbe();
   });
 
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     cleanup();
   });
 
@@ -79,7 +91,7 @@ describe('DesignsTab select mode', () => {
     });
   });
 
-  it('renders HTML entry files inside project cards with a refreshable URL', () => {
+  it('renders HTML entry files inside project cards with a refreshable URL', async () => {
     const htmlProject: Project = {
       ...project,
       id: 'project-html',
@@ -102,10 +114,12 @@ describe('DesignsTab select mode', () => {
 
     const thumb = container.querySelector('.project-thumb-html');
     expect(thumb).toBeTruthy();
-    expect(thumb?.querySelector('iframe')?.getAttribute('src')).toBe(
-      '/api/projects/project-html/files/index.html?v=700',
-    );
-    expect(thumb?.querySelector('.project-thumb-glyph')).toBeNull();
+    await waitFor(() => {
+      expect(thumb?.querySelector('iframe')?.getAttribute('src')).toBe(
+        '/api/projects/project-html/files/index.html?v=700',
+      );
+      expect(thumb?.querySelector('.project-thumb-glyph')).toBeNull();
+    });
   });
 
   it('uses the same HTML cover source as the recent projects strip when scanning files', async () => {

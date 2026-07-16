@@ -60,12 +60,47 @@ export function HtmlProjectCoverFrame({
   diagnostic: string;
 }) {
   const [failed, setFailed] = useState(false);
+  const [verified, setVerified] = useState(false);
 
   useEffect(() => {
-    setFailed(false);
-  }, [src]);
+    if (!src) {
+      setFailed(false);
+      setVerified(false);
+      return;
+    }
 
-  if (!src || failed) {
+    const controller = new AbortController();
+    let disposed = false;
+
+    setFailed(false);
+    setVerified(false);
+
+    fetch(src, { method: 'HEAD', cache: 'no-store', signal: controller.signal })
+      .then((response) => {
+        if (disposed) return;
+        if (response.ok || response.status === 304) {
+          setVerified(true);
+          return;
+        }
+        console.warn(
+          `[project-cover] HTML cover unavailable (${response.status} ${response.statusText}):`,
+          diagnostic,
+        );
+        setFailed(true);
+      })
+      .catch((err) => {
+        if (disposed || (err instanceof DOMException && err.name === 'AbortError')) return;
+        console.warn('[project-cover] failed to verify HTML cover:', diagnostic, err);
+        setFailed(true);
+      });
+
+    return () => {
+      disposed = true;
+      controller.abort();
+    };
+  }, [src, diagnostic]);
+
+  if (!src || failed || !verified) {
     return <span className={glyphClassName}>{initial}</span>;
   }
 

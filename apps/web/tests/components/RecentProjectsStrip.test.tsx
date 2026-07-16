@@ -78,6 +78,16 @@ function projects(count: number): Project[] {
   );
 }
 
+function stubCoverProbe(status = 200, statusText = 'OK') {
+  const fetchMock = vi.fn(async () => ({
+    ok: status >= 200 && status < 300,
+    status,
+    statusText,
+  }) as Response);
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
 describe('RecentProjectsStrip', () => {
   it('shows seven projects when the row has room for a seventh card', async () => {
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function getRect(this: HTMLElement) {
@@ -173,6 +183,8 @@ describe('RecentProjectsStrip', () => {
   });
 
   it('matches project cards with previews and design-system tags', async () => {
+    stubCoverProbe();
+
     const { container } = render(
       <RecentProjectsStrip
         projects={[
@@ -244,8 +256,7 @@ describe('RecentProjectsStrip', () => {
   });
 
   it('renders HTML and deck covers from the current file URL', async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
+    const fetchMock = stubCoverProbe();
 
     const { container } = render(
       <RecentProjectsStrip
@@ -280,6 +291,42 @@ describe('RecentProjectsStrip', () => {
       expect(deckCard?.querySelector('.recent-projects__card-glyph')).toBeNull();
       expect(htmlCard?.querySelector('.recent-projects__card-glyph')).toBeNull();
     });
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/projects/project-deck/files/index.html?v=400',
+      expect.objectContaining({ cache: 'no-store', method: 'HEAD' }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/projects/project-html/files/index.html?v=200',
+      expect.objectContaining({ cache: 'no-store', method: 'HEAD' }),
+    );
+  });
+
+  it('falls back to the glyph and logs when an HTML cover is unavailable', async () => {
+    stubCoverProbe(404, 'Not Found');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const { container } = render(
+      <RecentProjectsStrip
+        projects={[
+          project({
+            id: 'project-html',
+            name: 'Web Prototype',
+            updatedAt: 3,
+          }),
+        ]}
+        onOpen={() => {}}
+        onViewAll={() => {}}
+      />,
+    );
+
+    await waitFor(() => {
+      const htmlThumb = container.querySelector('.recent-projects__card-thumb-html');
+      expect(htmlThumb?.querySelector('iframe')).toBeNull();
+      expect(htmlThumb?.querySelector('.recent-projects__card-glyph')?.textContent).toBe('W');
+      expect(warn).toHaveBeenCalledWith(
+        '[project-cover] HTML cover unavailable (404 Not Found):',
+        'project-html:index.html',
+      );
+    });
   });
 });
