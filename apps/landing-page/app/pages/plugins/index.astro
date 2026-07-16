@@ -43,12 +43,11 @@ const isFeatured = (p: BundledPluginRecord) => (p.tags ?? []).includes('featured
 // Only surface HTML-based templates with a real cover — hide media
 // generators (image / video / audio) and any card without a preview.
 const MEDIA_CATEGORIES = new Set<PluginCategorySlug>(['image', 'video', 'audio']);
-const TAG_BLOCKLIST = new Set([
-  'first-party', 'example', 'untitled', 'community', 'atom', 'design',
-  'image', 'video', 'audio', 'commercial-slide-agent', 'decision-deck', 'zhangzara',
-]);
+// Curated, non-overlapping filter tags (allowlist beats a blocklist here —
+// the raw tag set is noisy and full of near-dupes like deck/slides/ppt).
+const TAG_ALLOWLIST = ['web', 'deck', 'marketing', 'prototype', 'desktop', 'brand', 'editorial', 'motion'];
 const cleanTagsOf = (rec: BundledPluginRecord) =>
-  (rec.tags ?? []).filter((t) => !TAG_BLOCKLIST.has(t) && !/-(template|agent)$/.test(t));
+  (rec.tags ?? []).filter((t) => TAG_ALLOWLIST.includes(t));
 const hasPreview = (p: BundledPluginRecord) => Boolean(p.previewPoster || p.previewVideo);
 // Low-quality entries pulled from the hub's explore grid (by manifest id).
 const EXCLUDE_IDS = new Set(['example-data-report']);
@@ -67,11 +66,9 @@ const exploreItems = [...templatesSet]
 const tagCounts = new Map<string, number>();
 for (const it of exploreItems) for (const t of it.tags) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
 const titleize = (t: string) => t.charAt(0).toUpperCase() + t.slice(1).replace(/-/g, ' ');
-const topTags = [...tagCounts.entries()]
-  .filter(([, n]) => n >= 2)
-  .sort((a, b) => b[1] - a[1])
-  .slice(0, 14)
-  .map(([tag, count]) => ({ tag, label: titleize(tag), count }));
+const topTags = TAG_ALLOWLIST
+  .filter((tag) => (tagCounts.get(tag) ?? 0) > 0)
+  .map((tag) => ({ tag, label: titleize(tag), count: tagCounts.get(tag) ?? 0 }));
 
 const title = pcopy.hubMetaTitle(totalCount);
 const description = pcopy.hubMetaDescription;
