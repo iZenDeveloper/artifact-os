@@ -133,6 +133,32 @@ The ChatGPT V1 server exposes only account, catalog, project creation, Cloud gen
 
 ## Release acceptance
 
+After the public gateway and Vela OAuth provider are deployed, run the
+production verifier before registering the app:
+
+```bash
+pnpm exec tsx plugins/open-design/scripts/verify-production.ts \
+  --mcp-url https://mcp.open-design.ai/mcp \
+  --issuer https://<vela-api>/api/auth
+```
+
+It checks HTTPS protected-resource metadata, the exact audience and issuer,
+OAuth authorization/refresh grants, PKCE S256, public dynamic registration,
+JWKS, V1 scopes, and the unauthenticated Bearer challenge. To test a real
+personal account and wallet without putting a token in shell history:
+
+```bash
+OD_CHATGPT_TEST_ACCESS_TOKEN=<short-lived-user-token> \
+pnpm exec tsx plugins/open-design/scripts/verify-production.ts \
+  --mcp-url https://mcp.open-design.ai/mcp \
+  --issuer https://<vela-api>/api/auth
+```
+
+For the final marketplace gate, add `--require-app-id` after ChatGPT Developer
+Mode registration. `--json` is available for CI or deployment automation. The
+verifier is read-only: it lists tools and reads the signed-in user's account and
+wallet, but does not create a project or spend balance.
+
 - A new ChatGPT user is sent through Open Design sign-in and consent.
 - The account card shows that user's identity and wallet, never a shared service account.
 - Website, prototype, presentation, and design-system runs write only to that user's tenant.

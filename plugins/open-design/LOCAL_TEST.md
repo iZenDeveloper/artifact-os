@@ -61,3 +61,7 @@ The checked-in `.app.json` remains empty until ChatGPT Developer Mode assigns th
 ChatGPT cannot connect directly to a loopback URL. To test inside ChatGPT before production deployment, expose the local daemon through an access-controlled HTTPS tunnel and set the public MCP resource URL to the tunnel's exact `/mcp` URL. For that short-lived test only, set `OD_CHATGPT_MCP_ALLOW_UNAUTHENTICATED=1`, then remove it immediately after the session.
 
 Do not use this tunnel mode for a shared or production deployment. The release build must use Open Design OAuth and managed tenant routing described in [PRODUCTION.md](./PRODUCTION.md).
+
+The hosted deployment has a separate read-only verifier at
+`scripts/verify-production.ts`; it intentionally requires HTTPS and therefore
+does not replace this loopback test path.
