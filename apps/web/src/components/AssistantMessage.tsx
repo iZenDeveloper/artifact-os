@@ -71,7 +71,7 @@ import {
   type PluginFolderCandidate,
 } from "./design-files/pluginFolders";
 import type { PluginFolderAgentAction } from "./design-files/pluginFolderActions";
-import { Icon } from "./Icon";
+import { Icon, type IconName } from "./Icon";
 import { NextStepActions, type NextStepActionsVariant } from "./NextStepActions";
 import type { DesignToolboxActionId } from "../runtime/design-toolbox";
 import { copyToClipboard } from "../lib/copy-to-clipboard";
@@ -868,6 +868,26 @@ function AssistantMessageImpl({
         <span className="role-name">{roleName}</span>
       </div>
       <div className="assistant-flow">
+        {taskActivity ? (
+          <TaskActivityCard
+            entries={taskActivity.entries}
+            trailingThinking={taskActivity.trailingThinking}
+            runStreaming={streaming}
+            runSucceeded={runSucceeded}
+            runFailed={
+              !streaming &&
+              (message.runStatus === "failed" ||
+                message.runStatus === "canceled" ||
+                hasResultDeliveryFailure)
+            }
+            startedAt={message.startedAt}
+            endedAt={message.endedAt}
+            durationMs={usage?.durationMs}
+            projectFileNames={projectFileNames}
+            onRequestOpenFile={onRequestOpenFile}
+            onThinkingLinkClick={thinkingLinkClick}
+          />
+        ) : null}
         {contentBlocks.map((b, i) => {
           if (b.kind === "text")
             return (
@@ -947,16 +967,6 @@ function AssistantMessageImpl({
           }
           return null;
         })}
-        {taskActivity ? (
-          <TaskActivityCard
-            items={taskActivity.items}
-            liveTools={taskActivity.liveTools}
-            runStreaming={streaming}
-            runSucceeded={runSucceeded}
-            projectFileNames={projectFileNames}
-            onRequestOpenFile={onRequestOpenFile}
-          />
-        ) : null}
         {brandBrowserAssistFallbackCard ? (
           <OdCardView
             card={brandBrowserAssistFallbackCard}
@@ -1054,6 +1064,7 @@ function AssistantMessageImpl({
                   forking,
                   forceVisible: true,
                   isLast: !!isLast,
+                  hideRunStatus: taskActivity !== null,
                 }}
               />
             ) : (
@@ -1070,6 +1081,7 @@ function AssistantMessageImpl({
                 onFork={canFork ? onForkFromMessage : undefined}
                 forking={forking}
                 isLast={!!isLast}
+                hideRunStatus={taskActivity !== null}
               />
             )}
           </div>
@@ -1514,6 +1526,10 @@ interface AssistantFooterProps {
   // The most recent assistant reply keeps its footer permanently visible
   // (not hover-gated), matching Lobe Chat's persistent last-message footer.
   isLast?: boolean;
+  // When the turn has an execution disclosure, its run state and elapsed time
+  // live at the top of the answer. The footer keeps only secondary stats and
+  // actions so the same Done/Working state is not repeated at the bottom.
+  hideRunStatus?: boolean;
 }
 
 function AssistantFooter({
@@ -1531,6 +1547,7 @@ function AssistantFooter({
   feedbackControls,
   forceVisible = false,
   isLast = false,
+  hideRunStatus = false,
 }: AssistantFooterProps) {
   const t = useT();
   const elapsed = useLiveElapsed(streaming, startedAt, endedAt, usage?.durationMs);
@@ -1540,12 +1557,18 @@ function AssistantFooter({
     usage.costUsd > 0
       ? usage.costUsd.toFixed(4)
       : "";
-  const costLabel = formattedCost && formattedCost !== "0.0000" ? ` · $${formattedCost}` : "";
+  const statParts = [
+    hideRunStatus ? "" : elapsed,
+    usage?.outputTokens != null
+      ? t("assistant.outTokens", { n: usage.outputTokens })
+      : "",
+    formattedCost && formattedCost !== "0.0000" ? `$${formattedCost}` : "",
+  ].filter(Boolean);
+  const statsLabel = statParts.join(" · ");
   if (
     !forceVisible &&
     !streaming &&
-    !elapsed &&
-    !usage &&
+    !statsLabel &&
     !hasUnfinishedTodos &&
     !hasEmptyResponse &&
     !copyMarkdown &&
@@ -1559,27 +1582,25 @@ function AssistantFooter({
       data-streaming={streaming ? "true" : "false"}
       data-last={isLast ? "true" : "false"}
     >
-      <span className="dot" data-active={streaming ? "true" : "false"} />
-      <span className={`assistant-label${streaming && preparing ? " shimmer-text shimmer-prepare" : ""}`}>
-        {streaming
-          ? preparing
-            ? preparingStatus === "thinking"
-              ? t("assistant.statusThinking")
-              : t("assistant.statusPreparing")
-            : t("assistant.workingLabel")
-          : hasEmptyResponse
-          ? t("assistant.emptyResponseLabel")
-          : hasUnfinishedTodos
-          ? t("assistant.unfinishedLabel")
-          : t("assistant.doneLabel")}
-      </span>
-      <span className="assistant-stats">
-        {elapsed}
-        {usage?.outputTokens != null
-          ? ` · ${t("assistant.outTokens", { n: usage.outputTokens })}`
-          : ""}
-        {costLabel}
-      </span>
+      {!hideRunStatus ? (
+        <>
+          <span className="dot" data-active={streaming ? "true" : "false"} />
+          <span className={`assistant-label${streaming && preparing ? " shimmer-text shimmer-prepare" : ""}`}>
+            {streaming
+              ? preparing
+                ? preparingStatus === "thinking"
+                  ? t("assistant.statusThinking")
+                  : t("assistant.statusPreparing")
+                : t("assistant.workingLabel")
+              : hasEmptyResponse
+              ? t("assistant.emptyResponseLabel")
+              : hasUnfinishedTodos
+              ? t("assistant.unfinishedLabel")
+              : t("assistant.doneLabel")}
+          </span>
+        </>
+      ) : null}
+      {statsLabel ? <span className="assistant-stats">{statsLabel}</span> : null}
       {copyMarkdown || onFork || feedbackControls ? (
         <span className="assistant-footer-controls">
           {copyMarkdown ? <AssistantMarkdownCopyButton markdown={copyMarkdown} /> : null}
@@ -2625,6 +2646,7 @@ function ProseBlock({
       })}
       {live ? (
         <StreamingCodeCard
+          icon="file-code"
           titleLabel={t("tool.write")}
           metaLabel={live.title || live.identifier || undefined}
           code={live.content}
@@ -3461,10 +3483,12 @@ function extractStreamingJsonString(raw: string, field: string): string | null {
 // normal card once the write/artifact completes. Shared by the tool-call
 // path (LiveCodeBox) and the streaming-artifact path (ProseBlock).
 function StreamingCodeCard({
+  icon,
   titleLabel,
   metaLabel,
   code,
 }: {
+  icon: IconName;
   titleLabel: string;
   metaLabel?: string;
   code: string;
@@ -3478,8 +3502,8 @@ function StreamingCodeCard({
   return (
     <div className="op-card op-file live-code-box">
       <div className="op-card-head live-code-head">
-        <span className="action-card-status op-status-running" aria-hidden>
-          <Icon name="spinner" size={14} />
+        <span className="op-status op-status-category op-status-running" aria-hidden>
+          <Icon name={icon} size={14} />
         </span>
         <span className="op-title shimmer-text">{titleLabel}</span>
         {metaLabel ? <span className="op-meta">{metaLabel}</span> : null}
@@ -3514,6 +3538,7 @@ function LiveCodeBox({ name, raw }: { name: string; raw: string }) {
   const isEdit = /edit/i.test(name);
   return (
     <StreamingCodeCard
+      icon={isEdit ? "pencil" : "file-code"}
       titleLabel={isEdit ? t("tool.edit") : t("tool.write")}
       metaLabel={baseName || undefined}
       code={code}
@@ -3619,43 +3644,61 @@ function ToolGroupCard({
 }
 
 /**
- * One compact, per-turn audit trail for every non-progress tool. The default
- * view intentionally says what happened without making individual tool cards
- * compete with the answer or the result card; opening it restores the full
- * chronological evidence, including code that was still streaming.
+ * One compact, per-turn audit trail for thinking and every non-progress tool.
+ * The default view keeps the overall run state above the answer; opening it
+ * restores the chronological evidence with a semantic icon for each activity.
  */
 function TaskActivityCard({
-  items,
-  liveTools,
+  entries,
+  trailingThinking,
   runStreaming,
   runSucceeded,
+  runFailed,
+  startedAt,
+  endedAt,
+  durationMs,
   projectFileNames,
   onRequestOpenFile,
+  onThinkingLinkClick,
 }: {
-  items: ToolItem[];
-  liveTools: Array<Extract<Block, { kind: "live-tool" }>>;
+  entries: TaskActivityEntry[];
+  trailingThinking: boolean;
   runStreaming: boolean;
   runSucceeded: boolean;
+  runFailed: boolean;
+  startedAt: number | undefined;
+  endedAt: number | undefined;
+  durationMs: number | undefined;
   projectFileNames?: Set<string>;
   onRequestOpenFile?: (name: string) => void;
+  onThinkingLinkClick?: MarkdownLinkClickHandler;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const settledItems = dedupeSnapshotToolRetries(items);
-  const running =
-    runStreaming &&
-    (liveTools.length > 0 || settledItems.some((item) => !item.result));
-  const hasError = settledItems.some(
-    (item) => item.result?.isError || (!item.result && !runStreaming && !runSucceeded),
+  const toolItems = entries
+    .filter((entry): entry is Extract<TaskActivityEntry, { kind: "tool" }> => entry.kind === "tool")
+    .map((entry) => entry.item);
+  const settledItems = dedupeSnapshotToolRetries(toolItems);
+  const visibleTools = new Set(settledItems);
+  const visibleEntries = entries.filter(
+    (entry) => entry.kind !== "tool" || visibleTools.has(entry.item),
   );
-  const summary =
-    settledItems.length > 0
-      ? summarizeTaskActivity(settledItems, t, running, runSucceeded)
-      : t("assistant.verbRunning");
-  const count = settledItems.length + liveTools.length;
+  const running = runStreaming;
+  const hasError =
+    !runStreaming &&
+    (runFailed ||
+      settledItems.some(
+        (item) => item.result?.isError || (!item.result && !runSucceeded),
+      ));
+  const stateLabel = running
+    ? t("assistant.workingLabel")
+    : hasError
+      ? t("tool.error")
+      : t("assistant.doneLabel");
+  const elapsed = useLiveElapsed(runStreaming, startedAt, endedAt, durationMs);
 
   return (
-    <div className="action-card task-activity">
+    <div className={`action-card task-activity${open ? " is-open" : ""}`}>
       <button
         type="button"
         className={`action-card-toggle ${running ? "running" : ""}`}
@@ -3663,45 +3706,41 @@ function TaskActivityCard({
         aria-expanded={open}
         data-testid="task-activity-toggle"
       >
-        <span
-          className={`action-card-status ${
-            running ? "op-status-running" : hasError ? "op-status-error" : "op-status-ok"
-          }`}
-          aria-hidden
-        >
-          {running ? (
-            <Icon name="spinner" size={14} />
-          ) : hasError ? (
-            <Icon name="close" size={14} />
-          ) : (
-            <Icon name="check" size={14} />
-          )}
-        </span>
-        <span className={`summary${running ? " shimmer-text" : ""}`}>{summary}</span>
-        <span className="task-activity-count" aria-hidden>
-          {count}
-        </span>
+        <span className={`summary${running ? " shimmer-text" : ""}`}>{stateLabel}</span>
+        {elapsed ? <span className="task-activity-elapsed">{elapsed}</span> : null}
         <span className="chev" aria-hidden>
-          <Icon name={open ? "chevron-down" : "chevron-right"} size={11} />
+          <Icon name="chevron-down" size={13} />
         </span>
       </button>
       <div className={`accordion-collapsible${open ? " open" : ""}`}>
         <div className="accordion-collapsible-inner">
           <div className="action-card-body">
-            {settledItems.map((item, index) => (
-              <ToolCard
-                key={item.use.id || index}
-                use={item.use}
-                result={item.result}
-                runStreaming={runStreaming}
-                runSucceeded={runSucceeded}
-                projectFileNames={projectFileNames}
-                onRequestOpenFile={onRequestOpenFile}
-              />
-            ))}
-            {liveTools.map((tool) => (
-              <LiveCodeBox key={tool.id} name={tool.name} raw={tool.raw} />
-            ))}
+            {visibleEntries.map((entry, index) => {
+              if (entry.kind === "thinking") {
+                return (
+                  <ThinkingBlock
+                    key={`thinking-${index}`}
+                    text={entry.text}
+                    streaming={runStreaming && trailingThinking && index === visibleEntries.length - 1}
+                    onLinkClick={onThinkingLinkClick}
+                  />
+                );
+              }
+              if (entry.kind === "live-tool") {
+                return <LiveCodeBox key={entry.id} name={entry.name} raw={entry.raw} />;
+              }
+              return (
+                <ToolCard
+                  key={entry.item.use.id || index}
+                  use={entry.item.use}
+                  result={entry.item.result}
+                  runStreaming={runStreaming}
+                  runSucceeded={runSucceeded}
+                  projectFileNames={projectFileNames}
+                  onRequestOpenFile={onRequestOpenFile}
+                />
+              );
+            })}
           </div>
         </div>
       </div>
@@ -3728,28 +3767,6 @@ function summarizeGroup(
   const head = countLabel(family, items.length, t);
   const tail = lastStateLabel(verbs, t);
   return { label: tail ? `${head}, ${tail}` : head, icon };
-}
-
-function summarizeTaskActivity(
-  items: ToolItem[],
-  t: (k: keyof Dict, vars?: Record<string, string | number>) => string,
-  running: boolean,
-  runSucceeded: boolean,
-): string {
-  const familyCounts = new Map<string, number>();
-  for (const item of items) {
-    const family = toolFamily(item.use.name);
-    familyCounts.set(family, (familyCounts.get(family) ?? 0) + 1);
-  }
-  const families = [...familyCounts.entries()];
-  const labels = families.slice(0, 3).map(([family, count]) => countLabel(family, count, t));
-  if (families.length > labels.length) labels.push(`+${families.length - labels.length}`);
-
-  const state = lastStateLabel(
-    items.map((item) => verbForState(item, t, running, runSucceeded)),
-    t,
-  );
-  return [...labels, ...(state ? [state] : [])].join(" · ");
 }
 
 function toolFamily(name: string): string {
@@ -3836,9 +3853,14 @@ type Block =
     }
   | { kind: "status"; label: string; detail?: string | undefined };
 
+type TaskActivityEntry =
+  | Extract<Block, { kind: "thinking" }>
+  | Extract<Block, { kind: "live-tool" }>
+  | { kind: "tool"; item: ToolItem };
+
 type TaskActivity = {
-  items: ToolItem[];
-  liveTools: Array<Extract<Block, { kind: "live-tool" }>>;
+  entries: TaskActivityEntry[];
+  trailingThinking: boolean;
 };
 
 function splitTaskActivity(blocks: Block[]): {
@@ -3846,12 +3868,15 @@ function splitTaskActivity(blocks: Block[]): {
   taskActivity: TaskActivity | null;
 } {
   const contentBlocks: Block[] = [];
-  const items: ToolItem[] = [];
-  const liveTools: TaskActivity["liveTools"] = [];
+  const entries: TaskActivityEntry[] = [];
 
   for (const block of blocks) {
+    if (block.kind === "thinking") {
+      entries.push(block);
+      continue;
+    }
     if (block.kind === "live-tool") {
-      liveTools.push(block);
+      entries.push(block);
       continue;
     }
     if (block.kind === "tool-group") {
@@ -3861,7 +3886,7 @@ function splitTaskActivity(blocks: Block[]): {
       if (block.items.every((item) => isTodoWriteToolName(item.use.name))) {
         contentBlocks.push(block);
       } else {
-        items.push(...block.items);
+        entries.push(...block.items.map((item) => ({ kind: "tool" as const, item })));
       }
       continue;
     }
@@ -3870,7 +3895,9 @@ function splitTaskActivity(blocks: Block[]): {
 
   return {
     contentBlocks,
-    taskActivity: items.length > 0 || liveTools.length > 0 ? { items, liveTools } : null,
+    taskActivity: entries.length > 0
+      ? { entries, trailingThinking: blocks.at(-1)?.kind === "thinking" }
+      : null,
   };
 }
 
