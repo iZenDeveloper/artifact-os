@@ -71,6 +71,21 @@ const defaultRetryDelay = (ms: number): Promise<void> =>
  *   - the returned body stream's cancel() (fired when the protocol consumer
  *     tears down) aborts the upstream too.
  */
+/**
+ * Font loads (CSS `@font-face` and the FontFace API) are CORS-mode requests
+ * per the CSS Fonts spec even when same-origin-looking, and Chromium's CORS
+ * check for custom-scheme documents fails closed when the response carries
+ * no ACAO header — every packaged icon glyph rendered as a tofu square while
+ * plain fetch() of the same TTF URL returned 200. od:// is reachable only
+ * from this app's own renderer (the protocol handler exists in no other
+ * process), so a blanket wildcard leaks nothing.
+ */
+function withCorsAllowance(headers: Headers): Headers {
+  const out = new Headers(headers);
+  out.set("Access-Control-Allow-Origin", "*");
+  return out;
+}
+
 async function fetchOdTargetOnce(
   request: Request,
   target: string,
@@ -93,7 +108,13 @@ async function fetchOdTargetOnce(
       signal: controller.signal,
     }),
   );
-  if (upstream.body == null) return upstream;
+  if (upstream.body == null) {
+    return new Response(null, {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers: withCorsAllowance(upstream.headers),
+    });
+  }
   const reader = upstream.body.getReader();
   const body = new ReadableStream<Uint8Array>({
     async pull(streamController) {
@@ -118,7 +139,7 @@ async function fetchOdTargetOnce(
   return new Response(body, {
     status: upstream.status,
     statusText: upstream.statusText,
-    headers: upstream.headers,
+    headers: withCorsAllowance(upstream.headers),
   });
 }
 
@@ -171,7 +192,12 @@ function buildProxyErrorResponse(error: unknown, target: string): Response {
     }),
     {
       status: 502,
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        // Keep proxy failures readable from CORS-mode consumers (fonts,
+        // module scripts) instead of masking them as opaque network errors.
+        "access-control-allow-origin": "*",
+      },
     },
   );
 }

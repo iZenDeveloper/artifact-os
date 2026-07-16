@@ -53,6 +53,34 @@ describe('od:// protocol proxy', () => {
     expect(captured[0]!.method).toBe('POST');
   });
 
+  // Font loads are CORS-mode requests per the CSS Fonts spec; without an
+  // ACAO header on the proxied response Chromium fails them closed and
+  // every packaged icon glyph renders as a tofu square (while plain
+  // fetch() of the same URL succeeds, which is what made this hard to
+  // diagnose). The proxy must therefore stamp CORS allowance on every
+  // response it forwards, streamed or bodyless.
+  it('stamps Access-Control-Allow-Origin on proxied responses so CORS-mode font loads succeed', async () => {
+    const fetchImpl: typeof fetch = async () =>
+      new Response('ttf-bytes', { status: 200, headers: { 'content-type': 'font/ttf' } });
+
+    const request = new Request('od://app/remixicon.ttf');
+    const response = await handleOdRequest(request, 'http://127.0.0.1:17579/', fetchImpl);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('access-control-allow-origin')).toBe('*');
+    expect(response.headers.get('content-type')).toBe('font/ttf');
+  });
+
+  it('stamps CORS allowance on bodyless upstream responses too', async () => {
+    const fetchImpl: typeof fetch = async () => new Response(null, { status: 204 });
+
+    const request = new Request('od://app/api/projects/x', { method: 'DELETE' });
+    const response = await handleOdRequest(request, 'http://127.0.0.1:17579/', fetchImpl);
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get('access-control-allow-origin')).toBe('*');
+  });
+
   it('preserves the request path, search, and hash when rewriting to the web sidecar', async () => {
     const captured: Request[] = [];
     const fetchImpl: typeof fetch = async (input) => {

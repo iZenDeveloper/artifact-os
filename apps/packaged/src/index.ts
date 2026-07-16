@@ -11,7 +11,12 @@ import {
   createSidecarLaunchEnv,
   resolveAppIpcPath,
 } from "@open-design/sidecar";
-import { applyOsLocaleSwitch, createSplashWindow, setSplashStage } from "@open-design/desktop/main";
+import {
+  applyLoopbackConnectionLimitSwitch,
+  applyOsLocaleSwitch,
+  createSplashWindow,
+  setSplashStage,
+} from "@open-design/desktop/main";
 import { readProcessStamp } from "@open-design/platform";
 import { join } from "node:path";
 import { app, dialog } from "electron";
@@ -102,18 +107,9 @@ async function main(): Promise<void> {
   // en-US default. runDesktopMain (called later) calls the same helper
   // again to recover the resolved locale string for the BrowserWindow.
   applyOsLocaleSwitch(app);
-
-  // The od:// proxy forwards every renderer request through main-process
-  // net.fetch to the loopback web/daemon sidecars. Those upstream sockets
-  // live in Chromium's normal per-origin pool, whose hardcoded cap is 6
-  // (kMaxSocketsPerGroup). Long-lived SSE streams pin slots, and once the
-  // pool is full even aborts cannot reach queued requests (Electron never
-  // wires protocol.handle request cancellation before a Response exists —
-  // electron/electron#47097), so the whole app deadlocks until restart.
-  // `ignore-connections-limit` is Electron's own escape hatch: matching
-  // hosts get LOAD_IGNORE_LIMITS, lifting the cap. Loopback-only, so the
-  // extra parallelism costs nothing.
-  app.commandLine.appendSwitch("ignore-connections-limit", "127.0.0.1,localhost");
+  // Must also land before whenReady — see the helper's docblock for the
+  // connection-pool deadlock it prevents (electron/electron#47097).
+  applyLoopbackConnectionLimitSwitch(app);
 
   const config = await readPackagedConfig();
   const afterQuit = parseLauncherAfterQuitArgs(process.argv.slice(1));
