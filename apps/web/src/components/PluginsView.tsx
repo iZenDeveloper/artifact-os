@@ -380,13 +380,10 @@ export function PluginsView({
     <section className="plugins-view" aria-labelledby="plugins-title">
       <header className="plugins-view__hero">
         <div>
-          <p className="plugins-view__kicker">{t('entry.navPlugins')}</p>
+          {/* #5517: a bare 扩展 heading — no kicker, no lede paragraph. */}
           <h1 id="plugins-title" className="entry-section__title">
-            {t('entry.navPlugins')}
+            {t('entry.navExtensions')}
           </h1>
-          <p className="plugins-view__lede">
-            {t('pluginsView.lede')}
-          </p>
         </div>
         <div className="plugins-view__hero-actions">
           <button
@@ -799,7 +796,9 @@ export function ExtensionsMarketplace({
   }, [analytics.track]);
 
   const [mode, setMode] = useState<MarketMode>('plugins');
-  const [scope, setScope] = useState<MarketScope>('personal');
+  // #5517 lands on the official catalog first — a new workspace's personal
+  // scope is empty, and the official list is the marketplace's front door.
+  const [scope, setScope] = useState<MarketScope>('official');
   const [query, setQuery] = useState('');
   const [menuId, setMenuId] = useState<string | null>(null);
 
@@ -1217,19 +1216,14 @@ export function ExtensionsMarketplace({
     return cards.filter((card) => `${card.title} ${card.description}`.toLowerCase().includes(q));
   }, [cards, query]);
 
-  const modeNote =
-    mode === 'plugins'
-      ? t('pluginsView.modeNote.plugins')
-      : t('pluginsView.modeNote.skills');
-
   return (
     <section className="plugin-marketplace" aria-labelledby="plugin-marketplace-title">
       <header className="plugin-marketplace__hero">
         <div>
+          {/* #5517: a bare 扩展 heading — no lede paragraph. */}
           <h1 id="plugin-marketplace-title" className="entry-section__title">
-            {t('entry.navPlugins')}
+            {t('entry.navExtensions')}
           </h1>
-          <p>{t('pluginsView.marketplaceBody')}</p>
         </div>
         {onCreatePlugin ? (
           <div className="plugin-marketplace__hero-actions">
@@ -1270,7 +1264,7 @@ export function ExtensionsMarketplace({
         </div>
       </div>
 
-      <p className="plugin-marketplace__mode-note">{modeNote}</p>
+      {/* #5517 drops the mode-note lede line under the tabs. */}
 
       <div className="plugin-marketplace__filter-block">
         <div className="plugin-marketplace__filters" aria-label={t('pluginsView.marketplaceSourceFiltersAria')}>

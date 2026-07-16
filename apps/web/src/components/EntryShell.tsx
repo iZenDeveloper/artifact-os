@@ -1275,7 +1275,6 @@ export function EntryShell({
                     designSystems={designSystems}
                     limit={1000}
                     heading={t('entry.navDrafts')}
-                    description={t('entry.draftsDescription')}
                     space="drafts"
                     sharedProjectIds={teamSharedProjectIds}
                     projectOwnerMemberIds={teamProjectOwnerMemberIds}
@@ -1312,7 +1311,6 @@ export function EntryShell({
                     designSystems={designSystems}
                     limit={1000}
                     heading={t('entry.navAllProjects')}
-                    description={t('entry.allProjectsDescription')}
                     space="team"
                     sharedProjectIds={teamSharedProjectIds}
                     projectOwnerMemberIds={teamProjectOwnerMemberIds}
