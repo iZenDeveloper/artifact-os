@@ -28,7 +28,7 @@ import {
 } from './integrations/vela-errors.js';
 
 const SERVER_NAME = 'open-design';
-const SERVER_VERSION = '0.2.2';
+const SERVER_VERSION = '0.2.3';
 const MCP_STDIO_IDLE_EXIT_MS = 30 * 60 * 1000;
 const CHATGPT_WIDGET_URI = 'ui://open-design/artifact-card-v2.html';
 const CHATGPT_V1_TOOL_NAMES = new Set([
@@ -86,6 +86,9 @@ function chatGptV1OutputSchema(toolName: string): JsonObject {
       projectId: stringValue,
       conversationId: stringValue,
       status: stringValue,
+      stage: { type: 'string', enum: ['queued', 'generating', 'ready', 'failed', 'canceled'] },
+      artifactType: { type: 'string', enum: ['website', 'product-prototype', 'presentation', 'design-system'] },
+      briefConfirmed: { type: 'boolean' },
       studioUrl: stringValue,
     },
     get_run: {
@@ -93,6 +96,7 @@ function chatGptV1OutputSchema(toolName: string): JsonObject {
       runId: stringValue,
       projectId: stringValue,
       status: { type: 'string', enum: ['queued', 'running', 'succeeded', 'failed', 'canceled'] },
+      stage: { type: 'string', enum: ['queued', 'generating', 'ready', 'failed', 'canceled'] },
       previewUrl: stringValue,
       studioUrl: stringValue,
       entryFile: stringValue,
@@ -143,6 +147,15 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
     .title { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
     .sub { margin: 2px 0 0; opacity: .62; font-size: 12px; }
     .badge { margin-left: auto; border-radius: 999px; padding: 6px 9px; background: color-mix(in srgb, #4f7cff 15%, transparent); color: #4f7cff; font-size: 11px; font-weight: 700; text-transform: capitalize; }
+    .badge[data-tone="ready"] { background: color-mix(in srgb, #1d9b63 14%, transparent); color: #168052; }
+    .badge[data-tone="attention"] { background: color-mix(in srgb, #d97706 15%, transparent); color: #b45309; }
+    .badge[data-tone="failed"] { background: color-mix(in srgb, #dc2626 14%, transparent); color: #c11f1f; }
+    .steps { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; padding: 0 18px 14px; }
+    .step { display: flex; align-items: center; gap: 6px; min-width: 0; color: color-mix(in srgb, CanvasText 42%, transparent); font-size: 10px; font-weight: 700; }
+    .step:before { content: ''; width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: color-mix(in srgb, CanvasText 18%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, CanvasText 5%, transparent); }
+    .step.done, .step.current { color: CanvasText; }
+    .step.done:before { background: #1d9b63; box-shadow: 0 0 0 3px color-mix(in srgb, #1d9b63 14%, transparent); }
+    .step.current:before { background: #4f7cff; box-shadow: 0 0 0 3px color-mix(in srgb, #4f7cff 16%, transparent); }
     .preview { min-height: 148px; border-block: 1px solid color-mix(in srgb, CanvasText 12%, transparent); background: radial-gradient(circle at 15% 0%, #b7c8ff55, transparent 34%), linear-gradient(135deg, color-mix(in srgb, Canvas 88%, #e4d6bb 12%), Canvas); display: grid; place-items: center; position: relative; }
     .preview iframe { width: 100%; height: 240px; border: 0; background: white; }
     .placeholder { text-align: center; padding: 30px; }
@@ -163,9 +176,10 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
 </head>
 <body>
   <main class="card">
-    <header class="head"><span class="mark"></span><div><h1 class="title">Open Design</h1><p class="sub" id="subtitle">Ready to create</p></div><span class="badge" id="status">ready</span></header>
+    <header class="head"><span class="mark"></span><div><h1 class="title">Open Design</h1><p class="sub" id="subtitle">Ready to create</p></div><span class="badge" id="status">Ready</span></header>
+    <div class="steps" id="steps" hidden><span class="step" data-step="brief">Brief confirmed</span><span class="step" data-step="build">Creating</span><span class="step" data-step="ready">Ready to edit</span></div>
     <section class="preview" id="preview"><div class="placeholder"><div class="pulse" id="pulse"></div><strong id="preview-title">Preparing your design</strong></div></section>
-    <section class="body"><p class="note" id="note"></p><div class="meta" id="meta"></div><div id="version-list"></div><div class="actions"><button id="recharge" hidden>Recharge balance</button><button id="studio" hidden>Open Studio</button><button class="secondary" id="raw" hidden>Open preview</button><button class="secondary" id="refresh" hidden>Refresh</button><button class="secondary" id="versions" hidden>Versions</button><button class="secondary" id="export" hidden>Export source</button></div></section>
+    <section class="body"><p class="note" id="note"></p><div class="meta" id="meta"></div><div id="version-list"></div><div class="actions"><button id="recharge" hidden>Recharge balance</button><button id="studio" hidden>Edit in Open Design</button><button class="secondary" id="raw" hidden>Open preview</button><button class="secondary" id="refresh" hidden>Refresh</button><button class="secondary" id="versions" hidden>Versions</button><button class="secondary" id="export" hidden>Export source</button></div></section>
   </main>
   <script>
     const byId = (id) => document.getElementById(id);
@@ -213,14 +227,29 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
     }
     function render(output) {
       if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
-      current = output && typeof output === 'object' ? output : {};
+      const incoming = output && typeof output === 'object' ? output : {};
+      current = { ...current, ...incoming };
       const account = current.account || {};
       const wallet = current.wallet || {};
       const status = safeText(current.status || (current.nextAction === 'recharge' ? 'recharge' : current.loggedIn === true ? 'connected' : current.loggedIn === false ? 'sign in' : 'ready')).toLowerCase();
       const running = status === 'queued' || status === 'running';
       const completed = status === 'succeeded' || Boolean(current.previewUrl);
-      byId('status').textContent = status;
-      byId('subtitle').textContent = current.name || current.projectName || (current.loggedIn === true ? 'Open Design Cloud connected' : running ? 'Generating with Open Design' : completed ? 'Artifact ready' : 'Ready to create');
+      const statusLabels = { queued: 'Queued', running: 'Creating', succeeded: 'Ready', failed: 'Needs attention', canceled: 'Canceled', recharge: 'Needs balance', connected: 'Connected', 'sign in': 'Sign in', ready: 'Ready' };
+      const statusBadge = byId('status');
+      statusBadge.textContent = statusLabels[status] || status;
+      statusBadge.dataset.tone = completed ? 'ready' : status === 'recharge' ? 'attention' : status === 'failed' ? 'failed' : 'active';
+      const artifactLabels = { website: 'Website', 'product-prototype': 'Product prototype', presentation: 'Presentation', 'design-system': 'Design System' };
+      const artifactLabel = artifactLabels[current.artifactType] || current.kind || '';
+      const projectLabel = current.name || current.projectName || '';
+      byId('subtitle').textContent = [projectLabel, artifactLabel].filter(Boolean).join(' · ') || (current.loggedIn === true ? 'Open Design Cloud connected' : running ? 'Generating with Open Design' : completed ? 'Artifact ready' : 'Ready to create');
+      const stage = current.stage || (completed ? 'ready' : status === 'queued' ? 'queued' : running ? 'generating' : status === 'failed' ? 'failed' : status === 'canceled' ? 'canceled' : null);
+      const steps = byId('steps');
+      steps.hidden = !stage;
+      const stageIndex = stage === 'ready' ? 2 : 1;
+      Array.from(steps.querySelectorAll('.step')).forEach((step, index) => {
+        step.classList.toggle('done', index < stageIndex || (index === 0 && current.briefConfirmed === true));
+        step.classList.toggle('current', index === stageIndex && stage !== 'failed' && stage !== 'canceled');
+      });
       byId('note').textContent = current.hint || (current.loggedIn === false ? 'Sign in to Open Design Cloud before starting a Cloud run.' : completed ? 'Review the result here, then continue detailed editing, versions, and export in Open Design.' : running ? 'Open Design is working. Long thinking intervals are normal.' : 'Create a website, product prototype, presentation, or reusable design system.');
       const meta = byId('meta'); meta.replaceChildren();
       if (current.loggedIn !== undefined) meta.append(datum('Cloud', current.loggedIn ? 'Signed in' : 'Sign in'));
@@ -228,7 +257,7 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
       if (balance !== undefined && balance !== null) meta.append(datum('Balance', '$' + balance));
       if (current.projectId || current.id) meta.append(datum('Project', current.projectId || current.id));
       if (current.runId || (current.id && current.status)) meta.append(datum('Run', current.runId || current.id));
-      if (current.kind) meta.append(datum('Type', current.kind));
+      if (artifactLabel) meta.append(datum('Type', artifactLabel));
       byId('pulse').hidden = !running;
       byId('preview-title').textContent = running ? 'Creating your design…' : completed ? 'Artifact ready' : current.loggedIn === false ? 'Connect Open Design Cloud' : 'Ready for your brief';
       const preview = byId('preview');
@@ -257,7 +286,7 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
         try { const next = await callTool('list_versions', { project: projectId, path: entryFile }); if (next?.structuredContent) renderVersions(next.structuredContent); }
         finally { versions.disabled = false; }
       };
-      const exportButton = byId('export'); exportButton.hidden = !projectId; exportButton.onclick = async () => {
+      const exportButton = byId('export'); exportButton.hidden = !projectId || !completed; exportButton.onclick = async () => {
         exportButton.disabled = true; byId('note').textContent = 'Preparing a source ZIP…';
         try {
           const next = await callTool('export_project', { project: projectId });
@@ -1328,8 +1357,11 @@ function publicChatGptResult(name: string, result: any): any {
   if (name === 'start_run') {
     structuredContent.hint = 'Open Design Cloud is creating the artifact. Show the progress card and poll get_run every 30–60 seconds.';
   } else if (name === 'get_run' && ['queued', 'running'].includes(String(structuredContent.status))) {
+    structuredContent.stage = structuredContent.status === 'queued' ? 'queued' : 'generating';
     structuredContent.hint = 'Open Design Cloud is still working. Keep the progress card visible and poll again in 30–60 seconds.';
   } else if (name === 'get_run') {
+    const terminalStage: Record<string, string> = { succeeded: 'ready', failed: 'failed', canceled: 'canceled' };
+    if (terminalStage[String(structuredContent.status)]) structuredContent.stage = terminalStage[String(structuredContent.status)];
     const accountFailure = classifyAmrAccountFailure(JSON.stringify(structuredContent));
     if (accountFailure?.action === 'recharge') {
       structuredContent.accountAction = 'recharge';
@@ -1371,6 +1403,14 @@ async function handleChatGptV1ToolCall(baseUrl: string, name: string, args: McpA
     };
   }
   const result = await handleMcpToolCall(baseUrl, name, callArgs);
+  if (name === 'start_run' && result?.structuredContent && typeof result.structuredContent === 'object') {
+    result.structuredContent = {
+      ...result.structuredContent,
+      artifactType: args.artifactType,
+      briefConfirmed: true,
+      stage: result.structuredContent.status === 'queued' ? 'queued' : 'generating',
+    };
+  }
   return publicChatGptResult(name, result);
 }
 

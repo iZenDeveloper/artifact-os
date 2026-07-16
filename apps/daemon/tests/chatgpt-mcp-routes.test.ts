@@ -107,7 +107,12 @@ describe('ChatGPT Streamable HTTP MCP', () => {
       expect(widgetHtml).toContain('window.openai');
       expect(widgetHtml).toContain("rpcRequest('ui/initialize'");
       expect(widgetHtml).toContain("rpcRequest('tools/call'");
-      expect(widgetHtml).toContain("version: '0.2.2'");
+      expect(widgetHtml).toContain("version: '0.2.3'");
+      expect(widgetHtml).toContain('data-step="brief"');
+      expect(widgetHtml).toContain('Brief confirmed');
+      expect(widgetHtml).toContain('Edit in Open Design');
+      expect(widgetHtml).toContain("current = { ...current, ...incoming }");
+      expect(widgetHtml).toContain('exportButton.hidden = !projectId || !completed');
       expect(widgetHtml).toContain("}, 1000);");
       expect(widgetHtml).toContain('window.openai?.toolOutput ?? window.openai?.widgetState');
       expect(widgetHtml).toContain('if (Object.keys(current).length > 0)');
@@ -407,7 +412,7 @@ describe('ChatGPT Streamable HTTP MCP', () => {
       expect(JSON.stringify(unconfirmed.content)).toContain('confirmed:true is required');
       expect(runBodies).toHaveLength(0);
 
-      await client.callTool({
+      const started = await client.callTool({
         name: 'start_run',
         arguments: {
           project: 'p1',
@@ -421,6 +426,11 @@ describe('ChatGPT Streamable HTTP MCP', () => {
           },
           confirmed: true,
         },
+      }) as any;
+      expect(started.structuredContent).toMatchObject({
+        artifactType: 'website',
+        briefConfirmed: true,
+        stage: 'queued',
       });
       expect(runBodies).toEqual([{
         projectId: 'p1',
@@ -462,7 +472,7 @@ describe('ChatGPT Streamable HTTP MCP', () => {
       }
 
       const progress = await client.callTool({ name: 'get_run', arguments: { runId: 'r1' } }) as any;
-      expect(progress.structuredContent).toMatchObject({ status: 'running', projectId: 'p1' });
+      expect(progress.structuredContent).toMatchObject({ status: 'running', stage: 'generating', projectId: 'p1' });
       expect(progress.structuredContent.eventsLogPath).toBeUndefined();
       expect(progress.structuredContent.access_token).toBeUndefined();
       expect(progress.structuredContent.nested).toEqual({ safe: 'visible' });
