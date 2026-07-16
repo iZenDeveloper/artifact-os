@@ -50,8 +50,11 @@ const TAG_BLOCKLIST = new Set([
 const cleanTagsOf = (rec: BundledPluginRecord) =>
   (rec.tags ?? []).filter((t) => !TAG_BLOCKLIST.has(t) && !/-(template|agent)$/.test(t));
 const hasPreview = (p: BundledPluginRecord) => Boolean(p.previewPoster || p.previewVideo);
+// Low-quality entries pulled from the hub's explore grid (by manifest id).
+const EXCLUDE_IDS = new Set(['example-data-report']);
 
 const exploreItems = [...templatesSet]
+  .filter((p) => !EXCLUDE_IDS.has(p.manifestId))
   .filter(hasPreview)
   .map((rec) => ({ rec, category: categorizePlugin(bundledRecordOf(rec)), tags: cleanTagsOf(rec) }))
   .filter((it) => it.category !== null && !MEDIA_CATEGORIES.has(it.category))

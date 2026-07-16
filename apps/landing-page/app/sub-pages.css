@@ -1769,11 +1769,10 @@ body.sub-page {
   content: '';
   position: absolute;
   left: 50%;
-  top: -104px;
+  top: -128px;
   transform: translateX(-50%);
   width: 100vw;
-  max-width: 1920px;
-  height: 720px;
+  height: 744px;
   z-index: 0;
   pointer-events: none;
   /* Same faded base-image treatment as the /stories hero: a shared OD
@@ -1925,13 +1924,16 @@ body.sub-page {
 }
 .explore-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
 }
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
+  .explore-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 800px) {
   .explore-grid { grid-template-columns: repeat(2, 1fr); }
 }
-@media (max-width: 600px) {
+@media (max-width: 520px) {
   .explore-grid { grid-template-columns: 1fr; }
 }
 .explore-cell[hidden] {
