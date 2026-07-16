@@ -15,7 +15,7 @@ const EXPECTED_TOOLS = [
   'start_run',
 ] as const;
 
-const WIDGET_URI = 'ui://open-design/artifact-card-v2.html';
+const WIDGET_URI = 'ui://open-design/artifact-card-v4.html';
 
 interface JsonRpcResponse {
   error?: { message?: string };
@@ -139,22 +139,38 @@ async function validateEndpoint(endpoint: string): Promise<void> {
   const startRun = tools.find((tool) => tool.name === 'start_run');
   const startRunMeta = startRun?._meta as Record<string, unknown> | undefined;
   assert(startRunMeta?.['openai/outputTemplate'] === WIDGET_URI, 'start_run is not connected to the Artifact card');
+  assert(startRunMeta?.['ui/resourceUri'] === WIDGET_URI, 'start_run is missing the MCP Apps compatibility resource URI');
   const artifactType = (((startRun?.inputSchema as Record<string, unknown>)?.properties as Record<string, unknown>)?.artifactType as Record<string, unknown>)?.enum;
   assert(JSON.stringify(artifactType) === JSON.stringify(['website', 'product-prototype', 'presentation', 'design-system']), 'V1 artifact types do not match the product contract');
 
   const listedResources = await rpc(endpoint, 3, 'resources/list', {});
   const resources = listedResources.resources as Array<Record<string, unknown>> | undefined;
-  assert(resources?.some((resource) => resource.uri === WIDGET_URI), 'Artifact card MCP resource is missing');
+  const widgetResource = resources?.find((resource) => resource.uri === WIDGET_URI);
+  assert(widgetResource, 'Artifact card MCP resource is missing');
+  assert(Boolean(((widgetResource._meta as Record<string, unknown>)?.ui as Record<string, unknown>)?.prefersBorder), 'Artifact card resource metadata is missing');
 
   const readResource = await rpc(endpoint, 4, 'resources/read', { uri: WIDGET_URI });
   const contents = readResource.contents as Array<Record<string, unknown>> | undefined;
   const widgetHtml = contents?.find((content) => content.uri === WIDGET_URI)?.text;
   assert(typeof widgetHtml === 'string' && widgetHtml.includes('window.openai'), 'Artifact card does not contain the ChatGPT bridge');
   assert(widgetHtml.includes("rpcRequest('tools/call'"), 'Artifact card cannot call follow-up MCP tools');
+  assert(!widgetHtml.includes('}, 1000);'), 'Artifact card still abandons the MCP Apps handshake after one second');
+  assert(widgetHtml.includes('ui/notifications/size-changed'), 'Artifact card does not publish intrinsic size changes');
 
-  const accountCall = await rpc(endpoint, 5, 'tools/call', { name: 'get_cloud_account', arguments: {} });
+  for (const [index, legacyUri] of [
+    'ui://open-design/artifact-card-v2.html',
+    'ui://open-design/artifact-card-v3.html',
+  ].entries()) {
+    const legacyReadResource = await rpc(endpoint, 5 + index, 'resources/read', { uri: legacyUri });
+    const legacyContents = legacyReadResource.contents as Array<Record<string, unknown>> | undefined;
+    const legacyWidget = legacyContents?.find((content) => content.uri === legacyUri);
+    assert(legacyWidget?.text === widgetHtml, `${legacyUri} is not mapped to the latest widget`);
+  }
+
+  const accountCall = await rpc(endpoint, 7, 'tools/call', { name: 'get_cloud_account', arguments: {} });
   const account = accountCall.structuredContent as Record<string, unknown> | undefined;
   assert(account && typeof account.balanceStatus === 'string', 'Cloud account tool did not return a balance status');
+  assert((accountCall._meta as Record<string, unknown>)?.['openai/outputTemplate'] === WIDGET_URI, 'Cloud account result is not connected to the Artifact card');
 
   process.stdout.write(`endpoint ok: ${endpoint}\n`);
   process.stdout.write(`server: ${String(serverInfo.version ?? 'unknown')} · tools: ${names.join(', ')} · UI: ${WIDGET_URI}\n`);

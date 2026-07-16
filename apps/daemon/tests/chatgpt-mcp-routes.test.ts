@@ -80,9 +80,12 @@ describe('ChatGPT Streamable HTTP MCP', () => {
         'create_artifact',
       ]));
       const startRun = tools.tools.find((tool) => tool.name === 'start_run');
-      expect(startRun?._meta?.['openai/outputTemplate']).toBe('ui://open-design/artifact-card-v2.html');
+      const widgetUri = 'ui://open-design/artifact-card-v4.html';
+      expect(startRun?._meta?.['openai/outputTemplate']).toBe(widgetUri);
+      expect((startRun?._meta as any)?.ui?.resourceUri).toBe(widgetUri);
+      expect(startRun?._meta?.['ui/resourceUri']).toBe(widgetUri);
       expect(tools.tools.find((tool) => tool.name === 'get_cloud_account')?._meta?.['openai/outputTemplate']).toBe(
-        'ui://open-design/artifact-card-v2.html',
+        widgetUri,
       );
       expect(tools.tools.find((tool) => tool.name === 'get_run')?._meta?.['openai/outputTemplate']).toBeUndefined();
       expect(tools.tools.find((tool) => tool.name === 'list_versions')?._meta?.['openai/outputTemplate']).toBeUndefined();
@@ -98,18 +101,33 @@ describe('ChatGPT Streamable HTTP MCP', () => {
 
       const resources = await client.listResources();
       expect(resources.resources).toContainEqual(expect.objectContaining({
-        uri: 'ui://open-design/artifact-card-v2.html',
+        uri: widgetUri,
         mimeType: 'text/html;profile=mcp-app',
+        _meta: expect.objectContaining({
+          ui: expect.objectContaining({ prefersBorder: true }),
+        }),
       }));
       expect(resources.resources.map((resource) => resource.uri)).not.toContain('od://focus/active');
-      const widget = await client.readResource({ uri: 'ui://open-design/artifact-card-v2.html' });
+      const widget = await client.readResource({ uri: widgetUri });
       const widgetContent = widget.contents[0];
       expect(widgetContent?.mimeType).toBe('text/html;profile=mcp-app');
       const widgetHtml = widgetContent && 'text' in widgetContent ? widgetContent.text : '';
+      for (const legacyUri of [
+        'ui://open-design/artifact-card-v2.html',
+        'ui://open-design/artifact-card-v3.html',
+      ]) {
+        const legacyWidget = await client.readResource({ uri: legacyUri });
+        expect(legacyWidget.contents[0]).toEqual(expect.objectContaining({
+          uri: legacyUri,
+          mimeType: 'text/html;profile=mcp-app',
+          text: widgetHtml,
+        }));
+      }
       expect(widgetHtml).toContain('window.openai');
       expect(widgetHtml).toContain("rpcRequest('ui/initialize'");
       expect(widgetHtml).toContain("rpcRequest('tools/call'");
-      expect(widgetHtml).toContain("version: '0.2.7'");
+      expect(widgetHtml).toContain("rpcRequest('ui/open-link'");
+      expect(widgetHtml).toContain("version: '0.2.8'");
       expect(widgetHtml).toContain('data-view="compact"');
       expect(widgetHtml).toContain('Authorization complete');
       expect(widgetHtml).toContain('Sign in / Register');
@@ -118,15 +136,24 @@ describe('ChatGPT Streamable HTTP MCP', () => {
       expect(widgetHtml).toContain('Edit in Open Design');
       expect(widgetHtml).toContain("current = { ...current, ...incoming }");
       expect(widgetHtml).toContain('exportButton.hidden = !projectId || !completed');
-      expect(widgetHtml).toContain("}, 1000);");
+      expect(widgetHtml).not.toContain("}, 1000);");
       expect(widgetHtml).toContain('window.openai?.toolOutput ?? window.openai?.widgetState');
-      expect(widgetHtml).toContain('if (Object.keys(current).length > 0)');
       expect(widgetHtml).toContain('ui/notifications/tool-result');
+      expect(widgetHtml).toContain('message.params?.result ?? message.params');
+      expect(widgetHtml).toContain('ui/notifications/size-changed');
+      expect(widgetHtml).not.toContain('new ResizeObserver');
+      expect(widgetHtml).toContain('lastReportedSize');
+      expect(widgetHtml).toContain("byId('card').getBoundingClientRect()");
+      expect(widgetHtml).not.toContain("root.style.height = 'max-content'");
+      expect(widgetHtml.indexOf("window.addEventListener('message'")).toBeLessThan(
+        widgetHtml.indexOf('const bridgeReady = initializeBridge()'),
+      );
       expect(widgetHtml).toContain('setTimeout');
-      expect((widgetContent as any)?._meta?.ui?.csp?.frameDomains).toEqual([
+      expect((widgetContent as any)?._meta?.ui?.csp?.frameDomains).toEqual(expect.arrayContaining([
         'https://open-design.ai',
         'https://preview.open-design.ai',
-      ]);
+        `http://127.0.0.1:${port}`,
+      ]));
     } finally {
       await client.close();
     }
@@ -414,6 +441,7 @@ describe('ChatGPT Streamable HTTP MCP', () => {
         },
       }) as any;
       expect(unconfirmed).toMatchObject({ isError: true });
+      expect(unconfirmed._meta).toBeUndefined();
       expect(JSON.stringify(unconfirmed.content)).toContain('confirmed:true is required');
       expect(runBodies).toHaveLength(0);
 
@@ -436,6 +464,10 @@ describe('ChatGPT Streamable HTTP MCP', () => {
         artifactType: 'website',
         briefConfirmed: true,
         stage: 'queued',
+      });
+      expect(started._meta).toMatchObject({
+        'openai/outputTemplate': 'ui://open-design/artifact-card-v4.html',
+        'ui/resourceUri': 'ui://open-design/artifact-card-v4.html',
       });
       expect(runBodies).toEqual([{
         projectId: 'p1',
@@ -516,6 +548,9 @@ describe('ChatGPT Streamable HTTP MCP', () => {
           canUseCloud: false,
           nextAction: 'recharge',
           balanceStatus: 'empty',
+        },
+        _meta: {
+          'openai/outputTemplate': 'ui://open-design/artifact-card-v4.html',
         },
       });
       expect(runBodies).toHaveLength(4);

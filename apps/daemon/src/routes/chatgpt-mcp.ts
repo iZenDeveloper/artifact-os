@@ -775,9 +775,10 @@ export function registerChatGptMcpRoutes(
       daemonUrl,
       widgetFrameDomains: [
         ...widgetFrameDomains(env),
-        ...(authorization.principal.mode === 'oauth' && resolveTenantDaemonByKey
-          ? [requestOrigin(request, env)]
-          : []),
+        // Local previews are served by this same origin, while managed
+        // tenant previews are rewritten back through it. Keep both paths in
+        // the widget CSP instead of relying on a historical fixed dev port.
+        requestOrigin(request, env),
       ],
       widgetRedirectDomains: authorization.principal.mode === 'oauth' && resolveTenantDaemonByKey
         ? [requestOrigin(request, env), 'https://open-design.ai']

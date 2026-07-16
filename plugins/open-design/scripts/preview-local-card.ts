@@ -2,7 +2,7 @@
 
 import { createServer } from 'node:http';
 
-const WIDGET_URI = 'ui://open-design/artifact-card-v2.html';
+const WIDGET_URI = 'ui://open-design/artifact-card-v4.html';
 
 interface JsonRpcResponse {
   error?: { message?: string };
@@ -110,44 +110,138 @@ function stateOutput(state: string, origin: string): Record<string, unknown> {
   };
 }
 
-function hostScript(output: Record<string, unknown>, origin: string): string {
+function scriptJson(value: unknown): string {
+  return JSON.stringify(value)
+    .replaceAll('<', '\\u003c')
+    .replaceAll('\u2028', '\\u2028')
+    .replaceAll('\u2029', '\\u2029');
+}
+
+function mcpAppsHostScript(output: Record<string, unknown>, origin: string, widget: string): string {
   const complete = stateOutput('complete', origin);
   return `<script>
-    window.openai = {
-      toolOutput: ${JSON.stringify(output)},
-      widgetState: ${JSON.stringify(output)},
-      setWidgetState: function () {},
-      openExternal: function (value) {
-        const status = window.parent.document.getElementById('local-host-status');
-        if (status) status.textContent = 'Open: ' + value.href;
-      },
-      callTool: async function (name) {
-        if (name === 'get_run') return { structuredContent: ${JSON.stringify(complete)} };
-        if (name === 'list_versions') return { structuredContent: {
+    (() => {
+      const frame = document.getElementById('artifact-card');
+      const status = document.getElementById('local-host-status');
+      const initialOutput = ${scriptJson(output)};
+      const completeOutput = ${scriptJson(complete)};
+      const widgetSource = ${scriptJson(widget)};
+      const initializeDelayMs = 1500;
+      let initialized = false;
+      let lastHeight = null;
+
+      const setStatus = (message) => {
+        if (status) status.textContent = message;
+      };
+      const send = (message) => {
+        frame?.contentWindow?.postMessage(message, '*');
+      };
+      const asToolResult = (structuredContent) => ({
+        content: [{ type: 'text', text: JSON.stringify(structuredContent) }],
+        structuredContent,
+      });
+      const toolResult = (name) => {
+        if (name === 'get_run') return asToolResult(completeOutput);
+        if (name === 'list_versions') return asToolResult({
           projectId: 'local-card-gallery', path: 'index.html', versions: [
             { id: 'v1', version: 1, label: 'Initial direction' },
             { id: 'v2', version: 2, label: 'Refined hero', current: true }
           ]
-        } };
-        if (name === 'restore_version') return { structuredContent: { ok: true } };
-        if (name === 'export_project') return { structuredContent: { ok: true, fileName: 'local-card-gallery.zip' } };
-        return { structuredContent: {} };
-      }
-    };
-  </script>`;
-}
+        });
+        if (name === 'restore_version') return asToolResult({ ok: true });
+        if (name === 'export_project') return asToolResult({
+          ok: true, projectId: 'local-card-gallery', fileName: 'local-card-gallery.zip', bytes: 4096
+        });
+        return asToolResult({});
+      };
+      const sendInitialToolResult = () => {
+        send({
+          jsonrpc: '2.0',
+          method: 'ui/notifications/tool-result',
+          params: {
+            content: [{ type: 'text', text: JSON.stringify(initialOutput) }],
+            structuredContent: initialOutput,
+          },
+        });
+      };
 
-function htmlAttribute(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('"', '&quot;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;');
+      window.addEventListener('message', (event) => {
+        if (event.source !== frame?.contentWindow) return;
+        const message = event.data;
+        if (!message || message.jsonrpc !== '2.0') return;
+
+        if (message.method === 'ui/initialize' && message.id !== undefined) {
+          setStatus('MCP Apps · negotiating host connection…');
+          window.setTimeout(() => {
+            send({
+              jsonrpc: '2.0',
+              id: message.id,
+              result: {
+                protocolVersion: message.params?.protocolVersion || '2026-01-26',
+                hostInfo: { name: 'open-design-local-card-gallery', version: '1.0.0' },
+                hostCapabilities: {
+                  openLinks: {},
+                  serverTools: {},
+                },
+                hostContext: {
+                  theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+                  displayMode: 'inline',
+                  availableDisplayModes: ['inline'],
+                  locale: navigator.language,
+                  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                  platform: 'desktop',
+                  containerDimensions: {
+                    maxWidth: frame?.clientWidth || 760,
+                    maxHeight: frame?.clientHeight || 570,
+                  },
+                  safeAreaInsets: { top: 0, right: 0, bottom: 0, left: 0 },
+                },
+              },
+            });
+          }, initializeDelayMs);
+          return;
+        }
+
+        if (message.method === 'ui/notifications/initialized') {
+          if (initialized) return;
+          initialized = true;
+          setStatus('MCP Apps · connected; initial tool result delivered');
+          sendInitialToolResult();
+          return;
+        }
+
+        if (message.method === 'tools/call' && message.id !== undefined) {
+          const name = String(message.params?.name || '');
+          const result = toolResult(name);
+          send({ jsonrpc: '2.0', id: message.id, result });
+          setStatus('MCP Apps · handled tools/call: ' + (name || 'unknown'));
+          return;
+        }
+
+        if (message.method === 'ui/open-link' && message.id !== undefined) {
+          send({ jsonrpc: '2.0', id: message.id, result: {} });
+          setStatus('MCP Apps · open-link: ' + String(message.params?.url || ''));
+          return;
+        }
+
+        if (message.method === 'ui/notifications/size-changed') {
+          const nextHeight = Number(message.params?.height);
+          if (Number.isFinite(nextHeight) && nextHeight > 0 && frame) {
+            lastHeight = Math.max(120, Math.min(900, Math.ceil(nextHeight)));
+            frame.style.height = lastHeight + 'px';
+          }
+          setStatus('MCP Apps · connected' + (lastHeight ? ' · widget height ' + lastHeight + 'px' : ''));
+        }
+      });
+
+      setStatus('MCP Apps · waiting for ui/initialize (1.5s simulated host delay)');
+      if (frame) frame.srcdoc = widgetSource;
+    })();
+  </script>`;
 }
 
 function galleryHtml(widget: string, state: string, origin: string): string {
   const output = stateOutput(state, origin);
-  const hostedWidget = widget.replace('<head>', `<head>${hostScript(output, origin)}`);
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Open Design · Local Card Gallery</title>
     <style>
@@ -159,14 +253,15 @@ function galleryHtml(widget: string, state: string, origin: string): string {
       nav { display: flex; gap: 8px; margin-top: 16px; }
       nav a { color: #222; text-decoration: none; padding: 7px 11px; border-radius: 999px; background: #fff; border: 1px solid #ddd8ce; font-size: 12px; font-weight: 700; }
       nav a[aria-current=true] { color: #fff; background: #111; border-color: #111; }
-      iframe { display: block; width: min(760px, 100%); height: 570px; margin: 0 auto; border: 0; }
+      iframe { display: block; width: min(760px, 100%); height: 570px; margin: 0 auto; border: 0; transition: height 200ms cubic-bezier(.23, 1, .32, 1); }
       #local-host-status { max-width: 720px; margin: 12px auto 0; min-height: 18px; color: #666; font-size: 12px; }
     </style></head><body>
     <header><h1>Open Design Artifact Card</h1><p>Real MCP Apps resource with a local host simulator.</p>
       <nav>${['account', 'authorized', 'running', 'recharge', 'complete'].map((item) => `<a href="/?state=${item}" aria-current="${item === state}">${item}</a>`).join('')}</nav>
     </header>
-    <iframe title="Open Design Artifact Card" srcdoc="${htmlAttribute(hostedWidget)}"></iframe>
+    <iframe id="artifact-card" title="Open Design Artifact Card"></iframe>
     <div id="local-host-status"></div>
+    ${mcpAppsHostScript(output, origin, widget)}
   </body></html>`;
 }
 

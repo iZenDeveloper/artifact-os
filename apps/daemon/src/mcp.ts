@@ -25,9 +25,18 @@ import { postCreateArtifactRequest } from './artifacts/create.js';
 import { classifyAmrAccountFailure } from './integrations/vela-errors.js';
 
 const SERVER_NAME = 'open-design';
-const SERVER_VERSION = '0.2.7';
+const SERVER_VERSION = '0.2.8';
 const MCP_STDIO_IDLE_EXIT_MS = 30 * 60 * 1000;
-const CHATGPT_WIDGET_URI = 'ui://open-design/artifact-card-v2.html';
+// MCP Apps hosts cache widget resources by URI. Bump this whenever the
+// embedded HTML/CSS/JS changes so a failed or stale sandbox is not reused.
+const CHATGPT_WIDGET_URI = 'ui://open-design/artifact-card-v4.html';
+// A running host can retain tool metadata across a daemon/plugin refresh and
+// keep reading the previous URI. Serve the latest widget at that URI too so
+// existing conversations recover without requiring a Codex restart.
+const LEGACY_CHATGPT_WIDGET_URIS = new Set([
+  'ui://open-design/artifact-card-v2.html',
+  'ui://open-design/artifact-card-v3.html',
+]);
 const CHATGPT_SIGN_IN_URL = 'https://open-design.ai/amr';
 const CHATGPT_RECHARGE_URL = 'https://open-design.ai/amr/wallet';
 const CHATGPT_V1_TOOL_NAMES = new Set([
@@ -236,6 +245,9 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
     let current = {};
     let pollTimer = null;
     let rpcId = 0;
+    let bridgeInitialized = false;
+    let resizeFrame = 0;
+    let lastReportedSize = '';
     const pendingRequests = new Map();
     const rpcNotify = (method, params) => window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
     const rpcRequest = (method, params, timeoutMs = 30000) => new Promise((resolve, reject) => {
@@ -247,14 +259,48 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
       pendingRequests.set(id, { resolve, reject, timer });
       window.parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
     });
+    const scheduleSizeChanged = () => {
+      if (!bridgeInitialized || resizeFrame) return;
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = 0;
+        const body = document.body;
+        const bodyStyle = getComputedStyle(body);
+        const cardRect = byId('card').getBoundingClientRect();
+        const verticalPadding = (parseFloat(bodyStyle.paddingTop) || 0) + (parseFloat(bodyStyle.paddingBottom) || 0);
+        const height = Math.max(1, Math.ceil(cardRect.height + verticalPadding));
+        const sizeKey = String(height);
+        if (sizeKey === lastReportedSize) return;
+        lastReportedSize = sizeKey;
+        rpcNotify('ui/notifications/size-changed', { height });
+      });
+    };
+    window.addEventListener('message', (event) => {
+      if (event.source !== window.parent) return;
+      const message = event.data;
+      if (!message || message.jsonrpc !== '2.0') return;
+      if (typeof message.id === 'number') {
+        const pending = pendingRequests.get(message.id);
+        if (!pending) return;
+        pendingRequests.delete(message.id);
+        clearTimeout(pending.timer);
+        if (message.error) pending.reject(message.error); else pending.resolve(message.result);
+        return;
+      }
+      if (message.method === 'ui/notifications/tool-result') {
+        const result = message.params?.result ?? message.params;
+        if (result?.structuredContent) render(result.structuredContent);
+      }
+    }, { passive: true });
     const initializeBridge = async () => {
       try {
         await rpcRequest('ui/initialize', {
           appInfo: { name: 'open-design-artifact-card', version: '${SERVER_VERSION}' },
           appCapabilities: {},
           protocolVersion: '2026-01-26',
-        }, 1000);
+        });
+        bridgeInitialized = true;
         rpcNotify('ui/notifications/initialized', {});
+        scheduleSizeChanged();
         return true;
       } catch { return false; }
     };
@@ -263,10 +309,19 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
       if (await bridgeReady) return rpcRequest('tools/call', { name, arguments: args });
       return window.openai?.callTool?.(name, args);
     }
-    function openUrl(url) {
+    async function openUrl(url) {
       if (!url) return;
-      if (window.openai?.openExternal) window.openai.openExternal({ href: url });
-      else window.open(url, '_blank', 'noopener,noreferrer');
+      if (window.openai?.openExternal) {
+        window.openai.openExternal({ href: url });
+        return;
+      }
+      if (bridgeInitialized) {
+        try {
+          await rpcRequest('ui/open-link', { url });
+          return;
+        } catch {}
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
     function accountLabel() {
       const user = current.user && typeof current.user === 'object' ? current.user : {};
@@ -352,59 +407,31 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
         finally { versions.disabled = false; }
       };
       const exportButton = byId('export'); exportButton.hidden = !projectId || !completed; exportButton.onclick = async () => {
-        exportButton.disabled = true; byId('note').textContent = 'Preparing a source ZIP…';
+        exportButton.disabled = true; byId('note').textContent = 'Preparing a source ZIP…'; scheduleSizeChanged();
         try {
           const next = await callTool('export_project', { project: projectId });
           byId('note').textContent = next?.isError ? 'Export failed. Open Studio to export from the full editor.' : 'Source ZIP is ready in the tool result. Use Open Studio for rendered PDF, image, or PPTX export.';
-        } finally { exportButton.disabled = false; }
+        } finally { exportButton.disabled = false; scheduleSizeChanged(); }
       };
-      if (Object.keys(current).length > 0) {
-        window.openai?.setWidgetState?.({
-          projectId: current.projectId || null,
-          projectName: current.projectName || current.name || null,
-          runId: current.runId || (current.status ? current.id : null),
-          status,
-          previewUrl: current.previewUrl || null,
-          studioUrl: current.studioUrl || null,
-          entryFile: entryFile || null,
-          hint: current.hint || null,
-          nextAction: current.nextAction || null,
-          rechargeUrl: current.rechargeUrl || null,
-        });
-      }
       if (running && (current.runId || current.id)) {
         pollTimer = setTimeout(() => { refreshRun().catch(() => { pollTimer = setTimeout(() => render(current), 30000); }); }, 30000);
       }
+      scheduleSizeChanged();
     }
     function renderVersions(output) {
       const host = byId('version-list'); host.replaceChildren();
       const versions = Array.isArray(output?.versions) ? output.versions.slice().reverse().slice(0, 6) : [];
-      if (!versions.length) { byId('note').textContent = 'No saved HTML versions yet.'; return; }
+      if (!versions.length) { byId('note').textContent = 'No saved HTML versions yet.'; scheduleSizeChanged(); return; }
       const heading = document.createElement('p'); heading.className = 'note'; heading.textContent = 'Recent versions'; host.append(heading);
       versions.forEach((version) => {
         const row = document.createElement('div'); row.className = 'datum'; row.style.marginBottom = '7px'; row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '8px';
         const text = document.createElement('span'); text.className = 'value'; text.style.flex = '1'; text.textContent = 'v' + safeText(version.version, '?') + (version.label ? ' · ' + version.label : ''); row.append(text);
-        if (!version.current && version.id) { const restore = document.createElement('button'); restore.className = 'secondary'; restore.textContent = 'Restore'; restore.onclick = async () => { restore.disabled = true; try { await callTool('restore_version', { project: output.projectId, path: output.path, versionId: version.id, confirm: true }); byId('note').textContent = 'Version restored. Open Studio or refresh the preview to review it.'; } finally { restore.disabled = false; } }; row.append(restore); }
+        if (!version.current && version.id) { const restore = document.createElement('button'); restore.className = 'secondary'; restore.textContent = 'Restore'; restore.onclick = async () => { restore.disabled = true; try { await callTool('restore_version', { project: output.projectId, path: output.path, versionId: version.id, confirm: true }); byId('note').textContent = 'Version restored. Open Studio or refresh the preview to review it.'; } finally { restore.disabled = false; scheduleSizeChanged(); } }; row.append(restore); }
         host.append(row);
       });
+      scheduleSizeChanged();
     }
     render(window.openai?.toolOutput ?? window.openai?.widgetState);
-    window.addEventListener('message', (event) => {
-      if (event.source !== window.parent) return;
-      const message = event.data;
-      if (!message || message.jsonrpc !== '2.0') return;
-      if (typeof message.id === 'number') {
-        const pending = pendingRequests.get(message.id);
-        if (!pending) return;
-        pendingRequests.delete(message.id);
-        clearTimeout(pending.timer);
-        if (message.error) pending.reject(message.error); else pending.resolve(message.result);
-        return;
-      }
-      if (message.method === 'ui/notifications/tool-result' && message.params?.structuredContent) {
-        render(message.params.structuredContent);
-      }
-    }, { passive: true });
     window.addEventListener('openai:set_globals', (event) => render(
       event.detail?.globals?.toolOutput
         ?? window.openai?.toolOutput
@@ -422,9 +449,24 @@ const CHATGPT_STATUS_META = {
 
 const CHATGPT_WIDGET_META = {
   ui: { resourceUri: CHATGPT_WIDGET_URI },
+  // `registerAppTool` from @modelcontextprotocol/ext-apps publishes both
+  // spellings. Keep the legacy flat key for hosts that have not fully moved
+  // to nested `ui.resourceUri` yet.
+  'ui/resourceUri': CHATGPT_WIDGET_URI,
   'openai/outputTemplate': CHATGPT_WIDGET_URI,
   ...CHATGPT_STATUS_META,
 };
+
+const CHATGPT_WIDGET_RESULT_META = {
+  ui: { resourceUri: CHATGPT_WIDGET_URI },
+  'ui/resourceUri': CHATGPT_WIDGET_URI,
+  'openai/outputTemplate': CHATGPT_WIDGET_URI,
+};
+
+function isChatGptWidgetUri(uri: unknown): uri is string {
+  return typeof uri === 'string'
+    && (uri === CHATGPT_WIDGET_URI || LEGACY_CHATGPT_WIDGET_URIS.has(uri));
+}
 
 type JsonObject = Record<string, unknown>;
 interface RunMcpOptions { daemonUrl: string | URL }
@@ -448,6 +490,21 @@ interface ProjectListCache { baseUrl: string; t: number; list: ProjectSummary[] 
 interface McpArgs extends JsonObject { project?: unknown; entry?: unknown; include?: unknown; maxBytes?: unknown; path?: unknown; offset?: unknown; limit?: unknown; since?: unknown; query?: unknown; pattern?: unknown; max?: unknown; name?: unknown; content?: unknown; encoding?: unknown; artifactManifest?: unknown; confirm?: unknown; confirmed?: unknown; prompt?: unknown; plugin?: unknown; inputs?: unknown; agent?: unknown; model?: unknown; runId?: unknown; id?: unknown; designSystem?: unknown; skill?: unknown; artifactType?: unknown; brief?: unknown; includeUnavailable?: unknown; versionId?: unknown }
 interface ProjectFileBundleEntry { name: string; mime: string; size: number | null; content: string | null; binary: boolean }
 interface BundleInput { project: ProjectPayload | ProjectSummary; entry: string; files: ProjectFileBundleEntry[]; truncated: boolean; active: ActiveContext | null; resolved?: ResolvedProject | null }
+
+function withChatGptWidgetResultMeta(toolName: string, result: any): any {
+  if (!['get_cloud_account', 'start_run'].includes(toolName) || !result || typeof result !== 'object') return result;
+  if (!result.structuredContent || typeof result.structuredContent !== 'object') return result;
+  const currentMeta = result._meta && typeof result._meta === 'object' ? result._meta as JsonObject : {};
+  const currentUi = currentMeta.ui && typeof currentMeta.ui === 'object' ? currentMeta.ui as JsonObject : {};
+  return {
+    ...result,
+    _meta: {
+      ...currentMeta,
+      ...CHATGPT_WIDGET_RESULT_META,
+      ui: { ...currentUi, resourceUri: CHATGPT_WIDGET_URI },
+    },
+  };
+}
 interface ErrorWithCode { message?: string; code?: string; cause?: { code?: string } }
 
 interface McpIdleExitControllerOptions {
@@ -955,6 +1012,7 @@ const TOOL_DEFS = [
 
 export async function runMcpStdio({ daemonUrl }: RunMcpOptions): Promise<void> {
   const baseUrl = String(daemonUrl).replace(/\/$/, '');
+  const localWidgetFrameDomains = [...new Set([new URL(baseUrl).origin, 'https://open-design.ai'])];
   let closeTransportForIdle: (() => void) | null = null;
   const idleExit = _createMcpIdleExitController({
     idleMs: MCP_STDIO_IDLE_EXIT_MS,
@@ -1078,6 +1136,12 @@ export async function runMcpStdio({ daemonUrl }: RunMcpOptions): Promise<void> {
         name: 'Open Design artifact card',
         description: 'Interactive account, progress, and artifact result card for ChatGPT.',
         mimeType: 'text/html;profile=mcp-app',
+        _meta: {
+          ui: {
+            prefersBorder: true,
+            csp: { frameDomains: localWidgetFrameDomains },
+          },
+        },
       },
       {
         uri: 'od://focus/active',
@@ -1107,7 +1171,7 @@ export async function runMcpStdio({ daemonUrl }: RunMcpOptions): Promise<void> {
 
   server.setRequestHandler(ReadResourceRequestSchema, withMcpActivity(async (req) => {
     const uri = req.params?.uri;
-    if (uri === CHATGPT_WIDGET_URI) {
+    if (isChatGptWidgetUri(uri)) {
       return {
         contents: [
           {
@@ -1118,11 +1182,7 @@ export async function runMcpStdio({ daemonUrl }: RunMcpOptions): Promise<void> {
               ui: {
                 prefersBorder: true,
                 csp: {
-                  frameDomains: [
-                    'http://127.0.0.1:7456',
-                    'http://localhost:7456',
-                    'https://open-design.ai',
-                  ],
+                  frameDomains: localWidgetFrameDomains,
                 },
               },
             },
@@ -1260,6 +1320,12 @@ export function createOpenDesignMcpServer({
         name: 'Open Design artifact card',
         description: 'Interactive account, progress, and artifact result card for ChatGPT.',
         mimeType: 'text/html;profile=mcp-app',
+        _meta: {
+          ui: {
+            prefersBorder: true,
+            csp: { frameDomains },
+          },
+        },
       },
       ...(dsData.designSystems ?? []).map((designSystem) => ({
         uri: `od://design-systems/${encodeURIComponent(designSystem.id)}/DESIGN.md`,
@@ -1272,7 +1338,7 @@ export function createOpenDesignMcpServer({
   });
   server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     const uri = request.params?.uri;
-    if (uri === CHATGPT_WIDGET_URI) {
+    if (isChatGptWidgetUri(uri)) {
       return {
         contents: [{
           uri,
@@ -1314,7 +1380,8 @@ export function createOpenDesignMcpServer({
     }
     const args = (request.params?.arguments ?? {}) as McpArgs;
     const result = await handleChatGptV1ToolCall(baseUrl, name, args);
-    return transformToolResult ? transformToolResult(name, result) : result;
+    const transformed = transformToolResult ? await transformToolResult(name, result) : result;
+    return withChatGptWidgetResultMeta(name, transformed);
   });
   return server;
 }
