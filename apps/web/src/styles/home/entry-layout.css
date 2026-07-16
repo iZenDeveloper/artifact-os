@@ -1987,7 +1987,11 @@
   top: calc(100% + 6px);
   left: 0;
   right: 0;
-  z-index: 1401;
+  /* Above every modal layer: the popover portals to <body>, and the settings
+     dialog backdrop sits at 1700 (app-modal at 10000) — at the old 1401 the
+     dropdown OPENED but rendered underneath the dialog, reading as "click
+     does nothing". */
+  z-index: 10500;
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
