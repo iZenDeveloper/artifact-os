@@ -57,6 +57,11 @@ interface Props {
    *  member directory; a project absent from this map is a local project owned
    *  by the current member ("我创建"). */
   projectOwnerMemberIds?: ReadonlyMap<string, string>;
+  /** Project currently being materialized before it can open (a member's
+   *  first click on a team-shared card triggers a full content pull). The
+   *  card shows a spinner overlay and further clicks are ignored — without
+   *  this the pull looked like a dead click for its whole duration. */
+  openingProjectId?: string | null;
   collaborationEnabled?: boolean;
   canAssignInviteRoles?: boolean;
   canManageProjectCollection?: boolean;
@@ -110,6 +115,7 @@ export function RecentProjectsStrip({
   sharedProjectIds,
   space = 'recent',
   projectOwnerMemberIds,
+  openingProjectId = null,
   collaborationEnabled,
   canAssignInviteRoles,
   canManageProjectCollection,
@@ -648,11 +654,12 @@ export function RecentProjectsStrip({
           const shared = isShared(project.id);
           const selected = selectedProjectIds.has(project.id);
           const readonlyShared = shared && !creator.ownedBySelf;
+          const opening = openingProjectId === project.id;
           return (
             <div
               key={project.id}
               role="listitem"
-              className={`recent-projects__card${designSystemProject ? ' is-design-system-project' : ''}${shared ? ' is-shared' : ''}${menuOpenId === project.id ? ' is-menu-open' : ''}${selected ? ' is-selected' : ''}${readonlyShared ? ' is-readonly-shared' : ''}`}
+              className={`recent-projects__card${designSystemProject ? ' is-design-system-project' : ''}${shared ? ' is-shared' : ''}${menuOpenId === project.id ? ' is-menu-open' : ''}${selected ? ' is-selected' : ''}${readonlyShared ? ' is-readonly-shared' : ''}${opening ? ' is-opening' : ''}`}
               data-project-id={project.id}
             >
               {selectionMode ? (
@@ -677,10 +684,17 @@ export function RecentProjectsStrip({
                     toggleSelection(project.id);
                     return;
                   }
+                  if (opening) return;
                   onOpen(project.id);
                 }}
+                aria-busy={opening ? true : undefined}
                 title={project.name}
               >
+                {opening ? (
+                  <span className="recent-projects__card-opening" aria-hidden>
+                    <Icon name="spinner" size={20} />
+                  </span>
+                ) : null}
                 <div
                   className={`recent-projects__card-thumb recent-projects__card-thumb-${cover.kind}`}
                   style={cover.style}

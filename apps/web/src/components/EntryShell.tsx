@@ -592,17 +592,25 @@ export function EntryShell({
   // first pulled + registered on the daemon (materialize content + insert a local
   // project record) so it can open read-only — the member is not the owner, so
   // the useProjectCollab single-writer path keeps it read-only.
+  const [pullingProjectId, setPullingProjectId] = useState<string | null>(null);
   async function handleOpenAllProjects(id: string): Promise<void> {
     if (localProjectIds.has(id)) {
       await Promise.resolve(onOpenProject(id));
       return;
     }
+    // The pull materializes the whole project before it can open; surface it
+    // on the card (spinner overlay) and swallow re-clicks meanwhile —
+    // otherwise the first click reads as dead for the entire download.
+    if (pullingProjectId) return;
+    setPullingProjectId(id);
     try {
       const response = await fetch(`/api/projects/${encodeURIComponent(id)}/collab/pull`, { method: 'POST' });
       if (!response.ok) return;
       await Promise.resolve(onProjectsRefresh?.());
     } catch {
       return;
+    } finally {
+      setPullingProjectId(null);
     }
     await Promise.resolve(onOpenProject(id));
   }
@@ -1331,6 +1339,7 @@ export function EntryShell({
                     space="team"
                     sharedProjectIds={teamSharedProjectIds}
                     projectOwnerMemberIds={teamProjectOwnerMemberIds}
+                    openingProjectId={pullingProjectId}
                     onOpen={(id) => void handleOpenAllProjects(id)}
                     onViewAll={() => {}}
                     onDelete={onDeleteProject}

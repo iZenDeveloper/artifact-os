@@ -214,6 +214,43 @@ export function EntryNavRail({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountOpen]);
+  // Hover-open for the account menu (#5517 interaction). The popover floats
+  // above the trigger, so closing is delayed just long enough for the pointer
+  // to cross the gap; re-entering the container (menu included — it's a DOM
+  // child even though it renders above) cancels the pending close.
+  const accountCloseTimer = useRef<number | null>(null);
+  const cancelAccountClose = () => {
+    if (accountCloseTimer.current !== null) {
+      window.clearTimeout(accountCloseTimer.current);
+      accountCloseTimer.current = null;
+    }
+  };
+  const openAccountMenu = () => {
+    cancelAccountClose();
+    setAccountOpen(true);
+  };
+  const scheduleAccountClose = () => {
+    cancelAccountClose();
+    accountCloseTimer.current = window.setTimeout(() => setAccountOpen(false), 220);
+  };
+  useEffect(() => cancelAccountClose, []);
+  // While open, track the pointer at the document level: anywhere outside the
+  // account container arms the close timer, back inside disarms it. This is
+  // deliberately NOT React onMouseLeave — leaving from inside the floating
+  // menu does not reliably produce a synthetic leave on the container.
+  const accountContainerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!accountOpen) return;
+    const onDocPointerOver = (ev: PointerEvent) => {
+      const container = accountContainerRef.current;
+      if (!container) return;
+      if (container.contains(ev.target as Node)) cancelAccountClose();
+      else scheduleAccountClose();
+    };
+    document.addEventListener('pointerover', onDocPointerOver, true);
+    return () => document.removeEventListener('pointerover', onDocPointerOver, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountOpen]);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [teamOpen, setTeamOpen] = useState(false);
   const [workspaceItems, setWorkspaceItems] = useState<WorkspaceDirectoryItem[]>([]);
@@ -339,11 +376,17 @@ export function EntryNavRail({
       <div className="entry-nav-rail__panel">
       <div className="entry-nav-rail__group">
         {context ? (
-          <div className="entry-nav-rail__account">
+          <div
+            ref={accountContainerRef}
+            className="entry-nav-rail__account"
+            onMouseEnter={cancelAccountClose}
+            onMouseLeave={scheduleAccountClose}
+          >
             <button
               type="button"
               className="entry-nav-rail__account-trigger"
               onClick={() => setAccountOpen((v) => !v)}
+              onMouseEnter={openAccountMenu}
               aria-expanded={accountOpen}
               data-testid="entry-nav-account"
             >
@@ -371,7 +414,9 @@ export function EntryNavRail({
             />
             {accountOpen ? (
               <>
-                <div className="entry-nav-rail__menu-backdrop" onClick={() => setAccountOpen(false)} />
+                {/* No backdrop here (unlike the team menu): hover-open relies
+                    on document-level pointerover to close, and a full-screen
+                    backdrop would swallow those events and insta-close. */}
                 <div className="entry-nav-rail__account-menu" role="menu">
                   <div className="entry-nav-rail__account-head">
                     <span className="entry-nav-rail__account-head-avatar" aria-hidden>{accountInitial}</span>
@@ -823,12 +868,14 @@ export function EntryNavRail({
           </>
         )}
       </div>
-      <div className="entry-nav-rail__footer">
-        {footerNotice}
-        <div className="entry-rail-actions">
-          {footerExtra}
+      {/* Skip the footer entirely when it has nothing to show — an empty
+          shell here read as a dead white strip under the account row. */}
+      {footerNotice || footerExtra ? (
+        <div className="entry-nav-rail__footer">
+          {footerNotice}
+          {footerExtra ? <div className="entry-rail-actions">{footerExtra}</div> : null}
         </div>
-      </div>
+      ) : null}
       </div>
 
       <InviteDialog open={inviteOpen} onClose={() => setInviteOpen(false)} />
