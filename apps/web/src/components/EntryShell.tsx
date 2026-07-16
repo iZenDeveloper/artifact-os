@@ -1187,9 +1187,6 @@ export function EntryShell({
             <div data-testid="entry-view-design-systems" data-active={view === 'design-systems' ? 'true' : 'false'} {...inactiveViewProps(view === 'design-systems')}>
               {designSystemsLoading ? (
                 <div className="entry-section">
-                  <header className="entry-section__head">
-                    <h1 className="entry-section__title">{t('entry.navDesignSystems')}</h1>
-                  </header>
                   <DesignSystemsTab
                     loading
                     systems={[]}
@@ -1203,9 +1200,6 @@ export function EntryShell({
                 </div>
               ) : (
                 <div className="entry-section">
-                  <header className="entry-section__head">
-                    <h1 className="entry-section__title">{t('entry.navDesignSystems')}</h1>
-                  </header>
                   <DesignSystemsTab
                     systems={designSystems}
                     templates={templates}

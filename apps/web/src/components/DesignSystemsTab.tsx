@@ -154,6 +154,9 @@ export function DesignSystemsTab({
   const searchTrackedRef = useRef(false);
   const categoryTrackedRef = useRef(false);
   const [filter, setFilter] = useState('');
+  // #5517 header search: collapsed to a round glyph until opened or filled.
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [busyAction, setBusyAction] = useState<{ systemId: string; action: DesignSystemActionKind } | null>(null);
   const busyId = busyAction?.systemId ?? null;
   const [actionToast, setActionToast] = useState<{ message: string; tone: DesignKitActionFeedbackTone } | null>(null);
@@ -597,6 +600,19 @@ export function DesignSystemsTab({
 
   if (loading) {
     return (
+      <>
+      <header className={styles.pageHeader} data-testid="design-systems-page-header">
+        <div className={styles.pageTitleBlock}>
+          <h1 className={styles.pageTitle}>{t('entry.navDesignSystems')}</h1>
+        </div>
+        <div className={styles.headerTools} data-testid="design-systems-header-tools" aria-hidden>
+          <div className={`${styles.searchWrap} ${styles.headerSearch}`} data-testid="design-systems-header-search">
+            <SearchGlyph className={styles.searchIcon} />
+            <SkeletonBlock className={`${styles.search} ${styles.skeletonSearchField}`} />
+          </div>
+          <SkeletonBlock className={styles.skeletonCreateButton} />
+        </div>
+      </header>
       <div
         className={styles.root}
         data-testid="design-systems-tab"
@@ -605,25 +621,6 @@ export function DesignSystemsTab({
       >
         <VisuallyHidden role="status">{t('designSystemPicker.loading')}</VisuallyHidden>
         <aside className={styles.sidebar} data-testid="design-systems-sidebar-skeleton">
-          {onCreate ? (
-            <Button
-              variant="primary"
-              className={styles.newBtn}
-              onClick={onCreate}
-              data-testid="design-systems-create"
-            >
-              <Icon name="plus" />
-              {t('dsManager.createAction')}
-            </Button>
-          ) : (
-            <SkeletonBlock className={styles.skeletonCreateButton} />
-          )}
-
-          <div className={styles.searchWrap} aria-hidden>
-            <SearchGlyph className={styles.searchIcon} />
-            <SkeletonBlock className={`${styles.search} ${styles.skeletonSearchField}`} />
-          </div>
-
           <div className={styles.scopes} aria-hidden>
             <SkeletonBlock className={`${styles.scopeChip} ${styles.skeletonScopeChipWide}`} />
             <SkeletonBlock className={`${styles.scopeChip} ${styles.skeletonScopeChip}`} />
@@ -657,6 +654,7 @@ export function DesignSystemsTab({
           />
         </section>
       </div>
+      </>
     );
   }
 
@@ -671,29 +669,74 @@ export function DesignSystemsTab({
           onDismiss={() => setActionToast(null)}
         />
       ) : null}
-      <div className={styles.root} data-testid="design-systems-tab">
-      <aside className={styles.sidebar}>
-        {onCreate ? (
-          <Button
-            variant="primary"
-            className={styles.newBtn}
-            onClick={onCreate}
-            data-testid="design-systems-create"
+      {/* #5517 page header: title left, create action right — the create
+          button leaves the sidebar so the list column starts at the tabs. */}
+      <header className={styles.pageHeader} data-testid="design-systems-page-header">
+        <div className={styles.pageTitleBlock}>
+          <h1 className={styles.pageTitle}>{t('entry.navDesignSystems')}</h1>
+        </div>
+        <div className={styles.headerTools} data-testid="design-systems-header-tools">
+          {onCreate ? (
+            <Button
+              variant="primary"
+              className={`${styles.newBtn} ${styles.headerCreate}`}
+              onClick={onCreate}
+              data-testid="design-systems-create"
+            >
+              <Icon name="plus" />
+              {t('dsManager.createAction')}
+            </Button>
+          ) : null}
+        </div>
+      </header>
+      <div className="ds-top-scopes" role="tablist" aria-label={t('dsManager.sourceAria')}>
+        {scopeTabs.map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            role="tab"
+            aria-selected={designSystemCollection === tab.value}
+            className={`ds-top-scope-chip${designSystemCollection === tab.value ? ' is-active' : ''}`}
+            onClick={() => setDesignSystemCollection(tab.value)}
           >
-            <Icon name="plus" />
-            {t('dsManager.createAction')}
-          </Button>
-        ) : null}
-
-        <div className={styles.searchWrap}>
-          <SearchGlyph className={styles.searchIcon} />
+            <span>{tab.label}</span>
+            {'count' in tab ? (
+              <span className="ds-top-scope-count" aria-hidden>{tab.count}</span>
+            ) : null}
+            {tab.comingSoon ? (
+              <span className={styles.scopeComingSoon} aria-hidden>{t('dsManager.comingSoonBadge')}</span>
+            ) : null}
+          </button>
+        ))}
+        <div
+          className={`${styles.searchWrap} ${styles.headerSearch}${searchExpanded || filter ? ` ${styles.headerSearchOpen}` : ''} ds-top-scopes__search`}
+          data-testid="design-systems-header-search"
+          onBlur={(event) => {
+            if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
+            if (!filter) setSearchExpanded(false);
+          }}
+        >
+          <button
+            type="button"
+            className={styles.searchToggle}
+            aria-label={t('ds.searchPlaceholder')}
+            onClick={() => {
+              setSearchExpanded(true);
+              requestAnimationFrame(() => searchInputRef.current?.focus());
+            }}
+          >
+            <SearchGlyph />
+          </button>
           <input
+            ref={searchInputRef}
             type="search"
             data-testid="design-systems-search"
             className={styles.search}
+            tabIndex={searchExpanded || filter ? 0 : -1}
             placeholder={t('ds.searchPlaceholder')}
             value={filter}
             onFocus={() => {
+              setSearchExpanded(true);
               if (searchTrackedRef.current) return;
               searchTrackedRef.current = true;
               trackDesignSystemsTopClick(analytics.track, {
@@ -705,32 +748,9 @@ export function DesignSystemsTab({
             onChange={(e) => setFilter(e.target.value)}
           />
         </div>
-
-        <div
-          className={styles.scopes}
-          role="tablist"
-          aria-label={t('dsManager.sourceAria')}
-        >
-          {scopeTabs.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              role="tab"
-              aria-selected={designSystemCollection === tab.value}
-              className={`${styles.scopeChip} ${designSystemCollection === tab.value ? styles.scopeChipActive : ''}`}
-              onClick={() => setDesignSystemCollection(tab.value)}
-            >
-              <span>{tab.label}</span>
-              {'count' in tab ? (
-                <span className={styles.scopeCount} aria-hidden>{tab.count}</span>
-              ) : null}
-              {tab.comingSoon ? (
-                <span className={styles.scopeComingSoon} aria-hidden>{t('dsManager.comingSoonBadge')}</span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-
+      </div>
+      <div className={styles.root} data-testid="design-systems-tab">
+      <aside className={styles.sidebar}>
         {showPresetFilters ? (
           <div className={styles.presetFilters}>
             <div className={styles.surfaceRow} role="tablist" aria-label={t('ds.surfaceLabel')}>
