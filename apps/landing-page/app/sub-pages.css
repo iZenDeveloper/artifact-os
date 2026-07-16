@@ -1755,6 +1755,53 @@ body.sub-page {
   margin-inline: auto;
 }
 
+/* Hub restructure: resource cards lead; every hub section shares the
+   1180px centered safe area (the tile grid now lives inside a section,
+   so the older `:has(> .plugins-tile-grid)` rule no longer matches). */
+.sub-main:has(> .plugins-section) > .catalog-head,
+.sub-main:has(> .plugins-section) > .plugins-section,
+.sub-main:has(> .plugins-section) > .plugin-contribute {
+  max-width: 1180px;
+  margin-inline: auto;
+}
+.plugins-section {
+  width: 100%;
+  margin: 40px 0 0;
+}
+.plugins-section + .plugins-section {
+  margin-top: 52px;
+}
+.plugins-section > .plugins-tile-grid {
+  margin: 0;
+}
+.plugins-sec-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.plugins-sec-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.plugins-sec-more {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.plugins-sec-more:hover {
+  color: var(--coral);
+}
+
 .plugins-tile-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

@@ -44,6 +44,11 @@ export interface PluginsCopy {
   hubMetaTitle: (n: number) => string;
   hubMetaDescription: string;
 
+  /** Section heads on the hub. EN baseline; zh localized, rest fall back to EN. */
+  hubPicksTitle: string;
+  hubPicksMore: string;
+  hubBrowseTitle: string;
+
   tileTemplates: string;
   tileSkills: string;
   tileSystems: string;
@@ -224,13 +229,17 @@ export interface PluginsCopy {
 }
 
 const en: PluginsCopy = {
-  hubLabel: 'Plugin library',
-  hubHeading: (n) => `${n} plugins for your coding agent`,
+  hubLabel: 'Agent design plugin library',
+  hubHeading: () => `The design plugin library for AI agents`,
   hubLead:
-    'Open Design is built around four kinds of plugin. Templates and Skills are what your agent runs; Systems and Craft are how it stays on-brand and accessible. Pick a section to drill in, or jump straight to a slug if you already know which one you want.',
+    'Ready-made design systems, skills, and templates that plug straight into your AI agent — so it designs from a real starting point instead of a blank page. Browse by agent, brand, or type, or jump to a slug you already know.',
   hubMetaTitle: (n) => `Claude Skills Marketplace — ${n}+ Plugins | Open Design`,
   hubMetaDescription:
     'Browse the open-source Claude skills marketplace — design skills, systems, templates and craft your coding agent runs directly. Works with Claude, Codex, Cursor.',
+
+  hubPicksTitle: "Editor's picks",
+  hubPicksMore: 'See all',
+  hubBrowseTitle: 'Browse by type',
 
   tileTemplates: 'Templates',
   tileSkills: 'Skills',
@@ -550,13 +559,16 @@ carry the hierarchy and color is used sparingly for intent.
 
 const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
   zh: {
-    hubLabel: '插件库',
-    hubHeading: (n) => `给你 coding agent 的 ${n} 个插件`,
+    hubLabel: 'Agent 设计插件库',
+    hubHeading: () => `Agent 设计插件库`,
     hubLead:
-      'Open Design 围绕四类插件构建：Templates 与 Skills 是 agent 真正运行的内容，Systems 与 Craft 让它保持品牌一致和可访问。点进任意一类深入查看，或直接跳到你已经知道 slug 的那一项。',
+      '别人做好的设计系统、技能和模板，装上就能用——让你的 AI 设计助手少从零开始，直接把想法变成界面。可以按 agent、品牌或类型来找，也能直接跳到你已经知道的那一项。',
     hubMetaTitle: (n) => `Claude Skills 市场 — ${n}+ 插件 | Open Design`,
     hubMetaDescription:
       '浏览开源的 Claude skills 市场——设计 skills、设计系统、模板与 craft，你的 coding agent 可直接运行。支持 Claude、Codex、Cursor。',
+    hubPicksTitle: '编辑精选',
+    hubPicksMore: '查看全部',
+    hubBrowseTitle: '按类型浏览',
     tileTemplates: '模板',
     tileSkills: '技能',
     tileSystems: '设计系统',
@@ -696,8 +708,8 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     ],
   },
   'zh-tw': {
-    hubLabel: '外掛庫', hubHeading: (n) => `給你 coding agent 的 ${n} 個外掛`,
-    hubLead: 'Open Design 圍繞四類外掛構建：Templates 與 Skills 是 agent 真正執行的內容，Systems 與 Craft 讓它保持品牌一致與可存取性。',
+    hubLabel: 'Agent 設計外掛庫', hubHeading: () => `Agent 設計外掛庫`,
+    hubLead: '別人做好的設計系統、技能和範本，裝上就能用——讓你的 AI 設計助手少從零開始，直接把想法變成介面。可以按 agent、品牌或類型來找，也能直接跳到你已經知道的那一項。',
     hubMetaTitle: (n) => `Claude Skills 市集 — ${n}+ 外掛 | Open Design`,
     hubMetaDescription:
       '瀏覽開源的 Claude skills 市集——設計 skills、設計系統、範本與 craft，你的 coding agent 可直接執行。支援 Claude、Codex、Cursor。',
