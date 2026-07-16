@@ -6,6 +6,7 @@
 
 import { useRef, useState } from 'react';
 import { Icon } from './Icon';
+import { useT } from '../i18n';
 
 interface Props {
   open: boolean;
@@ -16,6 +17,7 @@ interface Props {
 const LOGO_COLORS = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'];
 
 export function CreateTeamDialog({ open, onClose, onCreate }: Props) {
+  const t = useT();
   const [name, setName] = useState('');
   const [logoData, setLogoData] = useState<string | null>(null);
   const [colorIdx, setColorIdx] = useState(0);
@@ -35,7 +37,7 @@ export function CreateTeamDialog({ open, onClose, onCreate }: Props) {
 
   function submit() {
     onCreate?.({
-      name: name.trim() || '我的团队',
+      name: name.trim() || t('demo.CreateTeamDialog.tsx.defaultTeamName'),
       logo: logoData,
       color: LOGO_COLORS[colorIdx] ?? LOGO_COLORS[0]!,
     });
@@ -43,7 +45,7 @@ export function CreateTeamDialog({ open, onClose, onCreate }: Props) {
   }
 
   return (
-    <div className="entry-invite" role="dialog" aria-modal="true" aria-label="新建团队">
+    <div className="entry-invite" role="dialog" aria-modal="true" aria-label={t('demo.CreateTeamDialog.tsx.title')}>
       <div className="entry-invite__backdrop" onClick={onClose} />
       <div className="entry-invite__panel">
         <div className="entry-invite__head">
@@ -52,7 +54,7 @@ export function CreateTeamDialog({ open, onClose, onCreate }: Props) {
             className="create-team__logo"
             style={logoData ? undefined : { background: LOGO_COLORS[colorIdx] }}
             onClick={() => fileRef.current?.click()}
-            aria-label="上传团队 Logo"
+            aria-label={t('demo.CreateTeamDialog.tsx.uploadLogo')}
           >
             {logoData ? (
               <img src={logoData} alt="" className="create-team__logo-img" />
@@ -71,16 +73,16 @@ export function CreateTeamDialog({ open, onClose, onCreate }: Props) {
             onChange={pickFile}
           />
           <div className="entry-invite__head-text">
-            <h2 className="entry-invite__title">新建团队</h2>
-            <p className="entry-invite__subtitle">为团队取个名字，上传 Logo 即可创建</p>
+            <h2 className="entry-invite__title">{t('demo.CreateTeamDialog.tsx.title')}</h2>
+            <p className="entry-invite__subtitle">{t('demo.CreateTeamDialog.tsx.subtitle')}</p>
           </div>
         </div>
 
-        <label className="entry-invite__label" htmlFor="create-team-name">团队名称</label>
+        <label className="entry-invite__label" htmlFor="create-team-name">{t('demo.CreateTeamDialog.tsx.nameLabel')}</label>
         <input
           id="create-team-name"
           className="entry-invite__input"
-          placeholder="例如：设计部、增长组…"
+          placeholder={t('demo.CreateTeamDialog.tsx.namePlaceholder')}
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoFocus
@@ -88,7 +90,7 @@ export function CreateTeamDialog({ open, onClose, onCreate }: Props) {
 
         {logoData ? null : (
           <>
-            <span className="entry-invite__label">选择 Logo 颜色</span>
+            <span className="entry-invite__label">{t('demo.CreateTeamDialog.tsx.colorLabel')}</span>
             <div className="create-team__colors">
               {LOGO_COLORS.map((c, i) => (
                 <button
@@ -97,7 +99,7 @@ export function CreateTeamDialog({ open, onClose, onCreate }: Props) {
                   className={`create-team__color${i === colorIdx ? ' is-active' : ''}`}
                   style={{ background: c }}
                   onClick={() => setColorIdx(i)}
-                  aria-label={`颜色 ${i + 1}`}
+                  aria-label={t('demo.CreateTeamDialog.tsx.colorOption', { index: i + 1 })}
                 />
               ))}
             </div>
@@ -106,10 +108,10 @@ export function CreateTeamDialog({ open, onClose, onCreate }: Props) {
 
         <div className="entry-invite__foot">
           <button type="button" className="entry-invite__btn" onClick={onClose}>
-            取消
+            {t('demo.CreateTeamDialog.tsx.cancel')}
           </button>
           <button type="button" className="entry-invite__btn is-primary" onClick={submit}>
-            <Icon name="plus" size={14} /> 创建团队
+            <Icon name="plus" size={14} /> {t('demo.CreateTeamDialog.tsx.create')}
           </button>
         </div>
       </div>

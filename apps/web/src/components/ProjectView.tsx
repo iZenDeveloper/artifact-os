@@ -657,10 +657,17 @@ function isDesignSystemWorkspaceMetadata(metadata: ProjectMetadata | undefined):
 // Mock collaborators kept in sync with RecentProjectsStrip's MOCK_MEMBERS so the
 // avatars read as the same team across the app. Online presence + collaboration
 // cursors are purely visual; nothing here talks to a backend.
-const PRESENCE_COLLABORATORS = [
-  { name: '张伟', role: 'Member', activity: '正在评论 Typography', img: '/team-avatars/a1.png', color: '#f97316' },
-  { name: '李娜', role: 'Owner', activity: '正在评论 Logo', img: '/team-avatars/a3.png', color: '#6366f1' },
-  { name: '王芳', role: 'Admin', activity: '正在查看 Color Tokens', img: '/team-avatars/a4.png', color: '#10b981' },
+type PresenceDictKey = Parameters<ReturnType<typeof useI18n>['t']>[0];
+const PRESENCE_COLLABORATORS: Array<{
+  nameKey: PresenceDictKey;
+  role: string;
+  activityKey: PresenceDictKey;
+  img: string;
+  color: string;
+}> = [
+  { nameKey: 'demo.ProjectView.tsx.person.zhangwei', role: 'Member', activityKey: 'demo.ProjectView.tsx.presence.activity.commentingTypography', img: '/team-avatars/a1.png', color: '#f97316' },
+  { nameKey: 'demo.ProjectView.tsx.person.lina', role: 'Owner', activityKey: 'demo.ProjectView.tsx.presence.activity.commentingLogo', img: '/team-avatars/a3.png', color: '#6366f1' },
+  { nameKey: 'demo.ProjectView.tsx.person.wangfang', role: 'Admin', activityKey: 'demo.ProjectView.tsx.presence.activity.viewingColorTokens', img: '/team-avatars/a4.png', color: '#10b981' },
 ];
 
 interface DemoCommentAuthor {
@@ -675,17 +682,17 @@ type DemoAttributedComment = PreviewComment & {
   demoAuthor?: DemoCommentAuthor;
 };
 
-function demoCommentAuthorForScenario(scenario: DemoScenario): DemoCommentAuthor {
+function demoCommentAuthorForScenario(scenario: DemoScenario, t: ReturnType<typeof useI18n>['t']): DemoCommentAuthor {
   if (isViewerScenario(scenario)) {
-    return { name: '李娜', role: 'Member', avatar: '/team-avatars/a3.png', color: '#6366f1', initials: '李' };
+    return { name: t('demo.ProjectView.tsx.person.lina'), role: 'Member', avatar: '/team-avatars/a3.png', color: '#6366f1', initials: t('demo.ProjectView.tsx.person.lina.initials') };
   }
   if (scenario === 'manager' || scenario === 'invite-admin') {
-    return { name: '王芳', role: 'Admin', avatar: '/team-avatars/a4.png', color: '#10b981', initials: '王' };
+    return { name: t('demo.ProjectView.tsx.person.wangfang'), role: 'Admin', avatar: '/team-avatars/a4.png', color: '#10b981', initials: t('demo.ProjectView.tsx.person.wangfang.initials') };
   }
   if (scenario === 'editor' || scenario === 'invite-editor' || scenario === 'invite-editor-existing' || scenario === 'invite-editor-new') {
-    return { name: '张伟', role: 'Member', avatar: '/team-avatars/a1.png', color: '#f97316', initials: '张' };
+    return { name: t('demo.ProjectView.tsx.person.zhangwei'), role: 'Member', avatar: '/team-avatars/a1.png', color: '#f97316', initials: t('demo.ProjectView.tsx.person.zhangwei.initials') };
   }
-  return { name: '琼羽', role: 'Owner', color: '#c85f3d', initials: '琼' };
+  return { name: t('demo.ProjectView.tsx.person.qiongyu'), role: 'Owner', color: '#c85f3d', initials: t('demo.ProjectView.tsx.person.qiongyu.initials') };
 }
 
 function withDemoCommentAuthor(
@@ -698,6 +705,7 @@ function withDemoCommentAuthor(
 // Stacked online-collaborator avatars for the workspace header (right side).
 // Uses local /team-avatars assets (same-origin) so they load in every context.
 function PresenceAvatarStack() {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const popoverId = useId();
@@ -724,41 +732,44 @@ function PresenceAvatarStack() {
       <button
         type="button"
         className="presence__stack"
-        aria-label="在线协作成员"
+        aria-label={t('demo.ProjectView.tsx.presence.ariaLabel')}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={popoverId}
         onClick={() => setOpen((current) => !current)}
       >
-        {PRESENCE_COLLABORATORS.map((m) => (
-          <span
-            key={m.name}
-            className="presence__avatar"
-            title={`${m.name} · 在线`}
-            style={{ '--presence-ring': m.color } as CSSProperties}
-          >
-            <img src={m.img} alt={m.name} className="presence__avatar-img" />
-            <span className="presence__dot" aria-hidden />
-          </span>
-        ))}
-        <span className="presence__more" title="还有 2 位成员在线">+2</span>
+        {PRESENCE_COLLABORATORS.map((m) => {
+          const name = t(m.nameKey);
+          return (
+            <span
+              key={m.nameKey}
+              className="presence__avatar"
+              title={t('demo.ProjectView.tsx.presence.avatarTitle', { name })}
+              style={{ '--presence-ring': m.color } as CSSProperties}
+            >
+              <img src={m.img} alt={name} className="presence__avatar-img" />
+              <span className="presence__dot" aria-hidden />
+            </span>
+          );
+        })}
+        <span className="presence__more" title={t('demo.ProjectView.tsx.presence.moreOnline')}>+2</span>
       </button>
       {open ? (
-        <div className="presence__popover" id={popoverId} role="dialog" aria-label="在线协作成员列表">
+        <div className="presence__popover" id={popoverId} role="dialog" aria-label={t('demo.ProjectView.tsx.presence.listAriaLabel')}>
           <div className="presence__popover-head">
-            <strong>在线协作成员</strong>
+            <strong>{t('demo.ProjectView.tsx.presence.heading')}</strong>
             <span>{PRESENCE_COLLABORATORS.length + 2} online</span>
           </div>
           <div className="presence__list">
             {PRESENCE_COLLABORATORS.map((member) => (
-              <div key={member.name} className="presence__member">
+              <div key={member.nameKey} className="presence__member">
                 <span className="presence__member-avatar" style={{ '--presence-ring': member.color } as CSSProperties}>
                   <img src={member.img} alt="" />
                   <span className="presence__dot" aria-hidden />
                 </span>
                 <span className="presence__member-copy">
-                  <strong>{member.name}</strong>
-                  <small>{member.role} · {member.activity}</small>
+                  <strong>{t(member.nameKey)}</strong>
+                  <small>{member.role} · {t(member.activityKey)}</small>
                 </span>
               </div>
             ))}
@@ -1026,13 +1037,13 @@ export function ProjectView({
   );
   const demoReadonlySharedProject = demoUseMode === 'cloud' && demoAccessContext?.viewerOnly === true;
   const demoViewerOnly = isViewerScenario(demoScenario) || demoReadonlySharedProject;
-  const demoReadonlyProjectOwner = demoAccessContext?.ownerName ?? '项目创建者';
+  const demoReadonlyProjectOwner = demoAccessContext?.ownerName ?? t('demo.ProjectView.tsx.readonly.defaultOwner');
   const demoReadonlyCopy = demoReadonlySharedProject
-    ? `这是 ${demoReadonlyProjectOwner} 创建的共享项目。你可以查看和评论，但不能通过 Chat 或编辑工具修改 Artifact。`
+    ? t('demo.ProjectView.tsx.readonly.copy', { owner: demoReadonlyProjectOwner })
     : null;
   const demoCommentAuthor = useMemo(
-    () => demoCommentAuthorForScenario(demoScenario),
-    [demoScenario],
+    () => demoCommentAuthorForScenario(demoScenario, t),
+    [demoScenario, t],
   );
   // P0 page_view page_name=chat_panel — fire once per project mount.
   // ProjectView outlives conversation switches (ChatPane is keyed by

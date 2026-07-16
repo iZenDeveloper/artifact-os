@@ -9,8 +9,9 @@ import { LOCALES, LOCALE_LABEL, type Dict, type Locale } from '../../src/i18n/ty
 
 const EXPECTED_LOCALES = ['en', 'id', 'de', 'zh-CN', 'zh-TW', 'pt-BR', 'es-ES', 'ru', 'fa', 'ar', 'ja', 'ko', 'pl', 'hu', 'fr', 'uk', 'tr', 'th', 'it'];
 
-function placeholders(value: string): string[] {
+function placeholders(value: string | undefined): string[] {
   const names: string[] = [];
+  if (!value) return names;
   for (const match of value.matchAll(/\{(\w+)\}/g)) {
     if (match[1]) {
       names.push(match[1]);

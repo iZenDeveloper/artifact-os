@@ -879,10 +879,10 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
   const RADIAL_SIZE = 264;
   const RADIAL_PAD = 24;
   const RADIAL_ACTIONS: Array<{ label: string; view: EntryHomeView }> = [
-    { label: '首页', view: 'home' },
-    { label: '全部项目', view: 'all-projects' },
-    { label: '设计体系', view: 'design-systems' },
-    { label: 'Community', view: 'community' },
+    { label: t('demo.WorkspaceTabsBar.tsx.radialHome'), view: 'home' },
+    { label: t('demo.WorkspaceTabsBar.tsx.radialAllProjects'), view: 'all-projects' },
+    { label: t('demo.WorkspaceTabsBar.tsx.radialDesignSystems'), view: 'design-systems' },
+    { label: t('demo.WorkspaceTabsBar.tsx.radialCommunity'), view: 'community' },
   ];
 
   function radialSectorPath(cx: number, cy: number, a1: number, a2: number, r0: number, r1: number): string {
@@ -1155,9 +1155,9 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
                   <button
                     type="button"
                     className="workspace-tab__rail-toggle od-tooltip"
-                    aria-label="展开/收起侧栏"
-                    title="展开/收起侧栏"
-                    data-tooltip="侧栏"
+                    aria-label={t('demo.WorkspaceTabsBar.tsx.railToggleLabel')}
+                    title={t('demo.WorkspaceTabsBar.tsx.railToggleLabel')}
+                    data-tooltip={t('demo.WorkspaceTabsBar.tsx.railToggleTooltip')}
                     data-tooltip-placement="bottom"
                     data-testid="workspace-home-rail-toggle"
                     onClick={(event) => {
@@ -1406,12 +1406,12 @@ function displayTabFor(
     tasks: t('entry.navTasks'),
     plugins: t('entry.navPlugins'),
     community: t('pluginsHome.title'),
-    drafts: '草稿',
-    'all-projects': '全部项目',
-    'content-plan': '内容规划',
-    members: '成员',
-    dashboard: '数据大盘',
-    'workspace-settings': 'Workspace 设置',
+    drafts: t('demo.WorkspaceTabsBar.tsx.entryDrafts'),
+    'all-projects': t('demo.WorkspaceTabsBar.tsx.entryAllProjects'),
+    'content-plan': t('demo.WorkspaceTabsBar.tsx.entryContentPlan'),
+    members: t('demo.WorkspaceTabsBar.tsx.entryMembers'),
+    dashboard: t('demo.WorkspaceTabsBar.tsx.entryDashboard'),
+    'workspace-settings': t('demo.WorkspaceTabsBar.tsx.entryWorkspaceSettings'),
     'design-systems': t('entry.navDesignSystems'),
     library: 'Library',
     brands: t('entry.navBrands'),

@@ -1,6 +1,7 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Icon } from './Icon';
 import { Toast } from './Toast';
+import { useT } from '../i18n';
 
 type PluginCapability = 'Connector' | 'MCP' | 'Skill';
 type PluginSource = 'Official' | 'Workspace' | 'Personal';
@@ -260,17 +261,17 @@ const MARKETPLACE_SKILL_DEMOS = [...SKILL_DEMOS, ...EXTRA_SKILL_DEMOS];
 const SOURCE_FILTERS: Array<PluginSource | 'All'> = ['Official', 'Workspace', 'Personal'];
 const ALL_CATEGORY = 'All';
 
-function sourceLabel(source: PluginSource | 'All') {
-  if (source === 'Official') return 'Open Design 官方';
-  if (source === 'Workspace') return '团队';
-  if (source === 'Personal') return '个人的';
-  return '全部';
+function sourceLabel(source: PluginSource | 'All', t: ReturnType<typeof useT>) {
+  if (source === 'Official') return t('demo.PluginMarketplaceDemo.tsx.source.official');
+  if (source === 'Workspace') return t('demo.PluginMarketplaceDemo.tsx.source.workspace');
+  if (source === 'Personal') return t('demo.PluginMarketplaceDemo.tsx.source.personal');
+  return t('demo.PluginMarketplaceDemo.tsx.source.all');
 }
 
-function capabilityDescription(capability: PluginCapability): string {
-  if (capability === 'Connector') return '账号授权、权限范围和外部数据连接。';
-  if (capability === 'MCP') return '暴露给 Agent 调用的工具与上下文能力。';
-  return '可复用的任务流程、审查规则和生成策略。';
+function capabilityDescription(capability: PluginCapability, t: ReturnType<typeof useT>): string {
+  if (capability === 'Connector') return t('demo.PluginMarketplaceDemo.tsx.capability.connector');
+  if (capability === 'MCP') return t('demo.PluginMarketplaceDemo.tsx.capability.mcp');
+  return t('demo.PluginMarketplaceDemo.tsx.capability.skill');
 }
 
 function isPluginReady(status: PluginDemo['status'] | SkillDemo['status']) {
@@ -343,7 +344,7 @@ function skillMarkdown(skill: SkillDemo): Array<{ kind: 'h1' | 'h2' | 'p' | 'ol'
   ];
 }
 
-function pluginCommands(plugin: PluginDemo): Array<{ command: string; hint: string }> {
+function pluginCommands(plugin: PluginDemo, t: ReturnType<typeof useT>): Array<{ command: string; hint: string }> {
   const seeds = plugin.skills && plugin.skills.length > 0 ? plugin.skills : [plugin.name];
   return seeds.slice(0, 5).map((skill) => {
     const slug = skill
@@ -352,7 +353,7 @@ function pluginCommands(plugin: PluginDemo): Array<{ command: string; hint: stri
       .replace(/(^-|-$)/g, '') || plugin.id;
     return {
       command: `/${slug}`,
-      hint: `在对话框中输入该命令，快速调用 ${skill}`,
+      hint: t('demo.PluginMarketplaceDemo.tsx.command.hint', { skill }),
     };
   });
 }
@@ -449,6 +450,7 @@ function PluginLogo({ plugin }: { plugin: Pick<PluginDemo | SkillDemo, 'id' | 'n
 }
 
 export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProps = {}) {
+  const t = useT();
   const [mode, setMode] = useState<MarketplaceMode>('plugins');
   const [source, setSource] = useState<PluginSource | 'All'>('Official');
   const [categoryFilter, setCategoryFilter] = useState<string>(ALL_CATEGORY);
@@ -462,7 +464,7 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
   function shareToTeam(id: string, name: string) {
     setSharedIds((prev) => new Set(prev).add(id));
     setMenuId(null);
-    setShareToast(`已将「${name}」共享给团队，团队成员即可使用`);
+    setShareToast(t('demo.PluginMarketplaceDemo.tsx.toast.shared', { name }));
   }
   function makePrivate(id: string, name: string) {
     setSharedIds((prev) => {
@@ -471,7 +473,7 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
       return next;
     });
     setMenuId(null);
-    setShareToast(`已将「${name}」设为私有`);
+    setShareToast(t('demo.PluginMarketplaceDemo.tsx.toast.private', { name }));
   }
   const [detailPlugin, setDetailPlugin] = useState<PluginDemo | null>(null);
   const [detailSkill, setDetailSkill] = useState<SkillDemo | null>(null);
@@ -531,7 +533,7 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
           onTryPlugin?.({
             id: `${detailPlugin.id}-${item.command.replace(/^\//, '')}`,
             name: item.command,
-            description: `请基于当前项目内容生成 ${label}。`,
+            description: t('demo.PluginMarketplaceDemo.tsx.command.generate', { label }),
             category: detailPlugin.category,
             marketplaceKind: 'command',
             command: item.command,
@@ -557,7 +559,7 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
       <header className="plugin-marketplace__hero">
         <div>
           <h1 id="plugin-marketplace-title" className="entry-section__title">
-            扩展
+            {t('demo.PluginMarketplaceDemo.tsx.hero.title')}
           </h1>
         </div>
         <div className="plugin-marketplace__hero-actions">
@@ -570,7 +572,7 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
             }}
           >
             <Icon name="plus" size={15} />
-            新增
+            {t('demo.PluginMarketplaceDemo.tsx.hero.create')}
           </button>
         </div>
       </header>
@@ -585,7 +587,7 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
               setCategoryFilter(ALL_CATEGORY);
             }}
           >
-            专家套件
+            {t('demo.PluginMarketplaceDemo.tsx.tab.suites')}
           </button>
           <button
             type="button"
@@ -595,7 +597,7 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
               setCategoryFilter(ALL_CATEGORY);
             }}
           >
-            技能
+            {t('demo.PluginMarketplaceDemo.tsx.tab.skills')}
           </button>
         </div>
 
@@ -612,7 +614,7 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
                 setCategoryFilter(ALL_CATEGORY);
               }}
             >
-              {sourceLabel(item)}
+              {sourceLabel(item, t)}
             </button>
           ))}
           <label className="plugin-marketplace__search">
@@ -633,7 +635,7 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
             />
           </label>
         </div>
-        <div className="plugin-marketplace__category-tags" aria-label={`${sourceLabel(source)} categories`}>
+        <div className="plugin-marketplace__category-tags" aria-label={`${sourceLabel(source, t)} categories`}>
           {categoryTags.map((category) => (
             <button
               key={category}
@@ -692,7 +694,7 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
                             {plugin.source === 'Personal' && isSharedToTeam(plugin.id) ? (
                               <span className="plugin-marketplace__team-badge">
                                 <Icon name="users" size={14} />
-                                团队共享
+                                {t('demo.PluginMarketplaceDemo.tsx.badge.teamShared')}
                               </span>
                             ) : null}
                           </span>
@@ -712,7 +714,7 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
                             }
                           }}
                         >
-                          {isReady ? 'Try it' : '安装'}
+                          {isReady ? t('demo.PluginMarketplaceDemo.tsx.action.tryIt') : t('demo.PluginMarketplaceDemo.tsx.action.install')}
                         </button>
                         {isReady ? (
                           <span className="plugin-marketplace__menu-wrap">
@@ -741,7 +743,7 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
                                       }}
                                     >
                                       <Icon name="eye-off" size={14} />
-                                      设为私有
+                                      {t('demo.PluginMarketplaceDemo.tsx.menu.makePrivate')}
                                     </button>
                                   ) : (
                                     <button
@@ -753,13 +755,13 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
                                       }}
                                     >
                                       <Icon name="users" size={14} />
-                                      转为团队共享
+                                      {t('demo.PluginMarketplaceDemo.tsx.menu.shareToTeam')}
                                     </button>
                                   )
                                 ) : null}
                                 <button type="button" role="menuitem">
                                   <Icon name="trash" size={14} />
-                                  卸载
+                                  {t('demo.PluginMarketplaceDemo.tsx.menu.uninstall')}
                                 </button>
                               </span>
                             ) : null}
@@ -808,7 +810,7 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
                       {skill.source === 'Personal' && isSharedToTeam(skill.id) ? (
                         <span className="plugin-marketplace__team-badge">
                           <Icon name="users" size={14} />
-                          团队共享
+                          {t('demo.PluginMarketplaceDemo.tsx.badge.teamShared')}
                         </span>
                       ) : null}
                     </span>
@@ -824,7 +826,7 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
                       }
                     }}
                   >
-                    {isPluginReady(skill.status) ? 'Try it' : '安装'}
+                    {isPluginReady(skill.status) ? t('demo.PluginMarketplaceDemo.tsx.action.tryIt') : t('demo.PluginMarketplaceDemo.tsx.action.install')}
                   </button>
                   {isPluginReady(skill.status) ? (
                     <span className="plugin-marketplace__menu-wrap">
@@ -853,7 +855,7 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
                                 }}
                               >
                                 <Icon name="eye-off" size={14} />
-                                设为私有
+                                {t('demo.PluginMarketplaceDemo.tsx.menu.makePrivate')}
                               </button>
                             ) : (
                               <button
@@ -865,7 +867,7 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
                                 }}
                               >
                                 <Icon name="users" size={14} />
-                                转为团队共享
+                                {t('demo.PluginMarketplaceDemo.tsx.menu.shareToTeam')}
                               </button>
                             )
                           ) : null}
@@ -875,7 +877,7 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
                             onClick={(event) => event.stopPropagation()}
                           >
                             <Icon name="trash" size={14} />
-                            卸载
+                            {t('demo.PluginMarketplaceDemo.tsx.menu.uninstall')}
                           </button>
                         </span>
                       ) : null}
@@ -906,9 +908,9 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
           >
             <header className="plugin-marketplace__create-head">
               <div>
-                <h2 id="plugin-create-title">新增 {createKind === 'plugin' ? 'Plugin' : 'Skill'}</h2>
+                <h2 id="plugin-create-title">{t('demo.PluginMarketplaceDemo.tsx.create.title', { kind: createKind === 'plugin' ? 'Plugin' : 'Skill' })}</h2>
               </div>
-              <button type="button" aria-label="关闭新增面板" onClick={() => setCreateOpen(false)}>
+              <button type="button" aria-label={t('demo.PluginMarketplaceDemo.tsx.create.closeAria')} onClick={() => setCreateOpen(false)}>
                 <Icon name="close" size={15} />
               </button>
             </header>
@@ -931,34 +933,45 @@ export function PluginMarketplaceDemo({ onTryPlugin }: PluginMarketplaceDemoProp
             <div className="plugin-marketplace__create-options">
               <article>
                 <div>
-                  <h3>从链接导入</h3>
+                  <h3>{t('demo.PluginMarketplaceDemo.tsx.create.importFromLink')}</h3>
                   <p>
-                    粘贴 {createKind === 'plugin' ? '专家套件' : 'Skill'} 的公开链接，
-                    Open Design 会拉取清单、校验能力并上传到团队空间。
+                    {t('demo.PluginMarketplaceDemo.tsx.create.importFromLinkDesc', {
+                      kind: createKind === 'plugin'
+                        ? t('demo.PluginMarketplaceDemo.tsx.create.term.suite')
+                        : t('demo.PluginMarketplaceDemo.tsx.create.term.skill'),
+                    })}
                   </p>
                   <div className="plugin-marketplace__url-import-row">
                     <input
                       aria-label="URL"
                       placeholder={createKind === 'plugin' ? 'https://example.com/open-design-suite' : 'https://example.com/skill'}
                     />
-                    <button type="button">导入并上传</button>
+                    <button type="button">{t('demo.PluginMarketplaceDemo.tsx.create.importUpload')}</button>
                   </div>
                 </div>
               </article>
               <article>
                 <div>
-                  <h3>上传本地文件夹</h3>
+                  <h3>{t('demo.PluginMarketplaceDemo.tsx.create.uploadFolder')}</h3>
                   <p>
-                    选择包含 {createKind === 'plugin' ? 'open-design.json / SKILL.md' : 'SKILL.md'} 的本地目录，
-                    校验通过后上传为团队 {createKind === 'plugin' ? '专家套件' : 'Skill'}。
+                    {t('demo.PluginMarketplaceDemo.tsx.create.uploadFolderDesc', {
+                      files: createKind === 'plugin' ? 'open-design.json / SKILL.md' : 'SKILL.md',
+                      kind: createKind === 'plugin'
+                        ? t('demo.PluginMarketplaceDemo.tsx.create.term.suite')
+                        : t('demo.PluginMarketplaceDemo.tsx.create.term.skill'),
+                    })}
                   </p>
                   <div className="plugin-marketplace__folder-action-row">
                     <button type="button" className="plugin-marketplace__folder-pick">
                       <Icon name="folder" size={15} />
-                      选择文件夹
+                      {t('demo.PluginMarketplaceDemo.tsx.create.pickFolder')}
                     </button>
                     <button type="button">
-                      上传 {createKind === 'plugin' ? '专家套件' : 'Skill'}
+                      {t('demo.PluginMarketplaceDemo.tsx.create.uploadKind', {
+                        kind: createKind === 'plugin'
+                          ? t('demo.PluginMarketplaceDemo.tsx.create.term.suite')
+                          : t('demo.PluginMarketplaceDemo.tsx.create.term.skill'),
+                      })}
                     </button>
                   </div>
                 </div>
@@ -987,7 +1000,8 @@ function PluginSuiteDetail({
   onBack: () => void;
   onUseCommand: (command: { command: string; hint: string }) => void;
 }) {
-  const commands = pluginCommands(plugin);
+  const t = useT();
+  const commands = pluginCommands(plugin, t);
   const connectors = plugin.connector ?? [];
   const skills = plugin.skills ?? [];
 
@@ -996,7 +1010,7 @@ function PluginSuiteDetail({
       <header className="plugin-suite-detail__topbar">
         <button type="button" className="plugin-suite-detail__back" onClick={onBack}>
           <Icon name="arrow-left" size={15} />
-          返回列表
+          {t('demo.PluginMarketplaceDemo.tsx.detail.back')}
         </button>
       </header>
 
@@ -1005,7 +1019,7 @@ function PluginSuiteDetail({
         <div>
           <div className="plugin-suite-detail__title-row">
             <h1 id="plugin-suite-title">{plugin.name}</h1>
-            <span>{sourceLabel(plugin.source)}</span>
+            <span>{sourceLabel(plugin.source, t)}</span>
           </div>
           <p className="plugin-suite-detail__author">{pluginAuthor(plugin)}</p>
         </div>
@@ -1013,7 +1027,7 @@ function PluginSuiteDetail({
 
       <p className="plugin-suite-detail__description">{plugin.description}</p>
 
-      <DetailSection title="快捷命令" count={commands.length}>
+      <DetailSection title={t('demo.PluginMarketplaceDemo.tsx.detail.commands')} count={commands.length}>
         <div className="plugin-suite-detail__command-list">
           {commands.map((item) => (
             <button
@@ -1030,32 +1044,32 @@ function PluginSuiteDetail({
         </div>
       </DetailSection>
 
-      <DetailSection title="数据连接" count={connectors.length}>
+      <DetailSection title={t('demo.PluginMarketplaceDemo.tsx.detail.connections')} count={connectors.length}>
         <div className="plugin-suite-detail__connection-list">
           {connectors.length > 0 ? connectors.map((connector) => (
             <div key={connector} className="plugin-suite-detail__connection">
               <span />
               <strong>{connector}</strong>
-              <label className="plugin-suite-detail__switch" aria-label={`${connector} 连接状态`}>
+              <label className="plugin-suite-detail__switch" aria-label={t('demo.PluginMarketplaceDemo.tsx.detail.connectorStatusAria', { connector })}>
                 <input type="checkbox" defaultChecked={plugin.status === 'connected'} />
                 <span />
               </label>
             </div>
           )) : (
-            <div className="plugin-suite-detail__empty-row">此套件不需要外部数据连接。</div>
+            <div className="plugin-suite-detail__empty-row">{t('demo.PluginMarketplaceDemo.tsx.detail.noConnections')}</div>
           )}
         </div>
       </DetailSection>
 
-      <DetailSection title="知识技能" count={skills.length}>
+      <DetailSection title={t('demo.PluginMarketplaceDemo.tsx.detail.knowledgeSkills')} count={skills.length}>
         <div className="plugin-suite-detail__skill-list">
           {skills.length > 0 ? skills.map((skill) => (
             <article key={skill} className="plugin-suite-detail__skill">
               <h3>{skill}</h3>
-              <p>{capabilityDescription('Skill')}</p>
+              <p>{capabilityDescription('Skill', t)}</p>
             </article>
           )) : (
-            <div className="plugin-suite-detail__empty-row">此套件暂无独立知识技能。</div>
+            <div className="plugin-suite-detail__empty-row">{t('demo.PluginMarketplaceDemo.tsx.detail.noSkills')}</div>
           )}
         </div>
       </DetailSection>
@@ -1072,6 +1086,7 @@ function SkillDetail({
   onBack: () => void;
   onTrySkill: () => void;
 }) {
+  const t = useT();
   const markdown = skillMarkdown(skill);
 
   return (
@@ -1079,9 +1094,9 @@ function SkillDetail({
       <header className="skill-detail__topbar">
         <button type="button" className="plugin-suite-detail__back" onClick={onBack}>
           <Icon name="arrow-left" size={15} />
-          返回列表
+          {t('demo.PluginMarketplaceDemo.tsx.detail.back')}
         </button>
-        <button type="button" className="skill-detail__close" aria-label="关闭详情" onClick={onBack}>
+        <button type="button" className="skill-detail__close" aria-label={t('demo.PluginMarketplaceDemo.tsx.skillDetail.closeAria')} onClick={onBack}>
           <Icon name="close" size={18} />
         </button>
       </header>
@@ -1092,7 +1107,7 @@ function SkillDetail({
           <div className="skill-detail__title-row">
             <h1 id="skill-detail-title">{skill.name}</h1>
             <button type="button" onClick={onTrySkill}>
-              使用
+              {t('demo.PluginMarketplaceDemo.tsx.skillDetail.use')}
             </button>
           </div>
           <p>provided by {skillAuthor(skill)}</p>
@@ -1104,7 +1119,7 @@ function SkillDetail({
       <section className="skill-detail__markdown" aria-label={`${skill.name} SKILL.md preview`}>
         <div className="skill-detail__notice">
           <Icon name="info" size={16} />
-          以下内容来自该技能的 SKILL.md 原文
+          {t('demo.PluginMarketplaceDemo.tsx.skillDetail.markdownNotice')}
         </div>
         {markdown.map((block, index) => {
           if (block.kind === 'h1') {

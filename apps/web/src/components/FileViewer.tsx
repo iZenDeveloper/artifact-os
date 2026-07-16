@@ -292,45 +292,45 @@ const COMMENT_SIDE_DOCK_STACKED_HEIGHT_DEDUCTION =
 const COMMENT_SIDE_DOCK_STACKED_COLLAPSED_HEIGHT_DEDUCTION =
   (COMMENT_SIDE_DOCK_PADDING * 2) + COMMENT_SIDE_DOCK_GAP + COMMENT_SIDE_DOCK_STACKED_RAIL_HEIGHT;
 
-function buildArtifactVersionDemo(fileName: string, projectName?: string): ArtifactVersionSnapshot[] {
+function buildArtifactVersionDemo(fileName: string, t: ReturnType<typeof useT>, projectName?: string): ArtifactVersionSnapshot[] {
   const baseName = fileName.split('/').pop()?.replace(/\.[^.]+$/, '') || projectName || 'Artifact';
   return [
     {
       id: 'v4',
       label: 'v4',
-      title: '当前版本',
-      time: '刚刚',
-      author: '你',
-      source: '手动保存',
-      summary: `保留 ${baseName} 当前画布、评论和导出设置。`,
+      title: t('demo.FileViewer.tsx.version.v4.title'),
+      time: t('demo.FileViewer.tsx.version.v4.time'),
+      author: t('demo.FileViewer.tsx.version.author.you'),
+      source: t('demo.FileViewer.tsx.version.v4.source'),
+      summary: t('demo.FileViewer.tsx.version.v4.summary', { baseName }),
       isCurrent: true,
     },
     {
       id: 'v3',
       label: 'v3',
-      title: '优化首屏布局',
-      time: '12 分钟前',
+      title: t('demo.FileViewer.tsx.version.v3.title'),
+      time: t('demo.FileViewer.tsx.version.v3.time'),
       author: 'Open Design Agent',
-      source: 'Agent 生成',
-      summary: '调整标题层级、主视觉比例和底部信息密度。',
+      source: t('demo.FileViewer.tsx.version.v3.source'),
+      summary: t('demo.FileViewer.tsx.version.v3.summary'),
     },
     {
       id: 'v2',
       label: 'v2',
-      title: '补充协作反馈',
-      time: '42 分钟前',
-      author: '李娜',
-      source: '评论回写',
-      summary: '根据团队评论更新文案，保留原始版式。',
+      title: t('demo.FileViewer.tsx.version.v2.title'),
+      time: t('demo.FileViewer.tsx.version.v2.time'),
+      author: t('demo.FileViewer.tsx.version.author.lina'),
+      source: t('demo.FileViewer.tsx.version.v2.source'),
+      summary: t('demo.FileViewer.tsx.version.v2.summary'),
     },
     {
       id: 'v1',
       label: 'v1',
-      title: '初始生成',
-      time: '今天 10:24',
+      title: t('demo.FileViewer.tsx.version.v1.title'),
+      time: t('demo.FileViewer.tsx.version.v1.time'),
       author: 'Open Design Agent',
-      source: 'Prompt 生成',
-      summary: '由第一轮需求生成的初始文件快照。',
+      source: t('demo.FileViewer.tsx.version.v1.source'),
+      summary: t('demo.FileViewer.tsx.version.v1.summary'),
     },
   ];
 }
@@ -4879,8 +4879,8 @@ function HtmlViewer({
   const [templateDescription, setTemplateDescription] = useState('');
   const [templateSaveError, setTemplateSaveError] = useState<string | null>(null);
   const artifactVersionSnapshots = useMemo(
-    () => buildArtifactVersionDemo(file.name, projectName),
-    [file.name, projectName],
+    () => buildArtifactVersionDemo(file.name, t, projectName),
+    [file.name, projectName, t],
   );
   const selectedVersionSnapshot =
     artifactVersionSnapshots.find((item) => item.id === selectedVersionId) ?? artifactVersionSnapshots[0];
@@ -8170,8 +8170,8 @@ function HtmlViewer({
   const canDownload = rawCanDownload && !viewerOnly;
   const showMarkdownExport = source !== null && isMarkdownArtifact;
   const showImageExport = canShare;
-  const viewerOnlyDisabledTitle = '共享项目只读：可以评论，不能编辑或导出';
-  const viewerOnlySendDisabledTitle = '共享项目只读：可以保存评论，不能发送到 Chat 修改 Artifact';
+  const viewerOnlyDisabledTitle = t('demo.FileViewer.tsx.viewerOnly.disabledTitle');
+  const viewerOnlySendDisabledTitle = t('demo.FileViewer.tsx.viewerOnly.sendDisabledTitle');
 
   useEffect(() => {
     if (!viewerOnly) return;
@@ -9490,10 +9490,10 @@ function HtmlViewer({
               type="button"
               className={`chrome-action chrome-action-secondary chrome-action-icon od-tooltip${versionPanelOpen ? ' is-active' : ''}`}
               aria-expanded={versionPanelOpen}
-              aria-label="历史版本"
-              data-tooltip="历史版本"
+              aria-label={t('demo.FileViewer.tsx.versionHistory')}
+              data-tooltip={t('demo.FileViewer.tsx.versionHistory')}
               data-tooltip-placement="bottom"
-              title="历史版本"
+              title={t('demo.FileViewer.tsx.versionHistory')}
               onClick={() => {
                 setDeployMenuOpen(false);
                 setDownloadMenuOpen(false);
@@ -9531,11 +9531,11 @@ function HtmlViewer({
                 </button>
                 {deployMenuOpen && (canShare || canDownload) ? (
                   <div className="share-menu-popover chrome-unified-popover" role="menu">
-                    <div className="chrome-unified-tabs" role="tablist" aria-label="分享和导出操作">
+                    <div className="chrome-unified-tabs" role="tablist" aria-label={t('demo.FileViewer.tsx.shareExportActions')}>
                       {([
-                        ['share', '分享'],
-                        ['export', '导出'],
-                        ['send', '发送到...'],
+                        ['share', t('demo.FileViewer.tsx.tab.share')],
+                        ['export', t('demo.FileViewer.tsx.tab.export')],
+                        ['send', t('demo.FileViewer.tsx.tab.send')],
                       ] as const).map(([tab, label]) => (
                         <button
                           key={tab}
@@ -9583,8 +9583,8 @@ function HtmlViewer({
                             >
                               <span className="share-menu-icon"><RemixIcon name="cloud-line" size={15} /></span>
                               <span className="share-menu-text">
-                                <span>登录 Open Design Cloud 后可一键部署</span>
-                                <small>连接云端账号后可直接生成分享链接</small>
+                                <span>{t('demo.FileViewer.tsx.cloudGuide.title')}</span>
+                                <small>{t('demo.FileViewer.tsx.cloudGuide.desc')}</small>
                               </span>
                             </button>
                           </>
@@ -9594,11 +9594,11 @@ function HtmlViewer({
                               <div className="chrome-share-card__header">
                                 <span className="share-menu-icon"><RemixIcon name="team-line" size={16} /></span>
                                 <span className="share-menu-text">
-                                  <span>在工作空间中分享项目</span>
+                                  <span>{t('demo.FileViewer.tsx.workspaceShare.title')}</span>
                                   <small>
                                     {shareAccess === 'private'
-                                      ? '仅你可以访问此项目。选择工作空间成员后，即可分享给团队。'
-                                      : '此工作空间的成员可以访问此项目。'}
+                                      ? t('demo.FileViewer.tsx.workspaceShare.privateDesc')
+                                      : t('demo.FileViewer.tsx.workspaceShare.workspaceDesc')}
                                   </small>
                                 </span>
                               </div>
@@ -9622,16 +9622,16 @@ function HtmlViewer({
                                   </span>
                                   <span>
                                     {shareAccess === 'private'
-                                      ? '仅自己'
-                                      : '工作空间成员'}
+                                      ? t('demo.FileViewer.tsx.access.private')
+                                      : t('demo.FileViewer.tsx.access.workspace')}
                                   </span>
                                   <RemixIcon name="arrow-down-s-line" size={16} />
                                 </button>
                                 {shareAccessMenuOpen ? (
                                   <div className="chrome-access-options" role="listbox">
                                     {([
-                                      ['private', 'lock-line', '仅自己'],
-                                      ['workspace', 'team-line', '工作空间成员'],
+                                      ['private', 'lock-line', t('demo.FileViewer.tsx.access.private')],
+                                      ['workspace', 'team-line', t('demo.FileViewer.tsx.access.workspace')],
                                     ] as const).map(([value, icon, label]) => (
                                       <button
                                         key={value}
@@ -9657,8 +9657,8 @@ function HtmlViewer({
                               <div className="chrome-share-card__header">
                                 <span className="share-menu-icon"><RemixIcon name="broadcast-line" size={16} /></span>
                                 <span className="share-menu-text">
-                                  <span>发布单个文件给所有人</span>
-                                  <small>将当前单个文件设为外部可见。任何获得发布链接的人都可以在线查看。</small>
+                                  <span>{t('demo.FileViewer.tsx.publish.title')}</span>
+                                  <small>{t('demo.FileViewer.tsx.publish.desc')}</small>
                                 </span>
                               </div>
                               {filePublished ? (
@@ -9679,14 +9679,14 @@ function HtmlViewer({
                                         ? t('fileViewer.copied')
                                         : publishLinkFeedback === 'failed'
                                           ? t('useEverywhere.copyFailed')
-                                          : '复制链接'}
+                                          : t('demo.FileViewer.tsx.publish.copyLink')}
                                     </button>
                                     <button
                                       type="button"
                                       className="chrome-publish-button chrome-publish-button--ghost"
                                       onClick={() => setFilePublished(false)}
                                     >
-                                      取消发布
+                                      {t('demo.FileViewer.tsx.publish.unpublish')}
                                     </button>
                                   </div>
                                 </>
@@ -9697,7 +9697,7 @@ function HtmlViewer({
                                   onClick={() => setFilePublished(true)}
                                 >
                                   <RemixIcon name="upload-cloud-2-line" size={15} />
-                                  发布文件
+                                  {t('demo.FileViewer.tsx.publish.publishFile')}
                                 </button>
                               )}
                             </div>
@@ -9831,32 +9831,32 @@ function HtmlViewer({
           ) : null}
         </>)}
       {!viewerOnly && versionPanelOpen ? (
-        <aside className="artifact-version-panel" aria-label="历史版本">
+        <aside className="artifact-version-panel" aria-label={t('demo.FileViewer.tsx.versionHistory')}>
           <header className="artifact-version-panel__head">
             <div>
-              <p>历史版本</p>
+              <p>{t('demo.FileViewer.tsx.versionHistory')}</p>
               <strong>{file.name.split('/').pop() || file.name}</strong>
             </div>
             <button
               type="button"
               className="artifact-version-panel__close"
-              aria-label="关闭历史版本"
+              aria-label={t('demo.FileViewer.tsx.closeVersionHistory')}
               onClick={() => setVersionPanelOpen(false)}
             >
               <RemixIcon name="close-line" size={17} />
             </button>
           </header>
-          <div className="artifact-version-panel__preview" aria-label="版本预览">
+          <div className="artifact-version-panel__preview" aria-label={t('demo.FileViewer.tsx.versionPreview')}>
             {source ? (
               <iframe
-                title="版本预览"
+                title={t('demo.FileViewer.tsx.versionPreview')}
                 srcDoc={source}
                 sandbox="allow-scripts allow-same-origin"
               />
             ) : null}
             <div className="artifact-version-panel__preview-caption">
               <span>{selectedVersionSnapshot?.label ?? 'v4'}</span>
-              <strong>{selectedVersionSnapshot?.title ?? '当前版本'}</strong>
+              <strong>{selectedVersionSnapshot?.title ?? t('demo.FileViewer.tsx.version.v4.title')}</strong>
             </div>
           </div>
           {versionActionNote ? (
@@ -9878,10 +9878,14 @@ function HtmlViewer({
                 <span className="artifact-version-card__body">
                   <span className="artifact-version-card__title">
                     {snapshot.title}
-                    {snapshot.isCurrent ? <em>当前</em> : null}
+                    {snapshot.isCurrent ? <em>{t('demo.FileViewer.tsx.version.currentBadge')}</em> : null}
                   </span>
                   <span className="artifact-version-card__meta">
-                    修改人：{snapshot.author} · {snapshot.time} · {snapshot.source}
+                    {t('demo.FileViewer.tsx.version.meta', {
+                      author: snapshot.author,
+                      time: snapshot.time,
+                      source: snapshot.source,
+                    })}
                   </span>
                   <span className="artifact-version-card__summary">{snapshot.summary}</span>
                 </span>
@@ -9896,20 +9900,20 @@ function HtmlViewer({
               title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
               onClick={() => {
                 if (!selectedVersionSnapshot) return;
-                setVersionActionNote(`已恢复到 ${selectedVersionSnapshot.label}，当前状态已自动保存为新版本。`);
+                setVersionActionNote(t('demo.FileViewer.tsx.version.restoredNote', { label: selectedVersionSnapshot.label }));
               }}
             >
               <RemixIcon name="arrow-go-back-line" size={15} />
-              恢复此版本
+              {t('demo.FileViewer.tsx.version.restore')}
             </button>
             <button
               type="button"
               className="artifact-version-panel__copy"
               disabled={viewerOnly}
               title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
-              onClick={() => setVersionActionNote('已复制为新项目，原文件保持不变。')}
+              onClick={() => setVersionActionNote(t('demo.FileViewer.tsx.version.copiedNote'))}
             >
-              复制为新项目
+              {t('demo.FileViewer.tsx.version.copyAsNew')}
             </button>
           </footer>
         </aside>

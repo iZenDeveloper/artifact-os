@@ -6,6 +6,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { Icon } from './Icon';
+import { useT } from '../i18n';
 
 export interface InviteRow {
   email: string;
@@ -26,10 +27,23 @@ interface Props {
 
 // Default invited role, aligned to the PRD matrix (管理员/成员 are assignable;
 // 所有者 is the workspace creator only and never assignable).
-const DEFAULT_ROLE = '成员';
-const ROLE_OPTIONS = ['管理员', DEFAULT_ROLE, '查看者'];
+const DEFAULT_ROLE = 'member';
+const ROLE_OPTIONS = ['admin', DEFAULT_ROLE, 'viewer'];
+
+function roleLabel(role: string, t: ReturnType<typeof useT>) {
+  switch (role) {
+    case 'admin':
+      return t('demo.InviteDialog.tsx.role-admin');
+    case 'viewer':
+      return t('demo.InviteDialog.tsx.role-viewer');
+    case 'member':
+    default:
+      return t('demo.InviteDialog.tsx.role-member');
+  }
+}
 
 export function InviteDialog({ open, onClose, freePlan = false, onSubmit, canAssignRoles = true }: Props) {
+  const t = useT();
   const [rows, setRows] = useState<InviteRow[]>([{ email: '', role: DEFAULT_ROLE }]);
   const [visibilityOpen, setVisibilityOpen] = useState(false);
 
@@ -84,30 +98,30 @@ export function InviteDialog({ open, onClose, freePlan = false, onSubmit, canAss
   }
 
   return (
-    <div className="entry-invite" role="dialog" aria-modal="true" aria-label="邀请成员">
+    <div className="entry-invite" role="dialog" aria-modal="true" aria-label={t('demo.InviteDialog.tsx.dialog-aria')}>
       <div className="entry-invite__backdrop" onClick={onClose} />
       <div className="entry-invite__panel entry-invite__panel--split">
         <button
           type="button"
           className="entry-invite__close"
           onClick={onClose}
-          aria-label="关闭"
+          aria-label={t('demo.InviteDialog.tsx.close')}
         >
           <Icon name="close" size={16} />
         </button>
 
         <div className="entry-invite__form">
-          <h2 className="entry-invite__title">邀请成员加入你的团队</h2>
+          <h2 className="entry-invite__title">{t('demo.InviteDialog.tsx.title')}</h2>
           <p className="entry-invite__teamsize">
             {freePlan
-              ? '免费版含 1 个席位，邀请同事后将引导你升级到团队版。'
-              : '邀请同事加入团队，一起共享项目、设计系统与插件。'}
+              ? t('demo.InviteDialog.tsx.teamsize-free')
+              : t('demo.InviteDialog.tsx.teamsize-team')}
           </p>
 
           <div className="entry-invite__field-labels">
-            <span className="entry-invite__label">通过电子邮件邀请成员</span>
+            <span className="entry-invite__label">{t('demo.InviteDialog.tsx.label-email')}</span>
             <span className="entry-invite__label entry-invite__label--role">
-              {canAssignRoles ? '分配角色' : '默认身份'}
+              {canAssignRoles ? t('demo.InviteDialog.tsx.assign-role') : t('demo.InviteDialog.tsx.default-role')}
             </span>
           </div>
           <div className="entry-invite__rows" ref={panelRef}>
@@ -116,7 +130,7 @@ export function InviteDialog({ open, onClose, freePlan = false, onSubmit, canAss
                 <input
                   className="entry-invite__input"
                   type="email"
-                  placeholder="输入电子邮件地址……"
+                  placeholder={t('demo.InviteDialog.tsx.email-placeholder')}
                   value={row.email}
                   onChange={(e) => updateRow(i, { email: e.target.value })}
                 />
@@ -129,12 +143,12 @@ export function InviteDialog({ open, onClose, freePlan = false, onSubmit, canAss
                       setOpenRoleIndex((current) => (current === i ? null : i));
                     }}
                     disabled={!canAssignRoles}
-                    aria-label={canAssignRoles ? '分配角色' : '默认身份'}
+                    aria-label={canAssignRoles ? t('demo.InviteDialog.tsx.assign-role') : t('demo.InviteDialog.tsx.default-role')}
                     aria-haspopup="listbox"
                     aria-expanded={openRoleIndex === i}
                     aria-controls={`${roleListboxId}-${i}`}
                   >
-                    <span>{canAssignRoles ? row.role : DEFAULT_ROLE}</span>
+                    <span>{roleLabel(canAssignRoles ? row.role : DEFAULT_ROLE, t)}</span>
                     <Icon name="chevron-down" size={16} />
                   </button>
                   {openRoleIndex === i ? (
@@ -151,7 +165,7 @@ export function InviteDialog({ open, onClose, freePlan = false, onSubmit, canAss
                             setOpenRoleIndex(null);
                           }}
                         >
-                          <span>{role}</span>
+                          <span>{roleLabel(role, t)}</span>
                           {(canAssignRoles ? row.role : DEFAULT_ROLE) === role ? <Icon name="check" size={16} /> : null}
                         </button>
                       ))}
@@ -163,7 +177,7 @@ export function InviteDialog({ open, onClose, freePlan = false, onSubmit, canAss
                     type="button"
                     className="entry-invite__row-remove"
                     onClick={() => removeRow(i)}
-                    aria-label="移除"
+                    aria-label={t('demo.InviteDialog.tsx.remove')}
                   >
                     <Icon name="close" size={15} />
                   </button>
@@ -172,7 +186,7 @@ export function InviteDialog({ open, onClose, freePlan = false, onSubmit, canAss
             ))}
           </div>
           <button type="button" className="entry-invite__add-row" onClick={addRow}>
-            <Icon name="plus" size={14} /> 添加成员
+            <Icon name="plus" size={14} /> {t('demo.InviteDialog.tsx.add-member')}
           </button>
 
           <button
@@ -181,7 +195,7 @@ export function InviteDialog({ open, onClose, freePlan = false, onSubmit, canAss
             onClick={() => setVisibilityOpen((v) => !v)}
             aria-expanded={visibilityOpen}
           >
-            团队成员会看到我的设计吗?
+            {t('demo.InviteDialog.tsx.visibility-toggle')}
             <Icon
               name="chevron-down"
               size={16}
@@ -190,7 +204,7 @@ export function InviteDialog({ open, onClose, freePlan = false, onSubmit, canAss
           </button>
           {visibilityOpen ? (
             <p className="entry-invite__collapse-body">
-              团队成员可以看到你共享到团队空间的设计；保存在「草稿」中的私人设计不会对其他人可见。
+              {t('demo.InviteDialog.tsx.visibility-body')}
             </p>
           ) : null}
 
@@ -200,7 +214,7 @@ export function InviteDialog({ open, onClose, freePlan = false, onSubmit, canAss
             onClick={handleConfirm}
             disabled={!hasValidEmail}
           >
-            确认并邀请
+            {t('demo.InviteDialog.tsx.submit')}
           </button>
         </div>
 

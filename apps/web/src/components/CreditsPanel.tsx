@@ -5,6 +5,7 @@
 // the daily-refresh allowance, and a usage link. Demo-only mock numbers.
 
 import { Icon } from './Icon';
+import { useT } from '../i18n';
 
 export interface CreditsInfo {
   /** Full plan name shown in the popover header (e.g. "标准版 Plus"). */
@@ -32,6 +33,7 @@ function fmt(n: number): string {
 }
 
 export function CreditsPanel({ open, onClose, info, onUpgrade, memberCreditNotice = false }: Props) {
+  const t = useT();
   if (!open) return null;
 
   return (
@@ -42,7 +44,7 @@ export function CreditsPanel({ open, onClose, info, onUpgrade, memberCreditNotic
           <span className="credits-panel__plan">{info.planName}</span>
           {info.showUpgrade ? (
             <button type="button" className="credits-panel__upgrade" onClick={onUpgrade}>
-              升级
+              {t('demo.CreditsPanel.tsx.upgrade')}
             </button>
           ) : null}
         </div>
@@ -52,7 +54,7 @@ export function CreditsPanel({ open, onClose, info, onUpgrade, memberCreditNotic
         <div className="credits-panel__row credits-panel__row--total">
           <span className="credits-panel__row-label">
             <Icon name="sparkles" size={15} />
-            剩余积分
+            {t('demo.CreditsPanel.tsx.remainingCredits')}
             <span className="credits-panel__help" title={info.grantTip} aria-label={info.grantTip}>
               <Icon name="info" size={14} />
             </span>
@@ -61,15 +63,15 @@ export function CreditsPanel({ open, onClose, info, onUpgrade, memberCreditNotic
         </div>
 
         <button type="button" className="credits-panel__usage" onClick={onClose}>
-          查看使用情况
+          {t('demo.CreditsPanel.tsx.viewUsage')}
           <Icon name="chevron-right" size={14} />
         </button>
 
         {memberCreditNotice ? (
           <div className="credits-panel__member-notice">
-            <strong>额度不足？</strong>
-            <p>你当前是 Member，不能自行续额度。需要更多额度时，可以提醒团队 Admin 提额。</p>
-            <button type="button" onClick={onClose}>提醒 Admin 提额</button>
+            <strong>{t('demo.CreditsPanel.tsx.insufficientCredits')}</strong>
+            <p>{t('demo.CreditsPanel.tsx.memberNoticeBody')}</p>
+            <button type="button" onClick={onClose}>{t('demo.CreditsPanel.tsx.remindAdmin')}</button>
           </div>
         ) : null}
       </div>

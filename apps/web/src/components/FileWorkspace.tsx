@@ -2128,7 +2128,7 @@ export function FileWorkspace({
         <div className="workspace-readonly-notice" role="status">
           <Icon name="lock" size={14} />
           <span>
-            {readonlyNotice ?? '共享项目只读：你可以查看和评论，但不能编辑项目文件或通过 Chat 修改 Artifact。'}
+            {readonlyNotice ?? t('demo.FileWorkspace.tsx.readonlyNotice')}
           </span>
         </div>
       ) : null}
@@ -3488,6 +3488,7 @@ function DesignSystemWorkspaceCollaboration({
 }: {
   demoRequest?: { kind: 'edit'; nonce: number } | null;
 }) {
+  const t = useT();
   const rootRef = useRef<HTMLElement | null>(null);
   const [targetRects, setTargetRects] = useState<Record<DesignSystemCollabTarget, DesignSystemCollabRect | null>>({
     logo: null,
@@ -3500,28 +3501,28 @@ function DesignSystemWorkspaceCollaboration({
     target: DesignSystemCollabTarget;
     activity: string;
   }> = [
-    { actor: 'lina', target: 'logo', activity: '正在编辑 Logo' },
-    { actor: 'zhang', target: 'typography', activity: '调整 Typography' },
-    { actor: 'wang', target: 'palette', activity: '检查 Color Tokens' },
-    { actor: 'lina', target: 'logo', activity: '确认 Logo 选区' },
+    { actor: 'lina', target: 'logo', activity: t('demo.FileWorkspace.tsx.collabActivityEditingLogo') },
+    { actor: 'zhang', target: 'typography', activity: t('demo.FileWorkspace.tsx.collabActivityAdjustTypography') },
+    { actor: 'wang', target: 'palette', activity: t('demo.FileWorkspace.tsx.collabActivityCheckColorTokens') },
+    { actor: 'lina', target: 'logo', activity: t('demo.FileWorkspace.tsx.collabActivityConfirmLogo') },
   ];
   const activeFrame = demoFrames[demoStep % demoFrames.length] ?? demoFrames[0]!;
   const collaborators = [
     {
       id: 'lina',
-      name: '李娜',
+      name: t('demo.FileWorkspace.tsx.collaboratorLina'),
       color: '#2f6fed',
       offset: { x: 0.72, y: 1.08 },
     },
     {
       id: 'zhang',
-      name: '张伟',
+      name: t('demo.FileWorkspace.tsx.collaboratorZhang'),
       color: '#d0653f',
       offset: { x: 0.86, y: 0.18 },
     },
     {
       id: 'wang',
-      name: '王芳',
+      name: t('demo.FileWorkspace.tsx.collaboratorWang'),
       color: '#2f9d73',
       offset: { x: 0.18, y: 0.92 },
     },
@@ -3697,34 +3698,35 @@ function ProjectFileCollabDemoOverlay({
   demoRequest?: { kind: 'edit'; nonce: number } | null;
   fileName: string;
 }) {
+  const t = useT();
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
   const frames = [
     {
-      actor: '李娜',
+      actor: t('demo.FileWorkspace.tsx.collaboratorLina'),
       color: '#6366f1',
-      label: '李娜正在调整 Hero',
+      label: t('demo.FileWorkspace.tsx.fileCollabLabelLinaHero'),
       selection: { left: '18%', top: '20%', width: '58%', height: '22%' },
       cursor: { left: '71%', top: '38%' },
     },
     {
-      actor: '张伟',
+      actor: t('demo.FileWorkspace.tsx.collaboratorZhang'),
       color: '#f97316',
-      label: '张伟选中主卡片',
+      label: t('demo.FileWorkspace.tsx.fileCollabLabelZhangCard'),
       selection: { left: '23%', top: '48%', width: '26%', height: '19%' },
       cursor: { left: '47%', top: '64%' },
     },
     {
-      actor: '王芳',
+      actor: t('demo.FileWorkspace.tsx.collaboratorWang'),
       color: '#10b981',
-      label: '王芳检查右侧控制',
+      label: t('demo.FileWorkspace.tsx.fileCollabLabelWangControls'),
       selection: { left: '63%', top: '43%', width: '21%', height: '17%' },
       cursor: { left: '82%', top: '58%' },
     },
     {
-      actor: '李娜',
+      actor: t('demo.FileWorkspace.tsx.collaboratorLina'),
       color: '#6366f1',
-      label: '李娜确认整体间距',
+      label: t('demo.FileWorkspace.tsx.fileCollabLabelLinaSpacing'),
       selection: { left: '16%', top: '18%', width: '70%', height: '52%' },
       cursor: { left: '83%', top: '67%' },
     },

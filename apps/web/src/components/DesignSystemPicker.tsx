@@ -629,7 +629,7 @@ export function DesignSystemPicker({
         data-testid="project-ds-picker-trigger"
         onClick={() => setOpen((v) => !v)}
         disabled={triggerDisabled}
-        title={disabled ? '只读项目不能切换 Design System' : selected?.title ?? t('designSystemPicker.select')}
+        title={disabled ? t('demo.DesignSystemPicker.tsx.readonlyProjectHint') : selected?.title ?? t('designSystemPicker.select')}
       >
         {triggerSwatches}
         <span className="project-ds-picker-label">
