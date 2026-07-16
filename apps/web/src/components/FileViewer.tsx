@@ -291,6 +291,7 @@ const POWERED_PREVIEW_SANDBOX =
   'allow-scripts allow-same-origin allow-downloads allow-popups allow-forms allow-modals allow-pointer-lock';
 const POWERED_PREVIEW_ALLOW =
   'accelerometer; autoplay; camera; cross-origin-isolated; fullscreen; gamepad; gyroscope; microphone; xr-spatial-tracking';
+const PREVIEW_BRIDGE_QUERY = 'odPreviewBridge=scroll&odPreviewBridge=selection&odPreviewBridge=snapshot';
 const HTML_PASSIVE_PREVIEW_FULL_TEXT_LIMIT = 2 * 1024 * 1024;
 const HTML_ROUTING_TEXT_PREVIEW_LIMIT = 96 * 1024;
 type HtmlSourceLoadMode = 'full' | 'routing-preview';
@@ -7222,7 +7223,7 @@ function HtmlViewer({
   };
   const useUrlLoadPreview = shouldUrlLoadHtmlPreview(urlLoadDecision) && !manualEditRequiresSrcDoc;
   const basePreviewSrcUrl = useMemo(
-    () => `${projectRawUrl(projectId, file.name)}?v=${Math.round(file.mtime)}&r=${reloadKey}&odPreviewBridge=scroll&odPreviewBridge=selection&odPreviewBridge=snapshot`,
+    () => `${projectRawUrl(projectId, file.name)}?v=${Math.round(file.mtime)}&r=${reloadKey}&${PREVIEW_BRIDGE_QUERY}`,
     [projectId, file.name, file.mtime, reloadKey],
   );
   const [previewSrcUrl, setPreviewSrcUrl] = useState(basePreviewSrcUrl);
@@ -7341,7 +7342,7 @@ function HtmlViewer({
       if (cancelled) return;
       setPowered({
         resolved: true,
-        url: base ? `${base}?v=${Math.round(file.mtime)}&r=${reloadKey}` : null,
+        url: base ? `${base}?v=${Math.round(file.mtime)}&r=${reloadKey}&${PREVIEW_BRIDGE_QUERY}` : null,
       });
     });
     return () => {

@@ -862,6 +862,39 @@ function injectUrlPreviewBridge(html: string, bridge: 'scroll' | 'selection' | '
   return injectBeforeBodyClose(html, 'data-od-url-snapshot-bridge', URL_PREVIEW_SNAPSHOT_BRIDGE);
 }
 
+function applyUrlPreviewBridgesToHtml(
+  transformed: string | Buffer,
+  mime: string,
+  requestedBridge: unknown,
+): string | Buffer {
+  if (
+    !(
+      wantsUrlPreviewScrollBridge(requestedBridge) ||
+      wantsUrlPreviewSelectionBridge(requestedBridge) ||
+      wantsUrlPreviewSnapshotBridge(requestedBridge)
+    ) ||
+    !/^text\/html(?:;|$)/i.test(mime)
+  ) {
+    return transformed;
+  }
+
+  let html = Buffer.isBuffer(transformed) ? transformed.toString('utf8') : transformed;
+  // Sanitize the <title> so Cmd+P -> "Save as PDF" produces a Teams-safe
+  // filename. URL-load iframes cannot rely on the host rewriting the document
+  // title after load, and powered previews are intentionally cross-origin.
+  html = daemonSanitizeTitleInDoc(html);
+  if (wantsUrlPreviewScrollBridge(requestedBridge)) {
+    html = injectUrlPreviewBridge(html, 'scroll');
+  }
+  if (wantsUrlPreviewSelectionBridge(requestedBridge)) {
+    html = injectUrlPreviewBridge(html, 'selection');
+  }
+  if (wantsUrlPreviewSnapshotBridge(requestedBridge)) {
+    html = injectUrlPreviewBridge(html, 'snapshot');
+  }
+  return html;
+}
+
 // ---------------------------------------------------------------------------
 // Teams-safe title sanitization for the URL-load preview path (issue #3918).
 //
@@ -3275,7 +3308,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
         project?.metadata,
         undefined,
         skipHtmlPreviewBridge ? undefined : async (file) => {
-          let transformed = await maybeResolveVitePreviewHtml({
+          const transformed = await maybeResolveVitePreviewHtml({
             file,
             projectId,
             relPath,
@@ -3283,31 +3316,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
             projectsRoot: PROJECTS_DIR,
             readProjectFile,
           });
-          if (
-            (wantsUrlPreviewScrollBridge(req.query.odPreviewBridge) ||
-              wantsUrlPreviewSelectionBridge(req.query.odPreviewBridge) ||
-              wantsUrlPreviewSnapshotBridge(req.query.odPreviewBridge)) &&
-            /^text\/html(?:;|$)/i.test(file.mime)
-          ) {
-            let html = Buffer.isBuffer(transformed) ? transformed.toString('utf8') : transformed;
-            // Sanitize the <title> so Cmd+P → "Save as PDF" produces a
-            // Teams-safe filename. The URL-load iframe uses sandbox without
-            // allow-same-origin, so the host cannot rewrite contentDocument.title
-            // after load — we must do it here in the response. The srcDoc path
-            // has its own sanitization in buildSrcdoc (apps/web/src/runtime/srcdoc.ts).
-            html = daemonSanitizeTitleInDoc(html);
-            if (wantsUrlPreviewScrollBridge(req.query.odPreviewBridge)) {
-              html = injectUrlPreviewBridge(html, 'scroll');
-            }
-            if (wantsUrlPreviewSelectionBridge(req.query.odPreviewBridge)) {
-              html = injectUrlPreviewBridge(html, 'selection');
-            }
-            if (wantsUrlPreviewSnapshotBridge(req.query.odPreviewBridge)) {
-              html = injectUrlPreviewBridge(html, 'snapshot');
-            }
-            transformed = html;
-          }
-          return transformed;
+          return applyUrlPreviewBridgesToHtml(transformed, file.mime, req.query.odPreviewBridge);
         },
         true, // revalidate: emit ETag/Last-Modified so covers/preview/export reuse cached assets
       );
@@ -3357,15 +3366,17 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
         relPath,
         project?.metadata,
         () => setPoweredPreviewHeaders(res),
-        skipPoweredTransform ? undefined : async (file) =>
-          maybeResolveVitePreviewHtml({
+        skipPoweredTransform ? undefined : async (file) => {
+          const transformed = await maybeResolveVitePreviewHtml({
             file,
             projectId,
-              relPath,
-              metadata: project?.metadata,
-              projectsRoot: PROJECTS_DIR,
-              readProjectFile,
-            }),
+            relPath,
+            metadata: project?.metadata,
+            projectsRoot: PROJECTS_DIR,
+            readProjectFile,
+          });
+          return applyUrlPreviewBridgesToHtml(transformed, file.mime, req.query.odPreviewBridge);
+        },
       );
     } catch (err: any) {
       const status = err && err.code === 'ENOENT' ? 404 : 400;

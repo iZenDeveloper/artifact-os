@@ -1160,7 +1160,7 @@ describe('FileViewer SVG artifacts', () => {
       },
     });
     const workerHtml = '<!doctype html><html><body><script>new Worker("worker.js")</script></body></html>';
-    const poweredSrc = 'http://localhost:43111/api/projects/project-1/powered/worker.html?v=1000&r=0';
+    const poweredSrc = 'http://localhost:43111/api/projects/project-1/powered/worker.html?v=1000&r=0&odPreviewBridge=scroll&odPreviewBridge=selection&odPreviewBridge=snapshot';
 
     const { rerender } = render(
       <FileViewer
@@ -5235,6 +5235,65 @@ describe('FileViewer tweaks toolbar', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '75%' })).toBeTruthy();
+    });
+  });
+
+  it('requests the content-size bridge for powered desktop previews before auto-fitting', async () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function getBoundingClientRectMock(this: HTMLElement) {
+        if (this.classList.contains('viewer-body')) return testRect(0, 0, 900, 700);
+        return testRect(0, 0, 0, 0);
+      });
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
+      if (url === '/api/preview/isolation') {
+        return new Response(JSON.stringify({
+          supported: true,
+          baseOrigin: 'http://127.0.0.1:48123',
+          pathPrefix: 'powered',
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (url === '/api/projects/project-1/files') {
+        return new Response(JSON.stringify({ files: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response('', { status: 404 });
+    }));
+
+    render(
+      <FileViewer
+        projectId="project-1"
+        projectKind="prototype"
+        file={htmlPreviewFile({
+          name: 'powered-wide.html',
+          path: 'powered-wide.html',
+          mtime: 1710000000,
+        })}
+        liveHtml='<html><body><script>new SharedArrayBuffer(8)</script><main style="min-width:1440px">Wide powered page</main></body></html>'
+      />,
+    );
+
+    await screen.findByTestId('artifact-preview-frame');
+    await waitFor(() => {
+      const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
+      expect(frame.getAttribute('data-od-powered')).toBe('true');
+      expect(frame.getAttribute('src')).toBe(
+        'http://localhost:48123/api/projects/project-1/powered/powered-wide.html?v=1710000000&r=0&odPreviewBridge=scroll&odPreviewBridge=selection&odPreviewBridge=snapshot',
+      );
+    });
+
+    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
+    const previewWindow = installSandboxedPreviewWindow(frame);
+    fireEvent.load(frame);
+    act(() => postPreviewContentWidth(previewWindow, 1440));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '63%' })).toBeTruthy();
     });
   });
 

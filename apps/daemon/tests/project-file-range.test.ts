@@ -429,6 +429,16 @@ describe('GET /api/projects/:id/raw/* range request route', () => {
     expect(preflight.headers.get('access-control-allow-origin')).toBeNull();
   });
 
+  it('injects the URL preview scroll bridge for powered previews when requested', async () => {
+    const bridged = await fetch(`${poweredUrl('page.html')}?odPreviewBridge=scroll`);
+    expect(bridged.status).toBe(200);
+    expect(bridged.headers.get('document-isolation-policy')).toBe('isolate-and-credentialless');
+    const html = await bridged.text();
+    expect(html).toContain('data-od-url-scroll-bridge');
+    expect(html).toContain("type: 'od:preview-content-size'");
+    expect(html).toContain('od:preview-content-size-request');
+  });
+
   it('does not let the powered preview origin call normal daemon APIs', async () => {
     const origin = poweredOrigin();
     const poweredReferer = `${origin}/api/projects/${projectId}/powered/page.html`;
