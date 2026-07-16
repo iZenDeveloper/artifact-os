@@ -2466,9 +2466,9 @@ describe('SettingsDialog execution settings Local CLI interactions', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: /Local CLI/i }));
     expect(screen.getByText('Live from CLI')).toBeTruthy();
-    expect(
-      screen.getByText(/Model list comes from this CLI/i),
-    ).toBeTruthy();
+    // The badge is the only source label; the explanatory hint under the
+    // picker was removed.
+    expect(screen.queryByText(/Model list comes from this CLI/i)).toBeNull();
   });
 
   it('labels fallback CLI model metadata in the model picker', () => {
@@ -2486,9 +2486,9 @@ describe('SettingsDialog execution settings Local CLI interactions', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: /Local CLI/i }));
     expect(screen.getByText('Built-in list')).toBeTruthy();
-    expect(
-      screen.getByText(/Showing built-in defaults/i),
-    ).toBeTruthy();
+    // The badge is the only source label; the explanatory hint under the
+    // picker was removed.
+    expect(screen.queryByText(/Showing built-in defaults/i)).toBeNull();
   });
 
   it('uses the existing Settings card picker for AMR without exposing custom stale models', () => {
