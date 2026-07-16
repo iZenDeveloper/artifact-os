@@ -6994,6 +6994,10 @@ function HtmlViewer({
   // time. After the first load, we never show the "loading" skeleton again —
   // even if a reload temporarily clears `source` to null (issue #4650).
   const sourceEverLoadedRef = useRef(false);
+  // Files whose source has been shown at least once (projectId + name). A
+  // revisit skips the loading skeleton entirely — the fetch still runs, but
+  // the pane doesn't flash a skeleton for content the user has already seen.
+  const sourceLoadedKeysRef = useRef<Set<string>>(new Set());
   const [boardMode, setBoardMode] = useState(false);
   const [commentPanelOpen, setCommentPanelOpen] = useState(false);
   const [commentCreateMode, setCommentCreateMode] = useState(false);
@@ -7567,6 +7571,7 @@ function HtmlViewer({
     if (liveHtml !== undefined) {
       sourceFileKeyRef.current = sourceFileKey;
       sourceEverLoadedRef.current = true;
+      sourceLoadedKeysRef.current.add(`${projectId}\u0000${file.name}`);
       setSource(liveHtml);
       setRoutingSource(liveHtml);
       setServerPoweredPreviewRequired(false);
@@ -7590,6 +7595,7 @@ function HtmlViewer({
     if (shouldDeferPassivePreviewSource && sourceRef.current !== null) {
       setRoutingSource(sourceRef.current);
       sourceEverLoadedRef.current = true;
+      sourceLoadedKeysRef.current.add(`${projectId}\u0000${file.name}`);
       return () => {
         cancelled = true;
       };
@@ -7623,6 +7629,7 @@ function HtmlViewer({
       if (text == null) {
         if (shouldDeferPassivePreviewSource) {
           sourceEverLoadedRef.current = true;
+      sourceLoadedKeysRef.current.add(`${projectId}\u0000${file.name}`);
           setRoutingSource('');
           setServerPoweredPreviewRequired(false);
           return;
@@ -7659,6 +7666,7 @@ function HtmlViewer({
       }
       prevSourceBeforeReloadRef.current = null;
       sourceEverLoadedRef.current = true;
+      sourceLoadedKeysRef.current.add(`${projectId}\u0000${file.name}`);
       lastGoodSourceForRoutingRef.current = text;
       setRoutingSource(text);
       if (shouldDeferPassivePreviewSource) {
@@ -7944,18 +7952,18 @@ function HtmlViewer({
     setCommentPanelOpen(false);
     setCommentCreateMode(false);
     setActivePreviewCommentId(null);
-    // Reset the "ever loaded" sentinel so the loading skeleton is shown again
-    // while the new file's source is being fetched. Without this reset the
-    // sentinel stays true from the previous file, the render guard skips the
-    // skeleton, and a slow fetch leaves the user staring at a blank iframe
-    // instead of the loading indicator (codex P2 finding, issue #4650).
+    // Re-arm the loading skeleton ONLY for files this pane has never shown:
+    // a brand-new file's slow fetch must show the indicator, not a blank
+    // iframe (codex P2 finding, issue #4650) — but revisiting a file the
+    // pane already rendered skips the skeleton instead of flashing it on
+    // every tab switch (per-file memory in sourceLoadedKeysRef).
     //
     // The snapshot ref (prevSourceBeforeReloadRef) is the restore branch only —
     // it must NOT gate this sentinel. Keeping the guard caused a new file's
     // preview to bypass the loading skeleton entirely and mount an empty srcDoc
     // iframe when a reload snapshot was non-null at switch time (PR #4652
     // third-pass review, PerishCode finding).
-    sourceEverLoadedRef.current = false;
+    sourceEverLoadedRef.current = sourceLoadedKeysRef.current.has(`${projectId}\u0000${file.name}`);
     lastGoodSourceForRoutingRef.current = null;
     prevSourceBeforeReloadRef.current = null;
   }, [projectId, file.name]);

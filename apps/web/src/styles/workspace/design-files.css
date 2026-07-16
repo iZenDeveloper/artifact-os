@@ -5,7 +5,9 @@
   display: grid;
   grid-template-columns: minmax(280px, 1fr) minmax(0, 380px);
   min-height: 0;
-  background: var(--bg);
+  /* #5517 material: the panel rides the app wash like the file preview does
+     (veil-canvas), instead of painting an edge-to-edge solid ground. */
+  background: var(--veil-canvas);
 }
 .df-panel.no-preview { grid-template-columns: minmax(0, 1fr); }
 .df-reloading-overlay {
@@ -26,7 +28,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: var(--bg);
+  background: transparent;
   border-right: 1px solid var(--border);
   /* Query container so the toolbar can react to the *list column* width
      (which depends on the chat/preview split, not the viewport). */
@@ -999,7 +1001,8 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: var(--bg);
+  /* Match the #5517 veil material of the surrounding panel. */
+  background: var(--veil-canvas);
   border-left: 1px solid var(--border);
   position: relative;
 }
