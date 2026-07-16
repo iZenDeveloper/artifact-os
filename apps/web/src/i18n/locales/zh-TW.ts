@@ -3929,12 +3929,19 @@ export const zhTW: Dict = {
   "updater.later": "稍後",
   "updater.allowSilentUpdates": "允許以後自動安裝應用內更新",
   "updater.openFailedFallback": "無法開啟安裝器。",
-  "updater.installRestart": "Install and restart",
+  "updater.installRestart": "安裝並重新啟動",
   "updater.installingRestart": "Installing and restarting...",
   "updater.openInstaller": "安裝更新",
   "updater.opening": "正在開啟安裝器…",
+  "updater.dialogAvailableGeneric": "發現新版本。\n下載後即可安裝。",
+  "updater.dialogAvailableVersion": "v{version} 可供更新。\n下載後即可安裝。",
+  "updater.dialogCheckFailed": "檢查更新失敗。\n請稍後再試。",
+  "updater.dialogReadyGeneric":
+    "新版本已準備就緒。\n更好的體驗、更智慧的設計，歡迎體驗新版本。",
   "updater.dialogReadyVersion":
     "v{version} 已準備就緒。\n更好的體驗、更智慧的設計，歡迎體驗新版本。",
+  "updater.dialogUnsupported":
+    "目前環境不支援應用程式內更新。\n可前往發布頁面手動下載。",
   "updater.payloadReadyGeneric":
     "A new Open Design update is ready. Open Design will close and restart automatically.",
   "updater.payloadReadyVersion":
@@ -3950,6 +3957,7 @@ export const zhTW: Dict = {
     "Open Design {version} 已就緒。Open Design 會關閉並開啟安裝器。",
   "updater.upToDate": "您已經是最新版本啦",
   "updater.viewVersionFeatures": "查看新版本特色",
+  "updater.manualDownload": "手動下載",
   "updater.restartAnyway": "仍然重新啟動",
 
   "whatsNew.cta": "看看有什麼新功能",

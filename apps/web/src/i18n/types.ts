@@ -951,12 +951,18 @@ export interface Dict {
   'updater.download': string;
   'updater.downloading': string;
   'updater.downloadingPercent': string;
+  'updater.dialogAvailableGeneric': string;
+  'updater.dialogAvailableVersion': string;
+  'updater.dialogCheckFailed': string;
+  'updater.dialogReadyGeneric': string;
   'updater.dialogReadyVersion': string;
+  'updater.dialogUnsupported': string;
   'updater.done': string;
   'updater.failed': string;
   'updater.installerOpenBody': string;
   'updater.installerOpened': string;
   'updater.later': string;
+  'updater.manualDownload': string;
   'updater.allowSilentUpdates': string;
   'updater.openFailedFallback': string;
   'updater.installRestart': string;

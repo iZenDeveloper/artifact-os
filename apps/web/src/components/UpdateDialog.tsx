@@ -335,22 +335,26 @@ export function UpdateDialog() {
   const checking = state === 'checking';
   const downloading = state === 'downloading';
   const installing = state === 'installing' || model.installerOpened;
+  const unsupported = state === 'unsupported';
   const progress = model.downloadProgress?.percent;
   const statusMessage = (() => {
     if (restartSafety?.state === 'blocked') {
       return t('updater.activeRunsBody', { count: restartSafety.activeRunCount });
     }
     if (restartSafety?.state === 'unknown') return t('updater.activeRunsUnknownBody');
-    if (actionError != null) return t('settings.updateActionFailed');
-    if (status?.error != null && restartSafetyFromUpdaterStatus(status) == null) return status.error.message;
+    if (actionError != null) {
+      return ready || available || installing
+        ? t('settings.updateActionFailed')
+        : t('updater.dialogCheckFailed');
+    }
+    if (status?.error != null && restartSafetyFromUpdaterStatus(status) == null) {
+      return state === 'error' ? t('updater.dialogCheckFailed') : t('settings.updateActionFailed');
+    }
     if (ready) {
       if (model.availableVersion != null) {
         return t('updater.dialogReadyVersion', { version: model.availableVersion });
       }
-      if (model.updateKind === 'payload') {
-        return t('updater.payloadReadyGeneric');
-      }
-      return t('updater.readyGeneric');
+      return t('updater.dialogReadyGeneric');
     }
     if (checking) return t('settings.updateStatusChecking');
     if (downloading) {
@@ -360,8 +364,8 @@ export function UpdateDialog() {
     }
     if (available) {
       return model.availableVersion == null
-        ? t('settings.updateStatusAvailableUnknown')
-        : t('settings.updateStatusAvailable', { version: model.availableVersion });
+        ? t('updater.dialogAvailableGeneric')
+        : t('updater.dialogAvailableVersion', { version: model.availableVersion });
     }
     if (installing) return t('settings.updateStatusInstalling');
     if (model.upToDate) {
@@ -371,19 +375,19 @@ export function UpdateDialog() {
         ? `${t('updater.upToDate')}（${version}）`
         : `${t('updater.upToDate')} (${version})`;
     }
-    if (state === 'unsupported') return t('settings.updateStatusUnsupported');
+    if (unsupported) return t('updater.dialogUnsupported');
     return t('settings.updateStatusNotChecked');
   })();
 
   const showSafety = restartSafety != null;
   const title = showSafety ? t('updater.activeRunsTitle') : t('settings.updateCheck');
-  const primaryLabel = ready
-    ? (model.updateKind === 'payload' ? t('updater.installRestart') : t('updater.openInstaller'))
-    : available
-      ? t('updater.download')
-      : state === 'error'
-        ? t('settings.updateRecheck')
-        : t('settings.updateCheck');
+  const primaryLabel = (() => {
+    if (ready) return model.updateKind === 'payload' ? t('updater.installRestart') : t('updater.openInstaller');
+    if (available) return t('updater.download');
+    if (unsupported) return t('updater.manualDownload');
+    if (state === 'error') return t('settings.updateRecheck');
+    return t('settings.updateCheck');
+  })();
   const primaryDisabled = actionBusy || checking || downloading || installing;
 
   return (
@@ -425,7 +429,7 @@ export function UpdateDialog() {
             <span style={{ width: `${progress}%` }} />
           </div>
         ) : null}
-        {!showSafety && !model.upToDate ? (
+        {!showSafety && (available || ready) ? (
           <div className={styles.metaRow}>
             <button
               className={styles.releaseLink}
@@ -467,6 +471,7 @@ export function UpdateDialog() {
               onClick={() => {
                 if (ready) void installAndQuit(false);
                 else if (available) void download();
+                else if (unsupported) openReleaseNotes();
                 else void checkAgain();
               }}
               ref={primaryRef}
