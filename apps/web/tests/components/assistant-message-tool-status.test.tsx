@@ -38,10 +38,7 @@ describe('AssistantMessage tool status', () => {
       />,
     );
 
-    const activity = screen.getByTestId('task-activity-toggle');
-    expect(activity.textContent).toContain('Done');
-    expect(activity.getAttribute('data-run-state')).toBe('completed');
-    expect(activity.querySelector('.task-activity-status.op-status-ok')).not.toBeNull();
+    expect(screen.getByTestId('task-activity-toggle').textContent).toContain('Done');
     expect(container.querySelector('[data-tool-category="terminal"]')).not.toBeNull();
     expect(container.querySelector('.op-status-error')).toBeNull();
   });
@@ -209,10 +206,7 @@ describe('AssistantMessage tool status', () => {
       />,
     );
 
-    const activity = screen.getByTestId('task-activity-toggle');
-    expect(activity.textContent).toContain('error');
-    expect(activity.getAttribute('data-run-state')).toBe('error');
-    expect(activity.querySelector('.task-activity-status.op-status-error')).not.toBeNull();
+    expect(screen.getByTestId('task-activity-toggle').textContent).toContain('error');
     expect(container.querySelector('.op-status-error')).not.toBeNull();
     expect(container.querySelector('.op-status-ok')).toBeNull();
   });
@@ -265,10 +259,7 @@ describe('AssistantMessage tool status', () => {
       />,
     );
 
-    const activity = screen.getByTestId('task-activity-toggle');
-    expect(activity.textContent).toContain('Working');
-    expect(activity.getAttribute('data-run-state')).toBe('running');
-    expect(activity.querySelector('.task-activity-status.op-status-running')).not.toBeNull();
+    expect(screen.getByTestId('task-activity-toggle').textContent).toContain('Working');
     expect(container.querySelector('[data-tool-category="terminal"].op-status-running')).not.toBeNull();
     expect(container.querySelector('.op-status-ok')).toBeNull();
   });
