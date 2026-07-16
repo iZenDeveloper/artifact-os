@@ -371,11 +371,14 @@ async function hasUnsupportedMediaProviderConfig(projectRoot) {
   try {
     const { readMaskedConfig } = await import('./media/config.js');
     const masked = await readMaskedConfig(projectRoot);
-    return Object.entries(masked.providers).some(([id, provider]) => {
-      if (!provider?.configured) return false;
-      if (id === 'openai') return false;
-      return !MEDIA_MEMORY_PROVIDER_IDS.has(id);
-    });
+    const configured = Object.entries(masked.providers)
+      .filter(([, provider]) => provider?.configured)
+      .map(([id]) => id);
+    if (configured.length === 0) return false;
+    const hasTextCapable = configured.some(
+      (id) => id === 'openai' || MEDIA_MEMORY_PROVIDER_IDS.has(id),
+    );
+    return !hasTextCapable;
   } catch (err) {
     console.warn(
       '[memory-llm] failed to inspect media-config support',
