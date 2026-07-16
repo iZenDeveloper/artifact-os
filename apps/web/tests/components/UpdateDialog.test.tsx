@@ -88,8 +88,12 @@ describe('UpdateDialog', () => {
       openDialogListener?.({ source: 'mac-app-menu' });
       await Promise.resolve();
     });
-    expect(await screen.findByRole('dialog', { name: 'Check for updates' })).toBeTruthy();
+    const dialog = await screen.findByRole('dialog', { name: 'Check for updates' });
+    expect(dialog.querySelector('.od-brand-glyph')).toBeTruthy();
     expect(screen.getByText('Open Design 1.2.4 is ready. Open Design will close and restart automatically.')).toBeTruthy();
+    const version = screen.getByText('Version 1.2.3');
+    const releaseNotes = screen.getByRole('button', { name: 'View release notes' });
+    expect(version.parentElement).toBe(releaseNotes.parentElement);
   });
 
   it('starts an explicit auto-downloading check when opened from an idle menu state', async () => {
@@ -117,7 +121,12 @@ describe('UpdateDialog', () => {
     await waitFor(() => expect(check).toHaveBeenCalledWith({
       payload: { autoDownload: true, source: 'mac-app-menu' },
     }));
-    expect(await screen.findByText("You're already on the latest version.")).toBeTruthy();
+    expect(await screen.findByText("You're already on the latest version. (v1.2.3)")).toBeTruthy();
+    expect(screen.queryByText('Version 1.2.3')).toBeNull();
+    const releaseNotes = screen.getByRole('button', { name: 'View release notes' });
+    expect(releaseNotes.parentElement?.children).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Later' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Check again' })).toBeNull();
   });
 
   it('defaults to Later when tasks are active and requires an explicit Restart anyway override', async () => {

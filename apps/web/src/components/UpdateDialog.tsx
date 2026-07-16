@@ -9,7 +9,7 @@ import {
   trackUpdateInstallResult,
   trackUpdatePromptSurfaceView,
 } from '../analytics/events';
-import { useT } from '../i18n';
+import { useI18n } from '../i18n';
 import { openExternalUrl } from '../providers/registry';
 import {
   checkForUpdaterUpdate,
@@ -53,7 +53,7 @@ function shouldRunManualCheck(status: OpenDesignHostUpdaterStatusSnapshot): bool
 }
 
 export function UpdateDialog() {
-  const t = useT();
+  const { locale, t } = useI18n();
   const analytics = useAnalytics();
   const analyticsTrackRef = useRef(analytics.track);
   analyticsTrackRef.current = analytics.track;
@@ -316,6 +316,17 @@ export function UpdateDialog() {
     }
   }, [analytics.track, applyStatus, source, versionProps]);
 
+  const openReleaseNotes = useCallback(() => {
+    trackUpdateIndicatorClick(analytics.track, {
+      action: 'open_link',
+      area: 'update_dialog',
+      element: 'view_release_notes',
+      page_name: 'app',
+      ...versionProps,
+    });
+    void openExternalUrl(RELEASES_URL);
+  }, [analytics.track, versionProps]);
+
   if (!open) return null;
 
   const state = status?.state;
@@ -354,7 +365,13 @@ export function UpdateDialog() {
         : t('settings.updateStatusAvailable', { version: model.availableVersion });
     }
     if (installing) return t('settings.updateStatusInstalling');
-    if (model.upToDate) return t('updater.upToDate');
+    if (model.upToDate) {
+      if (status?.currentVersion == null) return t('updater.upToDate');
+      const version = `v${status.currentVersion}`;
+      return locale === 'zh-CN' || locale === 'zh-TW'
+        ? `${t('updater.upToDate')}（${version}）`
+        : `${t('updater.upToDate')} (${version})`;
+    }
     if (state === 'unsupported') return t('settings.updateStatusUnsupported');
     return t('settings.updateStatusNotChecked');
   })();
@@ -365,7 +382,7 @@ export function UpdateDialog() {
     ? (model.updateKind === 'payload' ? t('updater.installRestart') : t('updater.openInstaller'))
     : available
       ? t('updater.download')
-      : state === 'error' || model.upToDate
+      : state === 'error'
         ? t('settings.updateRecheck')
         : t('settings.updateCheck');
   const primaryDisabled = actionBusy || checking || downloading || installing;
@@ -395,42 +412,50 @@ export function UpdateDialog() {
         >
           <Icon name="close" size={15} />
         </button>
-        <div className={`${styles.icon} ${showSafety ? styles.iconWarning : ''}`} aria-hidden>
-          <Icon name={showSafety ? 'alert-triangle' : ready ? 'arrow-up' : 'refresh'} size={22} />
+        <div className={`${styles.icon} ${showSafety ? styles.iconWarning : styles.iconBrand}`} aria-hidden>
+          {showSafety ? (
+            <Icon name="alert-triangle" size={22} />
+          ) : (
+            <span className={`${styles.brandGlyph} od-brand-glyph`} />
+          )}
         </div>
         <h2 className={styles.title} id="update-dialog-title">{title}</h2>
         <p className={styles.status} id="update-dialog-status" aria-live="polite">{statusMessage}</p>
-        {status?.currentVersion ? (
-          <p className={styles.version}>{t('settings.appVersion')} {status.currentVersion}</p>
-        ) : null}
         {!showSafety && downloading && progress != null ? (
           <div className={styles.progress} aria-hidden>
             <span style={{ width: `${progress}%` }} />
           </div>
         ) : null}
-        {!showSafety ? (
-          <button
-            className={styles.releaseLink}
-            onClick={() => {
-              trackUpdateIndicatorClick(analytics.track, {
-                action: 'open_link',
-                area: 'update_dialog',
-                element: 'view_release_notes',
-                page_name: 'app',
-                ...versionProps,
-              });
-              void openExternalUrl(RELEASES_URL);
-            }}
-            type="button"
-          >
-            {t('settings.updateViewReleases')} <Icon name="external-link" size={13} />
-          </button>
+        {!showSafety && !model.upToDate ? (
+          <div className={styles.metaRow}>
+            {status?.currentVersion ? (
+              <span className={styles.version}>{t('settings.appVersion')} {status.currentVersion}</span>
+            ) : null}
+            <button
+              className={styles.releaseLink}
+              onClick={openReleaseNotes}
+              type="button"
+            >
+              {t('settings.updateViewReleases')} <Icon name="external-link" size={13} />
+            </button>
+          </div>
         ) : null}
-        <div className={styles.actions}>
-          <button className={styles.secondaryButton} onClick={close} ref={laterRef} type="button">
-            {t('updater.later')}
-          </button>
-          {showSafety ? (
+        <div className={`${styles.actions} ${model.upToDate ? styles.actionsCentered : ''}`}>
+          {!model.upToDate ? (
+            <button className={styles.secondaryButton} onClick={close} ref={laterRef} type="button">
+              {t('updater.later')}
+            </button>
+          ) : null}
+          {model.upToDate ? (
+            <button
+              className={styles.primaryButton}
+              onClick={openReleaseNotes}
+              ref={primaryRef}
+              type="button"
+            >
+              {t('settings.updateViewReleases')} <Icon name="external-link" size={13} />
+            </button>
+          ) : showSafety ? (
             <button
               className={styles.dangerButton}
               disabled={actionBusy}
