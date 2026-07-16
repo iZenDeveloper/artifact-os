@@ -44,6 +44,15 @@ export interface PluginsCopy {
   hubMetaTitle: (n: number) => string;
   hubMetaDescription: string;
 
+  /** Hub hero + explore section. EN baseline; zh localized, rest fall back to EN. */
+  hubEyebrow: string;
+  hubUnitPlugins: string;
+  hubStatOpen: string;
+  hubStatAgents: string;
+  hubCtaDownload: string;
+  hubExploreTitle: string;
+  hubFilterAll: string;
+  hubViewAll: string;
 
   tileTemplates: string;
   tileSkills: string;
@@ -233,6 +242,14 @@ const en: PluginsCopy = {
   hubMetaDescription:
     'Browse the open-source Claude skills marketplace — design skills, systems, templates and craft your coding agent runs directly. Works with Claude, Codex, Cursor.',
 
+  hubEyebrow: 'Plugin library',
+  hubUnitPlugins: 'plugins',
+  hubStatOpen: 'Open source · Apache-2.0',
+  hubStatAgents: 'Works with Claude, Codex & Cursor',
+  hubCtaDownload: 'Download the app',
+  hubExploreTitle: 'Explore all resources',
+  hubFilterAll: 'All',
+  hubViewAll: 'See all',
 
   tileTemplates: 'Templates',
   tileSkills: 'Skills',
@@ -559,6 +576,14 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     hubMetaTitle: (n) => `Claude Skills 市场 — ${n}+ 插件 | Open Design`,
     hubMetaDescription:
       '浏览开源的 Claude skills 市场——设计 skills、设计系统、模板与 craft，你的 coding agent 可直接运行。支持 Claude、Codex、Cursor。',
+    hubEyebrow: '插件广场',
+    hubUnitPlugins: '个插件',
+    hubStatOpen: '开源 · Apache-2.0',
+    hubStatAgents: '支持 Claude · Codex · Cursor',
+    hubCtaDownload: '下载客户端',
+    hubExploreTitle: '探索全部资源',
+    hubFilterAll: '全部',
+    hubViewAll: '查看全部',
     tileTemplates: '模板',
     tileSkills: '技能',
     tileSystems: '设计系统',
