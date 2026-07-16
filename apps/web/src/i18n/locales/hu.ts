@@ -1477,6 +1477,7 @@ export const hu: Dict = {
   'ds.surfaceVideo': 'Videó',
   'ds.surfaceAudio': 'Hang',
   'ds.searchPlaceholder': 'Designrendszerek keresése…',
+  'ds.pageDescription': 'Újrafelhasználható márkaútmutatók, komponensszabályok és vizuális eszközök a csapatod számára.',
   'ds.emptyNoMatch': 'Egy designrendszer sem felel meg a keresésnek.',
   'ds.badgeDefault': 'ALAPÉRT.',
   'ds.preview': 'Előnézet',

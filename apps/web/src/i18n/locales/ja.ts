@@ -1477,6 +1477,7 @@ export const ja: Dict = {
   'ds.surfaceVideo': '動画',
   'ds.surfaceAudio': '音声',
   'ds.searchPlaceholder': 'デザインシステムを検索…',
+  'ds.pageDescription': 'チームで再利用できるブランドガイドライン、コンポーネントルール、ビジュアルアセット。',
   'ds.emptyNoMatch': '検索に一致するデザインシステムがありません。',
   'ds.badgeDefault': 'デフォルト',
   'ds.preview': 'プレビュー',

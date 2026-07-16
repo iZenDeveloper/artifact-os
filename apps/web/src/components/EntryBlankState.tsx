@@ -4,6 +4,7 @@
 // and navigates straight into it (no intermediate dialog).
 
 import { Icon } from './Icon';
+import { useT } from '../i18n';
 
 interface Props {
   heading: string;
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function EntryBlankState({ heading, title, description, onCreate }: Props) {
+  const t = useT();
   return (
     <div className="entry-section">
       <header className="entry-section__head">
@@ -25,7 +27,7 @@ export function EntryBlankState({ heading, title, description, onCreate }: Props
         <h2 className="entry-blank__title">{title}</h2>
         <p className="entry-blank__desc">{description}</p>
         <button type="button" className="entry-blank__cta" onClick={onCreate}>
-          <Icon name="plus" size={15} /> 新建方案
+          <Icon name="plus" size={15} /> {t('demo.EntryBlankState.tsx.createCta')}
         </button>
       </div>
     </div>

@@ -1477,6 +1477,7 @@ export const zhTW: Dict = {
   'ds.surfaceVideo': '影片',
   'ds.surfaceAudio': '音訊',
   'ds.searchPlaceholder': '搜尋設計系統…',
+  'ds.pageDescription': '團隊可重複使用的品牌規範、元件規則與視覺資產。',
   'ds.emptyNoMatch': '沒有符合的設計系統。',
   'ds.badgeDefault': '預設',
   'ds.preview': '預覽完整系統',

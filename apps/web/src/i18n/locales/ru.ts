@@ -1477,6 +1477,7 @@ export const ru: Dict = {
   'ds.surfaceVideo': 'Видео',
   'ds.surfaceAudio': 'Аудио',
   'ds.searchPlaceholder': 'Поиск дизайн-систем…',
+  'ds.pageDescription': 'Многоразовые бренд-гайдлайны, правила компонентов и визуальные ресурсы для вашей команды.',
   'ds.emptyNoMatch': 'Нет дизайн-систем, соответствующих вашему поиску.',
   'ds.badgeDefault': 'ПО УМОЛЧАНИЮ',
   'ds.preview': 'Предпросмотр',

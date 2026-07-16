@@ -1477,6 +1477,7 @@ export const ko: Dict = {
   'ds.surfaceVideo': '비디오',
   'ds.surfaceAudio': '오디오',
   'ds.searchPlaceholder': '디자인 시스템 검색…',
+  'ds.pageDescription': '팀에서 재사용할 수 있는 브랜드 가이드라인, 컴포넌트 규칙, 시각 자산.',
   'ds.emptyNoMatch': '검색어와 일치하는 디자인 시스템이 없습니다.',
   'ds.badgeDefault': '기본 (DEFAULT)',
   'ds.preview': '미리보기',

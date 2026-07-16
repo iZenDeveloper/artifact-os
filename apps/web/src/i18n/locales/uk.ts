@@ -1477,6 +1477,7 @@ export const uk: Dict = {
   'ds.surfaceVideo': 'Відеоролик',
   'ds.surfaceAudio': 'Аудіо',
   'ds.searchPlaceholder': 'Пошук систем дизайну…',
+  'ds.pageDescription': 'Багаторазові брендові гайдлайни, правила компонентів і візуальні ресурси для вашої команди.',
   'ds.emptyNoMatch': 'Системи дизайну, що відповідають пошуку, не знайдені.',
   'ds.badgeDefault': 'ТИПОВА',
   'ds.preview': 'Попередній перегляд',

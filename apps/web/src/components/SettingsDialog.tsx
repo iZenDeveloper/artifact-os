@@ -2377,7 +2377,7 @@ export function SettingsDialog({
     },
     {
       id: 'zhipu',
-      title: '智谱',
+      title: t('demo.SettingsDialog.tsx.provider-zhipu'),
       protocol: 'openai',
       baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
       model: 'glm-4.6',
@@ -2391,14 +2391,14 @@ export function SettingsDialog({
     },
     {
       id: 'stepfun',
-      title: '阶跃星辰',
+      title: t('demo.SettingsDialog.tsx.provider-stepfun'),
       protocol: 'openai',
       baseUrl: 'https://api.stepfun.com/v1',
       model: 'step-2-mini',
     },
     {
       id: 'custom',
-      title: '自定义',
+      title: t('demo.SettingsDialog.tsx.provider-custom'),
       protocol: 'openai',
       baseUrl: cfg.baseUrl || '',
       model: cfg.model || '',
@@ -3017,7 +3017,7 @@ export function SettingsDialog({
   // BYOK content so "Local CLI" only renders once (in the seg-control tab),
   // not twice (heading + tab).
   const sectionHeader: Record<SettingsSection, { title: string; subtitle: string }> = {
-    general: { title: '通用', subtitle: '语言、外观、系统偏好、宠物和项目位置。' },
+    general: { title: t('demo.SettingsDialog.tsx.general-title'), subtitle: t('demo.SettingsDialog.tsx.general-subtitle') },
     execution: { title: t('settings.title'), subtitle: t('settings.subtitle') },
     instructions: {
       title: t('settings.instructionsTitle'),
@@ -3431,13 +3431,13 @@ export function SettingsDialog({
                   onClick={onClose}
                 >
                   <Icon name="arrow-left" size={15} />
-                  <span>返回首页</span>
+                  <span>{t('demo.SettingsDialog.tsx.back-home')}</span>
                 </button>
                 <label className="settings-page-search">
                   <Icon name="search" size={14} />
-                  <input type="search" placeholder="搜索设置..." readOnly />
+                  <input type="search" placeholder={t('demo.SettingsDialog.tsx.search-placeholder')} readOnly />
                 </label>
-                <span className="settings-page-nav-group">个人</span>
+                <span className="settings-page-nav-group">{t('demo.SettingsDialog.tsx.nav-group-personal')}</span>
               </div>
             ) : null}
             <button
@@ -3458,8 +3458,8 @@ export function SettingsDialog({
             >
               <Icon name="settings" size={18} />
               <span>
-                <strong>通用</strong>
-                <small>语言、外观与个性化</small>
+                <strong>{t('demo.SettingsDialog.tsx.general-title')}</strong>
+                <small>{t('demo.SettingsDialog.tsx.general-nav-sub')}</small>
               </span>
             </button>
             <button
@@ -3559,15 +3559,15 @@ export function SettingsDialog({
                   </label>
                 </div>
                 <div className="settings-general-field">
-                  <span className="settings-general-label">主题</span>
+                  <span className="settings-general-label">{t('demo.SettingsDialog.tsx.theme-label')}</span>
                   <AppearanceSection cfg={cfg} setCfg={setCfg} />
                 </div>
               </div>
 
               <div className="settings-general-block">
                 <div className="settings-general-block-head">
-                  <h3>系统偏好</h3>
-                  <p className="hint">完成提示音、浏览器通知和任务状态提醒。</p>
+                  <h3>{t('demo.SettingsDialog.tsx.system-prefs-title')}</h3>
+                  <p className="hint">{t('demo.SettingsDialog.tsx.system-prefs-hint')}</p>
                 </div>
                 <NotificationsSection cfg={cfg} setCfg={setCfg} />
               </div>
@@ -3642,9 +3642,9 @@ export function SettingsDialog({
               {showCloudSignInCallout ? (
                 <div className="settings-cloud-signin-callout">
                   <div>
-                    <strong>使用 Open Design Cloud</strong>
+                    <strong>{t('demo.SettingsDialog.tsx.cloud-callout-title')}</strong>
                     <p>
-                      登录云端版本后可启用团队空间、共享项目、成员权限和审计大盘。
+                      {t('demo.SettingsDialog.tsx.cloud-callout-exec-body')}
                     </p>
                   </div>
                   <button
@@ -3652,7 +3652,7 @@ export function SettingsDialog({
                     className="settings-cloud-signin-callout__button"
                     onClick={() => navigateRoute({ kind: 'home', view: 'onboarding' })}
                   >
-                    登录 / 注册
+                    {t('demo.SettingsDialog.tsx.cloud-callout-signin')}
                   </button>
                 </div>
               ) : null}
@@ -3660,17 +3660,17 @@ export function SettingsDialog({
                 <div
                   className="protocol-chips protocol-chips--providers"
                   role="tablist"
-                  aria-label="模型供应商"
+                  aria-label={t('demo.SettingsDialog.tsx.model-providers-label')}
                 >
                     <div className="protocol-chip-group protocol-chip-group--providers">
                       <span className="protocol-chip-group-label">
-                        模型供应商
+                        {t('demo.SettingsDialog.tsx.model-providers-label')}
                       </span>
                       <div className="protocol-chip-group-options">
                         {byokProviderTabs.map((provider) => {
                           const active = selectedByokProvider?.id === provider.id;
                           const connected = byokProviderConnected(provider);
-                          const statusLabel = connected ? '已连接' : '未连接';
+                          const statusLabel = connected ? t('demo.SettingsDialog.tsx.status-connected') : t('demo.SettingsDialog.tsx.status-disconnected');
                           return (
                             <button
                               key={provider.id}
@@ -6584,11 +6584,11 @@ function MediaProvidersSection({
       {demoUseMode === 'local' ? (
         <div className="settings-cloud-signin-callout media-provider-cloud-callout">
           <div>
-            <strong>使用 Open Design Cloud</strong>
-            <p>登录云端版本后可使用托管模型供应商，并为团队共享媒体生成配置。</p>
+            <strong>{t('demo.SettingsDialog.tsx.cloud-callout-title')}</strong>
+            <p>{t('demo.SettingsDialog.tsx.cloud-callout-media-body')}</p>
           </div>
           <button type="button" className="settings-cloud-signin-callout__button">
-            登录 / 注册
+            {t('demo.SettingsDialog.tsx.cloud-callout-signin')}
           </button>
         </div>
       ) : null}
@@ -6598,14 +6598,14 @@ function MediaProvidersSection({
         aria-label="Media providers"
       >
         <div className="protocol-chip-group protocol-chip-group--providers">
-          <span className="protocol-chip-group-label">模型供应商</span>
+          <span className="protocol-chip-group-label">{t('demo.SettingsDialog.tsx.model-providers-label')}</span>
           <div className="protocol-chip-group-options">
             {availableProviders.map((provider) => {
               const active = activeProvider?.id === provider.id;
               const entry = cfg.mediaProviders?.[provider.id];
               const connected = provider.credentialsRequired === false
                 || isStoredMediaProviderEntryPresent(entry);
-              const statusLabel = connected ? '已连接' : '未连接';
+              const statusLabel = connected ? t('demo.SettingsDialog.tsx.status-connected') : t('demo.SettingsDialog.tsx.status-disconnected');
               return (
                 <button
                   key={provider.id}
@@ -6733,7 +6733,7 @@ function MediaProvidersSection({
           <div className="media-provider-docs-callout">
             <div>
               <strong>Documentation</strong>
-              <span>查看该 Provider 的 API Key、Model 和 Base URL 配置说明。</span>
+              <span>{t('demo.SettingsDialog.tsx.provider-docs-hint')}</span>
             </div>
             {activeProvider.docsUrl ? (
               <a

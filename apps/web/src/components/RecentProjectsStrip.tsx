@@ -10,6 +10,7 @@ import type { CSSProperties } from 'react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
 import { useT } from '../i18n';
+import type { Dict } from '../i18n/types';
 import { fetchProjectFiles, fetchProjectFileText, projectFileUrl } from '../providers/registry';
 import type {
   DesignSystemSummary,
@@ -62,15 +63,25 @@ const EMPTY_DESIGN_SYSTEMS: DesignSystemSummary[] = [];
 
 // Demo-only mocked metadata so the grid shows a believable mix of owners,
 // visibility, and recency instead of the seeded "我创建 · just now" uniformity.
-const MOCK_MEMBERS = [
-  { name: '我', initial: '我', img: '/team-avatars/a2.png' },
-  { name: '张伟', initial: '张', img: '/team-avatars/a1.png' },
-  { name: '李娜', initial: '李', img: '/team-avatars/a3.png' },
-  { name: '王芳', initial: '王', img: '/team-avatars/a4.png' },
-  { name: '陈明', initial: '陈', img: '/team-avatars/a6.png' },
-  { name: '刘洋', initial: '刘', img: '/team-avatars/a7.png' },
+// Names/initials/times are stable ids resolved to display text via t().
+const MOCK_MEMBERS: Array<{ id: string; nameKey: keyof Dict; initialKey: keyof Dict; img: string }> = [
+  { id: 'me', nameKey: 'demo.RecentProjectsStrip.tsx.member-me', initialKey: 'demo.RecentProjectsStrip.tsx.member-me-initial', img: '/team-avatars/a2.png' },
+  { id: 'zhangwei', nameKey: 'demo.RecentProjectsStrip.tsx.member-zhangwei', initialKey: 'demo.RecentProjectsStrip.tsx.member-zhangwei-initial', img: '/team-avatars/a1.png' },
+  { id: 'lina', nameKey: 'demo.RecentProjectsStrip.tsx.member-lina', initialKey: 'demo.RecentProjectsStrip.tsx.member-lina-initial', img: '/team-avatars/a3.png' },
+  { id: 'wangfang', nameKey: 'demo.RecentProjectsStrip.tsx.member-wangfang', initialKey: 'demo.RecentProjectsStrip.tsx.member-wangfang-initial', img: '/team-avatars/a4.png' },
+  { id: 'chenming', nameKey: 'demo.RecentProjectsStrip.tsx.member-chenming', initialKey: 'demo.RecentProjectsStrip.tsx.member-chenming-initial', img: '/team-avatars/a6.png' },
+  { id: 'liuyang', nameKey: 'demo.RecentProjectsStrip.tsx.member-liuyang', initialKey: 'demo.RecentProjectsStrip.tsx.member-liuyang-initial', img: '/team-avatars/a7.png' },
 ];
-const MOCK_TIMES = ['刚刚', '12 分钟前', '1 小时前', '3 小时前', '昨天', '2 天前', '上周', '3 周前'];
+const MOCK_TIME_KEYS: Array<keyof Dict> = [
+  'demo.RecentProjectsStrip.tsx.time-just-now',
+  'demo.RecentProjectsStrip.tsx.time-12-min',
+  'demo.RecentProjectsStrip.tsx.time-1-hour',
+  'demo.RecentProjectsStrip.tsx.time-3-hour',
+  'demo.RecentProjectsStrip.tsx.time-yesterday',
+  'demo.RecentProjectsStrip.tsx.time-2-day',
+  'demo.RecentProjectsStrip.tsx.time-last-week',
+  'demo.RecentProjectsStrip.tsx.time-3-week',
+];
 const DEMO_PROJECT_NAMES = [
   'Brand Portal Refresh',
   'Mobile Banking Concept',
@@ -104,52 +115,55 @@ const DEMO_PROJECT_NAMES = [
   'Community Growth Report',
 ];
 
-const ME = { name: '我', initial: '我', img: '/team-avatars/a2.png' };
+const ME: { id: string; nameKey: keyof Dict; initialKey: keyof Dict; img: string } = { id: 'me', nameKey: 'demo.RecentProjectsStrip.tsx.member-me', initialKey: 'demo.RecentProjectsStrip.tsx.member-me-initial', img: '/team-avatars/a2.png' };
 type SpaceKind = 'recent' | 'drafts' | 'team';
-const OWNER_FILTER_OPTIONS: Array<{ id: OwnerFilter; label: string }> = [
-  { id: 'all', label: '所有' },
-  { id: 'mine', label: '仅自己' },
-  { id: 'others', label: '其他人' },
+const OWNER_FILTER_OPTIONS: Array<{ id: OwnerFilter; labelKey: keyof Dict }> = [
+  { id: 'all', labelKey: 'demo.RecentProjectsStrip.tsx.owner-filter-all' },
+  { id: 'mine', labelKey: 'demo.RecentProjectsStrip.tsx.owner-filter-mine' },
+  { id: 'others', labelKey: 'demo.RecentProjectsStrip.tsx.owner-filter-others' },
 ];
-const KIND_FILTER_OPTIONS: Array<{ id: ProjectKindFilter; label: string }> = [
-  { id: 'all', label: '任何类型' },
+const KIND_FILTER_OPTIONS: Array<{ id: ProjectKindFilter; labelKey?: keyof Dict; label?: string }> = [
+  { id: 'all', labelKey: 'demo.RecentProjectsStrip.tsx.kind-filter-all' },
   { id: 'prototype', label: 'Prototype' },
   { id: 'deck', label: 'Slides' },
   { id: 'media', label: 'Media' },
   { id: 'other', label: 'Other' },
 ];
+function kindFilterLabel(option: { labelKey?: keyof Dict; label?: string }, t: ReturnType<typeof useT>): string {
+  return option.labelKey ? t(option.labelKey) : (option.label ?? '');
+}
 function mockCardMeta(index: number, space: SpaceKind) {
-  const time = MOCK_TIMES[index % MOCK_TIMES.length] ?? '刚刚';
+  const timeKey = MOCK_TIME_KEYS[index % MOCK_TIME_KEYS.length] ?? 'demo.RecentProjectsStrip.tsx.time-just-now';
   if (space === 'team') {
     // All projects: everything is shared, owned by varied team members.
     const m = MOCK_MEMBERS[(index * 5 + 1) % MOCK_MEMBERS.length] ?? ME;
-    return { ownerName: m.name, ownerInitial: m.initial, ownerImg: m.img, badge: 'shared' as 'private' | 'shared', time };
+    return { ownerId: m.id, ownerNameKey: m.nameKey, ownerInitialKey: m.initialKey, ownerImg: m.img, badge: 'shared' as 'private' | 'shared', timeKey };
   }
   if (space === 'drafts') {
     // Drafts: everything is private, owned by me.
-    return { ownerName: '我', ownerInitial: '我', ownerImg: ME.img, badge: 'private' as 'private' | 'shared', time };
+    return { ownerId: ME.id, ownerNameKey: ME.nameKey, ownerInitialKey: ME.initialKey, ownerImg: ME.img, badge: 'private' as 'private' | 'shared', timeKey };
   }
   // Recent (home): a believable mix — private items are mine, shared ones were
   // created by varied teammates (so the avatars read as a real team).
   const badge: 'private' | 'shared' = index % 3 === 0 ? 'shared' : 'private';
   if (badge === 'shared') {
     const m = MOCK_MEMBERS[(index * 3 + 2) % MOCK_MEMBERS.length] ?? ME;
-    return { ownerName: m.name, ownerInitial: m.initial, ownerImg: m.img, badge, time };
+    return { ownerId: m.id, ownerNameKey: m.nameKey, ownerInitialKey: m.initialKey, ownerImg: m.img, badge, timeKey };
   }
-  return { ownerName: '我', ownerInitial: '我', ownerImg: ME.img, badge, time };
+  return { ownerId: ME.id, ownerNameKey: ME.nameKey, ownerInitialKey: ME.initialKey, ownerImg: ME.img, badge, timeKey };
 }
 
 type ProjectCardMeta = ReturnType<typeof mockCardMeta>;
 
 function canMutateProject(meta: ProjectCardMeta): boolean {
-  return meta.ownerName === '我';
+  return meta.ownerId === 'me';
 }
 
 function isReadonlySharedProject(meta: ProjectCardMeta): boolean {
   return meta.badge === 'shared' && !canMutateProject(meta);
 }
 
-const NO_PROJECT_MUTATION_TITLE = '只能修改或删除自己创建的项目';
+const NO_PROJECT_MUTATION_TITLE_KEY = 'demo.RecentProjectsStrip.tsx.no-mutation-title';
 
 function filterKindForProject(project: Project): ProjectKindFilter {
   const kind = project.metadata?.kind;
@@ -204,7 +218,7 @@ const DEMO_PROJECT_TARGET_COUNT = 30;
 export function RecentProjectsStrip({
   projects,
   designSystems = EMPTY_DESIGN_SYSTEMS,
-  heading = '最近使用',
+  heading,
   description,
   space = 'recent',
   onOpen,
@@ -250,7 +264,7 @@ export function RecentProjectsStrip({
         const meta = movedToTeam.has(project.id)
           ? { ...baseMeta, badge: 'shared' as const }
           : movedToPersonal.has(project.id)
-            ? { ...baseMeta, badge: 'private' as const, ownerName: '我', ownerInitial: '我', ownerImg: ME.img }
+            ? { ...baseMeta, badge: 'private' as const, ownerId: ME.id, ownerNameKey: ME.nameKey, ownerInitialKey: ME.initialKey, ownerImg: ME.img }
             : baseMeta;
         return { project, meta };
       })
@@ -258,8 +272,8 @@ export function RecentProjectsStrip({
         if (locallyDeletedIds.has(project.id)) return false;
         const ownerMatches =
           ownerFilter === 'all'
-          || (ownerFilter === 'mine' && meta.ownerName === '我')
-          || (ownerFilter === 'others' && meta.ownerName !== '我');
+          || (ownerFilter === 'mine' && meta.ownerId === 'me')
+          || (ownerFilter === 'others' && meta.ownerId !== 'me');
         const kindMatches = kindFilter === 'all' || filterKindForProject(project) === kindFilter;
         return ownerMatches && kindMatches;
       })
@@ -284,8 +298,8 @@ export function RecentProjectsStrip({
   const selectedContainsReadonlyProject = selectedProjectCards.some(({ meta }) => !canMutateProject(meta));
   const selectedMutationDisabled = selectedCount === 0 || selectedContainsReadonlyProject;
   const selectedMutationTitle = selectedContainsReadonlyProject
-    ? '包含你无权操作的项目；请选择自己创建的项目'
-    : selectedProjectNames.join('、');
+    ? t('demo.RecentProjectsStrip.tsx.selection-contains-readonly')
+    : selectedProjectNames.join(t('demo.RecentProjectsStrip.tsx.name-join-separator'));
   const canMoveToTeam = canManageProjectCollection && collaborationEnabled && space !== 'team';
   const canMoveToPersonal = canManageProjectCollection && collaborationEnabled && space !== 'drafts';
 
@@ -492,7 +506,7 @@ export function RecentProjectsStrip({
     <section className="recent-projects" data-testid="recent-projects-strip">
       <header className="recent-projects__head">
         <div className="recent-projects__title-block">
-          <h2 className="recent-projects__heading">{heading}</h2>
+          <h2 className="recent-projects__heading">{heading ?? t('demo.RecentProjectsStrip.tsx.heading-default')}</h2>
           {description ? (
             <p className="recent-projects__description">{description}</p>
           ) : null}
@@ -504,7 +518,7 @@ export function RecentProjectsStrip({
               className="recent-projects__invite"
               onClick={() => setInviteOpen(true)}
             >
-              <Icon name="share" size={15} /> 邀请同事
+              <Icon name="share" size={15} /> {t('demo.RecentProjectsStrip.tsx.invite-colleagues')}
             </button>
           ) : null}
           {canManageProjectCollection ? (
@@ -521,7 +535,7 @@ export function RecentProjectsStrip({
                 }
               }}
             >
-              多选
+              {t('demo.RecentProjectsStrip.tsx.multi-select')}
             </button>
           ) : null}
           <div className="recent-projects__filter-wrap">
@@ -531,7 +545,10 @@ export function RecentProjectsStrip({
               aria-expanded={openHeaderMenu === 'owner'}
               onClick={() => setOpenHeaderMenu((current) => current === 'owner' ? null : 'owner')}
             >
-              {OWNER_FILTER_OPTIONS.find((option) => option.id === ownerFilter)?.label ?? '所有'}
+              {(() => {
+                const active = OWNER_FILTER_OPTIONS.find((option) => option.id === ownerFilter);
+                return active ? t(active.labelKey) : t('demo.RecentProjectsStrip.tsx.owner-filter-all');
+              })()}
               <Icon name="chevron-down" size={13} />
             </button>
             {openHeaderMenu === 'owner' ? (
@@ -546,7 +563,7 @@ export function RecentProjectsStrip({
                       setOpenHeaderMenu(null);
                     }}
                   >
-                    {option.label}
+                    {t(option.labelKey)}
                   </button>
                 ))}
               </div>
@@ -559,7 +576,10 @@ export function RecentProjectsStrip({
               aria-expanded={openHeaderMenu === 'kind'}
               onClick={() => setOpenHeaderMenu((current) => current === 'kind' ? null : 'kind')}
             >
-              {KIND_FILTER_OPTIONS.find((option) => option.id === kindFilter)?.label ?? '任何类型'}
+              {(() => {
+                const active = KIND_FILTER_OPTIONS.find((option) => option.id === kindFilter);
+                return active ? kindFilterLabel(active, t) : t('demo.RecentProjectsStrip.tsx.kind-filter-all');
+              })()}
               <Icon name="chevron-down" size={13} />
             </button>
             {openHeaderMenu === 'kind' ? (
@@ -574,13 +594,13 @@ export function RecentProjectsStrip({
                       setOpenHeaderMenu(null);
                     }}
                   >
-                    {option.label}
+                    {kindFilterLabel(option, t)}
                   </button>
                 ))}
               </div>
             ) : null}
           </div>
-          <button type="button" className="recent-projects__view-btn" aria-label="排序">
+          <button type="button" className="recent-projects__view-btn" aria-label={t('demo.RecentProjectsStrip.tsx.sort-aria')}>
             <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 7h6M3 12h10M3 17h14M17 4v8m0 0 3-3m-3 3-3-3" />
             </svg>
@@ -609,9 +629,9 @@ export function RecentProjectsStrip({
         </div>
       </header>
       {activeSelectionMode ? (
-        <div className="recent-projects__bulkbar" role="toolbar" aria-label="批量操作">
+        <div className="recent-projects__bulkbar" role="toolbar" aria-label={t('demo.RecentProjectsStrip.tsx.bulk-actions-aria')}>
           <span className="recent-projects__bulkbar-count">
-            已选择 <strong>{selectedCount}</strong> 个项目
+            {t('demo.RecentProjectsStrip.tsx.selected-count-prefix')} <strong>{selectedCount}</strong> {t('demo.RecentProjectsStrip.tsx.selected-count-suffix')}
           </span>
           <div className="recent-projects__bulkbar-actions">
             {canMoveToTeam ? (
@@ -621,7 +641,7 @@ export function RecentProjectsStrip({
                 title={selectedMutationTitle}
                 onClick={() => batchMoveSelected('to-team')}
               >
-                <Icon name="import" size={13} /> 转入团队空间
+                <Icon name="import" size={13} /> {t('demo.RecentProjectsStrip.tsx.move-to-team')}
               </button>
             ) : null}
             {canMoveToPersonal ? (
@@ -631,7 +651,7 @@ export function RecentProjectsStrip({
                 title={selectedMutationTitle}
                 onClick={() => batchMoveSelected('to-personal')}
               >
-                <Icon name="log-out" size={13} /> 移出团队空间
+                <Icon name="log-out" size={13} /> {t('demo.RecentProjectsStrip.tsx.move-to-personal')}
               </button>
             ) : null}
             <button
@@ -641,10 +661,10 @@ export function RecentProjectsStrip({
               title={selectedMutationTitle}
               onClick={() => void batchDeleteSelected()}
             >
-              <Icon name="trash" size={13} /> 批量删除
+              <Icon name="trash" size={13} /> {t('demo.RecentProjectsStrip.tsx.bulk-delete')}
             </button>
             <button type="button" className="ghost" onClick={exitSelectionMode}>
-              取消
+              {t('demo.RecentProjectsStrip.tsx.cancel')}
             </button>
           </div>
         </div>
@@ -678,7 +698,7 @@ export function RecentProjectsStrip({
                   type="button"
                   className="recent-projects__select-check"
                   aria-pressed={selected}
-                  aria-label={selected ? `取消选择 ${project.name}` : `选择 ${project.name}`}
+                  aria-label={selected ? t('demo.RecentProjectsStrip.tsx.deselect-project', { name: project.name }) : t('demo.RecentProjectsStrip.tsx.select-project', { name: project.name })}
                   onClick={(event) => {
                     event.stopPropagation();
                     toggleSelection(project.id);
@@ -697,8 +717,8 @@ export function RecentProjectsStrip({
                     rememberDemoProjectAccessContext({
                       projectId: project.id,
                       projectName: project.name,
-                      ownerName: meta.ownerName,
-                      ownerInitial: meta.ownerInitial,
+                      ownerName: t(meta.ownerNameKey),
+                      ownerInitial: t(meta.ownerInitialKey),
                       ...(meta.ownerImg ? { ownerImg: meta.ownerImg } : {}),
                       badge: meta.badge,
                       space,
@@ -743,7 +763,7 @@ export function RecentProjectsStrip({
                         <circle cx="9" cy="8" r="3" />
                         <path d="M3 20a6 6 0 0 1 12 0M16 11a3 3 0 1 0-1-5.8M21 20a6 6 0 0 0-5-5.9" />
                       </svg>
-                      共享
+                      {t('demo.RecentProjectsStrip.tsx.badge-shared')}
                     </span>
                   ) : null}
                 </div>
@@ -752,11 +772,11 @@ export function RecentProjectsStrip({
                   <div className="recent-projects__card-footer">
                     <div className="recent-projects__card-time">
                       <span className="recent-projects__card-owner" aria-hidden>
-                        {meta.ownerImg ? <img src={meta.ownerImg} alt="" loading="lazy" /> : meta.ownerInitial}
+                        {meta.ownerImg ? <img src={meta.ownerImg} alt="" loading="lazy" /> : t(meta.ownerInitialKey)}
                       </span>
-                      <span>{meta.ownerName}创建</span>
+                      <span>{t('demo.RecentProjectsStrip.tsx.created-by', { name: t(meta.ownerNameKey) })}</span>
                       <span className="recent-projects__card-sep" aria-hidden>·</span>
-                      {meta.time}
+                      {t(meta.timeKey)}
                     </div>
                     <div className="design-card-tag-row">
                       {designSystemProject ? (
@@ -797,7 +817,7 @@ export function RecentProjectsStrip({
                           type="button"
                           role="menuitem"
                           disabled={!projectMutationAllowed}
-                          title={projectMutationAllowed ? undefined : NO_PROJECT_MUTATION_TITLE}
+                          title={projectMutationAllowed ? undefined : t(NO_PROJECT_MUTATION_TITLE_KEY)}
                           onClick={() => {
                             if (!projectMutationAllowed) return;
                             setMenuOpenId(null);
@@ -805,7 +825,7 @@ export function RecentProjectsStrip({
                           }}
                         >
                           <Icon name={projectMoveAction === 'to-team' ? 'import' : 'log-out'} size={12} />
-                          <span>{projectMoveAction === 'to-team' ? '转入团队空间' : '移出团队空间'}</span>
+                          <span>{projectMoveAction === 'to-team' ? t('demo.RecentProjectsStrip.tsx.move-to-team') : t('demo.RecentProjectsStrip.tsx.move-to-personal')}</span>
                         </button>
                       ) : null}
                       {onRename ? (
@@ -813,7 +833,7 @@ export function RecentProjectsStrip({
                           type="button"
                           role="menuitem"
                           disabled={!projectMutationAllowed}
-                          title={projectMutationAllowed ? undefined : NO_PROJECT_MUTATION_TITLE}
+                          title={projectMutationAllowed ? undefined : t(NO_PROJECT_MUTATION_TITLE_KEY)}
                           onClick={() => startRename(project)}
                         >
                           <Icon name="pencil" size={12} />
@@ -826,7 +846,7 @@ export function RecentProjectsStrip({
                           role="menuitem"
                           className="danger"
                           disabled={!projectMutationAllowed}
-                          title={projectMutationAllowed ? undefined : NO_PROJECT_MUTATION_TITLE}
+                          title={projectMutationAllowed ? undefined : t(NO_PROJECT_MUTATION_TITLE_KEY)}
                           onClick={() => requestDelete(project)}
                         >
                           <Icon name="close" size={12} />
@@ -885,7 +905,7 @@ export function RecentProjectsStrip({
         >
           <DialogTitle id={confirmTitleId}>{t('designs.deleteTitle')}</DialogTitle>
           <DialogDescription>
-            确定要删除「{confirmTarget.name}」吗？
+            {t('demo.RecentProjectsStrip.tsx.delete-confirm', { name: confirmTarget.name })}
           </DialogDescription>
           <DialogFooter className="row">
             <button type="button" onClick={() => setConfirmTarget(null)}>
@@ -906,16 +926,16 @@ export function RecentProjectsStrip({
           ariaLabelledBy={moveTitleId}
         >
           <DialogTitle id={moveTitleId}>
-            {moveTarget.action === 'to-team' ? '转入团队空间' : '移出团队空间'}
+            {moveTarget.action === 'to-team' ? t('demo.RecentProjectsStrip.tsx.move-to-team') : t('demo.RecentProjectsStrip.tsx.move-to-personal')}
           </DialogTitle>
           <DialogDescription>
             {moveTarget.action === 'to-team' ? (
               <>
-                转入团队空间后，<strong>团队全体成员都可以查看和评论</strong>，只有创建者可以编辑。该操作可在「全部项目」中找到。
+                {t('demo.RecentProjectsStrip.tsx.move-to-team-desc-before')}<strong>{t('demo.RecentProjectsStrip.tsx.move-to-team-desc-bold')}</strong>{t('demo.RecentProjectsStrip.tsx.move-to-team-desc-after')}
               </>
             ) : (
               <>
-                移出团队空间后，将回到私人项目，<strong>只有你可以查看和编辑</strong>。
+                {t('demo.RecentProjectsStrip.tsx.move-to-personal-desc-before')}<strong>{t('demo.RecentProjectsStrip.tsx.move-to-personal-desc-bold')}</strong>{t('demo.RecentProjectsStrip.tsx.move-to-personal-desc-after')}
               </>
             )}
           </DialogDescription>
@@ -929,7 +949,7 @@ export function RecentProjectsStrip({
                 checked={moveDontRemind}
                 onChange={(event) => setMoveDontRemind(event.target.checked)}
               />
-              不再提示
+              {t('demo.RecentProjectsStrip.tsx.dont-remind')}
             </label>
             <button type="button" onClick={() => setMoveTarget(null)}>
               {t('designs.renameCancel')}
@@ -956,7 +976,7 @@ export function RecentProjectsStrip({
                 setMoveTarget(null);
               }}
             >
-              {moveTarget.action === 'to-team' ? '确认转入' : '确认移出'}
+              {moveTarget.action === 'to-team' ? t('demo.RecentProjectsStrip.tsx.confirm-move-to-team') : t('demo.RecentProjectsStrip.tsx.confirm-move-to-personal')}
             </button>
           </DialogFooter>
         </Dialog>

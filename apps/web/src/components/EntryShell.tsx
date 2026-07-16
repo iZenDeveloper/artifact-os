@@ -207,7 +207,6 @@ function writeLocalModeTipDismissed(dismissed: boolean): void {
 const DISCORD_URL = 'https://discord.gg/mHAjSMV6gz';
 const X_URL = 'https://x.com/OpenDesignHQ';
 const CONTACT_EMAIL = 'contact@open.design';
-const CONTACT_EMAIL_URL = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('Open Design 反馈')}&body=${encodeURIComponent('你好 Open Design 团队，\n\n我想反馈：\n\n')}`;
 const ONBOARDING_DROPDOWN_OPEN_EVENT = 'open-design:onboarding-dropdown-open';
 
 // The topbar chips (GitHub star, model switcher, Use everywhere)
@@ -506,6 +505,7 @@ export function EntryShell({
   onCompleteOnboarding,
 }: Props) {
   const t = useT();
+  const contactEmailUrl = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(t('demo.EntryShell.tsx.contactEmailSubject'))}&body=${encodeURIComponent(t('demo.EntryShell.tsx.contactEmailBody'))}`;
   const discordPresence = useDiscordPresence();
   // Each entry sub-view (home / projects / design-systems) is its own
   // URL now, so the browser back/forward buttons work and a deep link
@@ -542,16 +542,16 @@ export function EntryShell({
   const demoCredits = (() => {
     switch (demoPlan) {
       case 'plus':
-        return { planName: '标准版 Plus', tierLabel: 'Plus', showUpgrade: true, balance: 5000, grantTip: 'Plus 每日赠送 800 积分，可升级 Pro / Max / 团队版' };
+        return { planName: t('demo.EntryShell.tsx.planNamePlus'), tierLabel: 'Plus', showUpgrade: true, balance: 5000, grantTip: t('demo.EntryShell.tsx.grantTipPlus') };
       case 'pro':
-        return { planName: 'Pro', tierLabel: 'Pro', showUpgrade: true, balance: 12000, grantTip: 'Pro 每日赠送 1,500 积分，可升级 Max / 团队版' };
+        return { planName: 'Pro', tierLabel: 'Pro', showUpgrade: true, balance: 12000, grantTip: t('demo.EntryShell.tsx.grantTipPro') };
       case 'max':
-        return { planName: 'Max', tierLabel: 'Max', showUpgrade: true, balance: 30000, grantTip: 'Max 每日赠送 3,000 积分，可升级团队版' };
+        return { planName: 'Max', tierLabel: 'Max', showUpgrade: true, balance: 30000, grantTip: t('demo.EntryShell.tsx.grantTipMax') };
       case 'team':
-        return { planName: '团队版', tierLabel: '团队版', showUpgrade: false, balance: 60000, grantTip: '团队版每日赠送 6,000 积分，按席位共享' };
+        return { planName: t('demo.EntryShell.tsx.planNameTeam'), tierLabel: t('demo.EntryShell.tsx.tierLabelTeam'), showUpgrade: false, balance: 60000, grantTip: t('demo.EntryShell.tsx.grantTipTeam') };
       case 'free':
       default:
-        return { planName: '免费', tierLabel: '免费', showUpgrade: true, balance: 800, grantTip: '免费版每日赠送 300 积分，每天 08:00 刷新' };
+        return { planName: t('demo.EntryShell.tsx.planNameFree'), tierLabel: t('demo.EntryShell.tsx.tierLabelFree'), showUpgrade: true, balance: 800, grantTip: t('demo.EntryShell.tsx.grantTipFree') };
     }
   })();
   const cloudWorkspace = demoUseMode === 'cloud';
@@ -876,8 +876,8 @@ export function EntryShell({
         href={X_URL}
         target="_blank"
         rel="noreferrer noopener"
-        aria-label="在 X 上关注 Open Design"
-        data-tooltip="在 X 上关注 Open Design"
+        aria-label={t('demo.EntryShell.tsx.followOnX')}
+        data-tooltip={t('demo.EntryShell.tsx.followOnX')}
         data-tooltip-placement="right"
         data-testid="entry-x-badge"
       >
@@ -886,30 +886,30 @@ export function EntryShell({
       </a>
       <a
         className="entry-mail-badge od-tooltip"
-        href={CONTACT_EMAIL_URL}
-        aria-label="给 Open Design 发邮件"
-        data-tooltip="给 Open Design 发邮件"
+        href={contactEmailUrl}
+        aria-label={t('demo.EntryShell.tsx.emailOpenDesign')}
+        data-tooltip={t('demo.EntryShell.tsx.emailOpenDesign')}
         data-tooltip-placement="right"
         data-testid="entry-mail-badge"
       >
         <span className="entry-mail-badge__icon" aria-hidden>
           <Icon name="mail" size={13} />
         </span>
-        <span className="entry-mail-badge__label">邮件</span>
+        <span className="entry-mail-badge__label">{t('demo.EntryShell.tsx.mailLabel')}</span>
       </a>
       <button
         type="button"
         className="entry-settings-chip od-tooltip"
         onClick={() => onOpenSettings()}
-        data-tooltip="设置"
+        data-tooltip={t('demo.EntryShell.tsx.settings')}
         data-tooltip-placement="right"
-        aria-label="设置"
+        aria-label={t('demo.EntryShell.tsx.settings')}
         data-testid="entry-settings-button"
       >
         <span className="entry-settings-chip__icon" aria-hidden>
           <Icon name="settings" size={13} />
         </span>
-        <span className="entry-settings-chip__label">设置</span>
+        <span className="entry-settings-chip__label">{t('demo.EntryShell.tsx.settings')}</span>
       </button>
       <UpdaterPopup />
     </>
@@ -938,7 +938,7 @@ export function EntryShell({
         window.history.replaceState(null, '', '/onboarding');
         navigate({ kind: 'home', view: 'onboarding' });
       }}
-      aria-label="切换到 Open Design Cloud 登录注册"
+      aria-label={t('demo.EntryShell.tsx.localTipSwitchAria')}
     >
       <button
         type="button"
@@ -948,7 +948,7 @@ export function EntryShell({
           setLocalModeTipDismissed(true);
           writeLocalModeTipDismissed(true);
         }}
-        aria-label="关闭 Open Design Cloud 版说明"
+        aria-label={t('demo.EntryShell.tsx.localTipCloseAria')}
       >
         <Icon name="close" size={12} />
       </button>
@@ -956,9 +956,9 @@ export function EntryShell({
         <span className="entry-local-mode-tip__icon" aria-hidden>
           <Icon name="terminal" size={13} />
         </span>
-        <strong>Open Design Cloud 版</strong>
+        <strong>{t('demo.EntryShell.tsx.localTipTitle')}</strong>
       </div>
-      <p>点击登录使用 Open Design Cloud，即可享受云端协作</p>
+      <p>{t('demo.EntryShell.tsx.localTipBody')}</p>
     </section>
   ) : null;
 
@@ -996,7 +996,7 @@ export function EntryShell({
         setLowCreditsOpen(true);
       }}
       onAutoRecharge={(scope) => {
-        setAutoRechargeTarget(scope === 'member' ? { kind: 'member', name: '李娜', role: 'Member' } : { kind: 'team' });
+        setAutoRechargeTarget(scope === 'member' ? { kind: 'member', name: t('demo.EntryShell.tsx.memberNameLina'), role: 'Member' } : { kind: 'team' });
         setDemoPlan('team');
         setLowCreditsOpen(true);
       }}
@@ -1035,12 +1035,12 @@ export function EntryShell({
           setLowCreditsOpen(false);
           setAutoRechargeTarget(null);
           setDemoPlan(target);
-          fireCelebration('升级生效，额度已提升');
+          fireCelebration(t('demo.EntryShell.tsx.toastUpgradeApplied'));
         }}
         onBuyPack={(packLabel) => {
           setLowCreditsOpen(false);
           setAutoRechargeTarget(null);
-          fireCelebration(packLabel.includes('自动充值') ? packLabel : `${packLabel}已到账，额度已提升`);
+          fireCelebration(packLabel.includes('自动充值') ? packLabel : t('demo.EntryShell.tsx.toastPackApplied', { pack: packLabel }));
         }}
         autoRechargeScope={autoRechargeTarget?.kind ?? 'team'}
         autoRechargeMemberName={autoRechargeTarget?.kind === 'member' ? autoRechargeTarget.name : undefined}
@@ -1055,10 +1055,10 @@ export function EntryShell({
           setDemoPlan('team');
           setDemoScenario('home');
           navigate({ kind: 'home', view: 'home' });
-          fireCelebration('已加入 Nexu 设计团队，开始协作');
+          fireCelebration(t('demo.EntryShell.tsx.toastJoinedTeam'));
         }}
         onDeclined={() => {
-          setDemoToast('邀请已忽略，保持待定（pending）');
+          setDemoToast(t('demo.EntryShell.tsx.toastInviteIgnored'));
           window.setTimeout(() => setDemoToast(null), 3200);
         }}
       />
@@ -1247,9 +1247,9 @@ export function EntryShell({
                 <CenteredLoader label={t('common.loading')} />
               ) : isNewUser ? (
                 <EntryBlankState
-                  heading="草稿"
-                  title="还没有草稿"
-                  description="从一个空白方案开始，描述你的想法，AI 会帮你把它变成现实。"
+                  heading={t('demo.EntryShell.tsx.draftsHeading')}
+                  title={t('demo.EntryShell.tsx.draftsEmptyTitle')}
+                  description={t('demo.EntryShell.tsx.draftsEmptyDescription')}
                   onCreate={createBlankProject}
                 />
               ) : (
@@ -1257,8 +1257,8 @@ export function EntryShell({
                   projects={projects}
                   designSystems={designSystems}
                   limit={1000}
-                  heading="草稿"
-                  description="自己创建的项目，仅自己可见"
+                  heading={t('demo.EntryShell.tsx.draftsHeading')}
+                  description={t('demo.EntryShell.tsx.draftsStripDescription')}
                   space="drafts"
                   onOpen={onOpenProject}
                   onDelete={onDeleteProject}
@@ -1271,9 +1271,9 @@ export function EntryShell({
                 <CenteredLoader label={t('common.loading')} />
               ) : isNewUser ? (
                 <EntryBlankState
-                  heading="全部项目"
-                  title="还没有项目"
-                  description="创建你的第一个方案，开始用 AI 设计和构建。"
+                  heading={t('demo.EntryShell.tsx.allProjectsHeading')}
+                  title={t('demo.EntryShell.tsx.allProjectsEmptyTitle')}
+                  description={t('demo.EntryShell.tsx.allProjectsEmptyDescription')}
                   onCreate={createBlankProject}
                 />
               ) : (
@@ -1281,8 +1281,8 @@ export function EntryShell({
                   projects={projects}
                   designSystems={designSystems}
                   limit={1000}
-                  heading="全部项目"
-                  description="团队所有人的项目"
+                  heading={t('demo.EntryShell.tsx.allProjectsHeading')}
+                  description={t('demo.EntryShell.tsx.allProjectsStripDescription')}
                   space="team"
                   onOpen={onOpenProject}
                   onDelete={onDeleteProject}
@@ -2728,7 +2728,7 @@ function OnboardingView({
         <div className="ob-invite-banner">
           <span className="ob-invite-banner__avatar">N</span>
           <span>
-            <strong>张伟</strong> 邀请你加入 <strong>Nexu 团队</strong> 的工作空间
+            <strong>{t('demo.EntryShell.tsx.inviteBannerInviter')}</strong> {t('demo.EntryShell.tsx.inviteBannerMid')} <strong>{t('demo.EntryShell.tsx.inviteBannerTeam')}</strong> {t('demo.EntryShell.tsx.inviteBannerSuffix')}
           </span>
         </div>
       ) : null}

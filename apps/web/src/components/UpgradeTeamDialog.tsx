@@ -6,6 +6,8 @@
 
 import { useEffect, useState } from 'react';
 import { Icon } from './Icon';
+import { useT } from '../i18n';
+import type { Dict } from '../i18n/types';
 
 interface Props {
   open: boolean;
@@ -26,16 +28,11 @@ interface Props {
 const DEFAULT_SEAT_COUNT = 3;
 const WORKSPACE_BASE_FEE = 20;
 const TEAM_TIERS = [
-  { id: 'plus', name: 'Team Plus', pricePerSeat: 40, creditPack: 'Plus 额度包', hint: '小团队协作入门' },
-  { id: 'pro', name: 'Team Pro', pricePerSeat: 80, creditPack: 'Pro 额度包', hint: '常规项目协作', recommended: true },
-  { id: 'max', name: 'Team Max', pricePerSeat: 220, creditPack: 'Max 额度包', hint: '高频生成与评审' },
+  { id: 'plus', name: 'Team Plus', pricePerSeat: 40 },
+  { id: 'pro', name: 'Team Pro', pricePerSeat: 80, recommended: true },
+  { id: 'max', name: 'Team Max', pricePerSeat: 220 },
 ];
-const TEAM_BENEFITS = [
-  '资产共享与管理：项目 / 设计系统 / 插件',
-  '协作：互相查看和评论，只有创建者可编辑',
-  '基于角色的权限管理（Owner / Admin / Member）',
-  '团队用量面板与计费管理',
-];
+const TEAM_BENEFIT_KEYS = ['assets', 'collab', 'roles', 'usage'];
 
 export function UpgradeTeamDialog({
   open,
@@ -45,6 +42,7 @@ export function UpgradeTeamDialog({
   minSeatCount = DEFAULT_SEAT_COUNT,
   mode = 'upgrade',
 }: Props) {
+  const t = useT();
   const [selectedTierId, setSelectedTierId] = useState('pro');
   const [seatCount, setSeatCount] = useState(Math.max(initialSeatCount, minSeatCount));
 
@@ -58,7 +56,9 @@ export function UpgradeTeamDialog({
   const selectedTier = TEAM_TIERS.find((tier) => tier.id === selectedTierId) ?? TEAM_TIERS[1];
   const selectedTierName = selectedTier?.name ?? 'Team Pro';
   const selectedPrice = selectedTier?.pricePerSeat ?? 80;
-  const selectedCreditPack = selectedTier?.creditPack ?? 'Pro 额度包';
+  const creditPackFor = (tierId: string) =>
+    t(`demo.UpgradeTeamDialog.tsx.creditPack.${tierId}` as keyof Dict);
+  const selectedCreditPack = creditPackFor(selectedTier?.id ?? 'pro');
   const purchaseSeatsMode = mode === 'seats';
   // Total the user will actually be charged — shown on the CTA so a payment
   // action never hides its amount.
@@ -80,52 +80,52 @@ export function UpgradeTeamDialog({
   }
 
   return (
-    <div className="entry-invite" role="dialog" aria-modal="true" aria-label={purchaseSeatsMode ? '购买席位' : '升级到团队版'}>
+    <div className="entry-invite" role="dialog" aria-modal="true" aria-label={purchaseSeatsMode ? t('demo.UpgradeTeamDialog.tsx.aria.dialog.seats') : t('demo.UpgradeTeamDialog.tsx.aria.dialog.upgrade')}>
       <div className="entry-invite__backdrop" onClick={onClose} />
       <div className="upgrade-team">
         <button
           type="button"
           className="entry-invite__close"
           onClick={onClose}
-          aria-label="关闭"
+          aria-label={t('demo.UpgradeTeamDialog.tsx.aria.close')}
         >
           <Icon name="close" size={16} />
         </button>
 
         <div className="upgrade-team__head">
-          <h2 className="upgrade-team__title">{purchaseSeatsMode ? '购买更多席位' : '选择团队版档位'}</h2>
+          <h2 className="upgrade-team__title">{purchaseSeatsMode ? t('demo.UpgradeTeamDialog.tsx.title.seats') : t('demo.UpgradeTeamDialog.tsx.title.upgrade')}</h2>
           <p className="upgrade-team__subtitle">
             {purchaseSeatsMode
-              ? `新增席位会按当前团队档位计费，至少购买到 ${minSeatCount} 个席位。总费用随席位数同步增加。`
-              : `团队版按席位按月计费，最少 ${minSeatCount} 个席位。每个席位都包含 Workspace 基础功能费和对应额度包。`}
+              ? t('demo.UpgradeTeamDialog.tsx.subtitle.seats').replace('{count}', String(minSeatCount))
+              : t('demo.UpgradeTeamDialog.tsx.subtitle.upgrade').replace('{count}', String(minSeatCount))}
           </p>
         </div>
 
-        <div className="upgrade-team__pricing-rule" aria-label="团队版价格组成">
-          <strong>Team 版本由两部分组成</strong>
-          <span>Workspace 基础功能费：{WORKSPACE_BASE_FEE} 美元 / 席 / 月，用于团队空间、成员权限、共享资产和数据大盘。</span>
-          <span>Token 额度包：沿用个人 Plus / Pro / Max 的额度层级，叠加到每个席位上。</span>
+        <div className="upgrade-team__pricing-rule" aria-label={t('demo.UpgradeTeamDialog.tsx.aria.pricingRule')}>
+          <strong>{t('demo.UpgradeTeamDialog.tsx.pricingRule.title')}</strong>
+          <span>{t('demo.UpgradeTeamDialog.tsx.pricingRule.baseFee').replace('{fee}', String(WORKSPACE_BASE_FEE))}</span>
+          <span>{t('demo.UpgradeTeamDialog.tsx.pricingRule.tokenPack')}</span>
         </div>
 
         <div className="upgrade-team__seat-summary">
-          <span>席位数</span>
-          <span className="upgrade-team__seat-stepper" aria-label="席位数量">
+          <span>{t('demo.UpgradeTeamDialog.tsx.seatCount')}</span>
+          <span className="upgrade-team__seat-stepper" aria-label={t('demo.UpgradeTeamDialog.tsx.aria.seatStepper')}>
             <button
               type="button"
               onClick={() => adjustSeatCount(-1)}
               disabled={seatCount <= minSeatCount}
-              aria-label="减少席位"
+              aria-label={t('demo.UpgradeTeamDialog.tsx.aria.seatMinus')}
             >
               -
             </button>
             <strong>{seatCount}</strong>
-            <button type="button" onClick={() => adjustSeatCount(1)} aria-label="增加席位">
+            <button type="button" onClick={() => adjustSeatCount(1)} aria-label={t('demo.UpgradeTeamDialog.tsx.aria.seatPlus')}>
               +
             </button>
           </span>
         </div>
 
-        <div className="upgrade-team__plans" role="radiogroup" aria-label="团队版档位">
+        <div className="upgrade-team__plans" role="radiogroup" aria-label={t('demo.UpgradeTeamDialog.tsx.aria.plans')}>
           {TEAM_TIERS.map((tier) => {
             const isSelected = tier.id === selectedTierId;
 
@@ -140,19 +140,19 @@ export function UpgradeTeamDialog({
               >
                 <span className="upgrade-team__plan-top">
                   <strong>{tier.name}</strong>
-                  {tier.recommended ? <small>推荐</small> : null}
+                  {tier.recommended ? <small>{t('demo.UpgradeTeamDialog.tsx.recommended')}</small> : null}
                 </span>
                 <span className="upgrade-team__plan-token">
                   ${tier.pricePerSeat}
-                  <small> / 席 / 月</small>
+                  <small> {t('demo.UpgradeTeamDialog.tsx.perSeatPerMonth')}</small>
                 </span>
                 <span className="upgrade-team__plan-total">
-                  ${tier.pricePerSeat * seatCount} / 月 · {seatCount} 个席位
+                  ${tier.pricePerSeat * seatCount} {t('demo.UpgradeTeamDialog.tsx.planTotalSuffix').replace('{count}', String(seatCount))}
                 </span>
                 <span className="upgrade-team__plan-composition">
-                  ${WORKSPACE_BASE_FEE} 基础功能费 + {tier.creditPack}
+                  ${WORKSPACE_BASE_FEE} {t('demo.UpgradeTeamDialog.tsx.baseFeeLabel')} + {creditPackFor(tier.id)}
                 </span>
-                <span className="upgrade-team__plan-hint">{tier.hint}</span>
+                <span className="upgrade-team__plan-hint">{t(`demo.UpgradeTeamDialog.tsx.hint.${tier.id}` as keyof Dict)}</span>
               </button>
             );
           })}
@@ -161,11 +161,11 @@ export function UpgradeTeamDialog({
         {/* The benefits are a first-time value-prop; skip them when an
             existing team is just buying more seats — they already know. */}
         {purchaseSeatsMode ? null : (
-          <ul className="upgrade-team__benefits" aria-label="团队版能力">
-            {TEAM_BENEFITS.map((benefit) => (
-              <li key={benefit}>
+          <ul className="upgrade-team__benefits" aria-label={t('demo.UpgradeTeamDialog.tsx.aria.benefits')}>
+            {TEAM_BENEFIT_KEYS.map((benefitKey) => (
+              <li key={benefitKey}>
                 <Icon name="check" size={13} />
-                <span>{benefit}</span>
+                <span>{t(`demo.UpgradeTeamDialog.tsx.benefit.${benefitKey}` as keyof Dict)}</span>
               </li>
             ))}
           </ul>
@@ -173,13 +173,13 @@ export function UpgradeTeamDialog({
 
         <div className="upgrade-team__foot">
           <button type="button" className="entry-invite__btn" onClick={onClose}>
-            {purchaseSeatsMode ? '暂不购买' : '暂不升级'}
+            {purchaseSeatsMode ? t('demo.UpgradeTeamDialog.tsx.cancel.seats') : t('demo.UpgradeTeamDialog.tsx.cancel.upgrade')}
           </button>
           <button type="button" className="entry-invite__btn is-primary" onClick={handleConfirm}>
             <Icon name="sparkles" size={14} />{' '}
             {purchaseSeatsMode
-              ? `确认支付 · $${monthlyTotal}/月`
-              : `确认升级 · $${monthlyTotal}/月`}
+              ? t('demo.UpgradeTeamDialog.tsx.confirm.seats').replace('{total}', String(monthlyTotal))
+              : t('demo.UpgradeTeamDialog.tsx.confirm.upgrade').replace('{total}', String(monthlyTotal))}
           </button>
         </div>
       </div>

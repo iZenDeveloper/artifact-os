@@ -1685,7 +1685,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
           {onPickWorkingDir ? (
             <WorkingDirPicker
               className="home-hero__working-dir-picker"
-              emptyLabel="工作目录"
+              emptyLabel={t('demo.HomeHero.tsx.workingDir')}
               workingDir={workingDir}
               recentDirs={recentDirs}
               onPickDirectory={() => {
@@ -1737,7 +1737,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                 data-testid="home-hero-blank-project"
                 onClick={onStartBlankProject}
               >
-                创建一个空白项目
+                {t('demo.HomeHero.tsx.blankProject')}
                 <Icon name="chevron-right" size={13} aria-hidden />
               </button>
             ) : null}

@@ -5,6 +5,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { isVisualStabilityMode } from '../utils/visualStability';
+import { useT } from '../i18n';
+import type { Dict } from '../i18n/types';
 
 export type DemoScenario =
   | 'home'
@@ -65,18 +67,27 @@ interface Props {
   onAcceptInvite: (role: InviteRole) => void;
 }
 
+type T = ReturnType<typeof useT>;
+
+// Chip labels/descs that carry translatable copy hold an i18n key; plain
+// brand/role tokens (Onboarding, Owner, free, …) stay as literals. `chipText`
+// resolves a value: a known key goes through t(), anything else renders as-is.
+function chipText(t: T, value: string): string {
+  return value.startsWith('demo.DemoControlBar.tsx.') ? t(value as keyof Dict) : value;
+}
+
 const PAGE_CHIPS: Array<{ id: DemoPage; label: string }> = [
   { id: 'onboarding', label: 'Onboarding' },
-  { id: 'home', label: '主页' },
+  { id: 'home', label: 'demo.DemoControlBar.tsx.page-home' },
 ];
 
 const SCENARIO_CHIPS: Array<{ id: DemoScenario; label: string }> = [
-  { id: 'onboarding-new', label: '新用户注册（默认 owner）' },
+  { id: 'onboarding-new', label: 'demo.DemoControlBar.tsx.scenario-onboarding-new' },
 ];
 
 const ROLE_CHIPS: Array<{ id: DemoScenario; label: string; invite?: boolean }> = [
-  { id: 'invite-editor-existing', label: '接受邀请网页端', invite: true },
-  { id: 'invite-editor-new', label: '接受邀请客户端未注册', invite: true },
+  { id: 'invite-editor-existing', label: 'demo.DemoControlBar.tsx.role-invite-web', invite: true },
+  { id: 'invite-editor-new', label: 'demo.DemoControlBar.tsx.role-invite-client-unregistered', invite: true },
 ];
 
 const VIEW_CHIPS: Array<{ id: DemoScenario; label: string }> = [
@@ -96,8 +107,8 @@ const PLAN_CHIPS: Array<{ id: DemoPlan; label: string }> = [
 ];
 
 const USE_MODE_CHIPS: Array<{ id: DemoUseMode; label: string; desc: string }> = [
-  { id: 'cloud', label: 'Cloud', desc: '云端协作' },
-  { id: 'local', label: 'CLI / BYOK', desc: '本地或自带 Key' },
+  { id: 'cloud', label: 'Cloud', desc: 'demo.DemoControlBar.tsx.usemode-cloud-desc' },
+  { id: 'local', label: 'CLI / BYOK', desc: 'demo.DemoControlBar.tsx.usemode-local-desc' },
 ];
 
 const DEMO_BAR_COLLAPSED_KEY = 'od.demoBar.collapsed';
@@ -120,12 +131,14 @@ function writeCollapsedState(collapsed: boolean): void {
   }
 }
 
-function labelForScenario(scenario: DemoScenario): string {
-  return [...SCENARIO_CHIPS, ...ROLE_CHIPS, ...VIEW_CHIPS].find((chip) => chip.id === scenario)?.label ?? '主页';
+function labelForScenario(t: T, scenario: DemoScenario): string {
+  const chip = [...SCENARIO_CHIPS, ...ROLE_CHIPS, ...VIEW_CHIPS].find((c) => c.id === scenario);
+  return chip ? chipText(t, chip.label) : t('demo.DemoControlBar.tsx.page-home');
 }
 
-function labelForPage(page: DemoPage): string {
-  return PAGE_CHIPS.find((chip) => chip.id === page)?.label ?? '主页';
+function labelForPage(t: T, page: DemoPage): string {
+  const chip = PAGE_CHIPS.find((c) => c.id === page);
+  return chip ? chipText(t, chip.label) : t('demo.DemoControlBar.tsx.page-home');
 }
 
 function labelForPlan(plan: DemoPlan): string {
@@ -137,6 +150,7 @@ function labelForUseMode(useMode: DemoUseMode): string {
 }
 
 function Bar({ page, onPage, scenario, onScenario, plan, onPlan, useMode, onUseMode, onLowCredits, onAutoRecharge, onAcceptInvite }: Props) {
+  const t = useT();
   const [collapsed, setCollapsed] = useState(readCollapsedState);
   const availablePlans = useMode === 'local'
     ? PLAN_CHIPS.filter((chip) => chip.id !== 'team')
@@ -153,12 +167,12 @@ function Bar({ page, onPage, scenario, onScenario, plan, onPlan, useMode, onUseM
           type="button"
           className="demo-bar__summary"
           onClick={() => setCollapsed(false)}
-          aria-label="展开 Demo Control"
+          aria-label={t('demo.DemoControlBar.tsx.aria-expand')}
           aria-expanded="false"
         >
           <span className="demo-bar__summary-dot" aria-hidden />
           <span className="demo-bar__summary-title">Control</span>
-          <span className="demo-bar__summary-meta">{labelForPage(page)} · {labelForUseMode(useMode)} · {labelForPlan(plan)}</span>
+          <span className="demo-bar__summary-meta">{labelForPage(t, page)} · {labelForUseMode(useMode)} · {labelForPlan(plan)}</span>
           <span className="demo-bar__summary-caret" aria-hidden>⌃</span>
         </button>
       </div>
@@ -172,16 +186,16 @@ function Bar({ page, onPage, scenario, onScenario, plan, onPlan, useMode, onUseM
           type="button"
           className="demo-bar__collapse"
           onClick={() => setCollapsed(true)}
-          aria-label="收起 Demo Control"
+          aria-label={t('demo.DemoControlBar.tsx.aria-collapse')}
           aria-expanded="true"
         >
-          收起
+          {t('demo.DemoControlBar.tsx.collapse')}
         </button>
       </div>
 
       <div className="demo-bar__body">
         <div className="demo-bar__group">
-          <span className="demo-bar__label">使用方式</span>
+          <span className="demo-bar__label">{t('demo.DemoControlBar.tsx.group-use-mode')}</span>
           <div className="demo-bar__chips">
             {USE_MODE_CHIPS.map((c) => (
               <button
@@ -189,7 +203,7 @@ function Bar({ page, onPage, scenario, onScenario, plan, onPlan, useMode, onUseM
                 type="button"
                 className={`demo-bar__chip${useMode === c.id ? ' is-active' : ''}`}
                 onClick={() => onUseMode(c.id)}
-                title={c.desc}
+                title={chipText(t, c.desc)}
               >
                 {c.label}
               </button>
@@ -198,7 +212,7 @@ function Bar({ page, onPage, scenario, onScenario, plan, onPlan, useMode, onUseM
         </div>
 
         <div className="demo-bar__group">
-          <span className="demo-bar__label">页面</span>
+          <span className="demo-bar__label">{t('demo.DemoControlBar.tsx.group-page')}</span>
           <div className="demo-bar__chips">
             {PAGE_CHIPS.map((c) => (
               <button
@@ -207,14 +221,14 @@ function Bar({ page, onPage, scenario, onScenario, plan, onPlan, useMode, onUseM
                 className={`demo-bar__chip${page === c.id ? ' is-active' : ''}`}
                 onClick={() => onPage(c.id)}
               >
-                {c.label}
+                {chipText(t, c.label)}
               </button>
             ))}
           </div>
         </div>
 
         <div className="demo-bar__group">
-          <span className="demo-bar__label">视角</span>
+          <span className="demo-bar__label">{t('demo.DemoControlBar.tsx.group-view')}</span>
           <div className="demo-bar__chips">
             {VIEW_CHIPS.map((c) => (
               <button
@@ -234,7 +248,7 @@ function Bar({ page, onPage, scenario, onScenario, plan, onPlan, useMode, onUseM
         </div>
 
         <div className="demo-bar__group demo-bar__group--scenario">
-          <span className="demo-bar__label">路径</span>
+          <span className="demo-bar__label">{t('demo.DemoControlBar.tsx.group-path')}</span>
           <div className="demo-bar__chips">
             {SCENARIO_CHIPS.map((c) => (
               <button
@@ -243,7 +257,7 @@ function Bar({ page, onPage, scenario, onScenario, plan, onPlan, useMode, onUseM
                 className={`demo-bar__chip${scenario === c.id ? ' is-active' : ''}`}
                 onClick={() => onScenario(c.id)}
               >
-                {c.label}
+                {chipText(t, c.label)}
               </button>
             ))}
             {ROLE_CHIPS.map((c) => (
@@ -253,7 +267,7 @@ function Bar({ page, onPage, scenario, onScenario, plan, onPlan, useMode, onUseM
                 className={`demo-bar__chip${scenario === c.id ? ' is-active' : ''}`}
                 onClick={() => onScenario(c.id)}
               >
-                {c.label}
+                {chipText(t, c.label)}
               </button>
             ))}
           </div>
@@ -262,7 +276,7 @@ function Bar({ page, onPage, scenario, onScenario, plan, onPlan, useMode, onUseM
         <div className="demo-bar__divider" />
 
         <div className="demo-bar__group">
-          <span className="demo-bar__label">版本</span>
+          <span className="demo-bar__label">{t('demo.DemoControlBar.tsx.group-plan')}</span>
           <div className="demo-bar__chips">
             {availablePlans.map((c) => (
               <button
@@ -280,13 +294,13 @@ function Bar({ page, onPage, scenario, onScenario, plan, onPlan, useMode, onUseM
         <div className="demo-bar__divider" />
 
         <div className="demo-bar__group">
-          <span className="demo-bar__label">自动充值</span>
+          <span className="demo-bar__label">{t('demo.DemoControlBar.tsx.group-auto-recharge')}</span>
           <div className="demo-bar__chips">
             <button type="button" className="demo-bar__chip" onClick={() => onAutoRecharge?.('team')}>
-              所有员工
+              {t('demo.DemoControlBar.tsx.auto-recharge-all')}
             </button>
             <button type="button" className="demo-bar__chip" onClick={() => onAutoRecharge?.('member')}>
-              单个员工
+              {t('demo.DemoControlBar.tsx.auto-recharge-single')}
             </button>
           </div>
         </div>
@@ -294,10 +308,10 @@ function Bar({ page, onPage, scenario, onScenario, plan, onPlan, useMode, onUseM
         <div className="demo-bar__divider" />
 
         <div className="demo-bar__group">
-          <span className="demo-bar__label">演示</span>
+          <span className="demo-bar__label">{t('demo.DemoControlBar.tsx.group-demo')}</span>
           <div className="demo-bar__chips">
             <button type="button" className="demo-bar__chip demo-bar__chip--warning" onClick={onLowCredits}>
-              积分不足
+              {t('demo.DemoControlBar.tsx.low-credits')}
             </button>
           </div>
         </div>

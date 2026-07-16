@@ -1477,6 +1477,7 @@ export const fr: Dict = {
   'ds.surfaceVideo': 'Vidéo',
   'ds.surfaceAudio': 'Audio',
   'ds.searchPlaceholder': 'Rechercher des systèmes de design…',
+  'ds.pageDescription': 'Directives de marque, règles de composants et ressources visuelles réutilisables pour votre équipe.',
   'ds.emptyNoMatch': 'Aucun système de design ne correspond à votre recherche.',
   'ds.badgeDefault': 'PAR DÉFAUT',
   'ds.preview': 'Aperçu',

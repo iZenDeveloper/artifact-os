@@ -3019,16 +3019,16 @@ function includeVirtualRowByKey<T extends { key: string }>(
 // Demo-only mock senders for the AI send queue (UC-9): in a real product each
 // queued item would carry who enqueued it; the demo cycles through the shared
 // mock team members so the queue visibly reflects multi-person collaboration.
-const QUEUED_SEND_MOCK_SENDERS: ReadonlyArray<{ name: string; avatar: string }> = [
-  { name: '琼羽（你）', avatar: '/team-avatars/a2.png' },
-  { name: '张伟', avatar: '/team-avatars/a1.png' },
-  { name: '李娜', avatar: '/team-avatars/a3.png' },
-  { name: '王芳', avatar: '/team-avatars/a4.png' },
-  { name: '陈明', avatar: '/team-avatars/a6.png' },
-  { name: '刘洋', avatar: '/team-avatars/a7.png' },
+const QUEUED_SEND_MOCK_SENDERS: ReadonlyArray<{ nameKey: keyof Dict; avatar: string }> = [
+  { nameKey: 'demo.ChatPane.tsx.senderQiongyuYou', avatar: '/team-avatars/a2.png' },
+  { nameKey: 'demo.ChatPane.tsx.senderZhangWei', avatar: '/team-avatars/a1.png' },
+  { nameKey: 'demo.ChatPane.tsx.senderLiNa', avatar: '/team-avatars/a3.png' },
+  { nameKey: 'demo.ChatPane.tsx.senderWangFang', avatar: '/team-avatars/a4.png' },
+  { nameKey: 'demo.ChatPane.tsx.senderChenMing', avatar: '/team-avatars/a6.png' },
+  { nameKey: 'demo.ChatPane.tsx.senderLiuYang', avatar: '/team-avatars/a7.png' },
 ];
 
-function mockSenderForIndex(index: number): { name: string; avatar: string } {
+function mockSenderForIndex(index: number): { nameKey: keyof Dict; avatar: string } {
   const count = QUEUED_SEND_MOCK_SENDERS.length;
   return QUEUED_SEND_MOCK_SENDERS[((index % count) + count) % count] ?? QUEUED_SEND_MOCK_SENDERS[0]!;
 }
@@ -3181,7 +3181,7 @@ function QueuedSendStrip({
                         height={22}
                         draggable={false}
                       />
-                      <span className="chat-queued-send-sender__name">{sender.name}</span>
+                      <span className="chat-queued-send-sender__name">{t(sender.nameKey)}</span>
                     </div>
                   );
                 })()}

@@ -1477,6 +1477,7 @@ export const tr: Dict = {
   'ds.surfaceVideo': 'Video',
   'ds.surfaceAudio': 'Ses',
   'ds.searchPlaceholder': 'Tasarım sistemleri ara…',
+  'ds.pageDescription': 'Ekibiniz için yeniden kullanılabilir marka kuralları, bileşen kuralları ve görsel varlıklar.',
   'ds.emptyNoMatch': 'Hiçbir tasarım sistemi aramanızla örtüşmedi.',
   'ds.badgeDefault': 'VARSAYILAN',
   'ds.preview': 'Önizleme',

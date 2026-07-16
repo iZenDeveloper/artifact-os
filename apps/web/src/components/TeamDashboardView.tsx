@@ -5,26 +5,37 @@
 
 import type { CSSProperties } from 'react';
 import { Icon } from './Icon';
+import { useT } from '../i18n';
+import type { Dict } from '../i18n/types';
 
 const DASHBOARD_STATS = [
-  { label: '创建的设计数', value: '128', delta: '+18 本周', deltaKind: 'change', icon: 'grid' },
-  { label: '创建的 Design System 数', value: '12', delta: '+3 本月', deltaKind: 'change', icon: 'palette' },
-  { label: '活跃成员', value: '5', delta: '过去 7 天', deltaKind: 'period', icon: 'users' },
+  { labelKey: 'demo.TeamDashboardView.tsx.stat-designs', value: '128', deltaEnKey: 'demo.TeamDashboardView.tsx.stat-designs-delta', deltaKind: 'change', icon: 'grid' },
+  { labelKey: 'demo.TeamDashboardView.tsx.stat-design-systems', value: '12', deltaEnKey: 'demo.TeamDashboardView.tsx.stat-design-systems-delta', deltaKind: 'change', icon: 'palette' },
+  { labelKey: 'demo.TeamDashboardView.tsx.stat-active-members', value: '5', deltaEnKey: 'demo.TeamDashboardView.tsx.stat-active-members-delta', deltaKind: 'period', icon: 'users' },
 ] as const;
 
 const TOKEN_RANKING = [
-  { name: '琼羽（你）', role: 'Owner', tokens: '1.42M', share: 100, color: '#c65b3a' },
-  { name: '张伟', role: 'Admin', tokens: '980K', share: 69, color: '#f97316' },
-  { name: '李娜', role: 'Member', tokens: '640K', share: 45, color: '#6366f1' },
-  { name: '王芳', role: 'Member', tokens: '420K', share: 30, color: '#10b981' },
+  { nameKey: 'demo.TeamDashboardView.tsx.member-qiongyu', role: 'Owner', tokens: '1.42M', share: 100, color: '#c65b3a' },
+  { nameKey: 'demo.TeamDashboardView.tsx.member-zhangwei', role: 'Admin', tokens: '980K', share: 69, color: '#f97316' },
+  { nameKey: 'demo.TeamDashboardView.tsx.member-lina', role: 'Member', tokens: '640K', share: 45, color: '#6366f1' },
+  { nameKey: 'demo.TeamDashboardView.tsx.member-wangfang', role: 'Member', tokens: '420K', share: 30, color: '#10b981' },
 ] as const;
 
+type CreditStatus = 'ample' | 'normal' | 'low' | 'needs-recharge';
+
 const MEMBER_CREDITS = [
-  { name: '琼羽（你）', role: 'Owner', remaining: '18,400', used: '41,600', status: '充足' },
-  { name: '张伟', role: 'Admin', remaining: '9,800', used: '24,200', status: '正常' },
-  { name: '李娜', role: 'Member', remaining: '1,200', used: '18,900', status: '偏低' },
-  { name: '王芳', role: 'Member', remaining: '320', used: '6,700', status: '需续额' },
+  { nameKey: 'demo.TeamDashboardView.tsx.member-qiongyu', role: 'Owner', remaining: '18,400', used: '41,600', status: 'ample' as CreditStatus },
+  { nameKey: 'demo.TeamDashboardView.tsx.member-zhangwei', role: 'Admin', remaining: '9,800', used: '24,200', status: 'normal' as CreditStatus },
+  { nameKey: 'demo.TeamDashboardView.tsx.member-lina', role: 'Member', remaining: '1,200', used: '18,900', status: 'low' as CreditStatus },
+  { nameKey: 'demo.TeamDashboardView.tsx.member-wangfang', role: 'Member', remaining: '320', used: '6,700', status: 'needs-recharge' as CreditStatus },
 ] as const;
+
+const CREDIT_STATUS_KEY: Record<CreditStatus, keyof Dict> = {
+  ample: 'demo.TeamDashboardView.tsx.credit-status-ample',
+  normal: 'demo.TeamDashboardView.tsx.credit-status-normal',
+  low: 'demo.TeamDashboardView.tsx.credit-status-low',
+  'needs-recharge': 'demo.TeamDashboardView.tsx.credit-status-needs-recharge',
+};
 
 export type TeamDashboardAutoRechargeTarget =
   | { kind: 'team' }
@@ -37,50 +48,51 @@ type TeamDashboardViewProps = {
 };
 
 export function TeamDashboardView({ isAdmin = true, isTeamPlan = false, onAutoRecharge }: TeamDashboardViewProps) {
+  const t = useT();
   return (
     <div className="entry-section team-dashboard">
       <header className="entry-section__head team-dashboard__head">
         <div>
-          <h1 className="entry-section__title">数据大盘</h1>
+          <h1 className="entry-section__title">{t('demo.TeamDashboardView.tsx.title')}</h1>
           <p className="team-dashboard__subtitle">
-            {isAdmin ? 'Owner / Admin 可见 · Nexu 团队最近 30 天' : 'Member 视角 · 仅查看自己的额度状态'}
+            {isAdmin ? t('demo.TeamDashboardView.tsx.subtitle-admin') : t('demo.TeamDashboardView.tsx.subtitle-member')}
           </p>
         </div>
       </header>
 
       {isTeamPlan && isAdmin ? (
-        <section className="team-dashboard__recharge-callout" aria-label="自动充值引导">
+        <section className="team-dashboard__recharge-callout" aria-label={t('demo.TeamDashboardView.tsx.recharge-callout-aria')}>
           <span className="team-dashboard__recharge-icon" aria-hidden>
             <Icon name="refresh" size={17} />
           </span>
           <div>
-            <h2>开启自动充值，避免团队协作中断</h2>
-            <p>团队版升级后建议设置额度阈值。当团队额度低于阈值时自动补充，避免 Agent 任务和多人协作被打断。</p>
+            <h2>{t('demo.TeamDashboardView.tsx.recharge-callout-title')}</h2>
+            <p>{t('demo.TeamDashboardView.tsx.recharge-callout-desc')}</p>
           </div>
-          <button type="button" onClick={() => onAutoRecharge?.({ kind: 'team' })}>开启自动充值</button>
+          <button type="button" onClick={() => onAutoRecharge?.({ kind: 'team' })}>{t('demo.TeamDashboardView.tsx.recharge-callout-button')}</button>
         </section>
       ) : null}
 
-      <section className="team-dashboard__hero" aria-label="数据大盘">
+      <section className="team-dashboard__hero" aria-label={t('demo.TeamDashboardView.tsx.hero-aria')}>
         <div className="team-dashboard__hero-copy">
-          <h2>Nexu 团队</h2>
-          <p>汇总团队产出、Design System 沉淀、活跃协作和 token 消耗结构。</p>
+          <h2>{t('demo.TeamDashboardView.tsx.hero-team-name')}</h2>
+          <p>{t('demo.TeamDashboardView.tsx.hero-desc')}</p>
         </div>
-        <div className="team-dashboard__hero-meta" aria-label="数据范围">
+        <div className="team-dashboard__hero-meta" aria-label={t('demo.TeamDashboardView.tsx.hero-meta-aria')}>
           <span>Owner / Admin</span>
-          <span>最近 30 天</span>
+          <span>{t('demo.TeamDashboardView.tsx.hero-meta-range')}</span>
           <span>Demo data</span>
         </div>
       </section>
 
-      <section className="team-dashboard__credit-card" aria-label="团队额度">
+      <section className="team-dashboard__credit-card" aria-label={t('demo.TeamDashboardView.tsx.credit-card-aria')}>
         <div className="team-dashboard__token-head">
           <div>
-            <h2>{isAdmin ? '团队成员额度' : '我的额度'}</h2>
+            <h2>{isAdmin ? t('demo.TeamDashboardView.tsx.credit-title-admin') : t('demo.TeamDashboardView.tsx.credit-title-member')}</h2>
             <p>
               {isAdmin
-                ? '额度用尽会中断成员的协作与 Agent 任务，请及时为额度偏低的成员续额。'
-                : '当前额度不足时，请联系 Owner 或 Admin 帮你提升额度。'}
+                ? t('demo.TeamDashboardView.tsx.credit-desc-admin')
+                : t('demo.TeamDashboardView.tsx.credit-desc-member')}
             </p>
           </div>
           <span>{isAdmin ? 'Admin' : 'Member'}</span>
@@ -88,57 +100,57 @@ export function TeamDashboardView({ isAdmin = true, isTeamPlan = false, onAutoRe
         {isAdmin ? (
           <div className="team-dashboard__credit-table">
             {MEMBER_CREDITS.map((member) => (
-              <div className="team-dashboard__credit-row" key={member.name}>
+              <div className="team-dashboard__credit-row" key={member.nameKey}>
                 <div>
-                  <strong>{member.name}</strong>
+                  <strong>{t(member.nameKey)}</strong>
                   <span>{member.role}</span>
                 </div>
                 <div>
-                  <span>剩余</span>
+                  <span>{t('demo.TeamDashboardView.tsx.credit-remaining')}</span>
                   <strong>{member.remaining}</strong>
                 </div>
                 <div>
-                  <span>本周期已用</span>
+                  <span>{t('demo.TeamDashboardView.tsx.credit-used-period')}</span>
                   <strong>{member.used}</strong>
                 </div>
-                <em className={member.status === '需续额' ? 'is-low' : undefined}>{member.status}</em>
+                <em className={member.status === 'needs-recharge' ? 'is-low' : undefined}>{t(CREDIT_STATUS_KEY[member.status])}</em>
                 <button
                   type="button"
-                  className={member.status === '需续额' ? 'is-urgent' : undefined}
-                  onClick={() => onAutoRecharge?.({ kind: 'member', name: member.name, role: member.role })}
+                  className={member.status === 'needs-recharge' ? 'is-urgent' : undefined}
+                  onClick={() => onAutoRecharge?.({ kind: 'member', name: t(member.nameKey), role: member.role })}
                 >
-                  续额度
+                  {t('demo.TeamDashboardView.tsx.credit-recharge-button')}
                 </button>
               </div>
             ))}
           </div>
         ) : (
           <div className="team-dashboard__member-credit">
-            <strong>剩余额度 320</strong>
-            <p>你当前是 Member，不能自行续额度。需要更多额度时，请联系团队 Admin。</p>
-            <button type="button">提醒 Admin 提额</button>
+            <strong>{t('demo.TeamDashboardView.tsx.member-credit-remaining')}</strong>
+            <p>{t('demo.TeamDashboardView.tsx.member-credit-desc')}</p>
+            <button type="button">{t('demo.TeamDashboardView.tsx.member-credit-remind-button')}</button>
           </div>
         )}
       </section>
 
       <div className="team-dashboard__metric-grid">
         {DASHBOARD_STATS.map((stat) => (
-          <article className="team-dashboard__metric-card" key={stat.label}>
+          <article className="team-dashboard__metric-card" key={stat.labelKey}>
             <span className="team-dashboard__metric-icon" aria-hidden>
               <Icon name={stat.icon} size={16} />
             </span>
-            <span className="team-dashboard__metric-label">{stat.label}</span>
+            <span className="team-dashboard__metric-label">{t(stat.labelKey)}</span>
             <strong className="team-dashboard__metric-value">{stat.value}</strong>
-            <span className={`team-dashboard__metric-delta${stat.deltaKind === 'period' ? ' is-period' : ''}`}>{stat.delta}</span>
+            <span className={`team-dashboard__metric-delta${stat.deltaKind === 'period' ? ' is-period' : ''}`}>{t(stat.deltaEnKey)}</span>
           </article>
         ))}
       </div>
 
-      <section className="team-dashboard__token-card" aria-label="Token 消耗排名">
+      <section className="team-dashboard__token-card" aria-label={t('demo.TeamDashboardView.tsx.token-card-aria')}>
         <div className="team-dashboard__token-head">
           <div>
-            <h2>Token 消耗排名</h2>
-            <p>按最近 30 天团队协作与 Agent 任务消耗统计。</p>
+            <h2>{t('demo.TeamDashboardView.tsx.token-title')}</h2>
+            <p>{t('demo.TeamDashboardView.tsx.token-desc')}</p>
           </div>
           <span>Top 4</span>
         </div>
@@ -147,7 +159,7 @@ export function TeamDashboardView({ isAdmin = true, isTeamPlan = false, onAutoRe
           {TOKEN_RANKING.map((person, index) => (
             <div
               className="team-dashboard__token-row"
-              key={person.name}
+              key={person.nameKey}
               // Only #1 gets its member colour; the rest share one neutral so the
               // list doesn't read as a rainbow. Must be a token that exists in
               // tokens.css — an undefined var() kills the bar fill and rank tint.
@@ -155,7 +167,7 @@ export function TeamDashboardView({ isAdmin = true, isTeamPlan = false, onAutoRe
             >
               <span className="team-dashboard__token-rank">{index + 1}</span>
               <div className="team-dashboard__token-person">
-                <strong>{person.name}</strong>
+                <strong>{t(person.nameKey)}</strong>
                 <span>{person.role}</span>
               </div>
               <span className="team-dashboard__token-value">{person.tokens}</span>

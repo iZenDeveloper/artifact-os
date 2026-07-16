@@ -12,8 +12,10 @@ import { Toast } from './Toast';
 import { InviteDialog } from './InviteDialog';
 import { UpgradeTeamDialog } from './UpgradeTeamDialog';
 import { Confetti } from './Confetti';
+import { useT } from '../i18n';
+import type { Dict } from '../i18n/types';
 
-type Role = '所有者' | '管理员' | '成员';
+type Role = 'owner' | 'admin' | 'member';
 
 interface Member {
   id: string;
@@ -28,26 +30,44 @@ interface Member {
 }
 
 // Unified mock team (kept in sync with RecentProjectsStrip MOCK_MEMBERS).
-const MOCK_MEMBERS: Member[] = [
-  { id: 'qy', name: '琼羽', email: 'qiongyu@nexu.io', img: '/team-avatars/a2.png', role: '所有者', joinedAt: '2026-06-01', isYou: true },
-  { id: 'zw', name: '张伟', email: 'zhangwei@nexu.io', img: '/team-avatars/a1.png', role: '管理员', joinedAt: '2026-06-24' },
-  { id: 'ln', name: '李娜', email: 'lina@nexu.io', img: '/team-avatars/a3.png', role: '成员', joinedAt: '2026-06-25' },
-  { id: 'wf', name: '王芳', email: 'wangfang@nexu.io', img: '/team-avatars/a4.png', role: '成员', joinedAt: '2026-06-20' },
-  { id: 'cm', name: '陈明', email: 'chenming@nexu.io', img: '/team-avatars/a6.png', role: '成员', joinedAt: '2026-06-18' },
-  { id: 'ly', name: '刘洋', email: 'liuyang@nexu.io', img: '/team-avatars/a7.png', role: '成员', joinedAt: '2026-06-12' },
+// name/email are rendered via t() using nameKey/emailKey so English mode
+// shows English names + emails; the fields here are zh fallbacks.
+interface MockMember extends Member {
+  nameKey: keyof Dict;
+  emailKey: keyof Dict;
+}
+const MOCK_MEMBERS: MockMember[] = [
+  { id: 'qy', name: '琼羽', nameKey: 'demo.MembersView.tsx.member.qy.name', email: 'qiongyu@nexu.io', emailKey: 'demo.MembersView.tsx.member.qy.email', img: '/team-avatars/a2.png', role: 'owner', joinedAt: '2026-06-01', isYou: true },
+  { id: 'zw', name: '张伟', nameKey: 'demo.MembersView.tsx.member.zw.name', email: 'zhangwei@nexu.io', emailKey: 'demo.MembersView.tsx.member.zw.email', img: '/team-avatars/a1.png', role: 'admin', joinedAt: '2026-06-24' },
+  { id: 'ln', name: '李娜', nameKey: 'demo.MembersView.tsx.member.ln.name', email: 'lina@nexu.io', emailKey: 'demo.MembersView.tsx.member.ln.email', img: '/team-avatars/a3.png', role: 'member', joinedAt: '2026-06-25' },
+  { id: 'wf', name: '王芳', nameKey: 'demo.MembersView.tsx.member.wf.name', email: 'wangfang@nexu.io', emailKey: 'demo.MembersView.tsx.member.wf.email', img: '/team-avatars/a4.png', role: 'member', joinedAt: '2026-06-20' },
+  { id: 'cm', name: '陈明', nameKey: 'demo.MembersView.tsx.member.cm.name', email: 'chenming@nexu.io', emailKey: 'demo.MembersView.tsx.member.cm.email', img: '/team-avatars/a6.png', role: 'member', joinedAt: '2026-06-18' },
+  { id: 'ly', name: '刘洋', nameKey: 'demo.MembersView.tsx.member.ly.name', email: 'liuyang@nexu.io', emailKey: 'demo.MembersView.tsx.member.ly.email', img: '/team-avatars/a7.png', role: 'member', joinedAt: '2026-06-12' },
 ];
 
-// Assignable roles per the PRD matrix. 所有者 is deliberately NOT here:
+// Assignable roles per the PRD matrix. 'owner' is deliberately NOT here:
 // the workspace Owner is a singleton (the creator) and cannot be assigned
 // to other members — the owner row renders it read-only instead.
-const ASSIGNABLE_ROLE_OPTIONS: Role[] = ['管理员', '成员'];
+const ASSIGNABLE_ROLE_OPTIONS: Role[] = ['admin', 'member'];
 const MIN_TEAM_SEATS = 3;
-const TEAM_PLAN_COPY = [
-  'Workspace 基础功能费：20 美元 / 席 / 月',
-  '额度包：沿用个人 Plus / Pro / Max 档位',
-  '资产共享与管理：项目 / 设计系统 / 插件',
-  '协作：评论 / 变更 / 历史版本',
+const TEAM_PLAN_COPY_KEYS = [
+  'demo.MembersView.tsx.plan.baseFee',
+  'demo.MembersView.tsx.plan.creditPack',
+  'demo.MembersView.tsx.plan.assetSharing',
+  'demo.MembersView.tsx.plan.collaboration',
 ];
+
+// Role display label from stable id.
+function roleLabel(role: Role, t: ReturnType<typeof useT>): string {
+  switch (role) {
+    case 'owner':
+      return t('demo.MembersView.tsx.role.owner');
+    case 'admin':
+      return t('demo.MembersView.tsx.role.admin');
+    case 'member':
+      return t('demo.MembersView.tsx.role.member');
+  }
+}
 
 interface PendingInvite {
   email: string;
@@ -55,6 +75,7 @@ interface PendingInvite {
 }
 
 export function MembersView({ solo = false }: { solo?: boolean }) {
+  const t = useT();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   // Locally upgraded to team via the in-flow CTA (overrides the solo prop).
@@ -71,7 +92,7 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
   );
   const [removedMemberIds, setRemovedMemberIds] = useState<Set<string>>(() => new Set());
   const [teamSeats, setTeamSeats] = useState(MIN_TEAM_SEATS);
-  const [teamTier, setTeamTier] = useState({ name: 'Team Pro', pricePerSeat: 80, creditPack: 'Pro 额度包' });
+  const [teamTier, setTeamTier] = useState({ name: 'Team Pro', pricePerSeat: 80, creditPack: t('demo.MembersView.tsx.tier.proCreditPack') });
 
   // A solo plan that hasn't locally upgraded behaves single-seat.
   const isSolo = solo && !upgraded;
@@ -122,11 +143,11 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
 
   function sendInvites(rows: PendingInvite[]) {
     setPendingInvites((prev) => [...prev, ...rows]);
-    setToast(`已向 ${rows.length} 位同事发送邀请邮件`);
+    setToast(t('demo.MembersView.tsx.toast.invitesSent', { count: rows.length }));
   }
 
   function resendInvite(email: string) {
-    setToast(`已重新发送邀请邮件给 ${email}`);
+    setToast(t('demo.MembersView.tsx.toast.inviteResent', { email }));
     setResentEmails((prev) => new Set(prev).add(email));
     window.setTimeout(() => {
       setResentEmails((prev) => {
@@ -137,14 +158,14 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
     }, 2000);
   }
 
-  function removeMember(member: Member) {
+  function removeMember(member: MockMember) {
     if (member.isYou) return;
     setRemovedMemberIds((current) => {
       const next = new Set(current);
       next.add(member.id);
       return next;
     });
-    setToast(`已将 ${member.name} 移出 Workspace`);
+    setToast(t('demo.MembersView.tsx.toast.memberRemoved', { name: t(member.nameKey) }));
   }
 
   function adjustTeamSeats(delta: number) {
@@ -171,7 +192,7 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
       sendInvites(queuedInvites);
       setQueuedInvites([]);
     } else {
-      setToast(`已升级到 ${config?.tierName ?? teamTier.name}`);
+      setToast(t('demo.MembersView.tsx.toast.upgraded', { tier: config?.tierName ?? teamTier.name }));
     }
   }
 
@@ -179,15 +200,15 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
     <div className="entry-section members">
       <header className="entry-section__head members__head">
         <div className="members__head-text">
-          <h1 className="entry-section__title">成员</h1>
-          <p className="members__subtitle">管理 Nexu 团队的成员与角色</p>
+          <h1 className="entry-section__title">{t('demo.MembersView.tsx.title')}</h1>
+          <p className="members__subtitle">{t('demo.MembersView.tsx.subtitle')}</p>
         </div>
         <button
           type="button"
           className="members__invite-btn"
           onClick={() => setInviteOpen(true)}
         >
-          <Icon name="share" size={15} /> 邀请同事
+          <Icon name="share" size={15} /> {t('demo.MembersView.tsx.invite')}
         </button>
       </header>
 
@@ -202,36 +223,38 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
           </span>
           <div className="members__seats-copy">
             <span>
-              席位 <strong>{seatsUsed}/{seatsTotal}</strong> 已用 ·{' '}
-              {isSolo ? '免费版仅含 1 个席位，升级团队版可邀请协作' : `${teamTier.name} · $${teamTier.pricePerSeat} / 席 / 月 · $${teamMonthlyTotal} / 月`}
+              {t('demo.MembersView.tsx.seats.usedPrefix')} <strong>{seatsUsed}/{seatsTotal}</strong> {t('demo.MembersView.tsx.seats.usedSuffix')} ·{' '}
+              {isSolo
+                ? t('demo.MembersView.tsx.seats.soloLine')
+                : t('demo.MembersView.tsx.seats.teamLine', { tier: teamTier.name, price: teamTier.pricePerSeat, total: teamMonthlyTotal })}
             </span>
             <small>
               {isSolo
-                ? '团队版最少 3 个席位，按席位按月计费。'
-                : `包含 $20 Workspace 基础功能费 + ${teamTier.creditPack}，可按团队增长继续增加。`}
+                ? t('demo.MembersView.tsx.seats.soloHint')
+                : t('demo.MembersView.tsx.seats.teamHint', { creditPack: teamTier.creditPack })}
             </small>
           </div>
           {!isSolo ? (
-            <div className="members__seat-stepper" aria-label="团队席位数量">
+            <div className="members__seat-stepper" aria-label={t('demo.MembersView.tsx.stepper.label')}>
               <button
                 type="button"
                 onClick={() => adjustTeamSeats(-1)}
                 disabled={teamSeats <= Math.max(MIN_TEAM_SEATS, seatsUsed)}
-                aria-label="减少席位"
+                aria-label={t('demo.MembersView.tsx.stepper.decrease')}
               >
                 -
               </button>
-              <strong>{teamSeats} 个席位</strong>
-              <button type="button" onClick={openSeatPurchase} aria-label="增加席位">
+              <strong>{t('demo.MembersView.tsx.stepper.seatCount', { count: teamSeats })}</strong>
+              <button type="button" onClick={openSeatPurchase} aria-label={t('demo.MembersView.tsx.stepper.increase')}>
                 +
               </button>
             </div>
           ) : null}
         </div>
         <div className="members__seats-benefits">
-          {TEAM_PLAN_COPY.map((item) => (
-            <span key={item}>
-              <Icon name="check" size={12} /> {item}
+          {TEAM_PLAN_COPY_KEYS.map((key) => (
+            <span key={key}>
+              <Icon name="check" size={12} /> {t(key as keyof Dict)}
             </span>
           ))}
         </div>
@@ -241,19 +264,19 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
               <Icon name="refresh" size={14} />
             </span>
             <div>
-              <strong>建议开启自动充值</strong>
-              <p>团队额度低于阈值时自动补充，避免协作和 Agent 任务中断。</p>
+              <strong>{t('demo.MembersView.tsx.autoRecharge.title')}</strong>
+              <p>{t('demo.MembersView.tsx.autoRecharge.desc')}</p>
             </div>
-            <button type="button">开启自动充值</button>
+            <button type="button">{t('demo.MembersView.tsx.autoRecharge.cta')}</button>
           </div>
         ) : null}
       </div>
 
       <div className="members__panel">
         <div className="members__list-head" aria-hidden>
-          <span className="members__col members__col--person">成员</span>
-          <span className="members__col members__col--joined">加入时间</span>
-          <span className="members__col members__col--role">角色</span>
+          <span className="members__col members__col--person">{t('demo.MembersView.tsx.col.person')}</span>
+          <span className="members__col members__col--joined">{t('demo.MembersView.tsx.col.joined')}</span>
+          <span className="members__col members__col--role">{t('demo.MembersView.tsx.col.role')}</span>
           <span className="members__col members__col--action" />
         </div>
 
@@ -265,10 +288,10 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
                 <img className="members__avatar" src={member.img} alt="" aria-hidden />
                 <div className="members__person-text">
                   <span className="members__name">
-                    {member.name}
-                    {member.isYou ? <span className="members__you-tag">你</span> : null}
+                    {t(member.nameKey)}
+                    {member.isYou ? <span className="members__you-tag">{t('demo.MembersView.tsx.youTag')}</span> : null}
                   </span>
-                  <span className="members__email">{member.email}</span>
+                  <span className="members__email">{t(member.emailKey)}</span>
                 </div>
               </div>
 
@@ -281,12 +304,12 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
                   className="members__role-select"
                   value={role}
                   disabled={member.isYou}
-                  aria-label={`${member.name} 的角色`}
+                  aria-label={t('demo.MembersView.tsx.roleSelect.label', { name: t(member.nameKey) })}
                   onChange={(e) => setRole(member.id, e.target.value as Role)}
                 >
-                  {(member.isYou ? ['所有者' as Role] : ASSIGNABLE_ROLE_OPTIONS).map((opt) => (
+                  {(member.isYou ? (['owner'] as Role[]) : ASSIGNABLE_ROLE_OPTIONS).map((opt) => (
                     <option key={opt} value={opt}>
-                      {opt}
+                      {roleLabel(opt, t)}
                     </option>
                   ))}
                 </select>
@@ -297,8 +320,8 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
                   <button
                     type="button"
                     className="members__remove"
-                    aria-label={`将 ${member.name} 移出 Workspace`}
-                    title="移出 Workspace"
+                    aria-label={t('demo.MembersView.tsx.remove.label', { name: t(member.nameKey) })}
+                    title={t('demo.MembersView.tsx.remove.title')}
                     onClick={() => removeMember(member)}
                   >
                     <Icon name="trash" size={14} />
@@ -312,7 +335,7 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
 
       {pendingInvites.length > 0 ? (
         <div className="members__pending">
-          <h2 className="members__pending-title">待接受邀请 · {pendingInvites.length}</h2>
+          <h2 className="members__pending-title">{t('demo.MembersView.tsx.pending.title', { count: pendingInvites.length })}</h2>
           <div className="members__panel">
             {pendingInvites.map((invite, i) => (
               <div className="members__row members__row--pending" key={`${invite.email}-${i}`}>
@@ -322,11 +345,11 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
                   </span>
                   <div className="members__person-text">
                     <span className="members__name">{invite.email}</span>
-                    <span className="members__email">角色：{invite.role}</span>
+                    <span className="members__email">{t('demo.MembersView.tsx.pending.roleLabel', { role: invite.role })}</span>
                   </div>
                 </div>
                 <div className="members__col members__col--role">
-                  <span className="members__badge">等待中</span>
+                  <span className="members__badge">{t('demo.MembersView.tsx.pending.waiting')}</span>
                 </div>
                 <div className="members__col members__col--action">
                   <button
@@ -337,11 +360,11 @@ export function MembersView({ solo = false }: { solo?: boolean }) {
                   >
                     {resentEmails.has(invite.email) ? (
                       <>
-                        <Icon name="check" size={13} /> 已发送
+                        <Icon name="check" size={13} /> {t('demo.MembersView.tsx.pending.sent')}
                       </>
                     ) : (
                       <>
-                        <Icon name="refresh" size={13} /> 重新发送
+                        <Icon name="refresh" size={13} /> {t('demo.MembersView.tsx.pending.resend')}
                       </>
                     )}
                   </button>

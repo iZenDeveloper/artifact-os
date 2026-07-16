@@ -1477,6 +1477,7 @@ export const ar: Dict = {
   'ds.surfaceVideo': 'فيديو',
   'ds.surfaceAudio': 'صوت',
   'ds.searchPlaceholder': 'بحث في أنظمة التصميم...',
+  'ds.pageDescription': 'إرشادات علامة تجارية وقواعد مكوّنات وأصول بصرية قابلة لإعادة الاستخدام لفريقك.',
   'ds.emptyNoMatch': 'لا توجد أنظمة تصميم تطابق بحثك.',
   'ds.badgeDefault': 'افتراضي',
   'ds.preview': 'معاينة',

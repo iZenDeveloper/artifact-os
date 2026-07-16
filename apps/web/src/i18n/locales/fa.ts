@@ -1477,6 +1477,7 @@ export const fa: Dict = {
   'ds.surfaceVideo': 'ویدئو',
   'ds.surfaceAudio': 'صدا',
   'ds.searchPlaceholder': 'جستجوی سیستم‌های طراحی…',
+  'ds.pageDescription': 'دستورالعمل‌های برند، قواعد اجزا و دارایی‌های بصری قابل‌استفاده‌مجدد برای تیم شما.',
   'ds.emptyNoMatch': 'هیچ سیستم طراحی با جستجوی شما مطابقت ندارد.',
   'ds.badgeDefault': 'پیش‌فرض',
   'ds.preview': 'پیش‌نمایش',

@@ -352,7 +352,7 @@ export function DesignSystemsTab({
   const convertToTeam = (system: DesignSystemSummary) => {
     setTeamSystemIds((prev) => new Set(prev).add(system.id));
     setDesignSystemCollection('team');
-    notifyAction('success', `已将「${system.title}」转为团队设计系统`);
+    notifyAction('success', t('demo.DesignSystemsTab.tsx.convertedToTeam', { title: system.title }));
   };
   // Undo the demo-local team conversion without changing the underlying
   // design system. The item returns to「你的体系」with its content, publish
@@ -364,7 +364,7 @@ export function DesignSystemsTab({
       return next;
     });
     setDesignSystemCollection('mine');
-    notifyAction('success', `已取消「${system.title}」的团队共享`);
+    notifyAction('success', t('demo.DesignSystemsTab.tsx.teamSharingCancelled', { title: system.title }));
   };
   const notifyActionLoading = (label?: string) => {
     const message = label
@@ -741,7 +741,7 @@ export function DesignSystemsTab({
         <header className={styles.pageHeader} data-testid="design-systems-page-header">
           <div className={styles.pageTitleBlock}>
             <h1 className={styles.pageTitle}>{t('entry.navDesignSystems')}</h1>
-            <p className={styles.pageDescription}>团队可复用的品牌规范、组件规则和视觉资产。</p>
+            <p className={styles.pageDescription}>{t('demo.DesignSystemsTab.tsx.pageDescription')}</p>
           </div>
           <div className={styles.headerTools} data-testid="design-systems-header-tools" aria-hidden>
             <div className={`${styles.searchWrap} ${styles.headerSearch}`} data-testid="design-systems-header-search">
@@ -810,7 +810,7 @@ export function DesignSystemsTab({
       <header className={styles.pageHeader} data-testid="design-systems-page-header">
         <div className={styles.pageTitleBlock}>
           <h1 className={styles.pageTitle}>{t('entry.navDesignSystems')}</h1>
-          <p className={styles.pageDescription}>团队可复用的品牌规范、组件规则和视觉资产。</p>
+          <p className={styles.pageDescription}>{t('ds.pageDescription')}</p>
         </div>
         <div className={styles.headerTools} data-testid="design-systems-header-tools">
           <div className={`${styles.searchWrap} ${styles.headerSearch}`} data-testid="design-systems-header-search">
@@ -1358,7 +1358,7 @@ function DesignSystemDetail({
     ...(isUser && isTeamSystem && onMoveBackToPersonal
       ? [{
           id: 'remove-team-sharing',
-          label: '取消团队共享',
+          label: t('demo.DesignSystemsTab.tsx.removeTeamSharing'),
           icon: 'history' as const,
           onClick: () => onMoveBackToPersonal(system),
           disabled: busy,
@@ -1400,10 +1400,10 @@ function DesignSystemDetail({
           className={`${styles.actionButton} ${styles.teamActionButton}`}
           onClick={() => onConvertToTeam(system)}
           disabled={busy}
-          title="转为团队设计系统"
+          title={t('demo.DesignSystemsTab.tsx.convertToTeamTitle')}
         >
           <Icon name="users" />
-          转为团队
+          {t('demo.DesignSystemsTab.tsx.convertToTeam')}
         </Button>
       ) : null}
       {isUser ? (

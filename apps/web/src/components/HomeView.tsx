@@ -238,7 +238,7 @@ interface DemoPresetProject {
   name: string;
   prompt: string;
   metadata: ProjectMetadata & { demoPresetId: string };
-  html: string;
+  html: (t: ReturnType<typeof useT>) => string;
 }
 
 const DEMO_PRESET_PROJECTS: DemoPresetProject[] = [
@@ -253,11 +253,11 @@ const DEMO_PRESET_PROJECTS: DemoPresetProject[] = [
       nameSource: 'user',
       demoPresetId: 'electric-studio-2',
     },
-    html: demoElectricStudioHtml(),
+    html: () => demoElectricStudioHtml(),
   },
   {
     id: 'baidu-design-system',
-    name: '百度一下，你就知道',
+    name: 'Baidu, and you\'ll know',
     prompt: 'Queue demo: audit Typography and Color Tokens, then suggest one high-impact polish pass.',
     metadata: {
       kind: 'brand',
@@ -267,7 +267,7 @@ const DEMO_PRESET_PROJECTS: DemoPresetProject[] = [
       brandSourceUrl: 'https://baidu.com',
       demoPresetId: 'baidu-design-system',
     },
-    html: demoDesignSystemHtml(),
+    html: (t) => demoDesignSystemHtml(t),
   },
   {
     id: 'electric-studio',
@@ -280,15 +280,19 @@ const DEMO_PRESET_PROJECTS: DemoPresetProject[] = [
       nameSource: 'user',
       demoPresetId: 'electric-studio',
     },
-    html: demoElectricStudioSimpleHtml(),
+    html: () => demoElectricStudioSimpleHtml(),
   },
 ];
 
-function demoPresetProjectCard(preset: DemoPresetProject, index: number): Project {
+function demoPresetProjectCard(
+  preset: DemoPresetProject,
+  index: number,
+  t: ReturnType<typeof useT>,
+): Project {
   const now = Date.now();
   return {
     id: `demo-preset:${preset.id}`,
-    name: preset.name,
+    name: demoPresetDisplayName(preset, t),
     skillId: null,
     designSystemId: null,
     createdAt: now - (index + 1) * 60_000,
@@ -296,6 +300,16 @@ function demoPresetProjectCard(preset: DemoPresetProject, index: number): Projec
     pendingPrompt: preset.prompt,
     metadata: preset.metadata,
   };
+}
+
+function demoPresetDisplayName(
+  preset: DemoPresetProject,
+  t: ReturnType<typeof useT>,
+): string {
+  if (preset.id === 'baidu-design-system') {
+    return t('demo.HomeView.tsx.baiduPresetName');
+  }
+  return preset.name;
 }
 
 function demoPresetIdForProject(project: Project): string | null {
@@ -336,13 +350,15 @@ function demoElectricStudioHtml(): string {
 </html>`;
 }
 
-function demoDesignSystemHtml(): string {
+function demoDesignSystemHtml(t: ReturnType<typeof useT>): string {
+  const brandName = t('demo.HomeView.tsx.baiduPresetName');
+  const identity = t('demo.HomeView.tsx.baiduPresetIdentity');
   return `<!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>百度一下，你就知道 Design System</title>
+  <title>${brandName} Design System</title>
   <style>
     body { margin:0; background:#f7f8fb; color:#161616; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
     .wrap { max-width:960px; margin:42px auto; display:grid; gap:18px; padding:0 24px; }
@@ -362,12 +378,12 @@ function demoDesignSystemHtml(): string {
   <main class="wrap">
     <section class="hero"><div class="logo">du</div></section>
     <section class="card">
-      <h1>百度一下，你就知道</h1>
+      <h1>${brandName}</h1>
       <div class="url">baidu.com</div>
     </section>
     <section class="card">
       <div class="label">Identity</div>
-      <p>全球领先的中文搜索引擎，致力于让网民更便捷地获取信息，找到所求。百度超过千亿的中文网页数据库，可以瞬间找到相关的搜索结果。</p>
+      <p>${identity}</p>
     </section>
     <section class="card">
       <div class="label">Logo</div>
@@ -503,8 +519,10 @@ export function HomeView({
   const [promptEditedByUser, setPromptEditedByUser] = useState(false);
   const [figmaModalOpen, setFigmaModalOpen] = useState(false);
   const demoPresetProjects = useMemo(
-    () => projects.length === 0 ? DEMO_PRESET_PROJECTS.map(demoPresetProjectCard) : projects,
-    [projects],
+    () => projects.length === 0
+      ? DEMO_PRESET_PROJECTS.map((preset, index) => demoPresetProjectCard(preset, index, t))
+      : projects,
+    [projects, t],
   );
 
   async function openDemoPresetProject(presetId: string) {
@@ -519,14 +537,14 @@ export function HomeView({
     setCreatingDemoPresetId(preset.id);
     try {
       const { project } = await createProject({
-        name: preset.name,
+        name: demoPresetDisplayName(preset, t),
         skillId: null,
         designSystemId: null,
         pendingPrompt: preset.prompt,
         metadata: preset.metadata,
       });
       if (preset.metadata.entryFile) {
-        await writeProjectTextFile(project.id, preset.metadata.entryFile, preset.html);
+        await writeProjectTextFile(project.id, preset.metadata.entryFile, preset.html(t));
       }
       await Promise.resolve(onOpenProject(project.id));
       navigate({ kind: 'project', projectId: project.id, conversationId: null, fileName: preset.metadata.entryFile ?? null });
@@ -2085,7 +2103,7 @@ export function HomeView({
         designSystems={designSystems}
         promptTemplates={promptTemplates}
         limit={1000}
-        heading="最近项目"
+        heading={t('demo.HomeView.tsx.recentProjectsHeading')}
         space="recent"
         collaborationEnabled={demoUseMode === 'cloud'}
         // Cloud collaboration exposes batch actions to all current roles; the

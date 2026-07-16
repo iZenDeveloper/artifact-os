@@ -1477,6 +1477,7 @@ export const id: Dict = {
   'ds.surfaceVideo': 'Video',
   'ds.surfaceAudio': 'Audio',
   'ds.searchPlaceholder': 'Cari sistem desain...',
+  'ds.pageDescription': 'Panduan merek, aturan komponen, dan aset visual yang dapat digunakan ulang untuk tim Anda.',
   'ds.emptyNoMatch': 'Tidak ada sistem desain yang cocok.',
   'ds.badgeDefault': 'Default',
   'ds.preview': 'Pratinjau',

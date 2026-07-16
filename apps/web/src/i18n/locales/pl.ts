@@ -1477,6 +1477,7 @@ export const pl: Dict = {
   'ds.surfaceVideo': 'Wideo',
   'ds.surfaceAudio': 'Dźwięk',
   'ds.searchPlaceholder': 'Szukaj systemów projektowania…',
+  'ds.pageDescription': 'Wielokrotnego użytku wytyczne marki, reguły komponentów i zasoby wizualne dla Twojego zespołu.',
   'ds.emptyNoMatch': 'Brak systemów projektowania pasujących do wyszukiwania.',
   'ds.badgeDefault': 'DOMYŚLNY',
   'ds.preview': 'Podgląd',

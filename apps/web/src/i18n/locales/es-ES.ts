@@ -1477,6 +1477,7 @@ export const esES: Dict = {
   'ds.surfaceVideo': 'Vídeo',
   'ds.surfaceAudio': 'Audio',
   'ds.searchPlaceholder': 'Buscar sistemas de diseño…',
+  'ds.pageDescription': 'Directrices de marca, reglas de componentes y recursos visuales reutilizables para tu equipo.',
   'ds.emptyNoMatch': 'Ningún sistema de diseño coincide con tu búsqueda.',
   'ds.badgeDefault': 'PREDETERMINADO',
   'ds.preview': 'Vista previa',

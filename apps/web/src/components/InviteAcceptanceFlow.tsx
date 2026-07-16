@@ -14,37 +14,47 @@ import { createPortal } from 'react-dom';
 import { Icon } from './Icon';
 import { Confetti } from './Confetti';
 import type { DemoScenario } from './DemoControlBar';
+import { useT } from '../i18n';
+import type { Dict } from '../i18n/types';
 
 export type InviteRole = 'editor' | 'admin';
 
 interface RoleMeta {
-  label: string;
-  en: string;
-  perm: string;
+  labelKey: keyof Dict;
+  enKey: keyof Dict;
+  permKey: keyof Dict;
   scenario: DemoScenario;
 }
 
 const ROLE_META: Record<InviteRole, RoleMeta> = {
   editor: {
-    label: '成员',
-    en: 'Member',
-    perm: '可创建自己的项目，查看和评论团队共享项目',
+    labelKey: 'demo.InviteAcceptanceFlow.tsx.role.editor.label',
+    enKey: 'demo.InviteAcceptanceFlow.tsx.role.editor.en',
+    permKey: 'demo.InviteAcceptanceFlow.tsx.role.editor.perm',
     scenario: 'invite-editor',
   },
   admin: {
-    label: '管理员',
-    en: 'Admin',
-    perm: '可管理成员、席位与全部项目设置',
+    labelKey: 'demo.InviteAcceptanceFlow.tsx.role.admin.label',
+    enKey: 'demo.InviteAcceptanceFlow.tsx.role.admin.en',
+    permKey: 'demo.InviteAcceptanceFlow.tsx.role.admin.perm',
     scenario: 'invite-admin',
   },
 };
 
 // Demo workspace the invite points at.
-const WORKSPACE = {
-  name: 'Nexu 设计团队',
+const WORKSPACE: {
+  nameKey: keyof Dict;
+  logo: string;
+  inviterKey: keyof Dict;
+  inviterInitialKey: keyof Dict;
+  members: number;
+  projects: number;
+  invitedEmail: string;
+} = {
+  nameKey: 'demo.InviteAcceptanceFlow.tsx.workspace.name',
   logo: 'N',
-  inviter: '张伟',
-  inviterInitial: '张',
+  inviterKey: 'demo.InviteAcceptanceFlow.tsx.workspace.inviter',
+  inviterInitialKey: 'demo.InviteAcceptanceFlow.tsx.workspace.inviterInitial',
   members: 12,
   projects: 8,
   invitedEmail: 'you@company.com',
@@ -63,15 +73,16 @@ interface Props {
 }
 
 const STEP_ORDER: Step[] = ['landing', 'auth', 'confirm', 'joined'];
-const STEP_LABELS: Record<Step, string> = {
-  landing: '邀请',
-  auth: '账号校验',
-  confirm: '确认加入',
-  joined: '开始协作',
-  declined: '已忽略',
+const STEP_LABEL_KEYS: Record<Step, keyof Dict> = {
+  landing: 'demo.InviteAcceptanceFlow.tsx.step.landing',
+  auth: 'demo.InviteAcceptanceFlow.tsx.step.auth',
+  confirm: 'demo.InviteAcceptanceFlow.tsx.step.confirm',
+  joined: 'demo.InviteAcceptanceFlow.tsx.step.joined',
+  declined: 'demo.InviteAcceptanceFlow.tsx.step.declined',
 };
 
 export function InviteAcceptanceFlow({ open, role, onClose, onJoined, onDeclined }: Props) {
+  const t = useT();
   const containerRef = useRef<HTMLDivElement | null>(null);
   if (!containerRef.current && typeof document !== 'undefined') {
     const div = document.createElement('div');
@@ -107,7 +118,7 @@ export function InviteAcceptanceFlow({ open, role, onClose, onJoined, onDeclined
   function renderStepper() {
     if (step === 'declined') return null;
     return (
-      <ol className="invite-accept__steps" aria-label="加入进度">
+      <ol className="invite-accept__steps" aria-label={t('demo.InviteAcceptanceFlow.tsx.stepper.ariaLabel')}>
         {STEP_ORDER.map((s, i) => {
           const state = i < activeIndex ? 'done' : i === activeIndex ? 'active' : 'todo';
           return (
@@ -115,7 +126,7 @@ export function InviteAcceptanceFlow({ open, role, onClose, onJoined, onDeclined
               <span className="invite-accept__step-dot">
                 {state === 'done' ? <Icon name="check" size={12} /> : i + 1}
               </span>
-              <span className="invite-accept__step-label">{STEP_LABELS[s]}</span>
+              <span className="invite-accept__step-label">{t(STEP_LABEL_KEYS[s])}</span>
             </li>
           );
         })}
@@ -124,9 +135,9 @@ export function InviteAcceptanceFlow({ open, role, onClose, onJoined, onDeclined
   }
 
   return createPortal(
-    <div className="invite-accept" role="dialog" aria-modal="true" aria-label="接受团队邀请">
+    <div className="invite-accept" role="dialog" aria-modal="true" aria-label={t('demo.InviteAcceptanceFlow.tsx.dialog.ariaLabel')}>
       <div className="invite-accept__bg" aria-hidden />
-      <button type="button" className="invite-accept__dismiss" onClick={onClose} aria-label="关闭">
+      <button type="button" className="invite-accept__dismiss" onClick={onClose} aria-label={t('demo.InviteAcceptanceFlow.tsx.dismiss.ariaLabel')}>
         <Icon name="close" size={18} />
       </button>
 
@@ -137,33 +148,33 @@ export function InviteAcceptanceFlow({ open, role, onClose, onJoined, onDeclined
         {step === 'landing' ? (
           <div className="invite-accept__card invite-accept__card--landing">
             <p className="invite-accept__from-mail">
-              <Icon name="info" size={13} /> 来自邀请邮件 · 点击链接已为你打开此页面
+              <Icon name="info" size={13} /> {t('demo.InviteAcceptanceFlow.tsx.landing.fromMail')}
             </p>
             <div className="invite-accept__hero">
               <span className="invite-accept__ws-logo">{WORKSPACE.logo}</span>
               <div className="invite-accept__inviter">
-                <span className="invite-accept__inviter-avatar">{WORKSPACE.inviterInitial}</span>
+                <span className="invite-accept__inviter-avatar">{t(WORKSPACE.inviterInitialKey)}</span>
                 <span>
-                  <strong>{WORKSPACE.inviter}</strong> 邀请你加入
+                  <strong>{t(WORKSPACE.inviterKey)}</strong> {t('demo.InviteAcceptanceFlow.tsx.landing.invitesYou')}
                 </span>
               </div>
-              <h1 className="invite-accept__ws-name">{WORKSPACE.name}</h1>
+              <h1 className="invite-accept__ws-name">{t(WORKSPACE.nameKey)}</h1>
               <div className="invite-accept__role-badge">
-                以 <strong>{meta.label}</strong>（{meta.en}）身份加入
+                {t('demo.InviteAcceptanceFlow.tsx.landing.joinAsPrefix')} <strong>{t(meta.labelKey)}</strong>（{t(meta.enKey)}）{t('demo.InviteAcceptanceFlow.tsx.landing.joinAsSuffix')}
               </div>
-              <p className="invite-accept__role-perm">{meta.perm}</p>
+              <p className="invite-accept__role-perm">{t(meta.permKey)}</p>
             </div>
             <div className="invite-accept__ws-meta">
-              <span>{WORKSPACE.members} 位成员</span>
+              <span>{WORKSPACE.members} {t('demo.InviteAcceptanceFlow.tsx.landing.membersUnit')}</span>
               <span className="invite-accept__meta-sep" aria-hidden>·</span>
-              <span><Icon name="folder" size={13} /> {WORKSPACE.projects} 个共享项目</span>
+              <span><Icon name="folder" size={13} /> {WORKSPACE.projects} {t('demo.InviteAcceptanceFlow.tsx.landing.projectsUnit')}</span>
             </div>
             <div className="invite-accept__actions">
               <button type="button" className="invite-accept__btn is-primary" onClick={() => setStep('auth')}>
-                接受邀请
+                {t('demo.InviteAcceptanceFlow.tsx.landing.accept')}
               </button>
               <button type="button" className="invite-accept__btn is-ghost" onClick={() => setStep('declined')}>
-                拒绝邀请
+                {t('demo.InviteAcceptanceFlow.tsx.landing.decline')}
               </button>
             </div>
           </div>
@@ -172,11 +183,11 @@ export function InviteAcceptanceFlow({ open, role, onClose, onJoined, onDeclined
         {/* ── 2. 账号校验：登录 / 注册 ── */}
         {step === 'auth' ? (
           <div className="invite-accept__card">
-            <h2 className="invite-accept__title">登录以继续</h2>
+            <h2 className="invite-accept__title">{t('demo.InviteAcceptanceFlow.tsx.auth.title')}</h2>
             <p className="invite-accept__subtitle">
-              邀请发送至 <strong>{WORKSPACE.invitedEmail}</strong>，登录或注册后即可加入工作空间。
+              {t('demo.InviteAcceptanceFlow.tsx.auth.subtitlePrefix')} <strong>{WORKSPACE.invitedEmail}</strong>{t('demo.InviteAcceptanceFlow.tsx.auth.subtitleSuffix')}
             </p>
-            <div className="invite-accept__tabs" role="tablist" aria-label="账号校验">
+            <div className="invite-accept__tabs" role="tablist" aria-label={t('demo.InviteAcceptanceFlow.tsx.auth.tabsAriaLabel')}>
               <button
                 type="button"
                 role="tab"
@@ -184,7 +195,7 @@ export function InviteAcceptanceFlow({ open, role, onClose, onJoined, onDeclined
                 className={`invite-accept__tab${authTab === 'login' ? ' is-active' : ''}`}
                 onClick={() => setAuthTab('login')}
               >
-                已有账号 · 登录
+                {t('demo.InviteAcceptanceFlow.tsx.auth.tabLogin')}
               </button>
               <button
                 type="button"
@@ -193,31 +204,31 @@ export function InviteAcceptanceFlow({ open, role, onClose, onJoined, onDeclined
                 className={`invite-accept__tab${authTab === 'register' ? ' is-active' : ''}`}
                 onClick={() => setAuthTab('register')}
               >
-                无账号 · 注册
+                {t('demo.InviteAcceptanceFlow.tsx.auth.tabRegister')}
               </button>
             </div>
             <div className="invite-accept__form">
               {authTab === 'register' ? (
                 <label className="invite-accept__field">
-                  <span>昵称</span>
-                  <input type="text" placeholder="你的名字" defaultValue="" />
+                  <span>{t('demo.InviteAcceptanceFlow.tsx.auth.nicknameLabel')}</span>
+                  <input type="text" placeholder={t('demo.InviteAcceptanceFlow.tsx.auth.nicknamePlaceholder')} defaultValue="" />
                 </label>
               ) : null}
               <label className="invite-accept__field">
-                <span>邮箱</span>
+                <span>{t('demo.InviteAcceptanceFlow.tsx.auth.emailLabel')}</span>
                 <input type="email" value={WORKSPACE.invitedEmail} readOnly />
               </label>
               <label className="invite-accept__field">
-                <span>密码</span>
-                <input type="password" placeholder={authTab === 'register' ? '设置登录密码' : '输入密码'} defaultValue="" />
+                <span>{t('demo.InviteAcceptanceFlow.tsx.auth.passwordLabel')}</span>
+                <input type="password" placeholder={authTab === 'register' ? t('demo.InviteAcceptanceFlow.tsx.auth.passwordPlaceholderRegister') : t('demo.InviteAcceptanceFlow.tsx.auth.passwordPlaceholderLogin')} defaultValue="" />
               </label>
             </div>
             <div className="invite-accept__actions">
               <button type="button" className="invite-accept__btn is-primary" onClick={() => setStep('confirm')}>
-                {authTab === 'register' ? '注册并继续' : '登录并继续'}
+                {authTab === 'register' ? t('demo.InviteAcceptanceFlow.tsx.auth.submitRegister') : t('demo.InviteAcceptanceFlow.tsx.auth.submitLogin')}
               </button>
               <button type="button" className="invite-accept__btn is-text" onClick={() => setStep('landing')}>
-                返回
+                {t('demo.InviteAcceptanceFlow.tsx.auth.back')}
               </button>
             </div>
           </div>
@@ -226,26 +237,26 @@ export function InviteAcceptanceFlow({ open, role, onClose, onJoined, onDeclined
         {/* ── 3. 确认是否加入该 Workspace ── */}
         {step === 'confirm' ? (
           <div className="invite-accept__card">
-            <h2 className="invite-accept__title">确认加入该工作空间？</h2>
+            <h2 className="invite-accept__title">{t('demo.InviteAcceptanceFlow.tsx.confirm.title')}</h2>
             <div className="invite-accept__confirm-row">
               <span className="invite-accept__ws-logo invite-accept__ws-logo--sm">{WORKSPACE.logo}</span>
               <div>
-                <div className="invite-accept__confirm-ws">{WORKSPACE.name}</div>
+                <div className="invite-accept__confirm-ws">{t(WORKSPACE.nameKey)}</div>
                 <div className="invite-accept__confirm-role">
-                  角色：<strong>{meta.label}</strong>（邀请时设定）
+                  {t('demo.InviteAcceptanceFlow.tsx.confirm.rolePrefix')}<strong>{t(meta.labelKey)}</strong>{t('demo.InviteAcceptanceFlow.tsx.confirm.roleSuffix')}
                 </div>
               </div>
             </div>
-            <p className="invite-accept__confirm-perm">{meta.perm}</p>
+            <p className="invite-accept__confirm-perm">{t(meta.permKey)}</p>
             <p className="invite-accept__seat-note">
-              <Icon name="info" size={13} /> 加入后将占用该团队的 1 个席位。
+              <Icon name="info" size={13} /> {t('demo.InviteAcceptanceFlow.tsx.confirm.seatNote')}
             </p>
             <div className="invite-accept__actions">
               <button type="button" className="invite-accept__btn is-primary" onClick={() => setStep('joined')}>
-                确定加入
+                {t('demo.InviteAcceptanceFlow.tsx.confirm.join')}
               </button>
               <button type="button" className="invite-accept__btn is-ghost" onClick={() => setStep('declined')}>
-                拒绝 / 忽略
+                {t('demo.InviteAcceptanceFlow.tsx.confirm.decline')}
               </button>
             </div>
           </div>
@@ -257,9 +268,9 @@ export function InviteAcceptanceFlow({ open, role, onClose, onJoined, onDeclined
             <div className="invite-accept__success-badge" aria-hidden>
               <Icon name="check" size={26} />
             </div>
-            <h2 className="invite-accept__title">已加入 {WORKSPACE.name} 🎉</h2>
+            <h2 className="invite-accept__title">{t('demo.InviteAcceptanceFlow.tsx.joined.titlePrefix')}{t(WORKSPACE.nameKey)}{t('demo.InviteAcceptanceFlow.tsx.joined.titleSuffix')}</h2>
             <p className="invite-accept__subtitle">
-              你已占用 1 个席位 · 角色：<strong>{meta.label}</strong>（{meta.en}）
+              {t('demo.InviteAcceptanceFlow.tsx.joined.subtitlePrefix')}<strong>{t(meta.labelKey)}</strong>（{t(meta.enKey)}）
             </p>
             <div className="invite-accept__actions">
               <button
@@ -267,7 +278,7 @@ export function InviteAcceptanceFlow({ open, role, onClose, onJoined, onDeclined
                 className="invite-accept__btn is-primary"
                 onClick={() => onJoined(meta.scenario)}
               >
-                开始协作
+                {t('demo.InviteAcceptanceFlow.tsx.joined.start')}
               </button>
             </div>
           </div>
@@ -279,13 +290,13 @@ export function InviteAcceptanceFlow({ open, role, onClose, onJoined, onDeclined
             <div className="invite-accept__declined-badge" aria-hidden>
               <Icon name="info" size={24} />
             </div>
-            <h2 className="invite-accept__title">邀请已忽略</h2>
+            <h2 className="invite-accept__title">{t('demo.InviteAcceptanceFlow.tsx.declined.title')}</h2>
             <p className="invite-accept__subtitle">
-              该邀请将保持<strong>待定（pending）</strong>状态，你可以稍后通过邮件链接重新加入。
+              {t('demo.InviteAcceptanceFlow.tsx.declined.subtitlePrefix')}<strong>{t('demo.InviteAcceptanceFlow.tsx.declined.pending')}</strong>{t('demo.InviteAcceptanceFlow.tsx.declined.subtitleSuffix')}
             </p>
             <div className="invite-accept__actions">
               <button type="button" className="invite-accept__btn is-ghost" onClick={() => setStep('landing')}>
-                重新考虑
+                {t('demo.InviteAcceptanceFlow.tsx.declined.reconsider')}
               </button>
               <button
                 type="button"
@@ -295,7 +306,7 @@ export function InviteAcceptanceFlow({ open, role, onClose, onJoined, onDeclined
                   onClose();
                 }}
               >
-                关闭
+                {t('demo.InviteAcceptanceFlow.tsx.declined.close')}
               </button>
             </div>
           </div>

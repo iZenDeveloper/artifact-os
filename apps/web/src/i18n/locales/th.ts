@@ -1477,6 +1477,7 @@ export const th: Dict = {
   'ds.surfaceVideo': 'วิดีโอ',
   'ds.surfaceAudio': 'เสียง',
   'ds.searchPlaceholder': 'ค้นหา design systems…',
+  'ds.pageDescription': 'แนวทางแบรนด์ กฎของคอมโพเนนต์ และแอสเซตภาพที่นำกลับมาใช้ซ้ำได้สำหรับทีมของคุณ',
   'ds.emptyNoMatch': 'ไม่พบ design systems',
   'ds.badgeDefault': 'ค่าเริ่มต้น',
   'ds.preview': 'ดูตัวอย่าง',

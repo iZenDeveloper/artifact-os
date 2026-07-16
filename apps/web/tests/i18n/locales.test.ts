@@ -54,16 +54,24 @@ describe('i18n locales', () => {
   });
 
   it('keeps locale dictionaries aligned with English keys and placeholders', async () => {
+    // Demo bilingual keys are intentionally defined only in en + zh-CN; every other
+    // locale legitimately omits them and falls back at runtime (see types.ts).
+    const isDemoKey = (key: string) => key.startsWith('demo.');
     const englishKeys = Object.keys(en).sort();
+    const requiredKeys = englishKeys.filter((key) => !isDemoKey(key));
 
     for (const locale of LOCALES) {
       const dict = await loadDict(locale);
-      expect(Object.keys(dict).sort()).toEqual(englishKeys);
+      const dictKeys = Object.keys(dict).sort();
+      const expectedKeys =
+        locale === 'en' || locale === 'zh-CN' ? englishKeys : requiredKeys;
+      expect(dictKeys.filter((key) => !isDemoKey(key))).toEqual(requiredKeys);
+      expect(dictKeys).toEqual(expectedKeys);
 
-      for (const key of englishKeys) {
+      for (const key of expectedKeys) {
         const dictKey = key as keyof Dict;
-        expect(placeholders(dict[dictKey]), `${locale}.${key}`).toEqual(
-          placeholders(en[dictKey]),
+        expect(placeholders(dict[dictKey] ?? ''), `${locale}.${key}`).toEqual(
+          placeholders(en[dictKey] ?? ''),
         );
       }
     }
@@ -239,8 +247,15 @@ describe('i18n locales', () => {
   // reintroduced spread, fails CI loudly instead of silently rendering English
   // to Japanese users.
   it('keeps ja explicitly translated for every English key (tier-1 parity lock)', () => {
-    const englishKeys = Object.keys(en).sort();
-    const explicit = explicitLocaleKeys('ja').sort();
+    // Demo bilingual keys (`demo.*`) are intentionally en + zh-CN only; ja
+    // legitimately omits them and falls back at runtime, so they are excluded
+    // from this parity lock (see types.ts "Demo bilingual keys").
+    const englishKeys = Object.keys(en)
+      .filter((key) => !key.startsWith('demo.'))
+      .sort();
+    const explicit = explicitLocaleKeys('ja')
+      .filter((key) => !key.startsWith('demo.'))
+      .sort();
 
     expect(
       explicit,

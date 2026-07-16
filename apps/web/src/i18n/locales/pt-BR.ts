@@ -1477,6 +1477,7 @@ export const ptBR: Dict = {
   'ds.surfaceVideo': 'Vídeo',
   'ds.surfaceAudio': 'Áudio',
   'ds.searchPlaceholder': 'Buscar sistemas de design…',
+  'ds.pageDescription': 'Diretrizes de marca, regras de componentes e recursos visuais reutilizáveis para sua equipe.',
   'ds.emptyNoMatch': 'Nenhum sistema de design corresponde à sua busca.',
   'ds.badgeDefault': 'PADRÃO',
   'ds.preview': 'Prévia',

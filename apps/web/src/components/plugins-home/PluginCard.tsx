@@ -72,7 +72,7 @@ export function PluginCard({
   onShareAction,
   layout = 'rich',
 }: Props) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const [useMenuOpen, setUseMenuOpen] = useState(false);
   // Demo-only 私有/共享 state — pure front-end toggle, no backend.
   const [visibility, setVisibility] = useState<PluginVisibility>(() =>
@@ -357,18 +357,22 @@ export function PluginCard({
           ].join(' ')}
         >
           <Icon name={shared ? 'share' : 'eye-off'} size={10} />
-          {shared ? '共享' : '私有'}
+          {shared ? t('demo.PluginCard.tsx.visibility.shared') : t('demo.PluginCard.tsx.visibility.private')}
         </span>
         <button
           type="button"
           className="plugins-home__visibility-toggle"
-          title={shared ? '设为私有' : '共享给团队'}
-          aria-label={shared ? `将「${title}」设为私有` : `将「${title}」共享给团队`}
+          title={shared ? t('demo.PluginCard.tsx.toggle.setPrivate') : t('demo.PluginCard.tsx.toggle.shareWithTeam')}
+          aria-label={
+            shared
+              ? t('demo.PluginCard.tsx.toggle.setPrivateAria', { title })
+              : t('demo.PluginCard.tsx.toggle.shareWithTeamAria', { title })
+          }
           data-testid={`plugins-home-share-${record.id}`}
           onClick={() => setVisibility(shared ? 'private' : 'shared')}
         >
           <Icon name={shared ? 'eye-off' : 'share'} size={12} />
-          <span>{shared ? '设为私有' : '共享给团队'}</span>
+          <span>{shared ? t('demo.PluginCard.tsx.toggle.setPrivate') : t('demo.PluginCard.tsx.toggle.shareWithTeam')}</span>
         </button>
         <TrustBadge trust={record.trust} />
       </div>

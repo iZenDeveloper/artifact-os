@@ -92,7 +92,7 @@ export function EntryHelpMenu() {
         data-testid="entry-help-trigger"
       >
         <Icon name="help-circle" size={18} />
-        <span className="entry-help-menu__label">帮助</span>
+        <span className="entry-help-menu__label">{t('demo.EntryHelpMenu.tsx.helpLabel')}</span>
       </button>
       <AnimatePresence>
         {open ? (
