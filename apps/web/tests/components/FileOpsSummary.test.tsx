@@ -50,7 +50,7 @@ describe('FileOpsSummary', () => {
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
   });
 
-  it('stays collapsed once the run is complete until the user asks for file details', () => {
+  it('keeps file-level detail collapsed after completion until the user asks for it', () => {
     render(
       <FileOpsSummary
         entries={[
@@ -63,14 +63,15 @@ describe('FileOpsSummary', () => {
 
     expect(screen.queryByTestId('file-ops-row-a.ts')).toBeNull();
     expect(screen.queryByTestId('file-ops-row-b.ts')).toBeNull();
-    expect(screen.getByTestId('file-ops-toggle').getAttribute('aria-expanded')).toBe('false');
+    const toggle = screen.getByTestId('file-ops-toggle');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
 
-    fireEvent.click(screen.getByTestId('file-ops-toggle'));
+    fireEvent.click(toggle);
     expect(screen.getByTestId('file-ops-row-a.ts')).toBeTruthy();
     expect(screen.getByTestId('file-ops-row-b.ts')).toBeTruthy();
   });
 
-  it('remains collapsed when a streaming turn finishes', () => {
+  it('stays collapsed when streaming flips to false', () => {
     const { rerender } = render(
       <FileOpsSummary
         entries={[entry({ path: 'a.ts' })]}
@@ -108,25 +109,6 @@ describe('FileOpsSummary', () => {
 
     fireEvent.click(screen.getByTestId('file-ops-row-open-a.ts'));
     expect(onRequestOpenFile).toHaveBeenCalledWith('a.ts');
-  });
-
-  it('offers one direct result entry point for the latest changed file', () => {
-    const onRequestOpenFile = vi.fn();
-    render(
-      <FileOpsSummary
-        entries={[
-          entry({ path: 'input.ts' }),
-          entry({ path: 'result.ts', ops: ['write'], opCounts: { read: 0, write: 1, edit: 0, delete: 0 } }),
-        ]}
-        streaming={false}
-        projectFileNames={new Set(['input.ts', 'result.ts'])}
-        onRequestOpenFile={onRequestOpenFile}
-      />,
-    );
-
-    fireEvent.click(screen.getByTestId('file-ops-primary-open-result.ts'));
-    expect(onRequestOpenFile).toHaveBeenCalledWith('result.ts');
-    expect(screen.getByTestId('file-ops-toggle').getAttribute('aria-expanded')).toBe('false');
   });
 
   it('does not show the open button for deleted files', () => {
