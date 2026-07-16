@@ -76,6 +76,8 @@ describe('run diagnostics', () => {
       first_token_seen: false,
       user_visible_output_seen: false,
       tool_call_seen: false,
+      tool_result_sent: false,
+      approval_requested: false,
       artifact_write_seen: false,
       live_artifact_seen: false,
       resume_auto_reseeded: false,
@@ -105,6 +107,8 @@ describe('run diagnostics', () => {
       first_token_seen: false,
       user_visible_output_seen: false,
       tool_call_seen: false,
+      tool_result_sent: false,
+      approval_requested: false,
       artifact_write_seen: false,
       live_artifact_seen: false,
       resume_auto_reseeded: false,
@@ -131,6 +135,8 @@ describe('run diagnostics', () => {
       first_token_seen: false,
       user_visible_output_seen: false,
       tool_call_seen: false,
+      tool_result_sent: false,
+      approval_requested: false,
       artifact_write_seen: false,
       live_artifact_seen: false,
       resume_auto_reseeded: false,
@@ -170,8 +176,51 @@ describe('run diagnostics', () => {
       first_token_seen: true,
       user_visible_output_seen: true,
       tool_call_seen: true,
+      // A tool_use with no following tool_result → not delivered.
+      tool_result_sent: false,
+      approval_requested: false,
       artifact_write_seen: true,
       live_artifact_seen: true,
     });
+  });
+
+  it('flags tool_result_sent / approval_requested (E-lite root-cause discriminators)', () => {
+    const resolved = summarizeRunDiagnosticsForAnalytics({
+      events: [
+        { event: 'agent', data: { type: 'tool_use', name: 'Read' } },
+        { event: 'agent', data: { type: 'tool_result', toolUseId: 't1' } },
+      ],
+      exitCode: 0,
+      signal: null,
+    });
+    expect(resolved.tool_call_seen).toBe(true);
+    expect(resolved.tool_result_sent).toBe(true);
+
+    // The last tool_use has no result → the tool-result-not-delivered root cause,
+    // even though an earlier tool did resolve.
+    const hung = summarizeRunDiagnosticsForAnalytics({
+      events: [
+        { event: 'agent', data: { type: 'tool_use', name: 'Read' } },
+        { event: 'agent', data: { type: 'tool_result', toolUseId: 't1' } },
+        { event: 'agent', data: { type: 'tool_use', name: 'Bash' } },
+      ],
+      exitCode: null,
+      signal: 'SIGKILL',
+    });
+    expect(hung.tool_call_seen).toBe(true);
+    expect(hung.tool_result_sent).toBe(false);
+
+    // An ACP approval diagnostic flips approval_requested.
+    const approved = summarizeRunDiagnosticsForAnalytics({
+      events: [
+        {
+          event: 'agent',
+          data: { type: 'diagnostic', name: 'acp_approval_request', optionId: 'allow_once' },
+        },
+      ],
+      exitCode: 0,
+      signal: null,
+    });
+    expect(approved.approval_requested).toBe(true);
   });
 });

@@ -39,6 +39,13 @@ export interface RunDiagnosticsAnalytics {
   first_token_seen: boolean;
   user_visible_output_seen: boolean;
   tool_call_seen: boolean;
+  // True when a tool_result was observed for the run's LAST tool_use. A stall
+  // with `tool_call_seen && !tool_result_sent` is the tool-result-not-delivered
+  // root cause (the agent committed a tool_use but the result never came back).
+  tool_result_sent: boolean;
+  // True when an approval/permission gate fired. Only ACP runtimes surface this
+  // (via an `acp_approval_request` diagnostic); stream/CLI runtimes bypass gates.
+  approval_requested: boolean;
   artifact_write_seen: boolean;
   live_artifact_seen: boolean;
   // True when this run transparently re-seeded after an upstream session resume
@@ -160,6 +167,10 @@ export function summarizeRunDiagnosticsForAnalytics(args: {
   let stdout = '';
   let userVisibleOutputSeen = false;
   let toolCallSeen = false;
+  // `tool_result_sent` = a tool_result followed the run's LAST tool_use. Reset
+  // on every new tool_use so a resolved earlier tool can't mask a hung last one.
+  let toolResultAfterLastToolUse = false;
+  let approvalRequested = false;
   let artifactWriteSeen = args.artifactWriteSeen === true;
   let liveArtifactSeen = args.liveArtifactSeen === true;
   let recordedCloseReason: RunCloseReason | null = null;
@@ -183,7 +194,16 @@ export function summarizeRunDiagnosticsForAnalytics(args: {
       const delta = typeof data.delta === 'string' ? data.delta : '';
       if (delta.length > 0) userVisibleOutputSeen = true;
     }
-    if (data.type === 'tool_use') toolCallSeen = true;
+    if (data.type === 'tool_use') {
+      toolCallSeen = true;
+      toolResultAfterLastToolUse = false;
+    }
+    if (data.type === 'tool_result' && toolCallSeen) {
+      toolResultAfterLastToolUse = true;
+    }
+    if (data.type === 'diagnostic' && data.name === 'acp_approval_request') {
+      approvalRequested = true;
+    }
     if (event.event === 'diagnostic' && data.type === 'agent_resume_auto_reseed') {
       resumeAutoReseeded = true;
     }
@@ -254,6 +274,8 @@ export function summarizeRunDiagnosticsForAnalytics(args: {
     first_token_seen: args.firstTokenSeen === true,
     user_visible_output_seen: userVisibleOutputSeen,
     tool_call_seen: toolCallSeen,
+    tool_result_sent: toolResultAfterLastToolUse,
+    approval_requested: approvalRequested,
     artifact_write_seen: artifactWriteSeen,
     live_artifact_seen: liveArtifactSeen,
     resume_auto_reseeded: resumeAutoReseeded,
