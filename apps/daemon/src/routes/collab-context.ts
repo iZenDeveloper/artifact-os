@@ -269,11 +269,26 @@ export function registerCollabContextRoutes(app: Express, deps: RegisterCollabCo
 
     const authorization = req.header('authorization') ?? undefined;
     const previous = deps.activeWorkspace.get();
+    // B moved workspace selection server-side (2026-07-16): the account-level
+    // active workspace must be switched ON THE BACKEND first, or every
+    // follow-up context read and scoped CLI call stays on the old workspace
+    // and the validation below always fails. Local-only providers (dev) have
+    // no selectWorkspace and keep the previous behavior.
+    if (workspaceContext.selectWorkspace) {
+      const switched = await workspaceContext.selectWorkspace(workspaceId).catch(() => false);
+      if (!switched) {
+        return res.status(502).json({ error: 'workspace_switch_rejected' });
+      }
+    }
     await deps.activeWorkspace.set(workspaceId);
     const context = await workspaceContext.current({ authorization }).catch(() => null);
     if (!context || context.workspaceId !== workspaceId) {
-      if (previous) await deps.activeWorkspace.set(previous);
-      else await deps.activeWorkspace.clear();
+      if (previous) {
+        await deps.activeWorkspace.set(previous);
+        // Undo the backend-side switch too, or the account stays parked on a
+        // workspace the client just refused.
+        await workspaceContext.selectWorkspace?.(previous).catch(() => false);
+      } else await deps.activeWorkspace.clear();
       return res.status(404).json({ error: 'workspace_context_unavailable' });
     }
     const body: WorkspaceActiveResponse = { activeWorkspaceId: workspaceId, context };

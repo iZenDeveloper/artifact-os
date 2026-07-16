@@ -109,6 +109,15 @@ export interface CollabCloudService {
   resolveMember(memberId: string): Promise<CollabCloudMemberDirectoryEntry | null>;
   /** Run one poll cycle (register + pull + merge across all local projects). */
   pollOnce(): Promise<void>;
+  /**
+   * Pull + merge ONE project's comments now, regardless of whether it has a
+   * live events subscriber. This is the hub push-channel consumer: a
+   * `comment-changed` dirty mark must be redeemable even when the project is
+   * not in `listProjectIds()` (the poll loop's open-projects scope) — the
+   * poll loop otherwise never covers it and the mark would be consumed for
+   * nothing. Errors land on `onError`; never throws.
+   */
+  pullProject(projectId: string): Promise<void>;
   /** Start the background poller. */
   start(): void;
   /** Stop the poller. */
@@ -215,6 +224,16 @@ export function createCollabCloudService(deps: CollabCloudServiceDeps): CollabCl
     if (inserted > 0) deps.onMerged?.({ projectId, inserted });
   }
 
+  async function pullProject(projectId: string): Promise<void> {
+    const identity = await teamIdentity();
+    if (!identity) return;
+    try {
+      await pollProject(identity.teamId, projectId);
+    } catch (error) {
+      deps.onError?.(error);
+    }
+  }
+
   async function pollOnce(): Promise<void> {
     const identity = await teamIdentity();
     if (!identity) return;
@@ -263,6 +282,7 @@ export function createCollabCloudService(deps: CollabCloudServiceDeps): CollabCl
     listMembers,
     resolveMember,
     pollOnce,
+    pullProject,
     start() {
       if (timer) return;
       timer = setInterval(tick, pollIntervalMs);

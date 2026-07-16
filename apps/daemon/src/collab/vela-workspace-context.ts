@@ -181,6 +181,28 @@ export function createVelaWorkspaceContextProvider(
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   return {
+    async selectWorkspace(workspaceId: string): Promise<boolean> {
+      const session = readSession();
+      if (!session || !session.controlKey || !session.apiUrl) return false;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetchImpl(new URL(WORKSPACE_CURRENT_PATH, session.apiUrl), {
+          method: 'PUT',
+          headers: {
+            authorization: `Bearer ${session.controlKey}`,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ workspaceId }),
+          signal: controller.signal,
+        });
+        return response.ok;
+      } catch {
+        return false;
+      } finally {
+        clearTimeout(timeout);
+      }
+    },
     async current(_req: WorkspaceContextRequest): Promise<WorkspaceCollabContext | null> {
       const session = readSession();
       if (!session || !session.controlKey || !session.apiUrl) return null;

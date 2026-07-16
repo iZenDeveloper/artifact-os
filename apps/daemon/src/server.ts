@@ -3024,10 +3024,10 @@ export async function startServer({
           const projectId = event.projectId;
           if (!projectId) break;
           if (activeProjectEventSinks.has(projectId)) {
-            // Project is open here — pull now instead of waiting for the next
-            // poll tick; the merge emits `comment-changed` to the web itself.
+            // Project is open here — pull IT now instead of waiting for the
+            // next poll tick; the merge emits `comment-changed` to the web.
             dirtyCommentProjects.delete(projectId);
-            void collabCloud?.pollOnce().catch(() => undefined);
+            void collabCloud?.pullProject(projectId).catch(() => undefined);
           } else {
             // Closed project: just mark dirty. The open-project path pulls
             // immediately, and an unopened project costs zero requests.
@@ -3961,9 +3961,12 @@ export async function startServer({
       ? {
           onCommentsRead: (projectId) => {
             // Consume the hub push channel's dirty mark: first read after
-            // opening a project pulls the missed comments immediately.
+            // opening a project pulls THAT project's missed comments — a
+            // targeted pull, because the poll loop only covers projects with
+            // a live events subscriber and this read can arrive before (or
+            // without) one.
             if (dirtyCommentProjects.delete(projectId)) {
-              void collabCloud.pollOnce().catch(() => {});
+              void collabCloud.pullProject(projectId).catch(() => {});
             }
           },
           onCommentCreated: (comment) => {

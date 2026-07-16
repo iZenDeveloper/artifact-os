@@ -32,6 +32,16 @@ export interface WorkspaceContextProvider {
    * provider (whose context is derived per-request from the token).
    */
   set?(context: WorkspaceCollabContext | null): void;
+  /**
+   * Switch the ACCOUNT-LEVEL active workspace on the backend. B's 2026-07-16
+   * deploy moved workspace selection server-side (`GET /workspaces/current`
+   * ignores per-request workspace hints), so a local-only selection leaves
+   * every follow-up read and CLI call scoped to the previous workspace —
+   * which read back as 403 missing_principal on the collab plane. Providers
+   * without a backend (dev) omit this. Resolves false when the backend
+   * refused the switch.
+   */
+  selectWorkspace?(workspaceId: string): Promise<boolean>;
 }
 
 const WORKSPACE_TYPES: ReadonlySet<WorkspaceType> = new Set(['personal', 'team']);
