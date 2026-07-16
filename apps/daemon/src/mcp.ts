@@ -28,7 +28,7 @@ import {
 } from './integrations/vela-errors.js';
 
 const SERVER_NAME = 'open-design';
-const SERVER_VERSION = '0.2.2';
+const SERVER_VERSION = '0.2.3';
 const MCP_STDIO_IDLE_EXIT_MS = 30 * 60 * 1000;
 const CHATGPT_WIDGET_URI = 'ui://open-design/artifact-card-v2.html';
 const CHATGPT_V1_TOOL_NAMES = new Set([

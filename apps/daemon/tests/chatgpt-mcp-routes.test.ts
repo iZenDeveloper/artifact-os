@@ -105,7 +105,7 @@ describe('ChatGPT Streamable HTTP MCP', () => {
       expect(widgetHtml).toContain('window.openai');
       expect(widgetHtml).toContain("rpcRequest('ui/initialize'");
       expect(widgetHtml).toContain("rpcRequest('tools/call'");
-      expect(widgetHtml).toContain("version: '0.2.2'");
+      expect(widgetHtml).toContain("version: '0.2.3'");
       expect(widgetHtml).toContain("}, 1000);");
       expect(widgetHtml).toContain('window.openai?.toolOutput ?? window.openai?.widgetState');
       expect(widgetHtml).toContain('if (Object.keys(current).length > 0)');

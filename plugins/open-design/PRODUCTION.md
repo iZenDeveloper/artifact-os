@@ -150,5 +150,5 @@ The ChatGPT V1 server exposes only account, catalog, project creation, Cloud gen
 - A managed preview capability cannot read wallet, run, or non-raw project APIs and stops working after tenant reap.
 - `studioUrl` is exposed only when its configured tenant-aware route opens the same user's project.
 - Version list/restore works against the correct artifact.
-- Source ZIP downloads in ChatGPT; rendered PDF/image/PPTX export opens or downloads from the hosted Open Design renderer.
+- Project source exports as a ZIP directly in ChatGPT. Rendered PDF/image/PPTX formats are not claimed by V1 unless a hosted Open Design renderer is added and separately accepted.
 - Revoked or expired tokens return an OAuth challenge and never fall back to another user.

@@ -29,7 +29,7 @@ For other artifact types, explain that the first plugin version focuses on these
 3. Call `create_project` with a clear human-readable name. Pass `designSystem` when applying a known system.
 4. Call `start_run` with the supported `artifactType`, the five-field structured `brief`, and `confirmed: true`. The server maps the artifact type to the approved skill and pins the run to Cloud. Return the progress card; do not wait silently.
 5. Poll `get_run` every 30–60 seconds until the run is terminal. Long periods with no file changes are normal agent thinking time; do not cancel unless the user asks.
-6. On success, show the Artifact preview and the Open Design studio action. Keep complex editing, version management, and advanced export in Open Design.
+6. On success, show the Artifact preview. Use `list_versions` / `restore_version` and `export_project` so version and source-export operations remain available directly in ChatGPT. Show the Open Design studio action only when the tool result provides a tenant-aware `studioUrl`; never invent one. Keep complete, complex editing in Open Design.
 7. For a refinement, reuse the same project and call `start_run` with the requested delta. Do not create a duplicate project unless the user asks.
 
 ## Requirement confirmation

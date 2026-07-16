@@ -8,7 +8,8 @@ This is the first-party ChatGPT plugin package for Open Design. It uses the offi
 - Extract or apply a reusable design system.
 - Confirm audience, outcome, content/flows, visual direction, and output format in chat; `start_run` requires that structured brief with `confirmed: true`.
 - Show generation progress and render the result card through the MCP Apps UI resource; the card polls in place through the standard MCP Apps bridge instead of remounting on every status check.
-- Continue complex editing, version review, and advanced export in Open Design studio.
+- Preview the Artifact, list or restore versions, and export project source directly from the ChatGPT card.
+- Continue complete, complex editing in Open Design studio when the tenant-aware handoff is available.
 - Use the signed-in Open Design Cloud balance by default, with recharge and local Code Agent/BYOK fallback guidance.
 
 ## Developer validation
