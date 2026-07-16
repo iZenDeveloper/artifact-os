@@ -396,7 +396,10 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   // Footer Template pill preview: the create-rail card the pointer is over,
   // so hovering a card below previews it in the pill (cleared on rail-leave).
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
-  const [templateSectionOpen, setTemplateSectionOpen] = useState(true);
+  // #5517 collapses the template card rail by default (it only auto-expands in
+  // the demo's onboarding-new scenario), so the home reads as a clean composer
+  // with a "从模板开始…" toggle instead of a persistent card grid.
+  const [templateSectionOpen, setTemplateSectionOpen] = useState(false);
   // A committed pick or Clear must win over a lingering hover-preview. The rail
   // that sets previewTemplateId unmounts the instant a template becomes active,
   // so its onMouseLeave never fires; without this reset the stale preview keeps
