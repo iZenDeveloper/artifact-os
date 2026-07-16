@@ -11,7 +11,6 @@
 import Layout from '../../_components/sub-page-layout.astro';
 import PluginContribute from '../../_components/plugin-contribute.astro';
 import TemplateCard from '../../_components/template-card.astro';
-import TemplateCardAutoplay from '../../_components/template-card-autoplay.astro';
 import { getCraftRecords, getSystemRecords } from '../../_lib/catalog';
 import { getBundledPlugins, type BundledPluginRecord } from '../../_lib/bundled-plugins';
 import { categorizePlugin, bundledRecordOf, type PluginCategorySlug } from '../../_lib/plugin-facets';
@@ -57,7 +56,7 @@ const exploreItems = [...templatesSet]
   .map((rec) => ({ rec, category: categorizePlugin(bundledRecordOf(rec)), tags: cleanTagsOf(rec) }))
   .filter((it) => it.category !== null && !MEDIA_CATEGORIES.has(it.category))
   .sort((a, b) => Number(isFeatured(b.rec)) - Number(isFeatured(a.rec)))
-  .slice(0, 36)
+  .slice(0, 24)
   .map((it, idx) => ({ rec: it.rec, idx, tags: it.tags }));
 
 // Filter chips = the most-common real content tags across the visible
@@ -178,7 +177,6 @@ const tiles = [
     })();
   </script>
 
-  <TemplateCardAutoplay />
 
   {/* Contribute entry — de-emphasized, at the bottom. */}
   <PluginContribute compact />
