@@ -1176,7 +1176,8 @@
 }
 .home-hero__execution-switcher .inline-switcher__agent-grid {
   grid-template-columns: 1fr;
-  gap: var(--spacing-6);
+  /* Tight rows for the borderless compact model list (no card gaps). */
+  gap: 2px;
 }
 .home-hero__tool {
   appearance: none;

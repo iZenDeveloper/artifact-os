@@ -38,12 +38,17 @@
    to the right (it stays docked until the user collapses it again). */
 .entry-shell--no-header .entry {
   grid-template-columns: 0 minmax(0, 1fr);
-  transition: grid-template-columns 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  /* Collapse: hold the horizontal squeeze until the rows have cascaded out
+     top-to-bottom (see the staggered rail-row fade below), otherwise the
+     0-width clip would swallow the lower rows before their turn. */
+  transition: grid-template-columns 200ms cubic-bezier(0.23, 1, 0.32, 1) 170ms;
   /* Translucent over the app-wash pastel ground (app-wash.css): the frosted
      rail and content cards float on the wash instead of a flat tone. */
   background: var(--veil-page);
 }
 .entry-shell--no-header .entry.entry--rail-open {
+  /* Expand is immediate — no hold — so opening stays snappy. */
+  transition: grid-template-columns 200ms cubic-bezier(0.23, 1, 0.32, 1) 0ms;
   grid-template-columns: var(--entry-rail-width, 56px) minmax(0, 1fr);
 }
 
@@ -173,6 +178,71 @@
 }
 .entry--rail-open .entry-nav-rail {
   overflow: visible;
+}
+
+/* ── Collapse cascade ──────────────────────────────────────────────────────
+   Clicking collapse plays a top-to-bottom sequence: each rail row fades and
+   lifts a few px, staggered by its document order (search → nav items → team
+   items → footer), so the sidebar empties from the top down before the track
+   squeezes shut. Expanding is instant (no per-row delay) to stay snappy. */
+.entry-nav-rail__search-row,
+.entry-nav-rail__group > .entry-nav-rail__btn,
+.entry-nav-rail__team-section > .entry-nav-rail__team-wrap,
+.entry-nav-rail__team-section > .entry-nav-rail__btn,
+.entry-nav-rail__section-divider,
+.entry-nav-rail__footer {
+  transition:
+    opacity 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.entry:not(.entry--rail-open) .entry-nav-rail__search-row,
+.entry:not(.entry--rail-open) .entry-nav-rail__group > .entry-nav-rail__btn,
+.entry:not(.entry--rail-open) .entry-nav-rail__team-section > .entry-nav-rail__team-wrap,
+.entry:not(.entry--rail-open) .entry-nav-rail__team-section > .entry-nav-rail__btn,
+.entry:not(.entry--rail-open) .entry-nav-rail__section-divider,
+.entry:not(.entry--rail-open) .entry-nav-rail__footer {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+/* Per-row stagger — applied only while collapsing so the cascade runs top→bottom.
+   Two scopes (group, then team-section) continue one sequence. */
+.entry:not(.entry--rail-open) .entry-nav-rail__group > *:nth-child(1) { transition-delay: 0ms; }
+.entry:not(.entry--rail-open) .entry-nav-rail__group > *:nth-child(2) { transition-delay: 15ms; }
+.entry:not(.entry--rail-open) .entry-nav-rail__group > *:nth-child(3) { transition-delay: 30ms; }
+.entry:not(.entry--rail-open) .entry-nav-rail__team-section > *:nth-child(1) { transition-delay: 45ms; }
+.entry:not(.entry--rail-open) .entry-nav-rail__team-section > *:nth-child(2) { transition-delay: 60ms; }
+.entry:not(.entry--rail-open) .entry-nav-rail__team-section > *:nth-child(3) { transition-delay: 75ms; }
+.entry:not(.entry--rail-open) .entry-nav-rail__team-section > *:nth-child(4) { transition-delay: 90ms; }
+.entry:not(.entry--rail-open) .entry-nav-rail__team-section > *:nth-child(5) { transition-delay: 105ms; }
+.entry:not(.entry--rail-open) .entry-nav-rail__team-section > *:nth-child(6) { transition-delay: 120ms; }
+.entry:not(.entry--rail-open) .entry-nav-rail__team-section > *:nth-child(7) { transition-delay: 135ms; }
+.entry:not(.entry--rail-open) .entry-nav-rail__team-section > *:nth-child(8) { transition-delay: 150ms; }
+.entry:not(.entry--rail-open) .entry-nav-rail__footer { transition-delay: 165ms; }
+/* Footer finale: after the rows have cascaded out top-to-bottom, the account
+   底卡 does NOT fade up with them — it stays fully opaque and slides left as
+   the track squeezes shut, reading as the card retracting to the left. Same
+   selector as the shared collapse rule above, placed after it so it wins. */
+.entry:not(.entry--rail-open) .entry-nav-rail__footer {
+  opacity: 1;
+  transform: translateX(-36px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .entry-nav-rail__search-row,
+  .entry-nav-rail__group > .entry-nav-rail__btn,
+  .entry-nav-rail__team-section > .entry-nav-rail__team-wrap,
+  .entry-nav-rail__team-section > .entry-nav-rail__btn,
+  .entry-nav-rail__section-divider,
+  .entry-nav-rail__footer {
+    transition: none;
+    transform: none;
+  }
+  .entry:not(.entry--rail-open) .entry-nav-rail__search-row,
+  .entry:not(.entry--rail-open) .entry-nav-rail__group > .entry-nav-rail__btn,
+  .entry:not(.entry--rail-open) .entry-nav-rail__team-section > .entry-nav-rail__team-wrap,
+  .entry:not(.entry--rail-open) .entry-nav-rail__team-section > .entry-nav-rail__btn,
+  .entry:not(.entry--rail-open) .entry-nav-rail__section-divider,
+  .entry:not(.entry--rail-open) .entry-nav-rail__footer { transition-delay: 0ms; }
+  .entry-shell--no-header .entry { transition-delay: 0ms; }
 }
 
 /* Brand slot — the logo, with a collapse button that fades in on hover so the
@@ -1898,6 +1968,26 @@
   /* Selected state reads from the tinted background alone — no dark accent
      border, which showed as a heavy near-black outline on the active row. */
   background: var(--accent-tint);
+  color: var(--text-strong);
+}
+/* Compact model list (home composer popover): a plain borderless list —
+   no card outlines around each row, tighter single-column rows, and a neutral
+   gray selection instead of the accent tint. */
+.inline-switcher--compact .inline-switcher__agent-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1px;
+}
+.inline-switcher--compact .inline-switcher__agent {
+  border: none;
+  background: transparent;
+  padding: 6px 10px;
+}
+.inline-switcher--compact .inline-switcher__agent:hover:not(:disabled) {
+  border: none;
+  background: var(--bg-subtle);
+}
+.inline-switcher--compact .inline-switcher__agent.is-active {
+  background: var(--bg-subtle);
   color: var(--text-strong);
 }
 .inline-switcher__amr-reminder-dot--agent {
@@ -5921,7 +6011,7 @@
 
 [data-testid="design-systems-tab"] > aside div:has(> [data-testid^="design-system-card-"][aria-pressed="true"]) {
   border-color: #dbdbdb;
-  background: color-mix(in srgb, #ededed 32%, transparent);
+  background: #ffffff;
 }
 
 [data-testid="design-systems-tab"] > aside div:has(> [data-testid^="design-system-card-"]):hover > [data-testid^="design-system-card-"],

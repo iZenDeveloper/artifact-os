@@ -824,7 +824,13 @@
   padding: 0;
 }
 .workspace-shell .workspace-tab.is-pinned .workspace-tab__rail-toggle {
-  justify-self: center;
+  /* Fill the whole pinned tab so the hover target is a full tab-sized box
+     (matching the Home button / a normal tab hover) instead of a cramped 20px
+     icon square. The glyph stays centered via the button's own flex centering. */
+  justify-self: stretch;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
 }
 .workspace-shell .workspace-tab.is-active {
   border-radius: 12px;
