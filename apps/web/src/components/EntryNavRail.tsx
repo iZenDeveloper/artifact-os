@@ -192,7 +192,10 @@ export function EntryNavRail({
   // #5517: wordmark badge on the account row (replaces the chevron) and a
   // small twin inside the menu's billing card. Derive from the raw tier id
   // first so "team_plus" maps to the plus badge regardless of display label.
-  const planTier = planBadgeTierForLabel(billing?.membershipTier ?? tierLabel);
+  // `||` not `??`: the billing endpoint reports an EMPTY membershipTier while
+  // the plan hint lives on context.planId, and the empty string must fall
+  // through to the label.
+  const planTier = planBadgeTierForLabel(billing?.membershipTier || tierLabel);
 
   const [accountOpen, setAccountOpen] = useState(false);
   // Signed-in account email for the menu head (#5517 shows it under the
