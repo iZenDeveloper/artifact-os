@@ -1655,7 +1655,9 @@
   padding: 0 8px;
   background: transparent;
   border: none;
-  border-radius: var(--radius-pill);
+  /* Rounded rect (12px), matching the top workspace tab strip — not a full
+     pill — so the Design Files tab and the file tabs read as one family. */
+  border-radius: 12px;
   font-size: 13px;
   line-height: 1;
   cursor: pointer;
