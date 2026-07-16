@@ -312,56 +312,6 @@ export interface AgentRefreshOptions {
 const AMR_SIGN_IN_RESCAN_ATTEMPTS = 4;
 const AMR_SIGN_IN_RESCAN_RETRY_MS = 1500;
 
-function codexPathStrings(locale: Locale) {
-  if (locale === 'zh-CN') {
-    return {
-      repairHint: '当前保存的 Codex 路径不适合继续使用。',
-      useDetected: '使用检测到的 Codex',
-      clearCustom: '清空自定义路径',
-      configuredSuccess: (path: string) => `本次测试使用的是已配置的 Codex 路径：${path}。`,
-      invalidFallback: (configuredPath: string, detectedPath: string) =>
-        `已配置的 Codex 路径无效或不可执行：${configuredPath}。本次测试改用 PATH 中的 Codex CLI：${detectedPath}。建议更新 CODEX_BIN 或清空自定义路径。`,
-      failedFallback: (configuredPath: string, detectedPath: string) =>
-        `已配置的 Codex 路径启动失败：${configuredPath}。本次测试改用 PATH 中的 Codex CLI：${detectedPath}。建议更新 CODEX_BIN 或清空自定义路径。`,
-    };
-  }
-  if (locale === 'zh-TW') {
-    return {
-      repairHint: '目前儲存的 Codex 路徑不適合繼續使用。',
-      useDetected: '使用偵測到的 Codex',
-      clearCustom: '清除自訂路徑',
-      configuredSuccess: (path: string) => `本次測試使用的是已設定的 Codex 路徑：${path}。`,
-      invalidFallback: (configuredPath: string, detectedPath: string) =>
-        `已設定的 Codex 路徑無效或不可執行：${configuredPath}。本次測試改用 PATH 中的 Codex CLI：${detectedPath}。建議更新 CODEX_BIN 或清除自訂路徑。`,
-      failedFallback: (configuredPath: string, detectedPath: string) =>
-        `已設定的 Codex 路徑啟動失敗：${configuredPath}。本次測試改用 PATH 中的 Codex CLI：${detectedPath}。建議更新 CODEX_BIN 或清除自訂路徑。`,
-    };
-  }
-  if (locale === 'ja') {
-    return {
-      repairHint: '保存されている Codex のパスは、このテストで使用すべきバイナリではありません。',
-      useDetected: '検出された Codex を使用',
-      clearCustom: 'カスタムパスをクリア',
-      configuredSuccess: (path: string) => `このテストでは設定済みの Codex パスを使用しました：${path}。`,
-      invalidFallback: (configuredPath: string, detectedPath: string) =>
-        `設定された Codex パスが無効か実行できません：${configuredPath}。このテストでは PATH 上の Codex CLI（${detectedPath}）を使用しました。CODEX_BIN を更新するか、カスタムパスをクリアしてください。`,
-      failedFallback: (configuredPath: string, detectedPath: string) =>
-        `設定された Codex パスの起動に失敗しました：${configuredPath}。このテストは PATH 上の Codex CLI（${detectedPath}）で成功しました。CODEX_BIN を更新するか、カスタムパスをクリアしてください。`,
-    };
-  }
-  return {
-    repairHint: 'The saved Codex path is not the binary this test should keep using.',
-    useDetected: 'Use detected Codex',
-    clearCustom: 'Clear custom path',
-    configuredSuccess: (path: string) =>
-      `This test used the configured Codex path: ${path}.`,
-    invalidFallback: (configuredPath: string, detectedPath: string) =>
-      `Configured Codex path is invalid or not executable: ${configuredPath}. This test used the PATH Codex CLI at ${detectedPath}. Update CODEX_BIN or clear the custom path to use the detected binary.`,
-    failedFallback: (configuredPath: string, detectedPath: string) =>
-      `Configured Codex path failed: ${configuredPath}. This test succeeded with the PATH Codex CLI at ${detectedPath}. Update CODEX_BIN or clear the custom path to use the detected binary.`,
-  };
-}
-
 function sanitizeHttpsUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
   try {
@@ -2278,32 +2228,31 @@ export function SettingsDialog({
         ? t('settings.testSuccessApi', { ms, sample })
         : t('settings.testSuccessCli', { agentName, ms, sample });
       if (kindForSuccess === 'cli' && cfg.agentId === 'codex') {
-        const codexStrings = codexPathStrings(locale);
         if (
           result.usedExecutableSource === 'configured' &&
           result.configuredExecutablePath
         ) {
-          return `${baseMessage} ${codexStrings.configuredSuccess(result.configuredExecutablePath)}`;
+          return `${baseMessage} ${t('settings.codexPathConfiguredSuccess', { path: result.configuredExecutablePath })}`;
         }
         if (
           result.usedExecutableSource === 'fallback_invalid' &&
           result.configuredExecutablePath &&
           result.detectedExecutablePath
         ) {
-          return `${baseMessage} ${codexStrings.invalidFallback(
-            result.configuredExecutablePath,
-            result.detectedExecutablePath,
-          )}`;
+          return `${baseMessage} ${t('settings.codexPathInvalidFallback', {
+            configuredPath: result.configuredExecutablePath,
+            detectedPath: result.detectedExecutablePath,
+          })}`;
         }
         if (
           result.usedExecutableSource === 'fallback_failed' &&
           result.configuredExecutablePath &&
           result.detectedExecutablePath
         ) {
-          return `${baseMessage} ${codexStrings.failedFallback(
-            result.configuredExecutablePath,
-            result.detectedExecutablePath,
-          )}`;
+          return `${baseMessage} ${t('settings.codexPathFailedFallback', {
+            configuredPath: result.configuredExecutablePath,
+            detectedPath: result.detectedExecutablePath,
+          })}`;
         }
       }
       return result.detail ? `${baseMessage} ${result.detail}` : baseMessage;
@@ -2375,7 +2324,7 @@ export function SettingsDialog({
     },
     {
       id: 'zhipu',
-      title: '智谱',
+      title: t('demo.SettingsDialog.tsx.providerZhipu'),
       protocol: 'openai',
       baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
       model: 'glm-4.6',
@@ -2389,14 +2338,14 @@ export function SettingsDialog({
     },
     {
       id: 'stepfun',
-      title: '阶跃星辰',
+      title: t('demo.SettingsDialog.tsx.providerStepfun'),
       protocol: 'openai',
       baseUrl: 'https://api.stepfun.com/v1',
       model: 'step-2-mini',
     },
     {
       id: 'custom',
-      title: '自定义',
+      title: t('demo.SettingsDialog.tsx.providerCustom'),
       protocol: 'openai',
       baseUrl: cfg.baseUrl || '',
       model: cfg.model || '',
@@ -3015,7 +2964,7 @@ export function SettingsDialog({
   // BYOK content so "Local CLI" only renders once (in the seg-control tab),
   // not twice (heading + tab).
   const sectionHeader: Record<SettingsSection, { title: string; subtitle: string }> = {
-    general: { title: '通用', subtitle: '语言、外观、系统偏好、宠物和项目位置。' },
+    general: { title: t('demo.SettingsDialog.tsx.generalTitle'), subtitle: t('demo.SettingsDialog.tsx.generalSubtitle') },
     execution: { title: t('settings.title'), subtitle: t('settings.subtitle') },
     instructions: {
       title: t('settings.instructionsTitle'),
@@ -3418,12 +3367,13 @@ export function SettingsDialog({
                   onClick={onClose}
                 >
                   <Icon name="arrow-left" size={15} />
-                  <span>返回首页</span>
+                  <span>{t('demo.SettingsDialog.tsx.backToHome')}</span>
                 </button>
                 <label className="settings-page-search">
                   <Icon name="search" size={14} />
-                  <input type="search" placeholder="搜索设置..." readOnly />
+                  <input type="search" placeholder={t('demo.SettingsDialog.tsx.searchSettingsPlaceholder')} readOnly />
                 </label>
+                <span className="settings-page-nav-group">{t('demo.SettingsDialog.tsx.navGroupPersonal')}</span>
               </div>
             ) : null}
             <button
@@ -3444,8 +3394,8 @@ export function SettingsDialog({
             >
               <Icon name="settings" size={18} />
               <span>
-                <strong>通用</strong>
-                <small>语言、外观与个性化</small>
+                <strong>{t('demo.SettingsDialog.tsx.navGeneralTitle')}</strong>
+                <small>{t('demo.SettingsDialog.tsx.navGeneralSub')}</small>
               </span>
             </button>
             <button
@@ -3544,11 +3494,16 @@ export function SettingsDialog({
                     <Icon name="chevron-down" size={14} />
                   </label>
                 </div>
+                <div className="settings-general-field">
+                  <span className="settings-general-label">{t('demo.SettingsDialog.tsx.themeLabel')}</span>
+                  <AppearanceSection cfg={cfg} setCfg={setCfg} />
+                </div>
               </div>
 
               <div className="settings-general-block">
                 <div className="settings-general-block-head">
-                  <h3>系统偏好</h3>
+                  <h3>{t('demo.SettingsDialog.tsx.systemPrefsTitle')}</h3>
+                  <p className="hint">{t('demo.SettingsDialog.tsx.systemPrefsHint')}</p>
                 </div>
                 <NotificationsSection cfg={cfg} setCfg={setCfg} />
               </div>
@@ -3621,9 +3576,9 @@ export function SettingsDialog({
               {showCloudSignInCallout ? (
                 <div className="settings-cloud-signin-callout">
                   <div>
-                    <strong>使用 Open Design Cloud</strong>
+                    <strong>{t('demo.SettingsDialog.tsx.cloudCalloutTitle')}</strong>
                     <p>
-                      登录云端版本后可启用团队空间、共享项目、成员权限和审计大盘。
+                      {t('demo.SettingsDialog.tsx.cloudCalloutBodyExecution')}
                     </p>
                   </div>
                   <button
@@ -3631,7 +3586,7 @@ export function SettingsDialog({
                     className="settings-cloud-signin-callout__button"
                     onClick={() => navigateRoute({ kind: 'home', view: 'onboarding' })}
                   >
-                    登录 / 注册
+                    {t('demo.SettingsDialog.tsx.signInRegister')}
                   </button>
                 </div>
               ) : null}
@@ -3639,17 +3594,17 @@ export function SettingsDialog({
                 <div
                   className="protocol-chips protocol-chips--providers"
                   role="tablist"
-                  aria-label="模型供应商"
+                  aria-label={t('demo.SettingsDialog.tsx.modelProviders')}
                 >
                     <div className="protocol-chip-group protocol-chip-group--providers">
                       <span className="protocol-chip-group-label">
-                        模型供应商
+                        {t('demo.SettingsDialog.tsx.modelProviders')}
                       </span>
                       <div className="protocol-chip-group-options">
                         {byokProviderTabs.map((provider) => {
                           const active = selectedByokProvider?.id === provider.id;
                           const connected = byokProviderConnected(provider);
-                          const statusLabel = connected ? '已连接' : '未连接';
+                          const statusLabel = connected ? t('demo.SettingsDialog.tsx.connected') : t('demo.SettingsDialog.tsx.disconnected');
                           return (
                             <button
                               key={provider.id}
@@ -4140,11 +4095,10 @@ export function SettingsDialog({
                                         agentTestState.result,
                                       );
                                       if (!repair) return null;
-                                      const codexStrings = codexPathStrings(locale);
                                       return (
                                         <div className="settings-test-actions">
                                           <span className="settings-test-actions-hint">
-                                            {codexStrings.repairHint}
+                                            {t('settings.codexPathRepairHint')}
                                           </span>
                                           <div className="settings-test-actions-row">
                                             {repair.canUseDetected ? (
@@ -4157,7 +4111,7 @@ export function SettingsDialog({
                                                   )
                                                 }
                                               >
-                                                {codexStrings.useDetected}
+                                                {t('settings.codexPathUseDetected')}
                                               </button>
                                             ) : null}
                                             <button
@@ -4165,7 +4119,7 @@ export function SettingsDialog({
                                               className="ghost icon-btn settings-rescan-btn"
                                               onClick={clearCodexCustomPath}
                                             >
-                                              {codexStrings.clearCustom}
+                                              {t('settings.codexPathClearCustom')}
                                             </button>
                                           </div>
                                         </div>
@@ -6573,11 +6527,11 @@ function MediaProvidersSection({
       {demoUseMode === 'local' ? (
         <div className="settings-cloud-signin-callout media-provider-cloud-callout">
           <div>
-            <strong>使用 Open Design Cloud</strong>
-            <p>登录云端版本后可使用托管模型供应商，并为团队共享媒体生成配置。</p>
+            <strong>{t('demo.SettingsDialog.tsx.cloudCalloutTitle')}</strong>
+            <p>{t('demo.SettingsDialog.tsx.cloudCalloutBodyMedia')}</p>
           </div>
           <button type="button" className="settings-cloud-signin-callout__button">
-            登录 / 注册
+            {t('demo.SettingsDialog.tsx.signInRegister')}
           </button>
         </div>
       ) : null}
@@ -6587,14 +6541,14 @@ function MediaProvidersSection({
         aria-label="Media providers"
       >
         <div className="protocol-chip-group protocol-chip-group--providers">
-          <span className="protocol-chip-group-label">模型供应商</span>
+          <span className="protocol-chip-group-label">{t('demo.SettingsDialog.tsx.modelProviders')}</span>
           <div className="protocol-chip-group-options">
             {availableProviders.map((provider) => {
               const active = activeProvider?.id === provider.id;
               const entry = cfg.mediaProviders?.[provider.id];
               const connected = provider.credentialsRequired === false
                 || isStoredMediaProviderEntryPresent(entry);
-              const statusLabel = connected ? '已连接' : '未连接';
+              const statusLabel = connected ? t('demo.SettingsDialog.tsx.connected') : t('demo.SettingsDialog.tsx.disconnected');
               return (
                 <button
                   key={provider.id}
@@ -6722,7 +6676,7 @@ function MediaProvidersSection({
           <div className="media-provider-docs-callout">
             <div>
               <strong>Documentation</strong>
-              <span>查看该 Provider 的 API Key、Model 和 Base URL 配置说明。</span>
+              <span>{t('demo.SettingsDialog.tsx.docsCalloutBody')}</span>
             </div>
             {activeProvider.docsUrl ? (
               <a

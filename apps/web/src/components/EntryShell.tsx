@@ -536,16 +536,16 @@ export function EntryShell({
   const demoCredits = (() => {
     switch (demoPlan) {
       case 'plus':
-        return { planName: '标准版 Plus', tierLabel: 'Plus', showUpgrade: true, balance: 5000, grantTip: 'Plus 每日赠送 800 积分，可升级 Pro / Max / 团队版' };
+        return { planName: t('demo.EntryShell.tsx.planNamePlus'), tierLabel: 'Plus', showUpgrade: true, balance: 5000, grantTip: t('demo.EntryShell.tsx.grantTipPlus') };
       case 'pro':
-        return { planName: 'Pro', tierLabel: 'Pro', showUpgrade: true, balance: 12000, grantTip: 'Pro 每日赠送 1,500 积分，可升级 Max / 团队版' };
+        return { planName: 'Pro', tierLabel: 'Pro', showUpgrade: true, balance: 12000, grantTip: t('demo.EntryShell.tsx.grantTipPro') };
       case 'max':
-        return { planName: 'Max', tierLabel: 'Max', showUpgrade: true, balance: 30000, grantTip: 'Max 每日赠送 3,000 积分，可升级团队版' };
+        return { planName: 'Max', tierLabel: 'Max', showUpgrade: true, balance: 30000, grantTip: t('demo.EntryShell.tsx.grantTipMax') };
       case 'team':
-        return { planName: '团队版', tierLabel: '团队版', showUpgrade: false, balance: 60000, grantTip: '团队版每日赠送 6,000 积分，按席位共享' };
+        return { planName: t('demo.EntryShell.tsx.planNameTeam'), tierLabel: t('demo.EntryShell.tsx.tierLabelTeam'), showUpgrade: false, balance: 60000, grantTip: t('demo.EntryShell.tsx.grantTipTeam') };
       case 'free':
       default:
-        return { planName: '免费', tierLabel: '免费', showUpgrade: true, balance: 800, grantTip: '免费版每日赠送 300 积分，每天 08:00 刷新' };
+        return { planName: t('demo.EntryShell.tsx.planNameFree'), tierLabel: t('demo.EntryShell.tsx.tierLabelFree'), showUpgrade: true, balance: 800, grantTip: t('demo.EntryShell.tsx.grantTipFree') };
     }
   })();
   const cloudWorkspace = demoUseMode === 'cloud';
@@ -870,7 +870,7 @@ export function EntryShell({
         window.history.replaceState(null, '', '/onboarding');
         navigate({ kind: 'home', view: 'onboarding' });
       }}
-      aria-label="切换到 Open Design Cloud 登录注册"
+      aria-label={t('demo.EntryShell.tsx.localModeTipAriaLabel')}
     >
       <button
         type="button"
@@ -880,7 +880,7 @@ export function EntryShell({
           setLocalModeTipDismissed(true);
           writeLocalModeTipDismissed(true);
         }}
-        aria-label="关闭 Open Design Cloud 版说明"
+        aria-label={t('demo.EntryShell.tsx.localModeTipCloseAriaLabel')}
       >
         <Icon name="close" size={14} />
       </button>
@@ -888,9 +888,9 @@ export function EntryShell({
         <span className="entry-local-mode-tip__icon" aria-hidden>
           <Icon name="terminal" size={14} />
         </span>
-        <strong>Open Design Cloud 版</strong>
+        <strong>{t('demo.EntryShell.tsx.localModeTipTitle')}</strong>
       </div>
-      <p>点击登录使用 Open Design Cloud，即可享受云端协作</p>
+      <p>{t('demo.EntryShell.tsx.localModeTipBody')}</p>
     </section>
   ) : null;
 
@@ -928,7 +928,7 @@ export function EntryShell({
         setLowCreditsOpen(true);
       }}
       onAutoRecharge={(scope) => {
-        setAutoRechargeTarget(scope === 'member' ? { kind: 'member', name: '李娜', role: 'Member' } : { kind: 'team' });
+        setAutoRechargeTarget(scope === 'member' ? { kind: 'member', name: t('demo.EntryShell.tsx.memberNameLina'), role: 'Member' } : { kind: 'team' });
         setDemoPlan('team');
         setLowCreditsOpen(true);
       }}
@@ -967,12 +967,12 @@ export function EntryShell({
           setLowCreditsOpen(false);
           setAutoRechargeTarget(null);
           setDemoPlan(target);
-          fireCelebration('升级生效，额度已提升');
+          fireCelebration(t('demo.EntryShell.tsx.celebrateUpgradeApplied'));
         }}
         onBuyPack={(packLabel) => {
           setLowCreditsOpen(false);
           setAutoRechargeTarget(null);
-          fireCelebration(packLabel.includes('自动充值') ? packLabel : `${packLabel}已到账，额度已提升`);
+          fireCelebration(packLabel.includes('自动充值') ? packLabel : t('demo.EntryShell.tsx.celebratePackCredited', { pack: packLabel }));
         }}
         autoRechargeScope={autoRechargeTarget?.kind ?? 'team'}
         autoRechargeMemberName={autoRechargeTarget?.kind === 'member' ? autoRechargeTarget.name : undefined}
@@ -987,10 +987,10 @@ export function EntryShell({
           setDemoPlan('team');
           setDemoScenario('home');
           navigate({ kind: 'home', view: 'home' });
-          fireCelebration('已加入 Nexu 设计团队，开始协作');
+          fireCelebration(t('demo.EntryShell.tsx.celebrateJoinedTeam'));
         }}
         onDeclined={() => {
-          setDemoToast('邀请已忽略，保持待定（pending）');
+          setDemoToast(t('demo.EntryShell.tsx.inviteDeclinedToast'));
           window.setTimeout(() => setDemoToast(null), 3200);
         }}
       />
@@ -1176,9 +1176,9 @@ export function EntryShell({
                 <CenteredLoader label={t('common.loading')} />
               ) : isNewUser ? (
                 <EntryBlankState
-                  heading="草稿"
-                  title="还没有草稿"
-                  description="从一个空白方案开始，描述你的想法，AI 会帮你把它变成现实。"
+                  heading={t('demo.EntryShell.tsx.draftsHeading')}
+                  title={t('demo.EntryShell.tsx.draftsBlankTitle')}
+                  description={t('demo.EntryShell.tsx.draftsBlankDescription')}
                   onCreate={createBlankProject}
                 />
               ) : (
@@ -1186,7 +1186,7 @@ export function EntryShell({
                   projects={projects}
                   designSystems={designSystems}
                   limit={1000}
-                  heading="草稿"
+                  heading={t('demo.EntryShell.tsx.draftsHeading')}
                   space="drafts"
                   onOpen={onOpenProject}
                   onDelete={onDeleteProject}
@@ -1199,9 +1199,9 @@ export function EntryShell({
                 <CenteredLoader label={t('common.loading')} />
               ) : isNewUser ? (
                 <EntryBlankState
-                  heading="全部项目"
-                  title="还没有项目"
-                  description="创建你的第一个方案，开始用 AI 设计和构建。"
+                  heading={t('demo.EntryShell.tsx.allProjectsHeading')}
+                  title={t('demo.EntryShell.tsx.allProjectsBlankTitle')}
+                  description={t('demo.EntryShell.tsx.allProjectsBlankDescription')}
                   onCreate={createBlankProject}
                 />
               ) : (
@@ -1209,7 +1209,7 @@ export function EntryShell({
                   projects={projects}
                   designSystems={designSystems}
                   limit={1000}
-                  heading="全部项目"
+                  heading={t('demo.EntryShell.tsx.allProjectsHeading')}
                   space="team"
                   onOpen={onOpenProject}
                   onDelete={onDeleteProject}
@@ -2655,7 +2655,10 @@ function OnboardingView({
         <div className="ob-invite-banner">
           <span className="ob-invite-banner__avatar">N</span>
           <span>
-            <strong>张伟</strong> 邀请你加入 <strong>Nexu 团队</strong> 的工作空间
+            <strong>{t('demo.EntryShell.tsx.inviteBannerInviterName')}</strong>
+            {t('demo.EntryShell.tsx.inviteBannerMiddle')}
+            <strong>{t('demo.EntryShell.tsx.inviteBannerTeamName')}</strong>
+            {t('demo.EntryShell.tsx.inviteBannerSuffix')}
           </span>
         </div>
       ) : null}

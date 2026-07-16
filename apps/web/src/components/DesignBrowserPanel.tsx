@@ -246,7 +246,7 @@ const EMPTY_PREVIEW_COMMENTS: PreviewComment[] = [];
 const WARMED_ORIGIN_LIMIT = 32;
 const warmedOrigins = new Map<string, HTMLLinkElement[]>();
 const ADD_IMAGE_TO_CHAT_MESSAGE = '__open_design_add_image_to_chat__:';
-const BROWSER_IMAGE_HOVER_SCRIPT = String.raw`(() => {
+const browserImageHoverScript = (addToChatLabel: string) => String.raw`(() => {
   const rootId = '__open_design_image_hover_layer__';
   window.__openDesignImageHoverCleanup?.();
   document.getElementById(rootId)?.remove();
@@ -272,8 +272,9 @@ const BROWSER_IMAGE_HOVER_SCRIPT = String.raw`(() => {
 
   const button = document.createElement('button');
   button.type = 'button';
-  button.textContent = '添加到 Chat';
-  button.setAttribute('aria-label', '添加到 Chat');
+  const addToChatLabel = ${JSON.stringify(addToChatLabel)};
+  button.textContent = addToChatLabel;
+  button.setAttribute('aria-label', addToChatLabel);
   Object.assign(button.style, {
     height: '34px',
     padding: '0 14px',
@@ -1566,11 +1567,11 @@ export function DesignBrowserPanel({
         kind: 'image',
         size: file.size,
       });
-      setStatusMessage('图片已添加到 Chat');
+      setStatusMessage(t('demo.DesignBrowserPanel.tsx.imageAddedToChat'));
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : 'Could not add image to Chat');
     }
-  }, [currentUrl, onAddImageToChat, onRefreshFiles, projectId, webviewNode]);
+  }, [currentUrl, onAddImageToChat, onRefreshFiles, projectId, t, webviewNode]);
 
   useEffect(() => {
     const node = webviewNode;
@@ -1580,7 +1581,10 @@ export function DesignBrowserPanel({
       // executeJavaScript throws synchronously until the webview emits
       // dom-ready; the dom-ready/did-stop-loading listeners re-inject then.
       try {
-        void node.executeJavaScript(BROWSER_IMAGE_HOVER_SCRIPT, true).catch(() => undefined);
+        void node.executeJavaScript(
+          browserImageHoverScript(t('demo.DesignBrowserPanel.tsx.addImageToChatButton')),
+          true,
+        ).catch(() => undefined);
       } catch {
         // Webview not attached/ready yet.
       }
@@ -1624,7 +1628,7 @@ export function DesignBrowserPanel({
       node.removeEventListener('did-stop-loading', injectHoverLayer);
       node.removeEventListener('console-message', onConsoleMessage);
     };
-  }, [addBrowserImageToChat, isBlank, onAddImageToChat, webviewNode]);
+  }, [addBrowserImageToChat, isBlank, onAddImageToChat, t, webviewNode]);
 
   async function savePageBrief() {
     if (!webviewNode || isBlank) {

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Button, Input } from '@open-design/components';
 import { Icon } from './Icon';
+import { useT } from '../i18n';
+import type { Dict } from '../i18n/types';
 import type { DemoScenario } from './DemoControlBar';
 
 type InviteStage = 'auth' | 'confirm' | 'joining' | 'success';
@@ -8,11 +10,11 @@ type LocalLaunchState = 'idle' | 'opening' | 'download' | 'downloaded';
 
 const INVITE_ROLES: Record<
   Extract<DemoScenario, 'invite-editor'>,
-  { label: string; description: string }
+  { labelKey: keyof Dict; descriptionKey: keyof Dict }
 > = {
   'invite-editor': {
-    label: 'Member',
-    description: '可创建自己的项目，查看和评论团队共享项目',
+    labelKey: 'demo.WorkspaceInviteFlow.tsx.role.member.label',
+    descriptionKey: 'demo.WorkspaceInviteFlow.tsx.role.member.description',
   },
 };
 
@@ -67,6 +69,7 @@ export function WorkspaceInviteFlow({ scenario, initiallySignedIn = false }: Pro
   const [email, setEmail] = useState('you@example.com');
   const [password, setPassword] = useState('');
   const [localLaunchState, setLocalLaunchState] = useState<LocalLaunchState>('idle');
+  const t = useT();
   const role = INVITE_ROLES[scenario];
 
   function completeWebSignIn() {
@@ -87,7 +90,7 @@ export function WorkspaceInviteFlow({ scenario, initiallySignedIn = false }: Pro
   }
 
   return (
-    <section className={styles.page} aria-label="Workspace 邀请 Web 流程">
+    <section className={styles.page} aria-label={t('demo.WorkspaceInviteFlow.tsx.page.ariaLabel')}>
       <div className={styles.ambient} aria-hidden>
         <span />
         <span />
@@ -114,32 +117,32 @@ export function WorkspaceInviteFlow({ scenario, initiallySignedIn = false }: Pro
               </div>
             </div>
             <div className={styles.workspaceCopy}>
-              <span>Nexu 团队邀请</span>
-              <strong>加入团队协作</strong>
-              <p>角色：{role.label}</p>
+              <span>{t('demo.WorkspaceInviteFlow.tsx.header.eyebrow')}</span>
+              <strong>{t('demo.WorkspaceInviteFlow.tsx.header.title')}</strong>
+              <p>{t('demo.WorkspaceInviteFlow.tsx.header.role')}{t(role.labelKey)}</p>
             </div>
           </div>
 
           {stage === 'auth' ? (
             <>
               <div className={styles.heading}>
-                <h1>加入 Nexu 团队</h1>
-                <p>登录后即可加入团队，并在本地 Open Design 中继续协作。</p>
+                <h1>{t('demo.WorkspaceInviteFlow.tsx.auth.heading')}</h1>
+                <p>{t('demo.WorkspaceInviteFlow.tsx.auth.subtitle')}</p>
               </div>
 
               <div className={styles.socialAuth}>
                 <button type="button" className={styles.socialButton} onClick={completeWebSignIn}>
                   <span className={styles.googleMark}>G</span>
-                  使用 Google 继续
+                  {t('demo.WorkspaceInviteFlow.tsx.auth.continueGoogle')}
                 </button>
                 <button type="button" className={styles.socialButton} onClick={completeWebSignIn}>
                   <Icon name="github-filled" size={19} />
-                  使用 GitHub 继续
+                  {t('demo.WorkspaceInviteFlow.tsx.auth.continueGithub')}
                 </button>
               </div>
 
               <div className={styles.divider}>
-                <span>或使用邮箱</span>
+                <span>{t('demo.WorkspaceInviteFlow.tsx.auth.orEmail')}</span>
               </div>
 
               {emailLoginOpen ? (
@@ -152,7 +155,7 @@ export function WorkspaceInviteFlow({ scenario, initiallySignedIn = false }: Pro
                   }}
                 >
                   <label>
-                    <span>邮箱</span>
+                    <span>{t('demo.WorkspaceInviteFlow.tsx.form.emailLabel')}</span>
                     <Input
                       type="email"
                       value={email}
@@ -163,12 +166,12 @@ export function WorkspaceInviteFlow({ scenario, initiallySignedIn = false }: Pro
                     />
                   </label>
                   <label>
-                    <span>密码</span>
+                    <span>{t('demo.WorkspaceInviteFlow.tsx.form.passwordLabel')}</span>
                     <Input
                       type="password"
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
-                      placeholder="输入密码"
+                      placeholder={t('demo.WorkspaceInviteFlow.tsx.form.passwordPlaceholder')}
                       autoComplete="current-password"
                     />
                   </label>
@@ -178,7 +181,7 @@ export function WorkspaceInviteFlow({ scenario, initiallySignedIn = false }: Pro
                     className={styles.primaryAction}
                     disabled={!email.trim() || !password.trim()}
                   >
-                    继续
+                    {t('demo.WorkspaceInviteFlow.tsx.form.continue')}
                     <Icon name="chevron-right" size={15} />
                   </Button>
                 </form>
@@ -189,7 +192,7 @@ export function WorkspaceInviteFlow({ scenario, initiallySignedIn = false }: Pro
                   onClick={() => setEmailLoginOpen(true)}
                 >
                   <Icon name="link" size={15} />
-                  使用邮箱登录
+                  {t('demo.WorkspaceInviteFlow.tsx.form.useEmailLogin')}
                 </Button>
               )}
             </>
@@ -197,15 +200,15 @@ export function WorkspaceInviteFlow({ scenario, initiallySignedIn = false }: Pro
 
           {stage === 'confirm' ? (
             <div className={styles.result}>
-              <h1>加入团队，开始协作</h1>
-              <p>确认加入后，将尝试打开本地 Open Design。</p>
+              <h1>{t('demo.WorkspaceInviteFlow.tsx.confirm.heading')}</h1>
+              <p>{t('demo.WorkspaceInviteFlow.tsx.confirm.subtitle')}</p>
 
               <Button
                 variant="primary"
                 className={styles.primaryAction}
                 onClick={confirmJoinTeam}
               >
-                加入团队，开始协作
+                {t('demo.WorkspaceInviteFlow.tsx.confirm.action')}
                 <Icon name="external-link" size={15} />
               </Button>
             </div>
@@ -216,8 +219,8 @@ export function WorkspaceInviteFlow({ scenario, initiallySignedIn = false }: Pro
               <span className={styles.joiningSpinner}>
                 <Icon name="spinner" size={25} />
               </span>
-              <h1>正在加入 Nexu 团队</h1>
-              <p>正在为你打开协作空间…</p>
+              <h1>{t('demo.WorkspaceInviteFlow.tsx.joining.heading')}</h1>
+              <p>{t('demo.WorkspaceInviteFlow.tsx.joining.subtitle')}</p>
               <div className={styles.joiningTrack}>
                 <span />
               </div>
@@ -226,8 +229,8 @@ export function WorkspaceInviteFlow({ scenario, initiallySignedIn = false }: Pro
 
           {stage === 'success' ? (
             <div className={styles.result}>
-              <h1>开始协作</h1>
-              <p>你已加入 Nexu 团队，正在打开本地 Open Design。</p>
+              <h1>{t('demo.WorkspaceInviteFlow.tsx.success.heading')}</h1>
+              <p>{t('demo.WorkspaceInviteFlow.tsx.success.subtitle')}</p>
 
               {localLaunchState === 'idle' ? (
                 <Button
@@ -235,7 +238,7 @@ export function WorkspaceInviteFlow({ scenario, initiallySignedIn = false }: Pro
                   className={styles.primaryAction}
                   onClick={tryOpenLocalWorkspace}
                 >
-                  开始协作
+                  {t('demo.WorkspaceInviteFlow.tsx.success.action')}
                   <Icon name="external-link" size={15} />
                 </Button>
               ) : null}
@@ -243,7 +246,7 @@ export function WorkspaceInviteFlow({ scenario, initiallySignedIn = false }: Pro
               {localLaunchState === 'opening' ? (
                 <div className={styles.launching} role="status">
                   <Icon name="spinner" size={17} />
-                  正在尝试打开本地 Open Design…
+                  {t('demo.WorkspaceInviteFlow.tsx.success.opening')}
                 </div>
               ) : null}
 
@@ -253,15 +256,17 @@ export function WorkspaceInviteFlow({ scenario, initiallySignedIn = false }: Pro
                     <Icon name="download" size={21} />
                   </span>
                   <div>
-                    <strong>没有自动打开？</strong>
-                    <p>你的设备可能还没有安装 Open Design。安装后会自动回到 Nexu Workspace。</p>
+                    <strong>{t('demo.WorkspaceInviteFlow.tsx.download.title')}</strong>
+                    <p>{t('demo.WorkspaceInviteFlow.tsx.download.description')}</p>
                   </div>
                   <Button
                     variant="primary"
                     className={styles.downloadButton}
                     onClick={() => setLocalLaunchState('downloaded')}
                   >
-                    {localLaunchState === 'downloaded' ? '下载已开始（Demo）' : '下载 Open Design'}
+                    {localLaunchState === 'downloaded'
+                      ? t('demo.WorkspaceInviteFlow.tsx.download.started')
+                      : t('demo.WorkspaceInviteFlow.tsx.download.action')}
                   </Button>
                   <button
                     type="button"
@@ -270,7 +275,7 @@ export function WorkspaceInviteFlow({ scenario, initiallySignedIn = false }: Pro
                       tryOpenLocalWorkspace();
                     }}
                   >
-                    已安装？再次尝试打开
+                    {t('demo.WorkspaceInviteFlow.tsx.download.retry')}
                   </button>
                 </div>
               ) : null}

@@ -25,7 +25,6 @@ const GITHUB_FEATURE_URL = `${REPO_URL}/pulls`;
 const DISCORD_URL = 'https://discord.gg/mHAjSMV6gz';
 const X_URL = 'https://x.com/OpenDesignHQ';
 const CONTACT_EMAIL = 'contact@open.design';
-const CONTACT_EMAIL_URL = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('Open Design 反馈')}&body=${encodeURIComponent('你好 Open Design 团队，\n\n我想反馈：\n\n')}`;
 const externalLinkProps = { target: '_blank', rel: 'noreferrer noopener' } as const;
 
 export type EntryView =
@@ -98,6 +97,7 @@ function NavButton({ active, ariaLabel, tooltip, onClick, testId, children }: Na
 
 export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, footerExtra, footerNotice, solo = false, credits, onUpgrade, onOpenSettings, canManageWorkspace = true, canOwnWorkspace = true, cloudWorkspace = true }: Props) {
   const t = useT();
+  const contactEmailUrl = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(t('demo.EntryNavRail.tsx.contactEmailSubject'))}&body=${encodeURIComponent(t('demo.EntryNavRail.tsx.contactEmailBody'))}`;
   const brandLabel = t('app.brand');
   const homeLabel = t('entry.navHome');
   const isHome = view === 'home';
@@ -189,16 +189,16 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
         onMouseEnter={openAccountMenu}
         aria-expanded={accountOpen}
       >
-        <span className="entry-nav-rail__account-avatar" aria-hidden>琼</span>
-        <span className="entry-nav-rail__account-name">琼羽</span>
+        <span className="entry-nav-rail__account-avatar" aria-hidden>{t('demo.EntryNavRail.tsx.accountAvatarInitial')}</span>
+        <span className="entry-nav-rail__account-name">{t('demo.EntryNavRail.tsx.accountName')}</span>
         {planTier ? <PlanBadge tier={planTier} height={17} /> : <Icon name="chevron-down" size={14} />}
       </button>
       {accountOpen ? (
         <>
           <div className="entry-nav-rail__account-menu" role="menu">
             <div className="entry-nav-rail__account-head">
-              <span className="entry-nav-rail__account-head-avatar" aria-hidden>琼</span>
-              <span className="entry-nav-rail__account-head-name">琼羽</span>
+              <span className="entry-nav-rail__account-head-avatar" aria-hidden>{t('demo.EntryNavRail.tsx.accountAvatarInitial')}</span>
+              <span className="entry-nav-rail__account-head-name">{t('demo.EntryNavRail.tsx.accountName')}</span>
               <span className="entry-nav-rail__account-head-email">qiongyu1999@gmail.com</span>
             </div>
             {credits ? (
@@ -217,18 +217,24 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
                         onUpgrade?.();
                       }}
                     >
-                      升级
+                      {t('demo.EntryNavRail.tsx.upgrade')}
                     </button>
                   ) : null}
                 </div>
                 <div className="entry-nav-rail__menu-credits-row">
                   <span className="entry-nav-rail__menu-credits-label">
-                    <Icon name="battery-charge" size={14} /> 积分
+                    <Icon name="battery-charge" size={14} /> {t('demo.EntryNavRail.tsx.credits')}
                   </span>
                   <span className="entry-nav-rail__menu-credits-value">
                     {credits.balance.toLocaleString('en-US')}
                     <Icon name="chevron-right" size={14} />
                   </span>
+                </div>
+                <div className="entry-nav-rail__menu-credits-row">
+                  <span className="entry-nav-rail__menu-credits-label">
+                    <Icon name="battery-charge" size={14} /> {t('demo.EntryNavRail.tsx.bonusCredits')}
+                  </span>
+                  <span className="entry-nav-rail__menu-credits-value">0</span>
                 </div>
               </div>
             ) : null}
@@ -241,7 +247,7 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
                 onOpenSettings?.();
               }}
             >
-              <Icon name="settings" size={15} /> 设置
+              <Icon name="settings" size={15} /> {t('demo.EntryNavRail.tsx.settings')}
             </button>
             <a
               className="entry-nav-rail__menu-item"
@@ -250,7 +256,7 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
               {...externalLinkProps}
               onClick={() => setAccountOpen(false)}
             >
-              <Icon name="comment" size={15} /> 在 GitHub 上获取帮助
+              <Icon name="comment" size={15} /> {t('demo.EntryNavRail.tsx.getHelpOnGithub')}
             </a>
             <a
               className="entry-nav-rail__menu-item"
@@ -259,7 +265,7 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
               {...externalLinkProps}
               onClick={() => setAccountOpen(false)}
             >
-              <Icon name="sparkles" size={15} /> 提交功能建议
+              <Icon name="sparkles" size={15} /> {t('demo.EntryNavRail.tsx.submitFeatureRequest')}
             </a>
             <div className="entry-nav-rail__menu-social">
               <a
@@ -281,8 +287,8 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
                 role="menuitem"
                 href={DISCORD_URL}
                 {...externalLinkProps}
-                aria-label="加入 Discord"
-                title="加入 Discord"
+                aria-label={t('demo.EntryNavRail.tsx.joinDiscord')}
+                title={t('demo.EntryNavRail.tsx.joinDiscord')}
                 onClick={() => setAccountOpen(false)}
               >
                 <Icon name="discord" size={15} />
@@ -301,9 +307,9 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
               <a
                 className="entry-nav-rail__menu-social-btn"
                 role="menuitem"
-                href={CONTACT_EMAIL_URL}
-                aria-label="给 Open Design 发邮件"
-                title="给 Open Design 发邮件"
+                href={contactEmailUrl}
+                aria-label={t('demo.EntryNavRail.tsx.emailOpenDesign')}
+                title={t('demo.EntryNavRail.tsx.emailOpenDesign')}
                 onClick={() => setAccountOpen(false)}
               >
                 <Icon name="mail" size={15} />
@@ -311,10 +317,10 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
             </div>
             <div className="entry-nav-rail__menu-divider" />
             <button type="button" className="entry-nav-rail__menu-item" role="menuitem">
-              <Icon name="plus" size={15} /> 添加账号
+              <Icon name="plus" size={15} /> {t('demo.EntryNavRail.tsx.addAccount')}
             </button>
             <button type="button" className="entry-nav-rail__menu-item" role="menuitem">
-              <Icon name="log-out" size={15} /> 退出登录
+              <Icon name="log-out" size={15} /> {t('demo.EntryNavRail.tsx.logOut')}
             </button>
           </div>
         </>
@@ -348,8 +354,8 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
         </div>
         <NavButton
           active={isHome}
-          ariaLabel="Home"
-          tooltip="首页"
+          ariaLabel="Recents"
+          tooltip={t('demo.EntryNavRail.tsx.tooltipRecents')}
           onClick={() => selectView('home')}
           testId="entry-nav-home"
         >
@@ -377,7 +383,7 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
                 <span className="entry-nav-rail__team-avatar" aria-hidden>
                   <img src="/logo.png" alt="" />
                 </span>
-                <span className="entry-nav-rail__team-name">Nexu 团队</span>
+                <span className="entry-nav-rail__team-name">{t('demo.EntryNavRail.tsx.teamName')}</span>
                 <Icon name="chevron-down" size={14} />
               </button>
               {teamOpen ? (
@@ -392,7 +398,7 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
                     )}
                     <button type="button" className="entry-nav-rail__menu-item is-current" role="menuitem">
                       <span className="entry-nav-rail__team-avatar" aria-hidden>N</span>
-                      Nexu 团队
+                      {t('demo.EntryNavRail.tsx.teamName')}
                       <Icon name="check" size={14} />
                     </button>
                     {createdTeams.map((team, i) => (
@@ -428,7 +434,7 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
                         setInviteOpen(true);
                       }}
                     >
-                      <Icon name="share" size={15} /> 邀请同事
+                      <Icon name="share" size={15} /> {t('demo.EntryNavRail.tsx.inviteColleagues')}
                     </button>
                     <button
                       type="button"
@@ -439,7 +445,7 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
                         setCreateTeamOpen(true);
                       }}
                     >
-                      <Icon name="plus" size={15} /> 新建团队
+                      <Icon name="plus" size={15} /> {t('demo.EntryNavRail.tsx.createTeam')}
                     </button>
                   </div>
                 </>
@@ -448,7 +454,7 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
             <NavButton
               active={view === 'drafts'}
               ariaLabel="Drafts"
-              tooltip="草稿"
+              tooltip={t('demo.EntryNavRail.tsx.tooltipDrafts')}
               onClick={() => selectView('drafts')}
               testId="entry-nav-drafts"
             >
@@ -457,7 +463,7 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
             <NavButton
               active={view === 'all-projects'}
               ariaLabel="All projects"
-              tooltip="全部项目"
+              tooltip={t('demo.EntryNavRail.tsx.tooltipAllProjects')}
               onClick={() => selectView('all-projects')}
               testId="entry-nav-all-projects"
             >
@@ -488,8 +494,8 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
           <>
             <NavButton
               active={view === 'members'}
-              ariaLabel="成员"
-              tooltip="成员"
+              ariaLabel={t('demo.EntryNavRail.tsx.tooltipMembers')}
+              tooltip={t('demo.EntryNavRail.tsx.tooltipMembers')}
               onClick={() => selectView('members')}
               testId="entry-nav-members"
             >
@@ -497,8 +503,8 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
             </NavButton>
             <NavButton
               active={view === 'dashboard'}
-              ariaLabel="数据大盘"
-              tooltip="数据大盘"
+              ariaLabel={t('demo.EntryNavRail.tsx.tooltipDashboard')}
+              tooltip={t('demo.EntryNavRail.tsx.tooltipDashboard')}
               onClick={() => selectView('dashboard')}
               testId="entry-nav-dashboard"
             >
@@ -507,8 +513,8 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose, 
             {canOwnWorkspace ? (
               <NavButton
                 active={view === 'workspace-settings'}
-                ariaLabel="Workspace 设置"
-                tooltip="Workspace 设置"
+                ariaLabel={t('demo.EntryNavRail.tsx.tooltipWorkspaceSettings')}
+                tooltip={t('demo.EntryNavRail.tsx.tooltipWorkspaceSettings')}
                 onClick={() => selectView('workspace-settings')}
                 testId="entry-nav-workspace-settings"
               >

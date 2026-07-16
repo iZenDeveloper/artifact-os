@@ -1712,7 +1712,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
           {onPickWorkingDir ? (
             <WorkingDirPicker
               className="home-hero__working-dir-picker"
-              emptyLabel="工作目录"
+              emptyLabel={t('demo.HomeHero.tsx.workingDir')}
               workingDir={workingDir}
               recentDirs={recentDirs}
               onPickDirectory={() => {

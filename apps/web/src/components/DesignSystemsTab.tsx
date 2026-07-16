@@ -352,7 +352,7 @@ export function DesignSystemsTab({
   const convertToTeam = (system: DesignSystemSummary) => {
     setTeamSystemIds((prev) => new Set(prev).add(system.id));
     setDesignSystemCollection('team');
-    notifyAction('success', `已将「${system.title}」转为团队设计系统`);
+    notifyAction('success', t('demo.DesignSystemsTab.tsx.convertToTeamDone', { title: system.title }));
   };
   // Undo the demo-local team conversion without changing the underlying
   // design system. The item returns to「你的体系」with its content, publish
@@ -364,7 +364,7 @@ export function DesignSystemsTab({
       return next;
     });
     setDesignSystemCollection('mine');
-    notifyAction('success', `已取消「${system.title}」的团队共享`);
+    notifyAction('success', t('demo.DesignSystemsTab.tsx.removeTeamSharingDone', { title: system.title }));
   };
   const notifyActionLoading = (label?: string) => {
     const message = label
@@ -865,7 +865,7 @@ export function DesignSystemsTab({
           <button
             type="button"
             className={styles.searchToggle}
-            aria-label="展开搜索"
+            aria-label={t('demo.DesignSystemsTab.tsx.expandSearch')}
             onClick={() => {
               setSearchExpanded(true);
               requestAnimationFrame(() => searchInputRef.current?.focus());
@@ -1336,7 +1336,7 @@ function DesignSystemDetail({
     ...(isUser && isTeamSystem && onMoveBackToPersonal
       ? [{
           id: 'remove-team-sharing',
-          label: '取消团队共享',
+          label: t('demo.DesignSystemsTab.tsx.removeTeamSharing'),
           icon: 'history' as const,
           onClick: () => onMoveBackToPersonal(system),
           disabled: busy,
@@ -1378,10 +1378,10 @@ function DesignSystemDetail({
           className={`${styles.actionButton} ${styles.teamActionButton}`}
           onClick={() => onConvertToTeam(system)}
           disabled={busy}
-          title="转为团队设计系统"
+          title={t('demo.DesignSystemsTab.tsx.convertToTeamTitle')}
         >
           <Icon name="users" />
-          转为团队
+          {t('demo.DesignSystemsTab.tsx.convertToTeam')}
         </Button>
       ) : null}
       {isUser ? (
