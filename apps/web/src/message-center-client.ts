@@ -51,6 +51,11 @@ export function writeAnonymousState(
   storage.setItem(READ_KEY, JSON.stringify([...readIds]));
 }
 
+export function clearAnonymousState(storage: Storage): void {
+  storage.removeItem(MESSAGES_KEY);
+  storage.removeItem(READ_KEY);
+}
+
 export async function isAmrLoggedIn(): Promise<boolean> {
   const response = await fetch('/api/integrations/vela/status', { cache: 'no-store' });
   if (!response.ok) throw new Error(`AMR status failed: ${response.status}`);

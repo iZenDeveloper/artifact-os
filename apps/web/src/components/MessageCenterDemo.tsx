@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useI18n } from '../i18n';
 import {
   anonymousStartedAt,
+  clearAnonymousState,
   isAmrLoggedIn,
   markAccountMessageRead,
   markAllAccountMessagesRead,
@@ -43,6 +44,8 @@ export function MessageCenterDemo({ onOpenNotificationSettings }: Props) {
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [loggedIn, setLoggedIn] = useState(false);
   const [syncError, setSyncError] = useState(false);
+  const loggedInRef = useRef(false);
+  const authResolvedRef = useRef(false);
   const messagesRef = useRef<MessageCenterMessage[]>([]);
   const readIdsRef = useRef<Set<string>>(new Set());
   const pendingReadIdsRef = useRef<Set<string>>(new Set());
@@ -63,6 +66,9 @@ export function MessageCenterDemo({ onOpenNotificationSettings }: Props) {
     const requestId = syncRequestIdRef.current + 1;
     syncRequestIdRef.current = requestId;
     const account = await isAmrLoggedIn();
+    authResolvedRef.current = true;
+    loggedInRef.current = account;
+    setLoggedIn(account);
     const startedAt = anonymousStartedAt(window.localStorage);
     const pulled = await pullMessageCenter({ locale, loggedIn: account, startedAt });
     if (requestId !== syncRequestIdRef.current) return;
@@ -75,16 +81,25 @@ export function MessageCenterDemo({ onOpenNotificationSettings }: Props) {
     const overlayReadIds = new Set([
       ...serverReadIds,
       ...(account ? pendingReadIdsRef.current : []),
-      ...readIdsRef.current,
+      ...(!account ? readIdsRef.current : []),
     ]);
     const merged = pulled.map((message) => ({
       ...message,
       readAt: message.readAt ?? (overlayReadIds.has(message.id) ? new Date().toISOString() : null),
     }));
-    setLoggedIn(account);
+    if (account) clearAnonymousState(window.localStorage);
     commitState(merged, overlayReadIds, { persistAnonymous: !account });
     setSyncError(false);
   }, [commitState, locale]);
+
+  const resolveLoggedInForWrite = useCallback(async () => {
+    if (authResolvedRef.current) return loggedInRef.current;
+    const account = await isAmrLoggedIn();
+    authResolvedRef.current = true;
+    loggedInRef.current = account;
+    setLoggedIn(account);
+    return account;
+  }, []);
 
   const retrySync = useCallback(() => {
     void sync().catch(() => setSyncError(true));
@@ -144,21 +159,29 @@ export function MessageCenterDemo({ onOpenNotificationSettings }: Props) {
   const markRead = async (messageId: string) => {
     const message = messagesRef.current.find((item) => item.id === messageId);
     if (!message || message.readAt) return;
+    const account = await resolveLoggedInForWrite();
     const readAt = new Date().toISOString();
-    if (loggedIn) await markAccountMessageRead(messageId);
+    if (account) await markAccountMessageRead(messageId);
     const nextIds = new Set(readIdsRef.current).add(messageId);
     const nextMessages = messagesRef.current.map((item) => (item.id === messageId ? { ...item, readAt } : item));
-    if (loggedIn) pendingReadIdsRef.current = new Set(pendingReadIdsRef.current).add(messageId);
-    commitState(nextMessages, nextIds, { persistAnonymous: !loggedIn });
+    if (account) {
+      pendingReadIdsRef.current = new Set(pendingReadIdsRef.current).add(messageId);
+      clearAnonymousState(window.localStorage);
+    }
+    commitState(nextMessages, nextIds, { persistAnonymous: !account });
   };
 
   const markAllRead = async () => {
-    if (loggedIn) await markAllAccountMessagesRead();
+    const account = await resolveLoggedInForWrite();
+    if (account) await markAllAccountMessagesRead();
     const readAt = new Date().toISOString();
     const nextIds = new Set(messagesRef.current.map((message) => message.id));
     const nextMessages = messagesRef.current.map((message) => ({ ...message, readAt: message.readAt ?? readAt }));
-    if (loggedIn) pendingReadIdsRef.current = new Set(nextIds);
-    commitState(nextMessages, nextIds, { persistAnonymous: !loggedIn });
+    if (account) {
+      pendingReadIdsRef.current = new Set(nextIds);
+      clearAnonymousState(window.localStorage);
+    }
+    commitState(nextMessages, nextIds, { persistAnonymous: !account });
   };
 
   const openLabel = unreadCount > 0 ? `${t('messageCenter.openAria')} (${t('messageCenter.unreadCount', { count: unreadCount })})` : t('messageCenter.openAria');

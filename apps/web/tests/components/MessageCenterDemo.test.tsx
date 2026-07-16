@@ -104,10 +104,13 @@ describe('MessageCenterDemo', () => {
     ] satisfies MessageCenterMessage[];
     let resolveFirst: (() => void) | undefined;
     let resolveSecond: (() => void) | undefined;
+    const readRequests: string[] = [];
     mockFetch({
+      loggedIn: true,
       messages: concurrentMessages,
-      onRead: () =>
+      onRead: (input) =>
         new Promise<Response>((resolve) => {
+          readRequests.push(String(input));
           if (!resolveFirst) {
             resolveFirst = () => resolve(Response.json({ read: true, markedCount: 1 }));
             return;
@@ -120,14 +123,50 @@ describe('MessageCenterDemo', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Release update/ }));
     fireEvent.click(screen.getByRole('button', { name: /Security notice/ }));
+    await waitFor(() => expect(readRequests).toEqual(expect.arrayContaining([
+      expect.stringContaining('/messages/release/read'),
+      expect.stringContaining('/messages/security/read'),
+    ])));
     resolveSecond?.();
     await waitFor(() => expect(screen.queryByLabelText(/2 unread/)).toBeNull());
     resolveFirst?.();
     await waitFor(() => {
-      const stored = localStorage.getItem('open-design.message-center.anonymous-read-ids.v1');
-      expect(stored).toContain('release');
-      expect(stored).toContain('security');
+      expect(screen.queryByLabelText(/unread/)).toBeNull();
+      expect(localStorage.getItem('open-design.message-center.anonymous-read-ids.v1')).toBeNull();
     });
+  });
+
+  it('uses account mark-read before the first delayed message sync resolves', async () => {
+    const cachedMessages = [
+      { ...defaultMessages[0]!, id: 'release', title: 'Release update', readAt: null, ctaLabel: null, ctaUrl: null },
+    ] satisfies MessageCenterMessage[];
+    let releaseMessages: (() => void) | undefined;
+    localStorage.setItem('open-design.message-center.anonymous-started-at.v1', '2026-07-16T00:00:00.000Z');
+    localStorage.setItem('open-design.message-center.anonymous-messages.v1', JSON.stringify(cachedMessages));
+    localStorage.setItem('open-design.message-center.anonymous-read-ids.v1', JSON.stringify([]));
+    mockFetch({
+      loggedIn: true,
+      onMessages: () =>
+        new Promise<Response>((resolve) => {
+          releaseMessages = () => resolve(Response.json({ messages: cachedMessages, nextCursor: null, unreadCount: 1 }));
+        }),
+    });
+
+    renderMessageCenter();
+    await openCenter(1);
+    fireEvent.click(screen.getByRole('button', { name: /Release update/ }));
+
+    await waitFor(() =>
+      expect(
+        vi.mocked(fetch).mock.calls.some(
+          ([url, init]) => String(url).includes('/messages/release/read') && init?.method === 'POST',
+        ),
+      ).toBe(true),
+    );
+    expect(localStorage.getItem('open-design.message-center.anonymous-read-ids.v1')).toBeNull();
+
+    releaseMessages?.();
+    await waitFor(() => expect(screen.queryByLabelText(/unread/)).toBeNull());
   });
 
   it('hydrates cached anonymous state through the ref-backed source of truth', async () => {
