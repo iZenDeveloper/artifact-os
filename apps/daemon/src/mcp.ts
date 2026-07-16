@@ -25,21 +25,23 @@ import { postCreateArtifactRequest } from './artifacts/create.js';
 import { classifyAmrAccountFailure } from './integrations/vela-errors.js';
 
 const SERVER_NAME = 'open-design';
-const SERVER_VERSION = '0.2.8';
+const SERVER_VERSION = '0.2.9';
 const MCP_STDIO_IDLE_EXIT_MS = 30 * 60 * 1000;
 // MCP Apps hosts cache widget resources by URI. Bump this whenever the
 // embedded HTML/CSS/JS changes so a failed or stale sandbox is not reused.
-const CHATGPT_WIDGET_URI = 'ui://open-design/artifact-card-v4.html';
+const CHATGPT_WIDGET_URI = 'ui://open-design/artifact-card-v5.html';
 // A running host can retain tool metadata across a daemon/plugin refresh and
 // keep reading the previous URI. Serve the latest widget at that URI too so
 // existing conversations recover without requiring a Codex restart.
 const LEGACY_CHATGPT_WIDGET_URIS = new Set([
   'ui://open-design/artifact-card-v2.html',
   'ui://open-design/artifact-card-v3.html',
+  'ui://open-design/artifact-card-v4.html',
 ]);
 const CHATGPT_SIGN_IN_URL = 'https://open-design.ai/amr';
 const CHATGPT_RECHARGE_URL = 'https://open-design.ai/amr/wallet';
 const CHATGPT_V1_TOOL_NAMES = new Set([
+  'collect_brief',
   'get_cloud_account',
   'create_project',
   'start_run',
@@ -75,6 +77,12 @@ export function chatGptV1RequiredScopes(toolName: string): string[] {
 function chatGptV1OutputSchema(toolName: string): JsonObject {
   const stringValue = { type: 'string' };
   const schemas: Record<string, JsonObject> = {
+    collect_brief: {
+      view: { type: 'string', enum: ['brief-form'] },
+      artifactType: { type: 'string', enum: ['website', 'product-prototype', 'presentation', 'design-system'] },
+      title: stringValue,
+      brief: { type: 'object' },
+    },
     get_cloud_account: {
       loggedIn: { type: 'boolean' },
       balanceUsd: { type: ['string', 'null'] },
@@ -224,10 +232,33 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
     button:disabled { opacity: .42; cursor: default; transform: none; }
     .compact > button { justify-self: start; }
     .note { margin: 0 0 12px; color: var(--text-muted); font-size: 12px; line-height: 1.45; }
+    .brief { padding: 18px 16px 16px; }
+    .brief-copy { margin: 0 0 16px; }
+    .brief-title { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -.015em; }
+    .brief-detail { margin: 4px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.45; }
+    .brief-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .brief-field { display: grid; gap: 6px; min-width: 0; }
+    .brief-field.wide { grid-column: 1 / -1; }
+    .brief-field span { color: var(--text-muted); font-size: 11px; font-weight: 600; }
+    input, textarea {
+      width: 100%; border: 1px solid var(--border); border-radius: 9px; padding: 9px 10px;
+      background: var(--fill); color: var(--text); font: inherit; font-size: 13px; line-height: 1.4;
+      outline: none; transition: border-color 140ms cubic-bezier(.23,1,.32,1), box-shadow 140ms cubic-bezier(.23,1,.32,1);
+    }
+    textarea { min-height: 72px; resize: vertical; }
+    input:focus, textarea:focus { border-color: color-mix(in srgb, var(--text) 46%, var(--border)); box-shadow: 0 0 0 3px var(--fill); }
+    .brief-actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+    .brief-error { margin: 0; color: #b42318; font-size: 12px; line-height: 1.4; }
+    .brief-error[data-tone="pending"] { color: var(--text-muted); }
+    .brief-error[data-tone="success"] { color: var(--success); }
     .card[data-view="compact"] .sub,
     .card[data-view="compact"] .preview,
     .card[data-view="compact"] .body { display: none; }
     .card[data-view="artifact"] .compact { display: none; }
+    .card[data-view="brief"] .compact,
+    .card[data-view="brief"] .preview,
+    .card[data-view="brief"] .body { display: none; }
+    @media (max-width: 560px) { .brief-grid { grid-template-columns: 1fr; } .brief-field.wide { grid-column: auto; } }
     @media (prefers-reduced-motion: reduce) { .card, .state-dot { animation: none !important; } }
     @media (prefers-reduced-transparency: reduce) { .card { background: var(--surface-strong); -webkit-backdrop-filter: none; backdrop-filter: none; } }
   </style>
@@ -236,6 +267,21 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
   <main class="card" id="card" data-view="compact">
     <header class="head"><span class="mark" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="#fff" fill-rule="evenodd" d="M32 8C45.3 8 56 18.7 56 32S45.3 56 32 56H11a3 3 0 0 1-3-3V32C8 18.7 18.7 8 32 8Zm0 7C22.6 15 15 22.6 15 32v17h17c9.4 0 17-7.6 17-17S41.4 15 32 15Z"/><path fill="#fff" d="M23.7 22.6c-.9-.4-1.8.5-1.4 1.4l6.4 17.7c.4 1.1 2 .8 2-.4v-9.7h10.5c1.2 0 1.5-1.6.4-2l-17.9-7Z"/></svg></span><div><h1 class="title">OpenDesign</h1><p class="sub" id="subtitle">Artifact ready</p></div></header>
     <section class="compact" id="compact"><div class="state"><span class="state-dot" id="state-dot"></span><div class="state-copy"><strong class="state-title" id="state-title"></strong><p class="state-detail" id="state-detail"></p></div></div><div class="balance" id="balance" hidden><span class="balance-label">Remaining balance</span><strong class="balance-value" id="balance-value"></strong></div><button id="account-action" hidden></button></section>
+    <section class="brief" id="brief-form" hidden>
+      <div class="brief-copy"><h2 class="brief-title">Confirm your brief</h2><p class="brief-detail">Review the suggested details, fill any gaps, then continue. OpenDesign will use this as the generation contract.</p></div>
+      <form id="brief-fields">
+        <div class="brief-grid">
+          <label class="brief-field"><span>Project name</span><input id="brief-project" name="project" required autocomplete="off"></label>
+          <label class="brief-field"><span>Audience</span><input id="brief-audience" name="audience" required autocomplete="off"></label>
+          <label class="brief-field wide"><span>Outcome</span><textarea id="brief-outcome" name="outcome" required></textarea></label>
+          <label class="brief-field wide"><span>Content and flows</span><textarea id="brief-content" name="contentAndFlows" required></textarea></label>
+          <label class="brief-field wide"><span>Visual direction</span><textarea id="brief-visual" name="visualDirection" required></textarea></label>
+          <label class="brief-field wide"><span>Output format</span><input id="brief-output" name="outputFormat" required autocomplete="off"></label>
+          <label class="brief-field wide"><span>Constraints <small>(optional)</small></span><textarea id="brief-constraints" name="constraints"></textarea></label>
+        </div>
+        <div class="brief-actions"><button id="brief-submit" type="submit">Continue with this brief</button><p class="brief-error" id="brief-error" role="status"></p></div>
+      </form>
+    </section>
     <section class="preview" id="preview"><div class="placeholder"><div class="pulse" id="pulse"></div><strong id="preview-title">Preparing your design</strong></div></section>
     <section class="body"><p class="note" id="note"></p><div id="version-list"></div><div class="actions"><button id="studio" hidden>Edit in Open Design</button><button class="secondary" id="raw" hidden>Open preview</button><button class="secondary" id="refresh" hidden>Refresh</button><button class="secondary" id="versions" hidden>Versions</button><button class="secondary" id="export" hidden>Export source</button></div></section>
   </main>
@@ -248,6 +294,7 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
     let bridgeInitialized = false;
     let resizeFrame = 0;
     let lastReportedSize = '';
+    let briefHydratedKey = '';
     const pendingRequests = new Map();
     const rpcNotify = (method, params) => window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
     const rpcRequest = (method, params, timeoutMs = 30000) => new Promise((resolve, reject) => {
@@ -323,6 +370,104 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
       }
       window.open(url, '_blank', 'noopener,noreferrer');
     }
+    async function sendBriefMessage(payload) {
+      const lines = [
+        '[OpenDesign brief confirmed]',
+        'Project name: ' + payload.title,
+        'Artifact type: ' + payload.artifactType,
+        'Audience: ' + payload.brief.audience,
+        'Outcome: ' + payload.brief.outcome,
+        'Content and flows: ' + payload.brief.contentAndFlows,
+        'Visual direction: ' + payload.brief.visualDirection,
+        'Output format: ' + payload.brief.outputFormat,
+      ];
+      if (payload.brief.constraints) lines.push('Constraints: ' + payload.brief.constraints);
+      lines.push('Create the Open Design project and start the Cloud run with confirmed:true. Do not ask for the same brief again.');
+      const text = lines.join('\\n');
+      if (await bridgeReady) {
+        try {
+          await rpcRequest('ui/update-model-context', {
+            structuredContent: { openDesignBrief: { ...payload, confirmed: true } },
+          });
+        } catch {}
+        await rpcRequest('ui/message', { role: 'user', content: { type: 'text', text } });
+        return;
+      }
+      if (window.openai?.sendFollowUpMessage) {
+        await window.openai.sendFollowUpMessage({ prompt: text });
+        return;
+      }
+      throw new Error('This host cannot submit Custom UI messages.');
+    }
+    function defaultOutputFormat(artifactType) {
+      const formats = {
+        website: 'Responsive browser website',
+        'product-prototype': 'Interactive responsive product prototype',
+        presentation: 'Browser presentation with a real preview',
+        'design-system': 'Reusable DESIGN.md design system',
+      };
+      return formats[artifactType] || '';
+    }
+    function renderBrief(output) {
+      const brief = output.brief && typeof output.brief === 'object' ? output.brief : {};
+      const hydrationKey = JSON.stringify({ artifactType: output.artifactType, title: output.title, brief });
+      if (hydrationKey !== briefHydratedKey) {
+        briefHydratedKey = hydrationKey;
+        byId('brief-project').value = safeText(output.title, 'New Open Design project');
+        byId('brief-audience').value = safeText(brief.audience, '');
+        byId('brief-outcome').value = safeText(brief.outcome, '');
+        byId('brief-content').value = safeText(brief.contentAndFlows, '');
+        byId('brief-visual').value = safeText(brief.visualDirection, '');
+        byId('brief-output').value = safeText(brief.outputFormat, defaultOutputFormat(output.artifactType));
+        byId('brief-constraints').value = safeText(brief.constraints, '');
+      }
+      const form = byId('brief-fields');
+      form.onsubmit = async (event) => {
+        event.preventDefault();
+        const submit = byId('brief-submit');
+        const error = byId('brief-error');
+        const payload = {
+          artifactType: output.artifactType,
+          title: byId('brief-project').value.trim(),
+          brief: {
+            audience: byId('brief-audience').value.trim(),
+            outcome: byId('brief-outcome').value.trim(),
+            contentAndFlows: byId('brief-content').value.trim(),
+            visualDirection: byId('brief-visual').value.trim(),
+            outputFormat: byId('brief-output').value.trim(),
+            constraints: byId('brief-constraints').value.trim(),
+          },
+        };
+        const missing = [
+          ['Project name', payload.title],
+          ['Audience', payload.brief.audience],
+          ['Outcome', payload.brief.outcome],
+          ['Content and flows', payload.brief.contentAndFlows],
+          ['Visual direction', payload.brief.visualDirection],
+          ['Output format', payload.brief.outputFormat],
+        ].filter(([, value]) => !value).map(([label]) => label);
+        if (missing.length) {
+          error.dataset.tone = 'error';
+          error.textContent = 'Complete: ' + missing.join(', ') + '.';
+          scheduleSizeChanged();
+          return;
+        }
+        submit.disabled = true;
+        error.dataset.tone = 'pending';
+        error.textContent = 'Submitting…';
+        try {
+          await sendBriefMessage(payload);
+          error.dataset.tone = 'success';
+          error.textContent = 'Brief submitted.';
+          submit.textContent = 'Submitted';
+        } catch (submitError) {
+          error.dataset.tone = 'error';
+          error.textContent = submitError instanceof Error ? submitError.message : 'Could not submit the brief.';
+          submit.disabled = false;
+        }
+        scheduleSizeChanged();
+      };
+    }
     function accountLabel() {
       const user = current.user && typeof current.user === 'object' ? current.user : {};
       const account = current.account && typeof current.account === 'object' ? current.account : {};
@@ -332,6 +477,15 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
       if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
       const incoming = output && typeof output === 'object' ? output : {};
       current = { ...current, ...incoming };
+      const briefMode = current.view === 'brief-form';
+      byId('brief-form').hidden = !briefMode;
+      if (briefMode) {
+        byId('card').dataset.view = 'brief';
+        byId('subtitle').textContent = [current.title, current.artifactType].filter(Boolean).join(' · ') || 'Working brief';
+        renderBrief(current);
+        scheduleSizeChanged();
+        return;
+      }
       const account = current.account || {};
       const wallet = current.wallet || {};
       const status = safeText(current.status || (current.nextAction === 'recharge' ? 'recharge' : current.loggedIn === true ? 'connected' : current.loggedIn === false ? 'sign in' : 'ready')).toLowerCase();
@@ -487,12 +641,12 @@ interface ProjectPayload { project?: ProjectSummary; id?: string; name?: string;
 interface ActiveContext { active?: boolean; projectId?: string; projectName?: string | null; fileName?: string | null; ageMs?: number | null }
 type ResolvedProject = { id: string; name: string; source: 'uuid' | 'id' | 'exact' | 'slug' | 'substring' };
 interface ProjectListCache { baseUrl: string; t: number; list: ProjectSummary[] }
-interface McpArgs extends JsonObject { project?: unknown; entry?: unknown; include?: unknown; maxBytes?: unknown; path?: unknown; offset?: unknown; limit?: unknown; since?: unknown; query?: unknown; pattern?: unknown; max?: unknown; name?: unknown; content?: unknown; encoding?: unknown; artifactManifest?: unknown; confirm?: unknown; confirmed?: unknown; prompt?: unknown; plugin?: unknown; inputs?: unknown; agent?: unknown; model?: unknown; runId?: unknown; id?: unknown; designSystem?: unknown; skill?: unknown; artifactType?: unknown; brief?: unknown; includeUnavailable?: unknown; versionId?: unknown }
+interface McpArgs extends JsonObject { project?: unknown; entry?: unknown; include?: unknown; maxBytes?: unknown; path?: unknown; offset?: unknown; limit?: unknown; since?: unknown; query?: unknown; pattern?: unknown; max?: unknown; name?: unknown; title?: unknown; content?: unknown; encoding?: unknown; artifactManifest?: unknown; confirm?: unknown; confirmed?: unknown; prompt?: unknown; plugin?: unknown; inputs?: unknown; agent?: unknown; model?: unknown; runId?: unknown; id?: unknown; designSystem?: unknown; skill?: unknown; artifactType?: unknown; brief?: unknown; audience?: unknown; outcome?: unknown; contentAndFlows?: unknown; visualDirection?: unknown; outputFormat?: unknown; constraints?: unknown; includeUnavailable?: unknown; versionId?: unknown }
 interface ProjectFileBundleEntry { name: string; mime: string; size: number | null; content: string | null; binary: boolean }
 interface BundleInput { project: ProjectPayload | ProjectSummary; entry: string; files: ProjectFileBundleEntry[]; truncated: boolean; active: ActiveContext | null; resolved?: ResolvedProject | null }
 
 function withChatGptWidgetResultMeta(toolName: string, result: any): any {
-  if (!['get_cloud_account', 'start_run'].includes(toolName) || !result || typeof result !== 'object') return result;
+  if (!['collect_brief', 'get_cloud_account', 'start_run'].includes(toolName) || !result || typeof result !== 'object') return result;
   if (!result.structuredContent || typeof result.structuredContent !== 'object') return result;
   const currentMeta = result._meta && typeof result._meta === 'object' ? result._meta as JsonObject : {};
   const currentUi = currentMeta.ui && typeof currentMeta.ui === 'object' ? currentMeta.ui as JsonObject : {};
@@ -864,6 +1018,31 @@ const TOOL_DEFS = [
   // kicks off the run and get_run polls it to completion. Design
   // systems stay resource-only (od://design-systems/...) since they're
   // reference material the caller opts into, not something to run.
+  {
+    name: 'collect_brief',
+    description: 'Show the interactive Open Design Custom UI brief form. Call this instead of asking prose questions or emitting <question-form> text whenever audience, outcome, content/flows, visual direction, or output format is missing. Pass every detail already known so the form is prefilled.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        artifactType: {
+          type: 'string',
+          enum: ['website', 'product-prototype', 'presentation', 'design-system'],
+          description: 'The requested Open Design deliverable type.',
+        },
+        title: { type: 'string', description: 'Suggested human-readable project name.' },
+        audience: { type: 'string', description: 'Known or inferred target audience.' },
+        outcome: { type: 'string', description: 'Known or inferred result the artifact should achieve.' },
+        contentAndFlows: { type: 'string', description: 'Known required content, sections, flows, and interactions.' },
+        visualDirection: { type: 'string', description: 'Known visual direction, references, or brand constraints.' },
+        outputFormat: { type: 'string', description: 'Known expected output format.' },
+        constraints: { type: 'string', description: 'Known must-have or must-avoid constraints.' },
+      },
+      required: ['artifactType'],
+      additionalProperties: false,
+    },
+    annotations: { ...READ_ANNOTATIONS, title: 'Complete Open Design brief' },
+    _meta: CHATGPT_WIDGET_META,
+  },
   {
     name: 'get_cloud_account',
     description: 'Check whether Open Design Cloud is signed in and read the wallet balance. Call this before generation so you can choose Cloud, recharge, or a local Code Agent/BYOK fallback without guessing.',
@@ -1297,7 +1476,7 @@ export function createOpenDesignMcpServer({
       capabilities: { tools: {}, resources: {} },
       instructions: [
         'Open Design creates and refines websites, product prototypes, presentations, and design systems.',
-        'Confirm audience, outcome, content/flows, visual direction, and output format before calling start_run with confirmed:true.',
+        'Confirm audience, outcome, content/flows, visual direction, and output format before calling start_run with confirmed:true. If any field is missing, call collect_brief so the Custom UI form collects it; never emit <question-form> or JSON form markup as assistant text.',
         'Before Cloud generation call get_cloud_account. Use create_project, then start_run; its card polls get_run and updates in place.',
         'Open Design runs can take 5–30 minutes. Do not cancel unless the user asks.',
         'A browser-artifact run is delivered only when get_run returns status:succeeded plus artifactCount greater than zero and a real previewUrl. A Design System run instead requires status:succeeded plus artifactCount greater than zero.',
@@ -1557,6 +1736,25 @@ function publicChatGptResult(name: string, result: any): any {
 }
 
 async function handleChatGptV1ToolCall(baseUrl: string, name: string, args: McpArgs): Promise<any> {
+  if (name === 'collect_brief') {
+    const artifactTypes = new Set(['website', 'product-prototype', 'presentation', 'design-system']);
+    if (typeof args.artifactType !== 'string' || !artifactTypes.has(args.artifactType)) {
+      return errorResult('artifactType must be website, product-prototype, presentation, or design-system.');
+    }
+    const brief = Object.fromEntries(
+      ['audience', 'outcome', 'contentAndFlows', 'visualDirection', 'outputFormat', 'constraints']
+        .filter((field) => typeof args[field] === 'string' && String(args[field]).trim())
+        .map((field) => [field, String(args[field]).trim()]),
+    );
+    return ok({
+      view: 'brief-form',
+      artifactType: args.artifactType,
+      title: typeof args.title === 'string' && args.title.trim()
+        ? args.title.trim()
+        : `New Open Design ${args.artifactType}`,
+      brief,
+    });
+  }
   let callArgs = args;
   if (name === 'start_run') {
     const prepared = prepareChatGptV1Run(args);

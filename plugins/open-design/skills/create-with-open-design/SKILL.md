@@ -20,7 +20,10 @@ For other artifact types, explain that the first plugin version focuses on these
 
 ## Workflow
 
-1. Confirm the deliverable, audience, goal, required content, visual references, and must-have constraints. Ask only for information that materially changes the output.
+1. Confirm the deliverable, audience, goal, required content, visual references, and must-have constraints.
+   - Call `collect_brief` whenever any of the five required brief fields is missing. Pass the known values so the OpenDesign Custom UI renders an editable, prefilled form. Do not ask those questions as prose. Do not emit `<question-form>` or JSON form markup; ChatGPT/Codex displays that markup as plain text.
+   - The form submits a user message beginning `[OpenDesign brief confirmed]`. Treat its values as the approved brief and continue without asking for the same information again.
+   - If the user already supplied all five fields, skip `collect_brief` and continue directly.
 2. Call `get_cloud_account` before a generation run.
    - If `canUseCloud` is true, continue; `start_run` always uses Open Design Cloud in V1.
    - If signed out, tell the user to sign in to Open Design and show the returned account link or guidance.
@@ -44,7 +47,7 @@ Before the first run, summarize the working brief in a compact confirmation:
 - Visual direction or design-system source
 - Output format
 
-If the user already supplied all five, proceed without an extra confirmation turn.
+If the user already supplied all five, proceed without an extra confirmation turn. Otherwise the confirmation must happen through the `collect_brief` Custom UI, never through a literal text form.
 
 ## Safety and quality
 

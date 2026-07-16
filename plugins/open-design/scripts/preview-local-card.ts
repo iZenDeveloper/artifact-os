@@ -2,7 +2,7 @@
 
 import { createServer } from 'node:http';
 
-const WIDGET_URI = 'ui://open-design/artifact-card-v4.html';
+const WIDGET_URI = 'ui://open-design/artifact-card-v5.html';
 
 interface JsonRpcResponse {
   error?: { message?: string };
@@ -51,6 +51,18 @@ async function readWidget(endpoint: string): Promise<string> {
 }
 
 function stateOutput(state: string, origin: string): Record<string, unknown> {
+  if (state === 'brief') {
+    return {
+      view: 'brief-form',
+      artifactType: 'website',
+      title: 'Launch website',
+      brief: {
+        audience: 'Product teams evaluating AI design tools',
+        outcome: 'Explain the product clearly and convert qualified visitors.',
+        outputFormat: 'Responsive browser website',
+      },
+    };
+  }
   if (state === 'account') {
     return {
       loggedIn: false,
@@ -224,6 +236,19 @@ function mcpAppsHostScript(output: Record<string, unknown>, origin: string, widg
           return;
         }
 
+        if (message.method === 'ui/update-model-context' && message.id !== undefined) {
+          send({ jsonrpc: '2.0', id: message.id, result: {} });
+          setStatus('MCP Apps · brief added to model context');
+          return;
+        }
+
+        if (message.method === 'ui/message' && message.id !== undefined) {
+          send({ jsonrpc: '2.0', id: message.id, result: {} });
+          const submitted = String(message.params?.content?.text || '').split('\\n')[0];
+          setStatus('MCP Apps · message submitted: ' + submitted);
+          return;
+        }
+
         if (message.method === 'ui/notifications/size-changed') {
           const nextHeight = Number(message.params?.height);
           if (Number.isFinite(nextHeight) && nextHeight > 0 && frame) {
@@ -257,7 +282,7 @@ function galleryHtml(widget: string, state: string, origin: string): string {
       #local-host-status { max-width: 720px; margin: 12px auto 0; min-height: 18px; color: #666; font-size: 12px; }
     </style></head><body>
     <header><h1>Open Design Artifact Card</h1><p>Real MCP Apps resource with a local host simulator.</p>
-      <nav>${['account', 'authorized', 'running', 'recharge', 'complete'].map((item) => `<a href="/?state=${item}" aria-current="${item === state}">${item}</a>`).join('')}</nav>
+      <nav>${['brief', 'account', 'authorized', 'running', 'recharge', 'complete'].map((item) => `<a href="/?state=${item}" aria-current="${item === state}">${item}</a>`).join('')}</nav>
     </header>
     <iframe id="artifact-card" title="Open Design Artifact Card"></iframe>
     <div id="local-host-status"></div>
@@ -283,7 +308,7 @@ const server = createServer((request, response) => {
     response.end();
     return;
   }
-  const state = ['account', 'authorized', 'running', 'recharge', 'complete'].includes(url.searchParams.get('state') ?? '')
+  const state = ['brief', 'account', 'authorized', 'running', 'recharge', 'complete'].includes(url.searchParams.get('state') ?? '')
     ? String(url.searchParams.get('state'))
     : 'complete';
   response.setHeader('content-type', 'text/html; charset=utf-8');

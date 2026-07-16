@@ -16,6 +16,7 @@ const REQUIRED_SCOPES = [
 
 const EXPECTED_TOOLS = [
   'cancel_run',
+  'collect_brief',
   'create_project',
   'export_project',
   'get_cloud_account',
@@ -231,7 +232,7 @@ async function verify(options: Options): Promise<CheckResult[]> {
   const account = accountCall.structuredContent as Record<string, unknown> | undefined;
   assert(account?.loggedIn === true, 'production token did not resolve to a signed-in Open Design user');
   assert(typeof account.balanceStatus === 'string', 'production account did not return wallet status');
-  add(checks, 'User OAuth flow', `signed in · wallet ${String(account.balanceStatus)} · eight V1 tools`);
+  add(checks, 'User OAuth flow', `signed in · wallet ${String(account.balanceStatus)} · nine V1 tools`);
   return checks;
 }
 

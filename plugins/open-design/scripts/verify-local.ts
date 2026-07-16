@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const EXPECTED_TOOLS = [
   'cancel_run',
+  'collect_brief',
   'create_project',
   'export_project',
   'get_cloud_account',
@@ -15,7 +16,7 @@ const EXPECTED_TOOLS = [
   'start_run',
 ] as const;
 
-const WIDGET_URI = 'ui://open-design/artifact-card-v4.html';
+const WIDGET_URI = 'ui://open-design/artifact-card-v5.html';
 
 interface JsonRpcResponse {
   error?: { message?: string };
@@ -154,12 +155,15 @@ async function validateEndpoint(endpoint: string): Promise<void> {
   const widgetHtml = contents?.find((content) => content.uri === WIDGET_URI)?.text;
   assert(typeof widgetHtml === 'string' && widgetHtml.includes('window.openai'), 'Artifact card does not contain the ChatGPT bridge');
   assert(widgetHtml.includes("rpcRequest('tools/call'"), 'Artifact card cannot call follow-up MCP tools');
+  assert(widgetHtml.includes("rpcRequest('ui/message'"), 'Artifact card cannot submit the Custom UI brief');
+  assert(widgetHtml.includes('id="brief-form"'), 'Artifact card does not contain the Custom UI brief form');
   assert(!widgetHtml.includes('}, 1000);'), 'Artifact card still abandons the MCP Apps handshake after one second');
   assert(widgetHtml.includes('ui/notifications/size-changed'), 'Artifact card does not publish intrinsic size changes');
 
   for (const [index, legacyUri] of [
     'ui://open-design/artifact-card-v2.html',
     'ui://open-design/artifact-card-v3.html',
+    'ui://open-design/artifact-card-v4.html',
   ].entries()) {
     const legacyReadResource = await rpc(endpoint, 5 + index, 'resources/read', { uri: legacyUri });
     const legacyContents = legacyReadResource.contents as Array<Record<string, unknown>> | undefined;
@@ -167,7 +171,15 @@ async function validateEndpoint(endpoint: string): Promise<void> {
     assert(legacyWidget?.text === widgetHtml, `${legacyUri} is not mapped to the latest widget`);
   }
 
-  const accountCall = await rpc(endpoint, 7, 'tools/call', { name: 'get_cloud_account', arguments: {} });
+  const briefCall = await rpc(endpoint, 8, 'tools/call', {
+    name: 'collect_brief',
+    arguments: { artifactType: 'website', title: 'Local website', outcome: 'Explain the product.' },
+  });
+  const brief = briefCall.structuredContent as Record<string, unknown> | undefined;
+  assert(brief?.view === 'brief-form', 'collect_brief did not return the Custom UI state');
+  assert((briefCall._meta as Record<string, unknown>)?.['openai/outputTemplate'] === WIDGET_URI, 'collect_brief is not connected to the Artifact card');
+
+  const accountCall = await rpc(endpoint, 9, 'tools/call', { name: 'get_cloud_account', arguments: {} });
   const account = accountCall.structuredContent as Record<string, unknown> | undefined;
   assert(account && typeof account.balanceStatus === 'string', 'Cloud account tool did not return a balance status');
   assert((accountCall._meta as Record<string, unknown>)?.['openai/outputTemplate'] === WIDGET_URI, 'Cloud account result is not connected to the Artifact card');
