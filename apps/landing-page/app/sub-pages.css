@@ -1772,13 +1772,16 @@ body.sub-page {
   top: -104px;
   transform: translateX(-50%);
   width: 100vw;
-  height: 640px;
+  max-width: 1920px;
+  height: 720px;
   z-index: 0;
   pointer-events: none;
   /* Same faded base-image treatment as the /stories hero: a shared OD
-     art plate that dissolves into the page. */
+     art plate (1920×1153) that dissolves into the page. Cap at the image's
+     native width so wide screens don't upscale/soften it, and keep the
+     overlay light so the art reads as vividly as the reference. */
   background:
-    linear-gradient(rgba(250, 250, 250, 0.55), rgba(250, 250, 250, 0.9) 62%, #fafafa),
+    linear-gradient(rgba(250, 250, 250, 0.34), rgba(250, 250, 250, 0.82) 68%, #fafafa 94%),
     url('/lab-stage-art.webp');
   background-size: cover;
   background-position: 50% 16%;
