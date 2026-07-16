@@ -46,6 +46,7 @@ describe('ChatGPT-oriented Open Design MCP tools', () => {
       balanceStatus: 'empty',
       canUseCloud: false,
       nextAction: 'recharge',
+      rechargeUrl: 'https://open-design.ai/amr/wallet',
       fallback: { modes: ['local_code_agent', 'byok'] },
     });
   });

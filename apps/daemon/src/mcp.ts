@@ -22,15 +22,14 @@ import { buildProjectRawFileUrl } from '@open-design/contracts';
 import { randomUUID } from 'node:crypto';
 
 import { postCreateArtifactRequest } from './artifacts/create.js';
-import {
-  classifyAmrAccountFailure,
-  DEFAULT_AMR_RECHARGE_URL,
-} from './integrations/vela-errors.js';
+import { classifyAmrAccountFailure } from './integrations/vela-errors.js';
 
 const SERVER_NAME = 'open-design';
-const SERVER_VERSION = '0.2.3';
+const SERVER_VERSION = '0.2.5';
 const MCP_STDIO_IDLE_EXIT_MS = 30 * 60 * 1000;
 const CHATGPT_WIDGET_URI = 'ui://open-design/artifact-card-v2.html';
+const CHATGPT_SIGN_IN_URL = 'https://open-design.ai/amr';
+const CHATGPT_RECHARGE_URL = 'https://open-design.ai/amr/wallet';
 const CHATGPT_V1_TOOL_NAMES = new Set([
   'get_cloud_account',
   'create_project',
@@ -136,50 +135,95 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    :root { color-scheme: light dark; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    :root {
+      color-scheme: light dark;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --surface: rgba(250, 250, 250, .72);
+      --surface-strong: rgba(250, 250, 250, .9);
+      --text: rgba(32, 32, 32, .92);
+      --text-muted: rgba(73, 73, 73, .62);
+      --text-soft: rgba(73, 73, 73, .4);
+      --border: rgba(73, 73, 73, .18);
+      --fill: rgba(73, 73, 73, .08);
+      --button: #202020;
+      --button-text: #fafafa;
+      --success: #168052;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --surface: rgba(53, 53, 53, .72);
+        --surface-strong: rgba(53, 53, 53, .9);
+        --text: rgba(250, 250, 250, .92);
+        --text-muted: rgba(237, 237, 237, .62);
+        --text-soft: rgba(237, 237, 237, .4);
+        --border: rgba(255, 255, 255, .16);
+        --fill: rgba(255, 255, 255, .07);
+        --button: #fafafa;
+        --button-text: #202020;
+        --success: #70d6a6;
+      }
+    }
     * { box-sizing: border-box; }
-    body { margin: 0; padding: 8px; background: transparent; color: CanvasText; }
-    .card { overflow: hidden; border: 1px solid color-mix(in srgb, CanvasText 14%, transparent); border-radius: 20px; background: color-mix(in srgb, Canvas 96%, CanvasText 4%); box-shadow: 0 18px 50px color-mix(in srgb, CanvasText 9%, transparent); }
-    .head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; }
-    .mark { width: 34px; height: 34px; border-radius: 11px; background: #111; position: relative; flex: 0 0 auto; }
-    .mark:before { content: ''; position: absolute; inset: 8px; border: 4px solid #f3ebdd; border-radius: 50%; }
-    .mark:after { content: ''; position: absolute; width: 5px; height: 5px; border-radius: 50%; background: #f3ebdd; left: 14.5px; top: 14.5px; }
-    .title { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
-    .sub { margin: 2px 0 0; opacity: .62; font-size: 12px; }
-    .badge { margin-left: auto; border-radius: 999px; padding: 6px 9px; background: color-mix(in srgb, #4f7cff 15%, transparent); color: #4f7cff; font-size: 11px; font-weight: 700; text-transform: capitalize; }
-    .badge[data-tone="ready"] { background: color-mix(in srgb, #1d9b63 14%, transparent); color: #168052; }
-    .badge[data-tone="attention"] { background: color-mix(in srgb, #d97706 15%, transparent); color: #b45309; }
-    .badge[data-tone="failed"] { background: color-mix(in srgb, #dc2626 14%, transparent); color: #c11f1f; }
-    .steps { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; padding: 0 18px 14px; }
-    .step { display: flex; align-items: center; gap: 6px; min-width: 0; color: color-mix(in srgb, CanvasText 42%, transparent); font-size: 10px; font-weight: 700; }
-    .step:before { content: ''; width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: color-mix(in srgb, CanvasText 18%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, CanvasText 5%, transparent); }
-    .step.done, .step.current { color: CanvasText; }
-    .step.done:before { background: #1d9b63; box-shadow: 0 0 0 3px color-mix(in srgb, #1d9b63 14%, transparent); }
-    .step.current:before { background: #4f7cff; box-shadow: 0 0 0 3px color-mix(in srgb, #4f7cff 16%, transparent); }
-    .preview { min-height: 148px; border-block: 1px solid color-mix(in srgb, CanvasText 12%, transparent); background: radial-gradient(circle at 15% 0%, #b7c8ff55, transparent 34%), linear-gradient(135deg, color-mix(in srgb, Canvas 88%, #e4d6bb 12%), Canvas); display: grid; place-items: center; position: relative; }
+    [hidden] { display: none !important; }
+    body { margin: 0; padding: 8px; background: transparent; color: var(--text); }
+    .card {
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      -webkit-backdrop-filter: blur(24px) saturate(1.6);
+      backdrop-filter: blur(24px) saturate(1.6);
+      box-shadow: 0 1px 2px rgba(28, 27, 26, .05), 0 1px 3px rgba(28, 27, 26, .04);
+      animation: card-in 200ms cubic-bezier(.23, 1, .32, 1) both;
+    }
+    @keyframes card-in { from { opacity: 0; transform: translateY(4px); } }
+    .head { display: flex; align-items: center; gap: 10px; padding: 16px 16px 0; }
+    .mark { width: 32px; height: 32px; border-radius: 8px; overflow: hidden; background: #10110d; flex: 0 0 auto; }
+    .mark svg { display: block; width: 100%; height: 100%; }
+    .title { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: -.01em; }
+    .sub { margin: 2px 0 0; color: var(--text-muted); font-size: 12px; }
+    .compact { display: grid; gap: 16px; padding: 22px 16px 16px; }
+    .state { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+    .state-dot { width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; flex: 0 0 auto; background: var(--text-soft); }
+    .state-dot[data-tone="success"] { background: var(--success); box-shadow: 0 0 0 4px color-mix(in srgb, var(--success) 12%, transparent); }
+    .state-dot[data-tone="running"] { background: var(--text); box-shadow: 0 0 0 4px var(--fill); animation: breathe 1.4s ease-in-out infinite; }
+    @keyframes breathe { 50% { opacity: .35; transform: scale(.82); } }
+    .state-copy { min-width: 0; }
+    .state-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; line-height: 1.3; font-weight: 650; letter-spacing: -.015em; }
+    .state-detail { margin: 4px 0 0; color: var(--text-muted); font-size: 13px; line-height: 1.4; }
+    .balance { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .balance-label { color: var(--text-muted); font-size: 12px; }
+    .balance-value { font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
+    .preview { min-height: 148px; margin-top: 14px; border-block: 1px solid var(--border); background: var(--fill); display: grid; place-items: center; position: relative; }
     .preview iframe { width: 100%; height: 240px; border: 0; background: white; }
     .placeholder { text-align: center; padding: 30px; }
-    .pulse { width: 32px; height: 32px; margin: 0 auto 12px; border-radius: 50%; border: 3px solid color-mix(in srgb, #4f7cff 25%, transparent); border-top-color: #4f7cff; animation: spin 1s linear infinite; }
+    .pulse { width: 28px; height: 28px; margin: 0 auto 12px; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--text); animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .body { padding: 15px 18px 17px; }
-    .meta { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-bottom: 14px; }
-    .datum { padding: 10px 11px; border-radius: 12px; background: color-mix(in srgb, CanvasText 5%, transparent); }
-    .label { display: block; opacity: .55; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+    .body { padding: 14px 16px 16px; }
+    .datum { padding: 10px 11px; border-radius: 8px; background: var(--fill); }
+    .label { display: block; color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
     .value { display: block; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 650; }
     .actions { display: flex; flex-wrap: wrap; gap: 8px; }
-    button { appearance: none; border: 0; border-radius: 999px; padding: 9px 13px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; background: #111; color: #f8f3e9; transition: transform 140ms cubic-bezier(.23,1,.32,1), opacity 140ms; }
-    button.secondary { background: color-mix(in srgb, CanvasText 8%, transparent); color: CanvasText; }
+    button { appearance: none; min-height: 36px; border: 0; border-radius: 999px; padding: 0 16px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; background: var(--button); color: var(--button-text); transition: transform 140ms cubic-bezier(.23,1,.32,1), opacity 140ms, background 140ms; }
+    button.secondary { background: var(--fill); color: var(--text); }
     button:hover { transform: translateY(-1px); }
     button:disabled { opacity: .42; cursor: default; transform: none; }
-    .note { margin: 0 0 12px; font-size: 12px; line-height: 1.45; opacity: .7; }
+    .compact > button { justify-self: start; }
+    .note { margin: 0 0 12px; color: var(--text-muted); font-size: 12px; line-height: 1.45; }
+    .card[data-view="compact"] .sub,
+    .card[data-view="compact"] .preview,
+    .card[data-view="compact"] .body { display: none; }
+    .card[data-view="artifact"] .compact { display: none; }
+    @media (prefers-reduced-motion: reduce) { .card, .state-dot { animation: none !important; } }
+    @media (prefers-reduced-transparency: reduce) { .card { background: var(--surface-strong); -webkit-backdrop-filter: none; backdrop-filter: none; } }
   </style>
 </head>
 <body>
-  <main class="card">
-    <header class="head"><span class="mark"></span><div><h1 class="title">Open Design</h1><p class="sub" id="subtitle">Ready to create</p></div><span class="badge" id="status">Ready</span></header>
-    <div class="steps" id="steps" hidden><span class="step" data-step="brief">Brief confirmed</span><span class="step" data-step="build">Creating</span><span class="step" data-step="ready">Ready to edit</span></div>
+  <main class="card" id="card" data-view="compact">
+    <header class="head"><span class="mark" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="#fff" fill-rule="evenodd" d="M32 8C45.3 8 56 18.7 56 32S45.3 56 32 56H11a3 3 0 0 1-3-3V32C8 18.7 18.7 8 32 8Zm0 7C22.6 15 15 22.6 15 32v17h17c9.4 0 17-7.6 17-17S41.4 15 32 15Z"/><path fill="#fff" d="M23.7 22.6c-.9-.4-1.8.5-1.4 1.4l6.4 17.7c.4 1.1 2 .8 2-.4v-9.7h10.5c1.2 0 1.5-1.6.4-2l-17.9-7Z"/></svg></span><div><h1 class="title">OpenDesign</h1><p class="sub" id="subtitle">Artifact ready</p></div></header>
+    <section class="compact" id="compact"><div class="state"><span class="state-dot" id="state-dot"></span><div class="state-copy"><strong class="state-title" id="state-title"></strong><p class="state-detail" id="state-detail"></p></div></div><div class="balance" id="balance" hidden><span class="balance-label">Remaining balance</span><strong class="balance-value" id="balance-value"></strong></div><button id="account-action" hidden></button></section>
     <section class="preview" id="preview"><div class="placeholder"><div class="pulse" id="pulse"></div><strong id="preview-title">Preparing your design</strong></div></section>
-    <section class="body"><p class="note" id="note"></p><div class="meta" id="meta"></div><div id="version-list"></div><div class="actions"><button id="recharge" hidden>Recharge balance</button><button id="studio" hidden>Edit in Open Design</button><button class="secondary" id="raw" hidden>Open preview</button><button class="secondary" id="refresh" hidden>Refresh</button><button class="secondary" id="versions" hidden>Versions</button><button class="secondary" id="export" hidden>Export source</button></div></section>
+    <section class="body"><p class="note" id="note"></p><div id="version-list"></div><div class="actions"><button id="studio" hidden>Edit in Open Design</button><button class="secondary" id="raw" hidden>Open preview</button><button class="secondary" id="refresh" hidden>Refresh</button><button class="secondary" id="versions" hidden>Versions</button><button class="secondary" id="export" hidden>Export source</button></div></section>
   </main>
   <script>
     const byId = (id) => document.getElementById(id);
@@ -219,11 +263,10 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
       if (window.openai?.openExternal) window.openai.openExternal({ href: url });
       else window.open(url, '_blank', 'noopener,noreferrer');
     }
-    function datum(label, value) {
-      const el = document.createElement('div'); el.className = 'datum';
-      const l = document.createElement('span'); l.className = 'label'; l.textContent = label;
-      const v = document.createElement('span'); v.className = 'value'; v.textContent = safeText(value);
-      el.append(l, v); return el;
+    function accountLabel() {
+      const user = current.user && typeof current.user === 'object' ? current.user : {};
+      const account = current.account && typeof current.account === 'object' ? current.account : {};
+      return user.name || user.displayName || user.email || account.name || account.email || 'OpenDesign account';
     }
     function render(output) {
       if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
@@ -234,30 +277,48 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
       const status = safeText(current.status || (current.nextAction === 'recharge' ? 'recharge' : current.loggedIn === true ? 'connected' : current.loggedIn === false ? 'sign in' : 'ready')).toLowerCase();
       const running = status === 'queued' || status === 'running';
       const completed = status === 'succeeded' || Boolean(current.previewUrl);
-      const statusLabels = { queued: 'Queued', running: 'Creating', succeeded: 'Ready', failed: 'Needs attention', canceled: 'Canceled', recharge: 'Needs balance', connected: 'Connected', 'sign in': 'Sign in', ready: 'Ready' };
-      const statusBadge = byId('status');
-      statusBadge.textContent = statusLabels[status] || status;
-      statusBadge.dataset.tone = completed ? 'ready' : status === 'recharge' ? 'attention' : status === 'failed' ? 'failed' : 'active';
       const artifactLabels = { website: 'Website', 'product-prototype': 'Product prototype', presentation: 'Presentation', 'design-system': 'Design System' };
       const artifactLabel = artifactLabels[current.artifactType] || current.kind || '';
       const projectLabel = current.name || current.projectName || '';
       byId('subtitle').textContent = [projectLabel, artifactLabel].filter(Boolean).join(' · ') || (current.loggedIn === true ? 'Open Design Cloud connected' : running ? 'Generating with Open Design' : completed ? 'Artifact ready' : 'Ready to create');
-      const stage = current.stage || (completed ? 'ready' : status === 'queued' ? 'queued' : running ? 'generating' : status === 'failed' ? 'failed' : status === 'canceled' ? 'canceled' : null);
-      const steps = byId('steps');
-      steps.hidden = !stage;
-      const stageIndex = stage === 'ready' ? 2 : 1;
-      Array.from(steps.querySelectorAll('.step')).forEach((step, index) => {
-        step.classList.toggle('done', index < stageIndex || (index === 0 && current.briefConfirmed === true));
-        step.classList.toggle('current', index === stageIndex && stage !== 'failed' && stage !== 'canceled');
-      });
       byId('note').textContent = current.hint || (current.loggedIn === false ? 'Sign in to Open Design Cloud before starting a Cloud run.' : completed ? 'Review the result here, then continue detailed editing, versions, and export in Open Design.' : running ? 'Open Design is working. Long thinking intervals are normal.' : 'Create a website, product prototype, presentation, or reusable design system.');
-      const meta = byId('meta'); meta.replaceChildren();
-      if (current.loggedIn !== undefined) meta.append(datum('Cloud', current.loggedIn ? 'Signed in' : 'Sign in'));
       const balance = current.balanceUsd ?? account.balanceUsd ?? wallet.balanceUsd;
-      if (balance !== undefined && balance !== null) meta.append(datum('Balance', '$' + balance));
-      if (current.projectId || current.id) meta.append(datum('Project', current.projectId || current.id));
-      if (current.runId || (current.id && current.status)) meta.append(datum('Run', current.runId || current.id));
-      if (artifactLabel) meta.append(datum('Type', artifactLabel));
+      const rechargeMode = current.nextAction === 'recharge';
+      const compactMode = running || rechargeMode || (!completed && current.loggedIn !== undefined);
+      byId('card').dataset.view = compactMode ? 'compact' : 'artifact';
+      const stateDot = byId('state-dot');
+      const stateTitle = byId('state-title');
+      const stateDetail = byId('state-detail');
+      const balanceRow = byId('balance');
+      const accountAction = byId('account-action');
+      stateDot.dataset.tone = running ? 'running' : current.loggedIn === true ? 'success' : 'neutral';
+      balanceRow.hidden = true;
+      accountAction.hidden = true;
+      stateDetail.hidden = false;
+      if (running) {
+        stateTitle.textContent = projectLabel ? 'Creating “' + projectLabel + '”' : 'Creating your design';
+        stateDetail.textContent = status === 'queued' ? 'Preparing the workspace…' : 'Generating your design…';
+      } else if (rechargeMode) {
+        stateTitle.textContent = accountLabel();
+        stateDetail.hidden = true;
+        balanceRow.hidden = false;
+        byId('balance-value').textContent = '$' + safeText(balance, '0.00');
+        accountAction.textContent = 'Recharge';
+        accountAction.hidden = false;
+        accountAction.onclick = () => openUrl('${CHATGPT_RECHARGE_URL}');
+      } else if (current.loggedIn === true) {
+        stateTitle.textContent = 'Authorization complete';
+        stateDetail.hidden = true;
+      } else if (current.loggedIn === false) {
+        stateTitle.textContent = 'Not signed in';
+        stateDetail.hidden = true;
+        accountAction.textContent = 'Sign in / Register';
+        accountAction.hidden = false;
+        accountAction.onclick = () => openUrl('${CHATGPT_SIGN_IN_URL}');
+      } else {
+        stateTitle.textContent = status === 'failed' ? 'Needs attention' : 'Ready';
+        stateDetail.textContent = current.hint || '';
+      }
       byId('pulse').hidden = !running;
       byId('preview-title').textContent = running ? 'Creating your design…' : completed ? 'Artifact ready' : current.loggedIn === false ? 'Connect Open Design Cloud' : 'Ready for your brief';
       const preview = byId('preview');
@@ -267,7 +328,6 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
         const frame = document.createElement('iframe'); frame.src = current.previewUrl; frame.title = 'Open Design artifact preview'; frame.loading = 'lazy'; preview.prepend(frame);
       }
       const studio = byId('studio'); studio.hidden = !current.studioUrl; studio.onclick = () => openUrl(current.studioUrl);
-      const recharge = byId('recharge'); recharge.hidden = current.nextAction !== 'recharge' || !current.rechargeUrl; recharge.onclick = () => openUrl(current.rechargeUrl);
       const raw = byId('raw'); raw.hidden = !current.previewUrl; raw.onclick = () => openUrl(current.previewUrl);
       const refreshRun = async () => {
         const next = await callTool('get_run', { runId: current.runId || current.id });
@@ -1365,7 +1425,7 @@ function publicChatGptResult(name: string, result: any): any {
     const accountFailure = classifyAmrAccountFailure(JSON.stringify(structuredContent));
     if (accountFailure?.action === 'recharge') {
       structuredContent.accountAction = 'recharge';
-      structuredContent.rechargeUrl = accountFailure.actionUrl ?? DEFAULT_AMR_RECHARGE_URL;
+      structuredContent.rechargeUrl = CHATGPT_RECHARGE_URL;
       structuredContent.nextAction = 'recharge';
       structuredContent.fallbackHint = 'After offering recharge, the user can open this project in Open Design and choose a local Code Agent or BYOK mode.';
     }
@@ -1648,7 +1708,7 @@ async function getCloudAccount(baseUrl: string): Promise<JsonObject> {
     balanceStatus: !loggedIn ? 'signed_out' : !balanceKnown ? 'unavailable' : canUseCloud ? 'available' : 'empty',
     canUseCloud,
     nextAction,
-    rechargeUrl: DEFAULT_AMR_RECHARGE_URL,
+    rechargeUrl: CHATGPT_RECHARGE_URL,
     fallback: {
       availableIn: 'Open Design',
       modes: ['local_code_agent', 'byok'],

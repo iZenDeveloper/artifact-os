@@ -107,9 +107,12 @@ describe('ChatGPT Streamable HTTP MCP', () => {
       expect(widgetHtml).toContain('window.openai');
       expect(widgetHtml).toContain("rpcRequest('ui/initialize'");
       expect(widgetHtml).toContain("rpcRequest('tools/call'");
-      expect(widgetHtml).toContain("version: '0.2.3'");
-      expect(widgetHtml).toContain('data-step="brief"');
-      expect(widgetHtml).toContain('Brief confirmed');
+      expect(widgetHtml).toContain("version: '0.2.5'");
+      expect(widgetHtml).toContain('data-view="compact"');
+      expect(widgetHtml).toContain('Authorization complete');
+      expect(widgetHtml).toContain('Sign in / Register');
+      expect(widgetHtml).toContain('Creating “');
+      expect(widgetHtml).toContain('https://open-design.ai/amr/wallet');
       expect(widgetHtml).toContain('Edit in Open Design');
       expect(widgetHtml).toContain("current = { ...current, ...incoming }");
       expect(widgetHtml).toContain('exportButton.hidden = !projectId || !completed');

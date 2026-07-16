@@ -51,6 +51,24 @@ async function readWidget(endpoint: string): Promise<string> {
 }
 
 function stateOutput(state: string, origin: string): Record<string, unknown> {
+  if (state === 'account') {
+    return {
+      loggedIn: false,
+      balanceStatus: 'signed_out',
+      canUseCloud: null,
+      nextAction: 'sign_in',
+    };
+  }
+  if (state === 'authorized') {
+    return {
+      loggedIn: true,
+      user: { name: 'Sun Qingyu', email: 'sunqingyu@example.com' },
+      balanceUsd: '18.40',
+      balanceStatus: 'available',
+      canUseCloud: true,
+      nextAction: 'generate',
+    };
+  }
   if (state === 'running') {
     return {
       id: 'run-local-001',
@@ -67,11 +85,12 @@ function stateOutput(state: string, origin: string): Record<string, unknown> {
   if (state === 'recharge') {
     return {
       loggedIn: true,
+      user: { name: 'Sun Qingyu', email: 'sunqingyu@example.com' },
       balanceUsd: '0.00',
       balanceStatus: 'empty',
       canUseCloud: false,
       nextAction: 'recharge',
-      rechargeUrl: 'https://open-design.ai/pricing/',
+      rechargeUrl: 'https://open-design.ai/amr/wallet',
       hint: 'Your Open Design Cloud balance is empty. Recharge first, or continue in Open Design with a local Code Agent or BYOK.',
     };
   }
@@ -144,7 +163,7 @@ function galleryHtml(widget: string, state: string, origin: string): string {
       #local-host-status { max-width: 720px; margin: 12px auto 0; min-height: 18px; color: #666; font-size: 12px; }
     </style></head><body>
     <header><h1>Open Design Artifact Card</h1><p>Real MCP Apps resource with a local host simulator.</p>
-      <nav>${['running', 'complete', 'recharge'].map((item) => `<a href="/?state=${item}" aria-current="${item === state}">${item}</a>`).join('')}</nav>
+      <nav>${['account', 'authorized', 'running', 'recharge', 'complete'].map((item) => `<a href="/?state=${item}" aria-current="${item === state}">${item}</a>`).join('')}</nav>
     </header>
     <iframe title="Open Design Artifact Card" srcdoc="${htmlAttribute(hostedWidget)}"></iframe>
     <div id="local-host-status"></div>
@@ -169,7 +188,7 @@ const server = createServer((request, response) => {
     response.end();
     return;
   }
-  const state = ['running', 'complete', 'recharge'].includes(url.searchParams.get('state') ?? '')
+  const state = ['account', 'authorized', 'running', 'recharge', 'complete'].includes(url.searchParams.get('state') ?? '')
     ? String(url.searchParams.get('state'))
     : 'complete';
   response.setHeader('content-type', 'text/html; charset=utf-8');

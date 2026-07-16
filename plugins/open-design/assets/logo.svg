@@ -1,6 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" role="img" aria-label="Open Design">
-  <rect width="320" height="80" rx="20" fill="#111111"/>
-  <circle cx="42" cy="40" r="22" fill="none" stroke="#F3EBDD" stroke-width="8"/>
-  <circle cx="42" cy="40" r="6" fill="#F3EBDD"/>
-  <text x="82" y="51" fill="#F3EBDD" font-family="Arial, sans-serif" font-size="32" font-weight="650">Open Design</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" role="img" aria-label="OpenDesign">
+  <rect width="320" height="80" rx="16" fill="#10110D"/>
+  <g transform="translate(8 8)">
+    <path fill="#FFFFFF" fill-rule="evenodd" d="M32 8C45.3 8 56 18.7 56 32S45.3 56 32 56H11a3 3 0 0 1-3-3V32C8 18.7 18.7 8 32 8Zm0 7C22.6 15 15 22.6 15 32v17h17c9.4 0 17-7.6 17-17S41.4 15 32 15Z"/>
+    <path fill="#FFFFFF" d="M23.7 22.6c-.9-.4-1.8.5-1.4 1.4l6.4 17.7c.4 1.1 2 .8 2-.4v-9.7h10.5c1.2 0 1.5-1.6.4-2l-17.9-7Z"/>
+  </g>
+  <text x="82" y="51" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="31" font-weight="650">OpenDesign</text>
 </svg>
