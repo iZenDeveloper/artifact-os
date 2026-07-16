@@ -192,6 +192,27 @@ const DECK_STYLE_CATALOG: VisualStyleCatalogEntry[] = [
     variant: 'minimal',
     category: 'minimal',
   },
+  {
+    slug: 'academic-research',
+    title: 'Academic research',
+    description: 'Evidence-led slides, disciplined figures, and rigorous explanatory flow.',
+    variant: 'utility',
+    category: 'business',
+  },
+  {
+    slug: 'sketchbook',
+    title: 'Sketchbook',
+    description: 'Hand-drawn notes, marker diagrams, and tactile workshop energy.',
+    variant: 'human',
+    category: 'creative',
+  },
+  {
+    slug: 'education-lesson',
+    title: 'Education lesson',
+    description: 'Friendly concept sequences that make learning easy to follow.',
+    variant: 'playful',
+    category: 'creative',
+  },
 ];
 
 const PROTOTYPE_STYLE_CATALOG: VisualStyleCatalogEntry[] = [
@@ -350,6 +371,34 @@ const PROTOTYPE_STYLE_CATALOG: VisualStyleCatalogEntry[] = [
     variant: 'editorial',
     category: 'editorial',
   },
+  {
+    slug: 'y2k-chrome',
+    title: 'Y2K chrome',
+    description: 'Glossy chrome, translucent layers, and electric early-web optimism.',
+    variant: 'playful',
+    category: 'creative',
+  },
+  {
+    slug: 'paper-craft',
+    title: 'Paper craft',
+    description: 'Tactile cut-paper layers, warm shadows, and calm navigation.',
+    variant: 'human',
+    category: 'editorial',
+  },
+  {
+    slug: 'isometric',
+    title: 'Isometric',
+    description: 'Spatial system maps and dimensional cards for complex product flows.',
+    variant: 'utility',
+    category: 'business',
+  },
+  {
+    slug: 'aurora-dark',
+    title: 'Aurora dark',
+    description: 'Near-black surfaces with quiet luminous gradients and premium depth.',
+    variant: 'minimal',
+    category: 'minimal',
+  },
 ];
 
 const DOCUMENT_STYLE_CATALOG: VisualStyleCatalogEntry[] = [
@@ -409,6 +458,27 @@ const DOCUMENT_STYLE_CATALOG: VisualStyleCatalogEntry[] = [
     description: 'Technical diagrams, precise steps, and robust documentation craft.',
     variant: 'utility',
     category: 'business',
+  },
+  {
+    slug: 'legal-policy',
+    title: 'Legal policy',
+    description: 'Formal sections, clauses, and trustworthy scan-first hierarchy.',
+    variant: 'utility',
+    category: 'business',
+  },
+  {
+    slug: 'academic-paper',
+    title: 'Academic paper',
+    description: 'Journal rigor, research figures, and evidence-led reading flow.',
+    variant: 'utility',
+    category: 'business',
+  },
+  {
+    slug: 'lesson-workbook',
+    title: 'Lesson workbook',
+    description: 'Exercises, visual guidance, and generous space to learn by doing.',
+    variant: 'human',
+    category: 'editorial',
   },
 ];
 
@@ -526,6 +596,48 @@ const IMAGE_STYLE_CATALOG: VisualStyleCatalogEntry[] = [
     variant: 'brutalist',
     category: 'creative',
   },
+  {
+    slug: 'product-photography',
+    title: 'Product photography',
+    description: 'Studio still life that makes material, silhouette, and detail tangible.',
+    variant: 'luxury',
+    category: 'business',
+  },
+  {
+    slug: 'black-white-film',
+    title: 'Black & white film',
+    description: 'Grainy monochrome, timeless contrast, and observational texture.',
+    variant: 'editorial',
+    category: 'editorial',
+  },
+  {
+    slug: 'watercolor',
+    title: 'Watercolor',
+    description: 'Layered washes, paper fibers, and refined painterly softness.',
+    variant: 'human',
+    category: 'editorial',
+  },
+  {
+    slug: 'ink-line',
+    title: 'Ink line',
+    description: 'Confident black ink, sparse washes, and expressive editorial drawing.',
+    variant: 'brutalist',
+    category: 'creative',
+  },
+  {
+    slug: 'chrome-3d',
+    title: 'Chrome 3D',
+    description: 'Reflective liquid metal, controlled light, and futuristic studio polish.',
+    variant: 'luxury',
+    category: 'creative',
+  },
+  {
+    slug: 'risograph-print',
+    title: 'Risograph print',
+    description: 'Two-color overprint, halftone texture, and graphic imperfection.',
+    variant: 'playful',
+    category: 'creative',
+  },
 ];
 
 const VIDEO_STYLE_CATALOG: VisualStyleCatalogEntry[] = [
@@ -584,6 +696,34 @@ const VIDEO_STYLE_CATALOG: VisualStyleCatalogEntry[] = [
     title: 'Shadow Cut',
     description: 'Hard-edged silhouettes, theatrical contrast, and graphic depth.',
     variant: 'brutalist',
+    category: 'creative',
+  },
+  {
+    slug: 'product-demo',
+    title: 'Product demo',
+    description: 'Crisp UI reveals and feature motion that explain value clearly.',
+    variant: 'utility',
+    category: 'business',
+  },
+  {
+    slug: 'kinetic-type',
+    title: 'Kinetic type',
+    description: 'Rhythmic type-like forms and bold transitions that carry the message.',
+    variant: 'brutalist',
+    category: 'creative',
+  },
+  {
+    slug: 'paper-stopmotion',
+    title: 'Paper stop motion',
+    description: 'Hand-cut layers and physical frame-by-frame charm.',
+    variant: 'human',
+    category: 'editorial',
+  },
+  {
+    slug: 'chrome-3d',
+    title: 'Chrome 3D',
+    description: 'Liquid metal, studio reflections, and slow dimensional motion.',
+    variant: 'luxury',
     category: 'creative',
   },
 ];
