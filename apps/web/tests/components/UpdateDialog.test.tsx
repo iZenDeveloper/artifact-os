@@ -90,10 +90,9 @@ describe('UpdateDialog', () => {
     });
     const dialog = await screen.findByRole('dialog', { name: 'Check for updates' });
     expect(dialog.querySelector('.od-brand-glyph')).toBeTruthy();
-    expect(screen.getByText('Open Design 1.2.4 is ready. Open Design will close and restart automatically.')).toBeTruthy();
-    const version = screen.getByText('Version 1.2.3');
-    const releaseNotes = screen.getByRole('button', { name: 'View release notes' });
-    expect(version.parentElement).toBe(releaseNotes.parentElement);
+    expect(screen.getByText('v1.2.4 is ready. Better experiences and smarter design await.')).toBeTruthy();
+    expect(screen.queryByText('Version 1.2.3')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Explore new features' })).toBeTruthy();
   });
 
   it('starts an explicit auto-downloading check when opened from an idle menu state', async () => {
@@ -123,7 +122,7 @@ describe('UpdateDialog', () => {
     }));
     expect(await screen.findByText("You're already on the latest version. (v1.2.3)")).toBeTruthy();
     expect(screen.queryByText('Version 1.2.3')).toBeNull();
-    const releaseNotes = screen.getByRole('button', { name: 'View release notes' });
+    const releaseNotes = screen.getByRole('button', { name: 'Explore new features' });
     expect(releaseNotes.parentElement?.children).toHaveLength(1);
     expect(screen.queryByRole('button', { name: 'Later' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Check again' })).toBeNull();

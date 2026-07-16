@@ -3927,6 +3927,8 @@ export const zhCN: Dict = {
   "updater.installingRestart": "正在安装并重启…",
   "updater.openInstaller": "安装更新",
   "updater.opening": "正在打开安装器…",
+  "updater.dialogReadyVersion":
+    "v{version} 已准备就绪。\n更好的体验，更智能的设计，欢迎体验新版本。",
   "updater.payloadReadyGeneric":
     "Open Design 更新已就绪。Open Design 会关闭并自动重启。",
   "updater.payloadReadyVersion":
@@ -3941,6 +3943,7 @@ export const zhCN: Dict = {
   "updater.readyVersion":
     "Open Design {version} 已就绪。Open Design 会关闭并打开安装器。",
   "updater.upToDate": "您已经是最新版本啦",
+  "updater.viewVersionFeatures": "查看新版本特性",
   "updater.restartAnyway": "仍然重启",
 
   "whatsNew.cta": "看看有什么新功能",

@@ -344,14 +344,13 @@ export function UpdateDialog() {
     if (actionError != null) return t('settings.updateActionFailed');
     if (status?.error != null && restartSafetyFromUpdaterStatus(status) == null) return status.error.message;
     if (ready) {
-      if (model.updateKind === 'payload') {
-        return model.availableVersion == null
-          ? t('updater.payloadReadyGeneric')
-          : t('updater.payloadReadyVersion', { version: model.availableVersion });
+      if (model.availableVersion != null) {
+        return t('updater.dialogReadyVersion', { version: model.availableVersion });
       }
-      return model.availableVersion == null
-        ? t('updater.readyGeneric')
-        : t('updater.readyVersion', { version: model.availableVersion });
+      if (model.updateKind === 'payload') {
+        return t('updater.payloadReadyGeneric');
+      }
+      return t('updater.readyGeneric');
     }
     if (checking) return t('settings.updateStatusChecking');
     if (downloading) {
@@ -428,15 +427,12 @@ export function UpdateDialog() {
         ) : null}
         {!showSafety && !model.upToDate ? (
           <div className={styles.metaRow}>
-            {status?.currentVersion ? (
-              <span className={styles.version}>{t('settings.appVersion')} {status.currentVersion}</span>
-            ) : null}
             <button
               className={styles.releaseLink}
               onClick={openReleaseNotes}
               type="button"
             >
-              {t('settings.updateViewReleases')} <Icon name="external-link" size={13} />
+              {t('updater.viewVersionFeatures')} <Icon name="external-link" size={13} />
             </button>
           </div>
         ) : null}
@@ -453,7 +449,7 @@ export function UpdateDialog() {
               ref={primaryRef}
               type="button"
             >
-              {t('settings.updateViewReleases')} <Icon name="external-link" size={13} />
+              {t('updater.viewVersionFeatures')} <Icon name="external-link" size={13} />
             </button>
           ) : showSafety ? (
             <button

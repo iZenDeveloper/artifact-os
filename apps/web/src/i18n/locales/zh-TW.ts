@@ -3933,6 +3933,8 @@ export const zhTW: Dict = {
   "updater.installingRestart": "Installing and restarting...",
   "updater.openInstaller": "安裝更新",
   "updater.opening": "正在開啟安裝器…",
+  "updater.dialogReadyVersion":
+    "v{version} 已準備就緒。\n更好的體驗、更智慧的設計，歡迎體驗新版本。",
   "updater.payloadReadyGeneric":
     "A new Open Design update is ready. Open Design will close and restart automatically.",
   "updater.payloadReadyVersion":
@@ -3947,6 +3949,7 @@ export const zhTW: Dict = {
   "updater.readyVersion":
     "Open Design {version} 已就緒。Open Design 會關閉並開啟安裝器。",
   "updater.upToDate": "您已經是最新版本啦",
+  "updater.viewVersionFeatures": "查看新版本特色",
   "updater.restartAnyway": "仍然重新啟動",
 
   "whatsNew.cta": "看看有什麼新功能",

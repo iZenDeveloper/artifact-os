@@ -96,6 +96,7 @@
   font-size: 13.5px;
   line-height: 1.5;
   text-wrap: balance;
+  white-space: pre-line;
 }
 
 .metaRow {
@@ -105,11 +106,6 @@
   gap: 12px;
   min-height: 24px;
   margin: 12px auto 0;
-}
-
-.version {
-  color: var(--text-muted);
-  font-size: 12px;
 }
 
 .progress {
