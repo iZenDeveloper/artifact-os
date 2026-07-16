@@ -221,10 +221,6 @@ export function TodoCard({ input, runStreaming, runSucceeded, onDismiss }: { inp
   // override sticks for the lifetime of this card.
   const hasInProgress = todos.some((todo) => todo.status === 'in_progress');
   const hasPending = todos.some((todo) => todo.status === 'pending' || todo.status === 'in_progress');
-  const defaultExpanded = todos.length > 0 && (hasInProgress || hasPending || runStreaming);
-  const [overrideExpanded, setOverrideExpanded] = useState<boolean | null>(null);
-  const expanded = overrideExpanded ?? defaultExpanded;
-  if (todos.length === 0) return <GenericCard name="TodoWrite" input={input} runStreaming={runStreaming} runSucceeded={runSucceeded} />;
   // The counter reads as "active progress / total" — a task that is
   // currently in_progress counts toward the numerator alongside completed
   // ones, matching how Cursor / Codex tally tasks. Without this the user
@@ -236,8 +232,15 @@ export function TodoCard({ input, runStreaming, runSucceeded, onDismiss }: { inp
     (todo) => todo.status === 'completed' || todo.status === 'in_progress',
   ).length;
   // All-complete state surfaces the Done dismiss button (when wired) so the
-  // pinned task list can be cleared once the whole plan is finished.
-  const allComplete = completed === todos.length;
+  // pinned task list can be cleared once the whole plan is finished. It also
+  // wins over an in-flight response: an agent may still be writing its final
+  // prose after marking every task complete, but the checklist is no longer
+  // useful expanded.
+  const allComplete = todos.length > 0 && completed === todos.length;
+  const defaultExpanded = !allComplete && (hasInProgress || hasPending || runStreaming);
+  const [overrideExpanded, setOverrideExpanded] = useState<boolean | null>(null);
+  const expanded = overrideExpanded ?? defaultExpanded;
+  if (todos.length === 0) return <GenericCard name="TodoWrite" input={input} runStreaming={runStreaming} runSucceeded={runSucceeded} />;
   const showDismiss = !!onDismiss && allComplete;
   return (
     <div className={`op-card op-todo${expanded ? '' : ' op-todo-collapsed'}`}>
