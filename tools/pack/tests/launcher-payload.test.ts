@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
-import { access, chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
 
 import { LAUNCHER_SCHEMA_VERSION } from "@open-design/launcher-proto";
@@ -19,6 +19,7 @@ import { winResources } from "../src/resources.js";
 import {
   buildWinLauncherPayloadArchive,
   buildWinLauncherPayloadManifest,
+  createWinLauncherPayloadScratchPaths,
   validateWinLauncherPayloadArchive,
 } from "../src/win/payload.js";
 import type { WinBuiltAppManifest, WinPaths } from "../src/win/types.js";
@@ -203,6 +204,27 @@ async function writeFakeWinUnpackedApp(root: string, namespace: string, version:
 }
 
 describe("tools-pack launcher payload archives", () => {
+  it("uses a short same-volume scratch root for Windows payload builds", async () => {
+    const root = await mkdtemp(join(tmpdir(), "od-tools-pack-win-scratch-"));
+    try {
+      const config = makeConfig(root, "win", "release-prerelease-win", "0.15.1-prerelease.9");
+      const scratch = await createWinLauncherPayloadScratchPaths(config.roots.output.platformRoot);
+      try {
+        expect(dirname(scratch.root)).toBe(config.roots.output.platformRoot);
+        expect(basename(scratch.root)).toMatch(/^\.p-/);
+        expect(scratch.stageRoot).toBe(join(scratch.root, "s"));
+        expect(scratch.overlayRoot).toBe(join(scratch.root, "o"));
+        expect(scratch.stageRoot.length).toBeLessThan(
+          join(config.roots.output.namespaceRoot, "payload", "stage").length,
+        );
+      } finally {
+        await rm(scratch.root, { force: true, recursive: true });
+      }
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  });
+
   it("builds channel and namespace scoped payload manifests for both desktop platforms", () => {
     const macIdentity = resolveMacInstallIdentity({ appVersion: "0.9.0-beta.2", namespace: "release-beta" });
 
@@ -284,6 +306,7 @@ describe("tools-pack launcher payload archives", () => {
       const config = makeConfig(root, "win", namespace, version);
       const { builtApp, paths } = await writeFakeWinUnpackedApp(root, namespace, version);
       await buildWinLauncherPayloadArchive(config, paths, builtApp);
+      expect((await readdir(config.roots.output.platformRoot)).filter((entry) => entry.startsWith(".p-"))).toEqual([]);
 
       const extractRoot = join(root, "extracted");
       await mkdir(extractRoot, { recursive: true });

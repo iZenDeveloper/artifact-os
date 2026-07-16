@@ -1233,10 +1233,24 @@ async function defaultExtractLauncherPayloadArchive(input: LauncherPayloadExtrac
     return;
   }
   if (input.platform === "win32") {
-    await execFileAsync(input.extractorPath ?? "7z", ["x", "-y", `-o${input.destinationRoot}`, input.archivePath], { windowsHide: true });
+    await execFileAsync(input.extractorPath ?? "7z", windowsLauncherPayloadExtractArgs(input), { windowsHide: true });
     return;
   }
   throw new Error(`launcher payload extraction is not supported on ${input.platform}`);
+}
+
+export function windowsLauncherPayloadExtractArgs(
+  input: Pick<LauncherPayloadExtractInput, "archivePath" | "destinationRoot">,
+): string[] {
+  return [
+    "x",
+    "-y",
+    "-bso0",
+    "-bsp0",
+    "-bse2",
+    `-o${input.destinationRoot}`,
+    input.archivePath,
+  ];
 }
 
 async function assertPreparedLauncherPayloadRelease(input: {

@@ -27,6 +27,7 @@ import {
   createDesktopUpdaterScheduler,
   DESKTOP_UPDATE_ENV,
   resolveDesktopUpdaterConfig,
+  windowsLauncherPayloadExtractArgs,
 } from "../../src/main/updater.js";
 import { installerObservationSummaryPath } from "../../src/main/installer-observations.js";
 
@@ -292,6 +293,21 @@ async function writeReleaseFixture(root: string, key: string, channel: FixtureCh
 }
 
 describe("desktop updater", () => {
+  it("silences Windows launcher payload extraction without hiding 7z errors", () => {
+    expect(windowsLauncherPayloadExtractArgs({
+      archivePath: "C:\\updates\\payload.7z",
+      destinationRoot: "C:\\updates\\staging",
+    })).toEqual([
+      "x",
+      "-y",
+      "-bso0",
+      "-bsp0",
+      "-bse2",
+      "-oC:\\updates\\staging",
+      "C:\\updates\\payload.7z",
+    ]);
+  });
+
   it("derives installer observation summary paths from safe flow ids only", () => {
     const root = makeRoot();
     try {

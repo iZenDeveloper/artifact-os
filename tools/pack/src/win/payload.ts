@@ -57,6 +57,24 @@ export function buildWinLauncherPayloadManifest(input: {
   };
 }
 
+export type WinLauncherPayloadScratchPaths = {
+  overlayRoot: string;
+  root: string;
+  stageRoot: string;
+};
+
+export async function createWinLauncherPayloadScratchPaths(
+  outputPlatformRoot: string,
+): Promise<WinLauncherPayloadScratchPaths> {
+  await mkdir(outputPlatformRoot, { recursive: true });
+  const root = await mkdtemp(join(outputPlatformRoot, ".p-"));
+  return {
+    overlayRoot: join(root, "o"),
+    root,
+    stageRoot: join(root, "s"),
+  };
+}
+
 function logWinPayloadProgress(message: string, fields: Record<string, unknown> = {}): void {
   const suffix = Object.entries(fields)
     .map(([key, value]) => `${key}=${String(value)}`)
@@ -82,9 +100,10 @@ export async function buildWinLauncherPayloadArchive(
     root: launcherRoot,
     version: packagedVersion,
   });
-  const stageRoot = join(dirname(paths.launcherPayloadPath), "stage");
+  const scratch = await createWinLauncherPayloadScratchPaths(config.roots.output.platformRoot);
+  const stageRoot = scratch.stageRoot;
   const payloadRoot = join(stageRoot, "payload");
-  const overlayRoot = join(dirname(paths.launcherPayloadPath), "overlay");
+  const overlayRoot = scratch.overlayRoot;
   const manifest = buildWinLauncherPayloadManifest({
     channel,
     namespace: config.namespace,
@@ -191,99 +210,102 @@ export async function buildWinLauncherPayloadArchive(
     });
   };
 
-  await runSegment("launcher-payload:prepare", async () => {
-    await rm(stageRoot, { force: true, recursive: true });
-    await rm(overlayRoot, { force: true, recursive: true });
-    await rm(paths.launcherPayloadPath, { force: true });
-    await mkdir(dirname(paths.launcherPayloadPath), { recursive: true });
-  });
-
-  if (cache == null) {
-    await runSegment("launcher-payload:stage", async () => {
-      await createPayloadArchive(paths.launcherPayloadPath);
+  try {
+    await runSegment("launcher-payload:prepare", async () => {
+      await rm(stageRoot, { force: true, recursive: true });
+      await rm(overlayRoot, { force: true, recursive: true });
+      await rm(paths.launcherPayloadPath, { force: true });
+      await mkdir(dirname(paths.launcherPayloadPath), { recursive: true });
     });
-  } else {
-    const sourceKey = builtApp.cacheEntryPath == null
-      ? await runSegment("launcher-payload:base-input-hash", async () => hashPath(builtApp.unpackedRoot))
-      : `cache-entry:${builtApp.cacheEntryPath}`;
-    const configBody = await readFile(paths.packagedConfigPath, "utf8");
-    let baseArchivePath: string | null = null;
-    const usesInstallerSeed = options.seedFromInstallerPayload === true && await pathExists(paths.installerBasePayloadPath);
-    if (!usesInstallerSeed) {
-      const baseNode = {
+
+    if (cache == null) {
+      await runSegment("launcher-payload:stage", async () => {
+        await createPayloadArchive(paths.launcherPayloadPath);
+      });
+    } else {
+      const sourceKey = builtApp.cacheEntryPath == null
+        ? await runSegment("launcher-payload:base-input-hash", async () => hashPath(builtApp.unpackedRoot))
+        : `cache-entry:${builtApp.cacheEntryPath}`;
+      const configBody = await readFile(paths.packagedConfigPath, "utf8");
+      let baseArchivePath: string | null = null;
+      const usesInstallerSeed = options.seedFromInstallerPayload === true && await pathExists(paths.installerBasePayloadPath);
+      if (!usesInstallerSeed) {
+        const baseNode = {
+          build: async ({ entryRoot }: { entryRoot: string }): Promise<{ createdAt: string; sourceKey: string }> => {
+            await createBaseArchive(join(entryRoot, "payload-base.7z"));
+            return { createdAt: new Date().toISOString(), sourceKey };
+          },
+          id: "win.launcher-payload-base",
+          invalidate: async () => null,
+          key: hashJson({
+            cacheVersion: WIN_LAUNCHER_PAYLOAD_BASE_CACHE_VERSION,
+            channel,
+            namespace: config.namespace,
+            node: "win.launcher-payload-base",
+            sourceKey,
+          }),
+          outputs: ["payload-base.7z"],
+        };
+        await runSegment("launcher-payload:base-cache", async () => {
+          const cached = await cache.acquire({
+            materialize: [],
+            node: baseNode,
+          });
+          baseArchivePath = join(cached.entryPath, "payload-base.7z");
+        });
+      }
+
+      const archiveNode = {
         build: async ({ entryRoot }: { entryRoot: string }): Promise<{ createdAt: string; sourceKey: string }> => {
-          await createBaseArchive(join(entryRoot, "payload-base.7z"));
+          const outputPath = join(entryRoot, "payload.7z");
+          if (usesInstallerSeed) {
+            if (!(await createArchiveFromInstallerBase(outputPath))) {
+              throw new Error("missing Windows NSIS base payload for launcher payload seed");
+            }
+          } else {
+            if (baseArchivePath == null) throw new Error("missing Windows launcher payload base cache path");
+            await cp(baseArchivePath, outputPath);
+            await writeOverlay({ includeExecutable: false });
+            await execFileAsync(winResources.sevenZipExe, ["u", "-t7z", outputPath, ".\\*"], {
+              cwd: overlayRoot,
+              windowsHide: true,
+            });
+          }
           return { createdAt: new Date().toISOString(), sourceKey };
         },
-        id: "win.launcher-payload-base",
+        id: "win.launcher-payload",
         invalidate: async () => null,
         key: hashJson({
-          cacheVersion: WIN_LAUNCHER_PAYLOAD_BASE_CACHE_VERSION,
+          baseCacheVersion: WIN_LAUNCHER_PAYLOAD_BASE_CACHE_VERSION,
+          cacheVersion: WIN_LAUNCHER_PAYLOAD_ARCHIVE_CACHE_VERSION,
           channel,
+          configBody,
+          manifest,
           namespace: config.namespace,
-          node: "win.launcher-payload-base",
+          node: "win.launcher-payload",
+          seed: usesInstallerSeed ? "nsis-base" : "launcher-base",
           sourceKey,
         }),
-        outputs: ["payload-base.7z"],
+        outputs: ["payload.7z"],
       };
-      await runSegment("launcher-payload:base-cache", async () => {
-        const cached = await cache.acquire({
-          materialize: [],
-          node: baseNode,
+      await runSegment("launcher-payload:archive-cache", async () => {
+        await cache.acquire({
+          materialize: [{ from: "payload.7z", reuse: true, to: paths.launcherPayloadPath }],
+          node: archiveNode,
         });
-        baseArchivePath = join(cached.entryPath, "payload-base.7z");
       });
     }
-
-    const archiveNode = {
-      build: async ({ entryRoot }: { entryRoot: string }): Promise<{ createdAt: string; sourceKey: string }> => {
-        const outputPath = join(entryRoot, "payload.7z");
-        if (usesInstallerSeed) {
-          if (!(await createArchiveFromInstallerBase(outputPath))) {
-            throw new Error("missing Windows NSIS base payload for launcher payload seed");
-          }
-        } else {
-          if (baseArchivePath == null) throw new Error("missing Windows launcher payload base cache path");
-          await cp(baseArchivePath, outputPath);
-          await writeOverlay({ includeExecutable: false });
-          await execFileAsync(winResources.sevenZipExe, ["u", "-t7z", outputPath, ".\\*"], {
-            cwd: overlayRoot,
-            windowsHide: true,
-          });
-        }
-        return { createdAt: new Date().toISOString(), sourceKey };
-      },
-      id: "win.launcher-payload",
-      invalidate: async () => null,
-      key: hashJson({
-        baseCacheVersion: WIN_LAUNCHER_PAYLOAD_BASE_CACHE_VERSION,
-        cacheVersion: WIN_LAUNCHER_PAYLOAD_ARCHIVE_CACHE_VERSION,
-        channel,
-        configBody,
-        manifest,
-        namespace: config.namespace,
-        node: "win.launcher-payload",
-        seed: usesInstallerSeed ? "nsis-base" : "launcher-base",
-        sourceKey,
-      }),
-      outputs: ["payload.7z"],
-    };
-    await runSegment("launcher-payload:archive-cache", async () => {
-      await cache.acquire({
-        materialize: [{ from: "payload.7z", reuse: true, to: paths.launcherPayloadPath }],
-        node: archiveNode,
-      });
+    await runSegment("launcher-payload:stat", async () => {
+      const archive = await stat(paths.launcherPayloadPath);
+      if (archive.size <= 0) throw new Error(`Windows launcher payload archive is empty: ${paths.launcherPayloadPath}`);
     });
+    await runSegment("launcher-payload:cleanup", async () => {
+      await rm(scratch.root, { force: true, recursive: true });
+    });
+    return timings;
+  } finally {
+    await rm(scratch.root, { force: true, recursive: true }).catch(() => undefined);
   }
-  await runSegment("launcher-payload:stat", async () => {
-    const archive = await stat(paths.launcherPayloadPath);
-    if (archive.size <= 0) throw new Error(`Windows launcher payload archive is empty: ${paths.launcherPayloadPath}`);
-  });
-  await runSegment("launcher-payload:cleanup", async () => {
-    await rm(stageRoot, { force: true, recursive: true });
-    await rm(overlayRoot, { force: true, recursive: true });
-  });
-  return timings;
 }
 
 function requirePayloadManifestValue(value: unknown, name: string, expected: unknown): void {
