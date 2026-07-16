@@ -1109,6 +1109,33 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     });
   });
 
+  it('persists a cleared API key after the active provider field is committed', async () => {
+    const { onPersist } = renderSettingsDialog({
+      mode: 'api',
+      apiKey: 'sk-ant-active',
+      apiProtocol: 'anthropic',
+      baseUrl: 'https://api.anthropic.com',
+      model: 'claude-sonnet-4-5',
+      apiProviderBaseUrl: 'https://api.anthropic.com',
+    });
+    const apiKeyInput = screen.getByLabelText('API key');
+
+    fireEvent.change(apiKeyInput, { target: { value: '' } });
+    fireEvent.blur(apiKeyInput);
+
+    await waitFor(() =>
+      expect(onPersist).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mode: 'api',
+          apiKey: '',
+          baseUrl: 'https://api.anthropic.com',
+          model: 'claude-sonnet-4-5',
+        }),
+        expect.any(Object),
+      ),
+    );
+  });
+
   it('surfaces autosave progress, success, and failure states in the modal chrome', async () => {
     const first = renderSettingsDialog();
 

@@ -980,14 +980,16 @@ function byokProviderKeyForConfig(config: AppConfig): string {
 }
 
 /**
- * Keeps an incomplete BYOK form durable without promoting it to the active
- * execution config. The selected provider's current fields are stored under
- * `byokProviderConfigDrafts`; the last successfully persisted execution mode
- * and BYOK projection stay active until the replacement is complete.
+ * Keeps an incomplete replacement BYOK form durable without promoting it to
+ * the active execution config. The selected provider's current fields are
+ * stored under `byokProviderConfigDrafts`; the last successfully persisted
+ * execution mode and BYOK projection stay active until the replacement is
+ * complete.
  */
 export function resolveSettingsAutosavePayload(
   draft: AppConfig,
   active: AppConfig,
+  intent: { commitClearedActiveApiKey?: boolean } = {},
 ): AppConfig {
   if (draft.mode !== 'api') return draft;
   if (byokPreflightBlockReason(draft) === null) {
@@ -996,6 +998,17 @@ export function resolveSettingsAutosavePayload(
   }
 
   const draftKey = byokProviderKeyForConfig(draft);
+  const clearsActiveApiKey =
+    intent.commitClearedActiveApiKey === true
+    && active.mode === 'api'
+    && draftKey === byokProviderKeyForConfig(active)
+    && active.apiKey.trim() !== ''
+    && draft.apiKey.trim() === '';
+  if (clearsActiveApiKey) {
+    if (!draft.byokPendingProviderKey) return draft;
+    return { ...draft, byokPendingProviderKey: undefined };
+  }
+
   const withCurrentDraft = persistByokProviderConfigDraft(
     draft,
     draftKey,
@@ -3140,6 +3153,7 @@ export function SettingsDialog({
   const autosaveRetryTimerRef = useRef<number | null>(null);
   const autosavePendingFlushRef = useRef(false);
   const byokPreflightTrackingRef = useRef<string | null>(null);
+  const committedClearedByokProviderKeyRef = useRef<string | null>(null);
   const autosaveLatestRef = useRef<AppConfig>(cfg);
   // Baseline used by the draft-only detector: the snapshot at the most
   // recent successful autosave (or the initial cfg on mount). Compared
@@ -3150,6 +3164,7 @@ export function SettingsDialog({
   const autosaveLastSavedRef = useRef<AppConfig>(normalizedInitialConfig);
   const mediaProvidersChangeVersionRef = useRef(0);
   const lastSyncedMediaProvidersVersionRef = useRef(0);
+  const [autosaveCommitTick, setAutosaveCommitTick] = useState(0);
   const [autosaveRetryTick, setAutosaveRetryTick] = useState(0);
   autosaveLatestRef.current = cfg;
   useEffect(() => {
@@ -3201,9 +3216,14 @@ export function SettingsDialog({
       } else {
         byokPreflightTrackingRef.current = null;
       }
+      const committedClearedProviderKey = committedClearedByokProviderKeyRef.current;
       const persistedSnapshot = resolveSettingsAutosavePayload(
         snapshot,
         autosaveLastSavedRef.current,
+        {
+          commitClearedActiveApiKey:
+            committedClearedProviderKey === byokProviderKeyForConfig(snapshot),
+        },
       );
       const mediaProvidersVersion = mediaProvidersChangeVersionRef.current;
       const persistOptions = {
@@ -3230,6 +3250,12 @@ export function SettingsDialog({
         try {
           await onPersist(persistedSnapshot, persistOptions);
           autosaveLastSavedRef.current = persistedSnapshot;
+          if (
+            committedClearedProviderKey
+            && committedClearedByokProviderKeyRef.current === committedClearedProviderKey
+          ) {
+            committedClearedByokProviderKeyRef.current = null;
+          }
           lastSavedAppearanceRef.current = {
             theme: persistedSnapshot.theme ?? 'system',
             accentColor: resolveAccentColor(persistedSnapshot.accentColor),
@@ -3283,7 +3309,7 @@ export function SettingsDialog({
         autosaveTimerRef.current = null;
       }
     };
-  }, [analytics.track, cfg, onPersist, autosaveRetryTick]);
+  }, [analytics.track, autosaveCommitTick, cfg, onPersist, autosaveRetryTick]);
   // Flush any pending autosave on unmount so a fast-closing dialog
   // never strands an in-flight edit. We also clear the "Saved" toast
   // timer to avoid setState after unmount.
@@ -3298,6 +3324,11 @@ export function SettingsDialog({
         const persistedSnapshot = resolveSettingsAutosavePayload(
           autosaveLatestRef.current,
           autosaveLastSavedRef.current,
+          {
+            commitClearedActiveApiKey:
+              committedClearedByokProviderKeyRef.current ===
+              byokProviderKeyForConfig(autosaveLatestRef.current),
+          },
         );
         void Promise.resolve(onPersist(persistedSnapshot, {
           forceMediaProviderSync: mediaProvidersVersion > lastSyncedMediaProvidersVersionRef.current,
@@ -3480,6 +3511,19 @@ export function SettingsDialog({
     // characters — otherwise a key like "sk-ant-...\n" would only raise a
     // non-blocking warning yet still go out malformed over the wire.
     const cleanedApiKey = cleanByokApiKey(cfg.apiKey);
+    const currentProviderKey = byokProviderKeyForConfig(cfg);
+    const activeConfig = autosaveLastSavedRef.current;
+    const commitsClearedActiveApiKey =
+      cleanedApiKey === ''
+      && activeConfig.mode === 'api'
+      && activeConfig.apiKey.trim() !== ''
+      && currentProviderKey === byokProviderKeyForConfig(activeConfig);
+    committedClearedByokProviderKeyRef.current = commitsClearedActiveApiKey
+      ? currentProviderKey
+      : null;
+    if (commitsClearedActiveApiKey) {
+      setAutosaveCommitTick((tick) => tick + 1);
+    }
     if (cleanedApiKey !== cfg.apiKey) {
       // Writing the cleaned key changes cfg.apiKey, which re-runs the reset
       // effects above: one nulls providerModelsCommittedKey, the other bumps
@@ -5295,7 +5339,10 @@ export function SettingsDialog({
                 )}
                 showApiKey={showApiKey}
                 onBlur={onByokKeyCommit}
-                onChange={(value) => updateApiConfig({ apiKey: value })}
+                onChange={(value) => {
+                  committedClearedByokProviderKeyRef.current = null;
+                  updateApiConfig({ apiKey: value });
+                }}
                 onFocus={() => {
                   const byokProviderId = byokProtocolToTracking(apiProtocol);
                   if (byokProviderId) {

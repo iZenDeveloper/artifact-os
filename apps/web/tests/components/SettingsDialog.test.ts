@@ -1512,6 +1512,27 @@ describe('resolveSettingsAutosavePayload', () => {
     apiKey: '',
   };
 
+  it('persists a cleared API key for the active provider', () => {
+    const activeOpenAi: AppConfig = {
+      ...baseConfig,
+      apiProtocol: 'openai',
+      apiKey: 'sk-openai-test',
+      baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-4o',
+      apiProviderBaseUrl: 'https://api.openai.com/v1',
+    };
+    const clearedKey: AppConfig = {
+      ...activeOpenAi,
+      apiKey: '',
+    };
+
+    expect(
+      resolveSettingsAutosavePayload(clearedKey, activeOpenAi, {
+        commitClearedActiveApiKey: true,
+      }),
+    ).toBe(clearedKey);
+  });
+
   it.each([
     {
       name: 'API key',
