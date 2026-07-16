@@ -14,7 +14,7 @@ import TemplateCard from '../../_components/template-card.astro';
 import TemplateCardAutoplay from '../../_components/template-card-autoplay.astro';
 import { getCraftRecords, getSystemRecords } from '../../_lib/catalog';
 import { getBundledPlugins, type BundledPluginRecord } from '../../_lib/bundled-plugins';
-import { categorizePlugin, bundledRecordOf, PLUGIN_CATEGORIES, type PluginCategorySlug } from '../../_lib/plugin-facets';
+import { categorizePlugin, bundledRecordOf, type PluginCategorySlug } from '../../_lib/plugin-facets';
 import { getPluginsCopy } from '../../_lib/plugins-i18n';
 import { localeFromPath, localizedHref } from '../../i18n';
 
@@ -41,26 +41,35 @@ const totalCount = templatesCount + skillsCount + systemsCount + craftCount;
 
 // Explore grid — real template cards (rich preview posters), featured first.
 const isFeatured = (p: BundledPluginRecord) => (p.tags ?? []).includes('featured');
-// Only surface HTML-based templates for now — hide media generators
-// (image / video / audio) so the grid stays focused on real HTML output.
+// Only surface HTML-based templates with a real cover — hide media
+// generators (image / video / audio) and any card without a preview.
 const MEDIA_CATEGORIES = new Set<PluginCategorySlug>(['image', 'video', 'audio']);
+const TAG_BLOCKLIST = new Set([
+  'first-party', 'example', 'untitled', 'community', 'atom', 'design',
+  'image', 'video', 'audio', 'commercial-slide-agent', 'decision-deck', 'zhangzara',
+]);
+const cleanTagsOf = (rec: BundledPluginRecord) =>
+  (rec.tags ?? []).filter((t) => !TAG_BLOCKLIST.has(t) && !/-(template|agent)$/.test(t));
+const hasPreview = (p: BundledPluginRecord) => Boolean(p.previewPoster || p.previewVideo);
+
 const exploreItems = [...templatesSet]
-  .map((rec) => ({ rec, category: categorizePlugin(bundledRecordOf(rec)) }))
+  .filter(hasPreview)
+  .map((rec) => ({ rec, category: categorizePlugin(bundledRecordOf(rec)), tags: cleanTagsOf(rec) }))
   .filter((it) => it.category !== null && !MEDIA_CATEGORIES.has(it.category))
   .sort((a, b) => Number(isFeatured(b.rec)) - Number(isFeatured(a.rec)))
-  .slice(0, 24)
-  .map((it, idx) => ({ rec: it.rec, idx, category: it.category }));
+  .slice(0, 36)
+  .map((it, idx) => ({ rec: it.rec, idx, tags: it.tags }));
 
-// Filter chips are the real template categories (slides / image / video …)
-// with clean i18n labels, so a click filters this grid in place.
-const catCounts = new Map<PluginCategorySlug, number>();
-for (const it of exploreItems) {
-  if (it.category) catCounts.set(it.category, (catCounts.get(it.category) ?? 0) + 1);
-}
-const chipCats = PLUGIN_CATEGORIES
-  .map((c) => c.slug as PluginCategorySlug)
-  .filter((slug) => (catCounts.get(slug) ?? 0) > 0)
-  .map((slug) => ({ slug, label: pcopy.category[slug]?.label ?? slug, count: catCounts.get(slug) ?? 0 }));
+// Filter chips = the most-common real content tags across the visible
+// cards (clean, junk tags dropped), so a click filters the grid in place.
+const tagCounts = new Map<string, number>();
+for (const it of exploreItems) for (const t of it.tags) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
+const titleize = (t: string) => t.charAt(0).toUpperCase() + t.slice(1).replace(/-/g, ' ');
+const topTags = [...tagCounts.entries()]
+  .filter(([, n]) => n >= 2)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 14)
+  .map(([tag, count]) => ({ tag, label: titleize(tag), count }));
 
 const title = pcopy.hubMetaTitle(totalCount);
 const description = pcopy.hubMetaDescription;
@@ -131,18 +140,18 @@ const tiles = [
       <a class="plugins-sec-more" href={href('/plugins/templates/')}>{pcopy.hubViewAll} →</a>
     </div>
     <div class="explore-tags" data-explore-tags>
-      <button class="explore-tag is-active" data-cat-chip="" type="button">
+      <button class="explore-tag is-active" data-tag-chip="" type="button">
         {pcopy.hubFilterAll}<span class="chip-num">{exploreItems.length}</span>
       </button>
-      {chipCats.map((c) => (
-        <button class="explore-tag" data-cat-chip={c.slug} type="button">
-          {c.label}<span class="chip-num">{c.count}</span>
+      {topTags.map((t) => (
+        <button class="explore-tag" data-tag-chip={t.tag} type="button">
+          {t.label}<span class="chip-num">{t.count}</span>
         </button>
       ))}
     </div>
     <div class="explore-grid" data-explore-grid>
-      {exploreItems.map(({ rec, idx, category }) => (
-        <div class="explore-cell" data-category={category ?? ''}>
+      {exploreItems.map(({ rec, idx, tags }) => (
+        <div class="explore-cell" data-tags={tags.join(' ')}>
           <TemplateCard record={rec} index={idx} featured={isFeatured(rec)} />
         </div>
       ))}
@@ -159,10 +168,11 @@ const tiles = [
       bar.addEventListener('click', function (e) {
         var chip = e.target.closest('.explore-tag');
         if (!chip) return;
-        var cat = chip.getAttribute('data-cat-chip') || '';
+        var tag = chip.getAttribute('data-tag-chip') || '';
         chips.forEach(function (c) { c.classList.toggle('is-active', c === chip); });
         cells.forEach(function (cell) {
-          cell.hidden = cat !== '' && cell.getAttribute('data-category') !== cat;
+          var tags = (cell.getAttribute('data-tags') || '').split(' ');
+          cell.hidden = tag !== '' && tags.indexOf(tag) === -1;
         });
       });
     })();

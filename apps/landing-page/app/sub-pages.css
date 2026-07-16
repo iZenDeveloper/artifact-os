@@ -1769,16 +1769,20 @@ body.sub-page {
   content: '';
   position: absolute;
   left: 50%;
-  top: -60px;
+  top: -104px;
   transform: translateX(-50%);
   width: 100vw;
-  max-width: 1400px;
-  height: 520px;
+  height: 640px;
   z-index: 0;
   pointer-events: none;
+  /* Same faded base-image treatment as the /stories hero: a shared OD
+     art plate that dissolves into the page. */
   background:
-    radial-gradient(46% 60% at 50% 20%, rgba(99, 254, 19, 0.10), transparent 72%),
-    radial-gradient(60% 70% at 70% 8%, rgba(232, 111, 92, 0.06), transparent 70%);
+    linear-gradient(rgba(250, 250, 250, 0.55), rgba(250, 250, 250, 0.9) 62%, #fafafa),
+    url('/lab-stage-art.webp');
+  background-size: cover;
+  background-position: 50% 16%;
+  background-repeat: no-repeat;
 }
 .sub-main:has(> .plugins-tile-grid) > .catalog-head > * {
   position: relative;
