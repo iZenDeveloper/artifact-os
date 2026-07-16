@@ -58,6 +58,70 @@ const defaultRetryDelay = (ms: number): Promise<void> =>
  * idempotent retry is simpler, and Sec-Fetch header presence on a custom
  * scheme is not a stable contract across Electron versions.
  */
+/**
+ * One proxied fetch with EXPLICIT cancellation plumbing. The renderer's 6-per-
+ * origin connection pool made this load-bearing: an EventSource the renderer
+ * closes (or a fetch it aborts) MUST release the upstream net.fetch connection,
+ * or long-lived streams (workspace/collab SSE, chat run streams) leak pool
+ * slots until every od:// request in the app hangs forever — tofu icons,
+ * dead fetches, the works. Electron's protocol.handle does not reliably
+ * propagate client disconnects to the handler's Response, so we wire BOTH
+ * paths ourselves:
+ *   - request.signal abort (when Electron does fire it) aborts the upstream;
+ *   - the returned body stream's cancel() (fired when the protocol consumer
+ *     tears down) aborts the upstream too.
+ */
+async function fetchOdTargetOnce(
+  request: Request,
+  target: string,
+  fetchImpl: OdProtocolFetch,
+): Promise<Response> {
+  const controller = new AbortController();
+  const abortUpstream = () => controller.abort();
+  if (request.signal != null) {
+    if (request.signal.aborted) controller.abort();
+    else request.signal.addEventListener("abort", abortUpstream, { once: true });
+  }
+  const upstream = await fetchImpl(
+    new Request(target, {
+      method: request.method,
+      headers: request.headers,
+      body: request.body,
+      // @ts-expect-error -- duplex is required by undici/net.fetch for
+      // streaming request bodies and absent from the lib.dom Request typings.
+      duplex: "half",
+      signal: controller.signal,
+    }),
+  );
+  if (upstream.body == null) return upstream;
+  const reader = upstream.body.getReader();
+  const body = new ReadableStream<Uint8Array>({
+    async pull(streamController) {
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          streamController.close();
+          return;
+        }
+        streamController.enqueue(value);
+      } catch (error) {
+        streamController.error(error);
+      }
+    },
+    cancel() {
+      // Protocol consumer went away (renderer closed the EventSource, tab
+      // navigated, fetch aborted) — release the upstream connection NOW.
+      abortUpstream();
+      return reader.cancel().catch(() => undefined);
+    },
+  });
+  return new Response(body, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers: upstream.headers,
+  });
+}
+
 async function fetchOdTargetWithTransientRetry(
   request: Request,
   target: string,
@@ -72,7 +136,7 @@ async function fetchOdTargetWithTransientRetry(
   let lastError: unknown;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      return await fetchImpl(new Request(target, request));
+      return await fetchOdTargetOnce(request, target, fetchImpl);
     } catch (error) {
       lastError = error;
       if (attempt === attempts) break;

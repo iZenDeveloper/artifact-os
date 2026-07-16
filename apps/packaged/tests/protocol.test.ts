@@ -137,6 +137,58 @@ describe('od:// protocol proxy', () => {
 // renders — the React app never mounts and the splash reveals a raw 502
 // after its ceiling. Idempotent requests must absorb a transient throw
 // by retrying before surfacing the 502.
+describe('od:// proxy cancellation plumbing (SSE pool-slot leak guard)', () => {
+  it('aborts the upstream fetch when the returned body stream is cancelled', async () => {
+    let upstreamAborted = false;
+    const fetchImpl: typeof fetch = async (input) => {
+      const req = input as Request;
+      req.signal.addEventListener('abort', () => {
+        upstreamAborted = true;
+      });
+      // Never-ending SSE-like stream.
+      const body = new ReadableStream<Uint8Array>({
+        pull() {
+          return new Promise(() => {});
+        },
+      });
+      return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    };
+
+    const request = new Request('od://app/api/workspace/events');
+    const response = await handleOdRequest(request, 'http://127.0.0.1:17579/', fetchImpl);
+    expect(response.status).toBe(200);
+    expect(response.body).not.toBeNull();
+
+    // The protocol consumer tears the response down (renderer closed the
+    // EventSource) — the upstream connection must be released.
+    await response.body!.cancel();
+    expect(upstreamAborted).toBe(true);
+  });
+
+  it('aborts the upstream fetch when the incoming request signal fires', async () => {
+    let upstreamAborted = false;
+    const fetchImpl: typeof fetch = async (input) => {
+      const req = input as Request;
+      req.signal.addEventListener('abort', () => {
+        upstreamAborted = true;
+      });
+      return new Response(new ReadableStream<Uint8Array>({ pull() { return new Promise(() => {}); } }), {
+        status: 200,
+      });
+    };
+
+    const controller = new AbortController();
+    const request = new Request('od://app/api/workspace/events', { signal: controller.signal });
+    const response = await handleOdRequest(request, 'http://127.0.0.1:17579/', fetchImpl);
+    expect(response.status).toBe(200);
+
+    controller.abort();
+    // Abort listeners fire synchronously; give the microtask queue one tick.
+    await Promise.resolve();
+    expect(upstreamAborted).toBe(true);
+  });
+});
+
 describe('od:// protocol transient retry', () => {
   const transientSocketError = (): Error => {
     const error = new Error('setTypeOfService EINVAL') as NodeJS.ErrnoException;
