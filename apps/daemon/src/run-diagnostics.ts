@@ -39,9 +39,10 @@ export interface RunDiagnosticsAnalytics {
   first_token_seen: boolean;
   user_visible_output_seen: boolean;
   tool_call_seen: boolean;
-  // True when a tool_result was observed for the run's LAST tool_use. A stall
-  // with `tool_call_seen && !tool_result_sent` is the tool-result-not-delivered
-  // root cause (the agent committed a tool_use but the result never came back).
+  // True when every committed tool_use received a matching tool_result (paired
+  // by id). A stall with `tool_call_seen && !tool_result_sent` is the
+  // tool-result-not-delivered root cause (a tool_use whose result never came
+  // back — including a still-outstanding tool in a parallel/multi-tool turn).
   tool_result_sent: boolean;
   // True when an approval/permission gate fired. Only ACP runtimes surface this
   // (via an `acp_approval_request` diagnostic); stream/CLI runtimes bypass gates.
@@ -167,9 +168,13 @@ export function summarizeRunDiagnosticsForAnalytics(args: {
   let stdout = '';
   let userVisibleOutputSeen = false;
   let toolCallSeen = false;
-  // `tool_result_sent` = a tool_result followed the run's LAST tool_use. Reset
-  // on every new tool_use so a resolved earlier tool can't mask a hung last one.
-  let toolResultAfterLastToolUse = false;
+  // `tool_result_sent` = EVERY committed tool_use received a matching tool_result,
+  // paired by id (`tool_use.id` <-> `tool_result.toolUseId`, the same pairing
+  // summarizeRunTimingAnalytics uses). A plain "any tool_result after a tool_use"
+  // flag would wrongly report delivered for a parallel/multi-tool turn like
+  // tool_use(A), tool_use(B), tool_result(A) where B is still outstanding.
+  const outstandingToolUses = new Set<string>();
+  let sawAnyToolUse = false;
   let approvalRequested = false;
   let artifactWriteSeen = args.artifactWriteSeen === true;
   let liveArtifactSeen = args.liveArtifactSeen === true;
@@ -196,10 +201,11 @@ export function summarizeRunDiagnosticsForAnalytics(args: {
     }
     if (data.type === 'tool_use') {
       toolCallSeen = true;
-      toolResultAfterLastToolUse = false;
+      sawAnyToolUse = true;
+      if (typeof data.id === 'string') outstandingToolUses.add(data.id);
     }
-    if (data.type === 'tool_result' && toolCallSeen) {
-      toolResultAfterLastToolUse = true;
+    if (data.type === 'tool_result' && typeof data.toolUseId === 'string') {
+      outstandingToolUses.delete(data.toolUseId);
     }
     if (data.type === 'diagnostic' && data.name === 'acp_approval_request') {
       approvalRequested = true;
@@ -274,7 +280,7 @@ export function summarizeRunDiagnosticsForAnalytics(args: {
     first_token_seen: args.firstTokenSeen === true,
     user_visible_output_seen: userVisibleOutputSeen,
     tool_call_seen: toolCallSeen,
-    tool_result_sent: toolResultAfterLastToolUse,
+    tool_result_sent: sawAnyToolUse && outstandingToolUses.size === 0,
     approval_requested: approvalRequested,
     artifact_write_seen: artifactWriteSeen,
     live_artifact_seen: liveArtifactSeen,

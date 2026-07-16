@@ -303,9 +303,10 @@ export interface RunFinishedProps extends Omit<RunCreatedProps, 'area'> {
   //   no gate fires, and `false` there means "not observed", not "no approval".
   // - `stdin_backpressure`: writing the prompt to the child's stdin was queued
   //   because the OS pipe buffer was full (the child was not draining stdin).
-  // - `tool_result_sent`: a tool_result came back for the run's last tool_use.
-  //   A stall with `tool_call_seen && !tool_result_sent` means the tool result
-  //   was never delivered (our bug) vs a provider that stalled after delivery.
+  // - `tool_result_sent`: every committed tool_use received a matching
+  //   tool_result (paired by id). A stall with `tool_call_seen &&
+  //   !tool_result_sent` means a tool result was never delivered (our bug) vs a
+  //   provider that stalled after every tool result was delivered.
   // - `last_progress_age_ms`: age of the last agent activity at finish. Near the
   //   inactivity ceiling on a stall; near zero on a clean finish.
   approval_requested?: boolean;
