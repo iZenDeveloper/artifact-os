@@ -3468,7 +3468,7 @@ export function FileWorkspace({
   const pagesButtonLabel = activePageFile
     ? pageDisplayName(activePageFile.name)
     : activeTab === DESIGN_FILES_TAB
-      ? t('workspace.allProjectFiles')
+      ? t('workspace.designFiles')
     : t('workspace.pages');
   const pagesMenuNode =
     pagesMenuOpen && pagesMenuPosition && typeof document !== 'undefined'
@@ -3528,7 +3528,7 @@ export function FileWorkspace({
               }}
             >
               <Icon name="folder" size={13} />
-              <span>{t('workspace.allProjectFiles')}</span>
+              <span>{t('workspace.designFiles')}</span>
             </button>
           </div>,
           document.body,
@@ -4045,7 +4045,7 @@ export function FileWorkspace({
             key={projectId}
             projectId={projectId}
             viewerOnly={viewerOnly}
-            rootDirName={rootDirName ?? t('workspace.allProjectFiles')}
+            rootDirName={rootDirName}
             reloading={reloading}
             running={Boolean(streaming)}
             files={visibleFiles}
@@ -4269,7 +4269,7 @@ export function FileWorkspace({
                 setActiveTab(DESIGN_FILES_TAB);
               }}
             >
-              {t('workspace.allProjectFiles')}
+              {t('workspace.designFiles')}
             </a>
             .
           </div>

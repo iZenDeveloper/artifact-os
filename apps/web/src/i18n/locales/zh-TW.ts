@@ -2953,9 +2953,9 @@ export const zhTW: Dict = {
     "圖片、文件、參考資料或資料夾 — 智慧體都會用作上下文。",
   "designFiles.dropLabel": "拖曳檔案到這裡",
   "designFiles.upload.title": "上傳一張圖片",
-  "designFiles.paste.title": "建立文件",
+  "designFiles.paste.title": "將文字貼上為檔案",
   "designFiles.upload.label": "上傳",
-  "designFiles.paste.label": "建立文件",
+  "designFiles.paste.label": "貼上",
   "designFiles.documentTemplate.titleFallback": "文件",
   "designFiles.documentTemplate.goalHeading": "目標",
   "designFiles.documentTemplate.goalBody":

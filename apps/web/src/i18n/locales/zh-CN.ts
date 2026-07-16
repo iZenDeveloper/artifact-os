@@ -2944,9 +2944,9 @@ export const zhCN: Dict = {
     "图片、文档、参考资料或文件夹 — 智能体都会用作上下文。",
   "designFiles.dropLabel": "拖拽文件到这里",
   "designFiles.upload.title": "上传文件",
-  "designFiles.paste.title": "创建文档",
+  "designFiles.paste.title": "将文本粘贴为文件",
   "designFiles.upload.label": "上传",
-  "designFiles.paste.label": "创建文档",
+  "designFiles.paste.label": "粘贴",
   "designFiles.documentTemplate.titleFallback": "文档",
   "designFiles.documentTemplate.goalHeading": "目标",
   "designFiles.documentTemplate.goalBody":

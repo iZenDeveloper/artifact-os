@@ -207,76 +207,6 @@ function prefersReducedMotion(): boolean {
   );
 }
 
-// Footer "tip" line that types out one tip at a time (typewriter), holds, then
-// advances to the next — mirroring Claude Design's empty-state hint. Under
-// prefers-reduced-motion the full tip is shown immediately and just cycles.
-function RotatingTip() {
-  const t = useT();
-  const [index, setIndex] = useState(0);
-  const [typed, setTyped] = useState('');
-  // Resolve tips each render but read them through a ref so the typing effect
-  // depends only on `index` — depending on the (re-created) array would reset
-  // the typewriter on every render and never advance.
-  const tipsRef = useRef<string[]>([]);
-  tipsRef.current = USEFUL_TIPS.map(({ key }) => t(key));
-
-  useEffect(() => {
-    const tips = tipsRef.current;
-    const full = tips[index] ?? '';
-    if (isVisualStabilityMode()) {
-      setIndex(0);
-      setTyped(tips[0] ?? '');
-      return;
-    }
-    if (prefersReducedMotion()) {
-      setTyped(full);
-      if (tips.length < 2) return;
-      const hold = window.setTimeout(
-        () => setIndex((i) => (i + 1) % tips.length),
-        TIP_HOLD_MS,
-      );
-      return () => window.clearTimeout(hold);
-    }
-    setTyped('');
-    let i = 0;
-    let holdTimer = 0;
-    const typeTimer = window.setInterval(() => {
-      i += 1;
-      setTyped(full.slice(0, i));
-      if (i >= full.length) {
-        window.clearInterval(typeTimer);
-        if (tips.length < 2) return;
-        holdTimer = window.setTimeout(
-          () => setIndex((p) => (p + 1) % tips.length),
-          TIP_HOLD_MS,
-        );
-      }
-    }, TIP_TYPE_MS);
-    return () => {
-      window.clearInterval(typeTimer);
-      window.clearTimeout(holdTimer);
-    };
-  }, [index]);
-
-  return (
-    <div className="df-useful-info">
-      <div className="df-useful-info-head">
-        <Icon name="sparkles" size={12} />
-        <span className="df-useful-info-label">{t('designFiles.usefulInfoLabel')}</span>
-      </div>
-      <span className="df-useful-info-tip">
-        {USEFUL_TIPS[index]?.url ? (
-          <a className="df-tip-link" href={USEFUL_TIPS[index].url} target="_blank" rel="noreferrer">
-            {typed}
-          </a>
-        ) : (
-          typed
-        )}
-        <span className="df-tip-caret" aria-hidden />
-      </span>
-    </div>
-  );
-}
 
 /**
  * Full-panel browser for a project's `.od/projects/<id>/` folder. Mirrors
@@ -1125,6 +1055,19 @@ export function DesignFilesPanel({
           {files.length === 0 && liveArtifacts.length === 0 && (folders?.length ?? 0) === 0 ? (
             <div className="df-empty" data-testid="design-files-empty">
               <div className="df-empty-pill">
+                <div className="df-empty-stack" aria-hidden="true">
+                  {/* Each fan card carries its CTA's icon — left/front/right ↔
+                      New sketch / New Browser / Create doc (#5517). */}
+                  <span className="df-empty-stack-card df-empty-stack-card--left">
+                    <Icon name="pencil" size={22} />
+                  </span>
+                  <span className="df-empty-stack-card df-empty-stack-card--right">
+                    <Icon name="blocks" size={22} />
+                  </span>
+                  <span className="df-empty-stack-card df-empty-stack-card--front">
+                    <Icon name="globe" size={22} />
+                  </span>
+                </div>
                 <span className="df-empty-title">
                   {t('designFiles.empty')}
                 </span>
@@ -1300,19 +1243,8 @@ export function DesignFilesPanel({
               ))}
             </>
           )}
-          <div className="df-footer-info">
-            {running ? (
-              <RotatingTip />
-            ) : (
-              <div className="df-drop-hint">
-                <span className="df-drop-hint-label">
-                  <Icon name="upload" size={12} />
-                  {t('designFiles.dropLabel')}
-                </span>
-                <span className="df-drop-hint-desc">{t('designFiles.dropDesc')}</span>
-              </div>
-            )}
-          </div>
+          {/* #5517 drops the always-on footer drop-hint strip — drag & drop
+              still works through the df-drop-overlay below. */}
         </div>
         {draggingFiles ? (
           <div className="df-drop-overlay" aria-hidden>
