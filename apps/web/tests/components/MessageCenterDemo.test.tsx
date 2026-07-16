@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MessageCenterDemo } from '../../src/components/MessageCenterDemo';
-import { I18nProvider } from '../../src/i18n';
+import { I18nProvider, useI18n } from '../../src/i18n';
 import type { MessageCenterMessage } from '../../src/message-center-client';
 
 const defaultMessages: MessageCenterMessage[] = [
@@ -35,6 +35,15 @@ function renderMessageCenter() {
   const onOpenNotificationSettings = vi.fn();
   const result = render(<I18nProvider initial="en"><MessageCenterDemo onOpenNotificationSettings={onOpenNotificationSettings}/></I18nProvider>);
   return { ...result, onOpenNotificationSettings };
+}
+
+function LocaleSwitcher() {
+  const { setLocale } = useI18n();
+  return (
+    <button type="button" onClick={() => setLocale('fr')}>
+      Switch locale
+    </button>
+  );
 }
 
 async function openCenter(unreadCount = 1) {
@@ -203,6 +212,40 @@ describe('MessageCenterDemo', () => {
     expect(localStorage.getItem('open-design.message-center.anonymous-read-ids.v1')).toBeNull();
   });
 
+  it('keeps visible account messages when locale changes and the follow-up sync fails', async () => {
+    let messageRequests = 0;
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('/status')) return Response.json({ loggedIn: true });
+      if (url.includes('/messages?')) {
+        messageRequests += 1;
+        if (messageRequests === 1) {
+          return Response.json({ messages: defaultMessages, nextCursor: null, unreadCount: 1 });
+        }
+        return new Response(null, { status: 500 });
+      }
+      if (url.includes('/read')) return Response.json({ read: true, markedCount: 1 });
+      return new Response(null, { status: 404 });
+    }));
+
+    render(
+      <I18nProvider initial="en">
+        <LocaleSwitcher />
+        <MessageCenterDemo />
+      </I18nProvider>,
+    );
+
+    await openCenter();
+    await waitFor(() => expect(screen.getByText('Open Design 0.14 is available')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch locale' }));
+
+    await waitFor(() => expect(messageRequests).toBeGreaterThanOrEqual(2));
+    expect(screen.getByText('Open Design 0.14 is available')).toBeTruthy();
+    expect(screen.getByRole('status')).toBeTruthy();
+    expect(within(screen.getByRole('status')).getByRole('button')).toBeTruthy();
+  });
+
   it('hydrates cached anonymous state through the ref-backed source of truth', async () => {
     const cachedMessages = [
       { ...defaultMessages[0]!, id: 'release', title: 'Release update', readAt: null, ctaLabel: null, ctaUrl: null },
@@ -232,6 +275,38 @@ describe('MessageCenterDemo', () => {
     expect(localStorage.getItem('open-design.message-center.anonymous-read-ids.v1')).toContain('release');
     expect(localStorage.getItem('open-design.message-center.anonymous-read-ids.v1')).toContain('security');
     expect(localStorage.getItem('open-design.message-center.anonymous-messages.v1')).toContain('Release update');
+  });
+
+  it('drops account read ids when a mounted session falls back to anonymous', async () => {
+    let loggedIn = true;
+    mockFetch({
+      onStatus: async () => Response.json({ loggedIn }),
+      messages: [{ ...defaultMessages[0]!, id: 'release', title: 'Release update', readAt: null }],
+    });
+
+    renderMessageCenter();
+    await openCenter(1);
+    fireEvent.click(screen.getByRole('button', { name: /Release update/ }));
+    await waitFor(() =>
+      expect(
+        vi.mocked(fetch).mock.calls.some(
+          ([url, init]) => String(url).includes('/messages/release/read') && init?.method === 'POST',
+        ),
+      ).toBe(true),
+    );
+    await waitFor(() => expect(screen.queryByLabelText(/unread/)).toBeNull());
+
+    loggedIn = false;
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'visible',
+    });
+    fireEvent(document, new Event('visibilitychange'));
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/Open message center \(1 unread\)/)).toBeTruthy(),
+    );
+    expect(localStorage.getItem('open-design.message-center.anonymous-read-ids.v1')).not.toContain('release');
   });
 
   it('reports mark-read failures without throwing an unhandled rejection', async () => {

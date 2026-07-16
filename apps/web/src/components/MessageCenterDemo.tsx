@@ -65,8 +65,13 @@ export function MessageCenterDemo({ onOpenNotificationSettings }: Props) {
     const requestId = syncRequestIdRef.current + 1;
     syncRequestIdRef.current = requestId;
     const account = await isAmrLoggedIn();
+    const wasAccount = loggedInRef.current;
     loggedInRef.current = account;
     setLoggedIn(account);
+    if (wasAccount && !account) {
+      readIdsRef.current = new Set();
+      pendingReadIdsRef.current = new Set();
+    }
     const startedAt = anonymousStartedAt(window.localStorage);
     const pulled = await pullMessageCenter({ locale, loggedIn: account, startedAt });
     if (requestId !== syncRequestIdRef.current) return;
@@ -111,6 +116,9 @@ export function MessageCenterDemo({ onOpenNotificationSettings }: Props) {
       readAnonymousMessages(window.localStorage),
       readAnonymousReadIds(window.localStorage),
     );
+  }, [commitState]);
+
+  useEffect(() => {
     retrySync();
     const interval = window.setInterval(retrySync, 60_000);
     const onVisibility = () => {
@@ -121,7 +129,7 @@ export function MessageCenterDemo({ onOpenNotificationSettings }: Props) {
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [commitState, retrySync]);
+  }, [retrySync]);
 
   useEffect(() => {
     if (open) retrySync();
