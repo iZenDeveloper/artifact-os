@@ -98,6 +98,60 @@ describe('workspace project routes', () => {
     expect(project.currentUserAccess.canDelete).toBe(false);
   });
 
+  // RED LINE — losing a user's pre-workspace ("legacy") projects across the
+  // upgrade is data loss. The adoption model must be: every legacy project is
+  // lazily projected into the personal workspace on first read (regardless of
+  // how long after the upgrade that read happens), projection is idempotent,
+  // and a team view SUPPRESSING an ownerless personal row must never translate
+  // into that row disappearing from the personal workspace.
+  it('never loses legacy projects across workspace views (upgrade adoption red line)', async () => {
+    const stamp = Date.now();
+    const legacyIds = [0, 1, 2].map((n) => `redline-${stamp}-${n}`);
+    for (const id of legacyIds) await createProject(id, `Legacy ${id}`);
+
+    // First personal-workspace read after "upgrade": every legacy project is
+    // adopted, visible, and personal — none skipped, none re-owned.
+    const first = await list('redline-reader', '?view=all');
+    for (const id of legacyIds) {
+      expect(first.projects.find((item) => item.id === id)).toMatchObject({
+        id,
+        visibility: 'personal',
+        resourceState: 'active',
+        createdByWorkspaceMemberId: null,
+      });
+    }
+
+    // Idempotent: a second read neither drops nor duplicates rows.
+    const second = await list('redline-reader', '?view=all');
+    for (const id of legacyIds) {
+      expect(second.projects.filter((item) => item.id === id)).toHaveLength(1);
+    }
+
+    // A TEAM workspace view suppresses ownerless personal rows (they belong to
+    // the person, not the team)…
+    const teamWorkspaceId = `${workspaceId}-redline-team`;
+    const teamResp = await fetch(`${baseUrl}/api/workspaces/${teamWorkspaceId}/projects?view=all`, {
+      headers: workspaceHeaders(teamWorkspaceId, 'redline-reader', {
+        'x-od-workspace-type': 'team',
+      }),
+    });
+    expect(teamResp.status).toBe(200);
+    const teamBody = (await teamResp.json()) as { projects: Array<any> };
+    for (const id of legacyIds) {
+      expect(teamBody.projects.find((item) => item.id === id)).toBeUndefined();
+    }
+
+    // …but suppression is a FILTER, not a deletion: the personal workspace
+    // still lists every legacy project afterwards.
+    const after = await list('redline-reader', '?view=all');
+    for (const id of legacyIds) {
+      expect(after.projects.find((item) => item.id === id)).toMatchObject({
+        id,
+        visibility: 'personal',
+      });
+    }
+  });
+
   it('projects the same legacy project independently per workspace', async () => {
     const projectId = `workspace-multi-${Date.now()}`;
     const workspaceA = `${workspaceId}-a`;

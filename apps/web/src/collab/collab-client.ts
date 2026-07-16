@@ -84,6 +84,11 @@ export class CollabClient {
     if (this.running) return;
     this.running = true;
     void this.pollStatus();
+    // Immediate first heartbeat: the presence roster comes from the heartbeat
+    // RESPONSE, so without this the avatars only appear on the interval's
+    // first tick — a 10s blank presence bar on every project open. This also
+    // announces us to teammates right away.
+    void this.heartbeat();
     // Hidden-tab gating: a backgrounded tab keeps its timers but skips the
     // network ticks (status head + presence heartbeat both fan out to the
     // hub), and one immediate catch-up pair fires on return to visible.
