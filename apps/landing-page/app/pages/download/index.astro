@@ -299,12 +299,23 @@ const jsonLd = [
       const REPO_API = 'https://api.github.com/repos/nexu-io/open-design';
 
       const ua = (navigator.userAgent || '').toLowerCase();
-      const isMobile =
+      const devicePlatform = (
+        navigator.userAgentData?.platform ||
+        navigator.platform ||
+        ''
+      ).toLowerCase();
+      const isIpadOS = navigator.maxTouchPoints > 1 && /mac/.test(devicePlatform);
+      const isMobileDevice =
         /android|iphone|ipad|ipod|mobile/.test(ua) ||
         navigator.userAgentData?.mobile === true ||
-        window.matchMedia('(max-width: 767px)').matches;
+        isIpadOS;
       const mobileNotice = document.querySelector('[data-dl-mobile-notice]');
-      if (isMobile && mobileNotice) mobileNotice.hidden = false;
+      const narrowViewport = window.matchMedia('(max-width: 767px)');
+      const syncMobileNotice = () => {
+        if (mobileNotice) mobileNotice.hidden = !(isMobileDevice || narrowViewport.matches);
+      };
+      syncMobileNotice();
+      narrowViewport.addEventListener('change', syncMobileNotice);
 
       // Mirror header-enhancer.astro detection. Returns the matchKey used
       // on each [data-dl-card] plus the asset-name matcher + os label.

@@ -38,8 +38,10 @@ describe('mobile download-page guidance', () => {
 
     assert.match(page, /data-dl-mobile-notice hidden/);
     assert.match(page, /android\|iphone\|ipad\|ipod\|mobile/);
-    assert.match(page, /matchMedia\('\(max-width: 767px\)'\)\.matches/);
-    assert.match(page, /if \(isMobile && mobileNotice\) mobileNotice\.hidden = false/);
+    assert.match(page, /navigator\.maxTouchPoints > 1 && \/mac\/\.test\(devicePlatform\)/);
+    assert.match(page, /const narrowViewport = window\.matchMedia\('\(max-width: 767px\)'\)/);
+    assert.match(page, /mobileNotice\.hidden = !\(isMobileDevice \|\| narrowViewport\.matches\)/);
+    assert.match(page, /narrowViewport\.addEventListener\('change', syncMobileNotice\)/);
     assert.match(copy, /Open Design 是桌面客户端，请在电脑上下载。/);
   });
 });
