@@ -2167,8 +2167,9 @@ async function runLauncherCleanupLifecycle(input: {
         throw new Error(`launcher cleanup target is not a plain directory: ${versionPaths.versionRoot}`);
       }
       if (versionEntry?.isDirectory()) {
+        const realVersionsRoot = await realpath(versionPaths.versionsRoot);
         const realVersionRoot = await realpath(versionPaths.versionRoot);
-        if (!containsPath(versionPaths.versionsRoot, realVersionRoot)) {
+        if (!containsPath(realVersionsRoot, realVersionRoot)) {
           throw new Error(`launcher cleanup target escaped versions root: ${realVersionRoot}`);
         }
       }
@@ -2418,6 +2419,8 @@ export function createDesktopUpdater(
   let state: DesktopUpdateState = DESKTOP_UPDATE_STATES.IDLE;
   let error: DesktopUpdateErrorSnapshot | undefined;
   let operation: Promise<unknown> = Promise.resolve();
+  let restoreStatePromise: Promise<DesktopUpdateStatusSnapshot | null> | null = null;
+  let storeStateRestored = false;
   const sessionId = `${now().toISOString()}-${processPid}`;
 
   function logUpdateEvent(event: string, fields: Record<string, unknown> = {}): void {
@@ -2633,6 +2636,27 @@ export function createDesktopUpdater(
     return setState(activeRelease == null ? DESKTOP_UPDATE_STATES.IDLE : DESKTOP_UPDATE_STATES.DOWNLOADED);
   }
 
+  async function restoreStoreStateOnce(): Promise<DesktopUpdateStatusSnapshot | null> {
+    if (storeStateRestored) return null;
+    if (restoreStatePromise != null) return await restoreStatePromise;
+    const pending = restoreStoreState();
+    restoreStatePromise = pending;
+    try {
+      const restored = await pending;
+      if (restored == null || restored.state !== DESKTOP_UPDATE_STATES.ERROR) storeStateRestored = true;
+      return restored;
+    } finally {
+      if (restoreStatePromise === pending) restoreStatePromise = null;
+    }
+  }
+
+  function setFailurePreservingActive(nextError: DesktopUpdateErrorSnapshot): DesktopUpdateStatusSnapshot {
+    return setState(
+      activeRelease == null ? DESKTOP_UPDATE_STATES.ERROR : DESKTOP_UPDATE_STATES.DOWNLOADED,
+      nextError,
+    );
+  }
+
   async function writeMetadataPatch(
     patch: (current: UpdateStoreMetadata) => UpdateStoreMetadata,
   ): Promise<(OwnedRoot & { ok: true }) | null> {
@@ -2647,7 +2671,7 @@ export function createDesktopUpdater(
     if (unsupported != null) return unsupported;
     if (installFrozen || installResult != null) return snapshot();
     if (state === DESKTOP_UPDATE_STATES.IDLE) {
-      const restored = await restoreStoreState();
+      const restored = await restoreStoreStateOnce();
       if (restored?.state === DESKTOP_UPDATE_STATES.ERROR) return restored;
       if (installFrozen || installResult != null) return snapshot();
     }
@@ -2672,10 +2696,18 @@ export function createDesktopUpdater(
         });
       }
       const selected = selectUpdateCandidateWithFallback(body, config, launcherPayloadContextValid && !reseedRequired);
-      if (!selected.ok) return setState(selected.state, selected.error);
+      if (!selected.ok) {
+        return selected.state === DESKTOP_UPDATE_STATES.ERROR
+          ? setFailurePreservingActive(selected.error)
+          : setState(selected.state, selected.error);
+      }
       if (compareVersions(selected.candidate.version, config.currentVersion) <= 0) {
         logUpdateEvent("check-not-available", { candidateVersion: selected.candidate.version });
         candidate = null;
+        if (activeRelease != null) {
+          metadata = activeRelease.ref.metadata;
+          return setState(DESKTOP_UPDATE_STATES.DOWNLOADED);
+        }
         activeRelease = null;
         await writeMetadataPatch((current) => ({
           ...current,
@@ -2737,8 +2769,7 @@ export function createDesktopUpdater(
       if (options.autoDownload ?? config.autoDownload) return await downloadUpdate();
       return available;
     } catch (checkError) {
-      return setState(
-        DESKTOP_UPDATE_STATES.ERROR,
+      return setFailurePreservingActive(
         createError("metadata-unreachable", checkError instanceof Error ? checkError.message : String(checkError)),
       );
     }
@@ -2792,7 +2823,7 @@ export function createDesktopUpdater(
         ...opened.metadata,
         incoming: undefined,
       });
-      return setState(DESKTOP_UPDATE_STATES.ERROR, nextError);
+      return setFailurePreservingActive(nextError);
     };
     try {
       const stagingRoot = await ensureOwnedSubdir(opened.root.realRoot, STAGING_DIR);
@@ -2864,6 +2895,7 @@ export function createDesktopUpdater(
         version: nextCandidate.version,
       });
       const downloadedRelease = { path: join(opened.root.realRoot, releaseRef.artifactPath), ref: releaseRef };
+      const previousActiveRelease = activeRelease;
       const prepareError = await preparePayloadReleaseForReady(downloadedRelease);
       if (prepareError != null) {
         incomingRelease = null;
@@ -2874,6 +2906,11 @@ export function createDesktopUpdater(
           lastCheckedAt,
           version: STORE_METADATA_VERSION,
         });
+        if (previousActiveRelease != null && prepareError.error != null) {
+          activeRelease = previousActiveRelease;
+          metadata = previousActiveRelease.ref.metadata;
+          return setFailurePreservingActive(prepareError.error);
+        }
         return prepareError;
       }
       logUpdateEvent("payload-ready", {
@@ -2920,7 +2957,7 @@ export function createDesktopUpdater(
       incomingRelease = null;
       progress = undefined;
       await writeMetadataPatch((current) => ({ ...current, incoming: undefined }));
-      return setState(DESKTOP_UPDATE_STATES.ERROR, desktopDownloadError(downloadError));
+      return setFailurePreservingActive(desktopDownloadError(downloadError));
     }
   }
 
@@ -3003,7 +3040,7 @@ export function createDesktopUpdater(
       return snapshot();
     }
     if (activeRelease == null) {
-      const restored = await restoreStoreState();
+      const restored = await restoreStoreStateOnce();
       if (restored == null || activeRelease == null) {
         return setState(DESKTOP_UPDATE_STATES.ERROR, createError("update-not-downloaded", "no downloaded update package is available"));
       }
@@ -3142,7 +3179,7 @@ export function createDesktopUpdater(
       const unsupported = unsupportedStatus();
       if (unsupported != null) return unsupported;
       if (state === DESKTOP_UPDATE_STATES.IDLE) {
-        const restored = await restoreStoreState();
+        const restored = await restoreStoreStateOnce();
         if (restored != null) return restored;
       }
       return snapshot();
@@ -3203,7 +3240,7 @@ export function createDesktopUpdaterScheduler(
   };
 
   const nextDelay = (status: DesktopUpdateStatusSnapshot | null): number => {
-    if (status != null && status.state !== DESKTOP_UPDATE_STATES.ERROR) {
+    if (status != null && status.state !== DESKTOP_UPDATE_STATES.ERROR && status.error == null) {
       failureCount = 0;
       return options.intervalMs;
     }
@@ -3229,10 +3266,19 @@ export function createDesktopUpdaterScheduler(
     const startupTick = startupTickPending;
     startupTickPending = false;
     try {
+      const startupReady = startupTick && options.startupSilentPayloadUpdate != null
+        ? await updater.status()
+        : null;
       status = await updater.checkForUpdates();
       if (
         startupTick
         && options.startupSilentPayloadUpdate != null
+        && startupReady?.installResult == null
+        && startupReady?.state === DESKTOP_UPDATE_STATES.DOWNLOADED
+        && startupReady.artifact?.type === "payload"
+        && startupReady.capabilities.canApplyInPlace
+        && startupReady.downloadPath != null
+        && startupReady.downloadPath === status.downloadPath
         && status.installResult == null
         && status.state === DESKTOP_UPDATE_STATES.DOWNLOADED
         && status.artifact?.type === "payload"
