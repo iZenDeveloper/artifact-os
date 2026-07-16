@@ -39,6 +39,17 @@ The verifier connects to `http://127.0.0.1:17456/mcp` and proves that:
 
 You can also connect MCP Inspector to `http://127.0.0.1:17456/mcp` to call tools and render the card interactively.
 
+To inspect the real MCP Apps card without a ChatGPT host, start the local Card Gallery:
+
+```bash
+pnpm exec tsx plugins/open-design/scripts/preview-local-card.ts
+```
+
+Open `http://127.0.0.1:17640/` and switch between `running`, `complete`, and
+`recharge`. The gallery loads the card HTML from the live MCP resource and
+provides a small host simulator for refresh, versions, restore, export, and
+external-link actions; it does not maintain a separate copy of the card.
+
 ## 4. Install the repository plugin in Codex
 
 Open the repository marketplace from the Codex deep link in the project handoff, install **Open Design**, and restart Codex after changing a manifest. This validates the same `.codex-plugin/plugin.json`, `.app.json`, skill, assets, and marketplace metadata intended for distribution.
