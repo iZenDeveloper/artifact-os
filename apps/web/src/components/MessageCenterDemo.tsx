@@ -43,22 +43,47 @@ export function MessageCenterDemo({ onOpenNotificationSettings }: Props) {
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [loggedIn, setLoggedIn] = useState(false);
   const [syncError, setSyncError] = useState(false);
+  const messagesRef = useRef<MessageCenterMessage[]>([]);
+  const readIdsRef = useRef<Set<string>>(new Set());
+  const pendingReadIdsRef = useRef<Set<string>>(new Set());
+  const syncRequestIdRef = useRef(0);
+
+  const commitState = useCallback(
+    (nextMessages: MessageCenterMessage[], nextReadIds: Set<string>, options?: { persistAnonymous?: boolean }) => {
+      messagesRef.current = nextMessages;
+      readIdsRef.current = nextReadIds;
+      setMessages(nextMessages);
+      setReadIds(nextReadIds);
+      if (options?.persistAnonymous) writeAnonymousState(window.localStorage, nextMessages, nextReadIds);
+    },
+    [],
+  );
 
   const sync = useCallback(async () => {
+    const requestId = syncRequestIdRef.current + 1;
+    syncRequestIdRef.current = requestId;
     const account = await isAmrLoggedIn();
     const startedAt = anonymousStartedAt(window.localStorage);
     const pulled = await pullMessageCenter({ locale, loggedIn: account, startedAt });
-    const localReadIds = account ? new Set<string>() : readAnonymousReadIds(window.localStorage);
+    if (requestId !== syncRequestIdRef.current) return;
+    const persistedReadIds = account ? readIdsRef.current : readAnonymousReadIds(window.localStorage);
+    const serverReadIds = new Set(pulled.filter((message) => Boolean(message.readAt)).map((message) => message.id));
+    if (account) {
+      pendingReadIdsRef.current = new Set(
+        [...pendingReadIdsRef.current].filter((messageId) => !serverReadIds.has(messageId)),
+      );
+    }
+    const overlayReadIds = account
+      ? new Set([...serverReadIds, ...pendingReadIdsRef.current])
+      : new Set([...serverReadIds, ...persistedReadIds]);
     const merged = pulled.map((message) => ({
       ...message,
-      readAt: message.readAt ?? (localReadIds.has(message.id) ? new Date().toISOString() : null),
+      readAt: message.readAt ?? (overlayReadIds.has(message.id) ? new Date().toISOString() : null),
     }));
     setLoggedIn(account);
-    setReadIds(localReadIds);
-    setMessages(merged);
-    if (!account) writeAnonymousState(window.localStorage, merged, localReadIds);
+    commitState(merged, overlayReadIds, { persistAnonymous: !account });
     setSyncError(false);
-  }, [locale]);
+  }, [commitState, locale]);
 
   useEffect(() => {
     const startedAt = anonymousStartedAt(window.localStorage);
@@ -111,25 +136,23 @@ export function MessageCenterDemo({ onOpenNotificationSettings }: Props) {
   }, [open]);
 
   const markRead = async (messageId: string) => {
-    const message = messages.find((item) => item.id === messageId);
+    const message = messagesRef.current.find((item) => item.id === messageId);
     if (!message || message.readAt) return;
     const readAt = new Date().toISOString();
     if (loggedIn) await markAccountMessageRead(messageId);
-    const nextIds = new Set(readIds).add(messageId);
-    const nextMessages = messages.map((item) => (item.id === messageId ? { ...item, readAt } : item));
-    setReadIds(nextIds);
-    setMessages(nextMessages);
-    if (!loggedIn) writeAnonymousState(window.localStorage, nextMessages, nextIds);
+    const nextIds = new Set(readIdsRef.current).add(messageId);
+    const nextMessages = messagesRef.current.map((item) => (item.id === messageId ? { ...item, readAt } : item));
+    if (loggedIn) pendingReadIdsRef.current = new Set(pendingReadIdsRef.current).add(messageId);
+    commitState(nextMessages, nextIds, { persistAnonymous: !loggedIn });
   };
 
   const markAllRead = async () => {
     if (loggedIn) await markAllAccountMessagesRead();
     const readAt = new Date().toISOString();
-    const nextIds = new Set(messages.map((message) => message.id));
-    const nextMessages = messages.map((message) => ({ ...message, readAt: message.readAt ?? readAt }));
-    setReadIds(nextIds);
-    setMessages(nextMessages);
-    if (!loggedIn) writeAnonymousState(window.localStorage, nextMessages, nextIds);
+    const nextIds = new Set(messagesRef.current.map((message) => message.id));
+    const nextMessages = messagesRef.current.map((message) => ({ ...message, readAt: message.readAt ?? readAt }));
+    if (loggedIn) pendingReadIdsRef.current = new Set(nextIds);
+    commitState(nextMessages, nextIds, { persistAnonymous: !loggedIn });
   };
 
   const openLabel = unreadCount > 0 ? `${t('messageCenter.openAria')} (${t('messageCenter.unreadCount', { count: unreadCount })})` : t('messageCenter.openAria');
@@ -142,17 +165,36 @@ export function MessageCenterDemo({ onOpenNotificationSettings }: Props) {
     {open ? createPortal(<div className={styles.backdrop} data-testid="message-center-backdrop"><aside ref={panelRef} className={styles.panel} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} data-testid="message-center-dialog">
       <header className={styles.header}><div className={styles.headerCopy}><h2 id={titleId}>{t('messageCenter.title')}</h2><p>{t('messageCenter.subtitle')}</p></div><button type="button" className={styles.close} onClick={closePanel} aria-label={t('messageCenter.close')}><Icon name="close" size={15}/></button></header>
       <div className={styles.controls}><div className={styles.filters} role="group" aria-label={t('messageCenter.title')}>{FILTERS.map((item) => <button key={item.id} type="button" className={`${styles.filter}${filter === item.id ? ` ${styles.filterActive}` : ''}`} aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}>{t(item.label)}{item.id === 'unread' && unreadCount > 0 ? <span className={styles.filterBadge} aria-hidden>{unreadBadgeLabel(unreadCount)}</span> : null}</button>)}</div><button type="button" className={styles.markAll} onClick={() => void markAllRead().catch(() => setSyncError(true))} disabled={unreadCount === 0}>{t('messageCenter.markAllRead')}</button></div>
-      <div className={styles.list} aria-live="polite">{syncError && messages.length === 0 ? <div className={styles.empty}><Icon name="bell" size={20}/><strong>{t('messageCenter.emptyAllTitle')}</strong><p>{t('messageCenter.emptyBody')}</p></div> : visibleMessages.length === 0 ? <div className={styles.empty}><Icon name="bell" size={20}/><strong>{emptyTitle}</strong><p>{t('messageCenter.emptyBody')}</p></div> : visibleMessages.map((message) => <MessageItem key={message.id} message={message} onRead={markRead}/>)}</div>
+      <div className={styles.list} aria-live="polite">{syncError && messages.length === 0 ? <div className={styles.empty}><Icon name="bell" size={20}/><strong>{t('messageCenter.emptyAllTitle')}</strong><p>{t('messageCenter.emptyBody')}</p></div> : visibleMessages.length === 0 ? <div className={styles.empty}><Icon name="bell" size={20}/><strong>{emptyTitle}</strong><p>{t('messageCenter.emptyBody')}</p></div> : visibleMessages.map((message) => <MessageItem key={message.id} message={message} onRead={markRead} onError={() => setSyncError(true)}/>)}</div>
       <footer className={styles.footer}><p>{t('messageCenter.desktopSettingsHint')}</p>{onOpenNotificationSettings ? <Button variant="ghost" onClick={() => { closePanel(); onOpenNotificationSettings(); }}>{t('messageCenter.desktopSettings')}</Button> : null}</footer>
     </aside></div>, document.body) : null}
   </div>;
 }
 
-function MessageItem({ message, onRead }: { message: MessageCenterMessage; onRead: (id: string) => Promise<void> }) {
+function MessageItem({
+  message,
+  onRead,
+  onError,
+}: {
+  message: MessageCenterMessage;
+  onRead: (id: string) => Promise<void>;
+  onError: () => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const formatted = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(message.publishedAt));
+  const ctaUrl = safeExternalUrl(message.ctaUrl);
   return <article className={`${styles.item}${message.readAt ? '' : ` ${styles.itemUnread}`}${expanded ? ` ${styles.itemExpanded}` : ''}`}>
-    <button type="button" className={styles.itemSummary} aria-expanded={expanded} onClick={() => { setExpanded((value) => !value); void onRead(message.id); }}><span className={styles.itemMeta}><span>{message.typeName}</span><time dateTime={message.publishedAt}>{formatted}</time></span><strong>{message.title}</strong><span className={styles.bodyPreview}>{message.body}</span></button>
-    {expanded && message.ctaLabel && message.ctaUrl ? <div className={styles.itemActions}><button type="button" className={styles.primaryAction} onClick={() => window.open(message.ctaUrl!, '_blank', 'noopener,noreferrer')}>{message.ctaLabel}</button></div> : null}
+    <button type="button" className={styles.itemSummary} aria-expanded={expanded} onClick={() => { setExpanded((value) => !value); void onRead(message.id).catch(onError); }}><span className={styles.itemMeta}><span>{message.typeName}</span><time dateTime={message.publishedAt}>{formatted}</time></span><strong>{message.title}</strong><span className={styles.bodyPreview}>{message.body}</span></button>
+    {expanded && message.ctaLabel && ctaUrl ? <div className={styles.itemActions}><button type="button" className={styles.primaryAction} onClick={() => window.open(ctaUrl, '_blank', 'noopener,noreferrer')}>{message.ctaLabel}</button></div> : null}
   </article>;
+}
+
+function safeExternalUrl(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    const parsed = new URL(value, window.location.href);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
 }

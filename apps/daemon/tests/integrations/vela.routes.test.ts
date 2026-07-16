@@ -1271,11 +1271,27 @@ describe('ALL /api/integrations/vela/message-center/*', () => {
           authorization: 'Bearer ck-seeded-key',
         },
       ]);
-      const rejected = await fetch(
-        `${baseUrl}/api/integrations/vela/message-center/../wallet/balance`,
+      const markRead = await fetch(
+        `${baseUrl}/api/integrations/vela/message-center/messages/release/read`,
+        { method: 'POST' },
       );
+      expect(markRead.status).toBe(200);
+      expect(requests).toEqual([
+        {
+          url: '/api/v1/message-center/messages?locale=en-US&limit=30',
+          method: 'GET',
+          authorization: 'Bearer ck-seeded-key',
+        },
+        {
+          url: '/api/v1/message-center/messages/release/read',
+          method: 'POST',
+          authorization: 'Bearer ck-seeded-key',
+        },
+      ]);
+      const rejected = await fetch(`${baseUrl}/api/integrations/vela/message-center/wallet/balance`);
       expect(rejected.status).toBe(404);
-      expect(requests).toHaveLength(1);
+      expect(await rejected.json()).toEqual({ error: 'unknown_message_center_path' });
+      expect(requests).toHaveLength(2);
     } finally {
       await new Promise<void>((resolve) => upstream.close(() => resolve()));
     }
