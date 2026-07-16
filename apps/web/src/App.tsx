@@ -105,6 +105,7 @@ import {
   amrArtifactUpgradeHomeMockOffer,
   type AmrArtifactUpgradeHomeOffer,
 } from './runtime/amr-artifact-upgrade';
+import { installFontRecovery } from './runtime/font-recovery';
 import {
   createDesignSystemProjectFromProject,
   createProject,
@@ -446,6 +447,9 @@ function AppInner() {
     document.addEventListener('click', onFirstPartyExternalLink);
     return () => document.removeEventListener('click', onFirstPartyExternalLink);
   }, []);
+  // Icon fonts whose startup fetch lost a race stay tofu forever without
+  // this — see runtime/font-recovery.ts.
+  useEffect(() => installFontRecovery(), []);
   // Observability marker. `apps/web/src/observability/white-screen.ts`
   // keys its "app actually mounted" success condition on this attribute
   // because the dynamic-import loading shell (`<div class="od-loading-shell">
@@ -505,6 +509,7 @@ function AppInner() {
   const amrModelsRef = useRef<AmrModelsResponse | null>(null);
   const amrPollGenerationRef = useRef(0);
   const agentStreamRequestSeqRef = useRef(0);
+  const agentStreamAbortRef = useRef<AbortController | null>(null);
   const agentFocusRefreshLastRunRef = useRef(Date.now());
   const [amrPollRestartToken, setAmrPollRestartToken] = useState(0);
   const [providerModelsCache, setProviderModelsCache] = useState<
@@ -578,7 +583,16 @@ function AppInner() {
   const workspaceProjectView = workspaceProjectListViewForRoute(route);
   const analytics = useAnalytics();
 
+  // Single-flight guard for `/api/agents?stream=1`: beginning a new request
+  // physically aborts the previous stream, not just invalidates its
+  // callbacks. Stacked live streams are what deadlocked the packaged app —
+  // each navigation/focus refresh opened another slow cold-probe stream,
+  // and once they pinned every upstream connection slot the whole od://
+  // proxy starved (see apps/packaged/src/index.ts ignore-connections-limit
+  // note for the other half of that fix).
   const beginAgentStreamRequest = useCallback(() => {
+    agentStreamAbortRef.current?.abort();
+    agentStreamAbortRef.current = new AbortController();
     agentStreamRequestSeqRef.current += 1;
     return agentStreamRequestSeqRef.current;
   }, []);
@@ -933,7 +947,7 @@ function AppInner() {
   // gate every tab including the ones that don't need agents at all.
   useEffect(() => {
     let cancelled = false;
-    const agentStreamAbort = new AbortController();
+    let effectAgentStreamAbort: AbortController | null = null;
     (async () => {
       const alive = await daemonIsLive();
       if (cancelled) return;
@@ -955,8 +969,9 @@ function AppInner() {
       }
 
       const agentRequestId = beginAgentStreamRequest();
+      effectAgentStreamAbort = agentStreamAbortRef.current;
       void fetchAgentsStream({
-        signal: agentStreamAbort.signal,
+        signal: effectAgentStreamAbort?.signal,
         onAgent: (agent) => {
           if (cancelled || !isCurrentAgentStreamRequest(agentRequestId)) return;
           setAgents((current) =>
@@ -1133,7 +1148,7 @@ function AppInner() {
     })();
     return () => {
       cancelled = true;
-      agentStreamAbort.abort();
+      effectAgentStreamAbort?.abort();
     };
   }, [
     beginAgentStreamRequest,
@@ -1497,6 +1512,7 @@ function AppInner() {
       setAgentsLoading(true);
       try {
         const next = await fetchAgentsStream({
+          signal: agentStreamAbortRef.current?.signal,
           onAgent: (agent) => {
             if (!isCurrentAgentStreamRequest(agentRequestId)) return;
             setAgents((current) =>

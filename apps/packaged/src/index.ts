@@ -103,6 +103,18 @@ async function main(): Promise<void> {
   // again to recover the resolved locale string for the BrowserWindow.
   applyOsLocaleSwitch(app);
 
+  // The od:// proxy forwards every renderer request through main-process
+  // net.fetch to the loopback web/daemon sidecars. Those upstream sockets
+  // live in Chromium's normal per-origin pool, whose hardcoded cap is 6
+  // (kMaxSocketsPerGroup). Long-lived SSE streams pin slots, and once the
+  // pool is full even aborts cannot reach queued requests (Electron never
+  // wires protocol.handle request cancellation before a Response exists —
+  // electron/electron#47097), so the whole app deadlocks until restart.
+  // `ignore-connections-limit` is Electron's own escape hatch: matching
+  // hosts get LOAD_IGNORE_LIMITS, lifting the cap. Loopback-only, so the
+  // extra parallelism costs nothing.
+  app.commandLine.appendSwitch("ignore-connections-limit", "127.0.0.1,localhost");
+
   const config = await readPackagedConfig();
   const afterQuit = parseLauncherAfterQuitArgs(process.argv.slice(1));
   const argvStamp = readProcessStamp(process.argv.slice(1), OPEN_DESIGN_SIDECAR_CONTRACT);
