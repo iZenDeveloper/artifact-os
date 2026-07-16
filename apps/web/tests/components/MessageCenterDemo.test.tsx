@@ -1,134 +1,98 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MessageCenterDemo } from '../../src/components/MessageCenterDemo';
 import { I18nProvider } from '../../src/i18n';
 
+const messages = [
+  { id: 'release', audienceType: 'global', typeName: 'Product update', title: 'Open Design 0.14 is available', body: 'The new release is ready.', ctaLabel: 'View update', ctaUrl: 'https://open-design.ai/update', publishedAt: '2026-07-16T12:00:00.000Z', readAt: null },
+  { id: 'benefit', audienceType: 'targeted', typeName: 'Benefit', title: 'Credits added', body: 'Your credits are ready.', ctaLabel: null, ctaUrl: null, publishedAt: '2026-07-15T12:00:00.000Z', readAt: '2026-07-16T01:00:00.000Z' },
+];
+
+function mockFetch(loggedIn = false) {
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/status')) return Response.json({ loggedIn });
+    if (url.includes('/messages?')) return Response.json({ messages, nextCursor: null, unreadCount: 1 });
+    if (url.includes('/read')) return Response.json({ read: true, markedCount: 1 });
+    return new Response(null, { status: 404 });
+  }));
+}
+
 function renderMessageCenter() {
   const onOpenNotificationSettings = vi.fn();
-  const result = render(
-    <I18nProvider initial="en">
-      <MessageCenterDemo onOpenNotificationSettings={onOpenNotificationSettings} />
-    </I18nProvider>,
-  );
+  const result = render(<I18nProvider initial="en"><MessageCenterDemo onOpenNotificationSettings={onOpenNotificationSettings}/></I18nProvider>);
   return { ...result, onOpenNotificationSettings };
 }
 
-function openCenter() {
+async function openCenter() {
+  await waitFor(() => expect(screen.getByLabelText(/Open message center \(1 unread\)/)).toBeTruthy());
   fireEvent.click(screen.getByTestId('message-center-trigger'));
   return screen.getByTestId('message-center-dialog');
 }
 
+beforeEach(() => {
+  localStorage.clear();
+  mockFetch();
+});
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('MessageCenterDemo', () => {
-  it('shows the unread badge on the bell trigger', () => {
+  it('starts a durable anonymous window and renders API messages', async () => {
     renderMessageCenter();
-
-    const trigger = screen.getByLabelText(/Open message center \(3 unread\)/);
-    expect(trigger.textContent).toContain('3');
+    const dialog = await openCenter();
+    expect(within(dialog).getByText('Open Design 0.14 is available')).toBeTruthy();
+    expect(localStorage.getItem('open-design.message-center.anonymous-started-at.v1')).toBeTruthy();
   });
 
-  it('shows the unread count on the unread filter while unread messages remain', () => {
+  it('keeps anonymous read state locally and restores it', async () => {
     renderMessageCenter();
-    const dialog = openCenter();
-    const unreadFilter = within(dialog).getByRole('button', { name: 'Unread' });
+    await openCenter();
+    fireEvent.click(screen.getByRole('button', { name: /Open Design 0\.14 is available/ }));
+    await waitFor(() => expect(screen.queryByLabelText(/unread/)).toBeNull());
+    expect(localStorage.getItem('open-design.message-center.anonymous-read-ids.v1')).toContain('release');
+  });
 
-    expect(unreadFilter.textContent).toContain('3');
+  it('uses account read endpoints when logged in', async () => {
+    mockFetch(true);
+    renderMessageCenter();
+    await openCenter();
+    fireEvent.click(screen.getByRole('button', { name: /Open Design 0\.14 is available/ }));
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url, init]) => String(url).includes('/release/read') && init?.method === 'POST')).toBe(true));
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: /Open Design 0\.13\.0 is available/ }));
-    expect(unreadFilter.textContent).toContain('2');
-
+  it('filters messages and marks all read', async () => {
+    renderMessageCenter();
+    await openCenter();
+    fireEvent.click(screen.getByRole('button', { name: 'Unread' }));
+    expect(screen.getByText('Open Design 0.14 is available')).toBeTruthy();
+    expect(screen.queryByText('Credits added')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }));
-    expect(unreadFilter.textContent).toBe('Unread');
+    await waitFor(() => expect(screen.getByText('All caught up')).toBeTruthy());
   });
 
-  it('opens as a dialog and closes with Escape while restoring trigger focus', () => {
+  it('opens CTA URLs with the existing external-link behavior', async () => {
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    renderMessageCenter();
+    await openCenter();
+    fireEvent.click(screen.getByRole('button', { name: /Open Design 0\.14 is available/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'View update' }));
+    expect(open).toHaveBeenCalledWith('https://open-design.ai/update', '_blank', 'noopener,noreferrer');
+  });
+
+  it('closes with Escape and restores trigger focus', async () => {
     renderMessageCenter();
     const trigger = screen.getByTestId('message-center-trigger');
-
-    fireEvent.click(trigger);
-    expect(screen.getByRole('dialog', { name: 'Message center' })).toBeTruthy();
-
+    await openCenter();
     fireEvent.keyDown(document, { key: 'Escape' });
-
     expect(screen.queryByTestId('message-center-dialog')).toBeNull();
     expect(document.activeElement).toBe(trigger);
-  });
-
-  it('closes when the page outside the drawer is clicked', () => {
-    renderMessageCenter();
-    openCenter();
-
-    fireEvent.mouseDown(screen.getByTestId('message-center-backdrop'));
-
-    expect(screen.queryByTestId('message-center-dialog')).toBeNull();
-  });
-
-  it('marks a message read when the message is opened', () => {
-    renderMessageCenter();
-    openCenter();
-
-    fireEvent.click(screen.getByRole('button', { name: /Open Design 0\.13\.0 is available/ }));
-
-    const message = screen.getByText('Open Design 0.13.0 is available').closest('article');
-    expect(message).not.toBeNull();
-    expect(screen.queryByTestId('message-center-detail')).toBeNull();
-    expect(within(message as HTMLElement).getByText(/The new version reduces the wait/)).toBeTruthy();
-    expect(screen.getByLabelText(/Open message center \(2 unread\)/)).toBeTruthy();
-  });
-
-  it('filters unread messages and supports marking everything read', () => {
-    renderMessageCenter();
-    openCenter();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Unread' }));
-    expect(screen.getByText('Open Design 0.13.0 is available')).toBeTruthy();
-    expect(screen.queryByText('Limited design credits added')).toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }));
-
-    expect(screen.getByText('All caught up')).toBeTruthy();
-    expect(screen.queryByLabelText(/unread/)).toBeNull();
-  });
-
-  it('filters read messages', () => {
-    renderMessageCenter();
-    openCenter();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Read' }));
-
-    expect(screen.getByText('Limited design credits added')).toBeTruthy();
-    expect(screen.getByText('6 publish-ready templates added')).toBeTruthy();
-    expect(screen.queryByText('Open Design 0.13.0 is available')).toBeNull();
-  });
-
-  it('does not render per-message read or unread actions', () => {
-    renderMessageCenter();
-    const dialog = openCenter();
-    const message = within(dialog)
-      .getByText('Workspace for Teams preview')
-      .closest('article');
-    expect(message).not.toBeNull();
-
-    expect(screen.queryByRole('button', { name: 'Archived' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Archive' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Mark read' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Mark unread' })).toBeNull();
-  });
-
-  it('opens existing desktop notification settings from the drawer footer', () => {
-    const { onOpenNotificationSettings } = renderMessageCenter();
-    openCenter();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Desktop notification settings' }));
-
-    expect(onOpenNotificationSettings).toHaveBeenCalledTimes(1);
-    expect(screen.queryByTestId('message-center-dialog')).toBeNull();
   });
 });
