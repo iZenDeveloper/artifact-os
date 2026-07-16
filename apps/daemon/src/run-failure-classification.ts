@@ -517,7 +517,12 @@ export function isResumableFailure(
   failure: RunFailureClassification | undefined,
 ): boolean {
   if (!failure) return false;
-  if (failure.failure_category === 'upstream_unavailable') return true;
+  if (
+    failure.failure_category === 'upstream_unavailable' &&
+    failure.failure_detail !== 'upstream_client_error'
+  ) {
+    return true;
+  }
   if (
     failure.failure_category === 'timeout' &&
     failure.failure_detail === 'inactivity_timeout'

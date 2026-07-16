@@ -45,6 +45,7 @@ vi.mock('../src/runtimes/auth.js', () => ({
 
 import {
   classifyRunFailure,
+  isResumableFailure,
   type RunEventForFailureClassification,
 } from '../src/run-failure-classification.js';
 
@@ -1412,6 +1413,35 @@ describe('classifyRunFailure — BYOK OpenCode reclassification out of stream_er
       retryable: false,
       user_action: 'none',
     });
+  });
+
+  it('does not treat a committed-work BYOK provider 404 as resumable', () => {
+    const message = 'Not Found';
+    const failure = classifyForAgent(
+      'byok-opencode',
+      'AGENT_EXECUTION_FAILED',
+      message,
+      [
+        {
+          event: 'agent',
+          data: {
+            type: 'tool_use',
+            id: 'toolu_byok_404',
+            name: 'Bash',
+            input: { command: 'echo committed' },
+          },
+        },
+        errorEvent('AGENT_EXECUTION_FAILED', message, false),
+        runtimeCloseEvent('stream_error'),
+      ],
+    );
+
+    expect(failure).toMatchObject({
+      failure_category: 'upstream_unavailable',
+      failure_detail: 'upstream_client_error',
+      retryable: false,
+    });
+    expect(isResumableFailure(failure)).toBe(false);
   });
 
   it.each([
