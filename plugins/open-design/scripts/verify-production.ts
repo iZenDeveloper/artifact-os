@@ -116,12 +116,12 @@ async function jsonResponse(url: string): Promise<{ body: Record<string, unknown
   return { body: await response.json() as Record<string, unknown>, response };
 }
 
-async function rpc(mcpUrl: string, id: number, method: string, params: Record<string, unknown>, accessToken: string): Promise<Record<string, unknown>> {
+async function rpc(mcpUrl: string, id: number, method: string, params: Record<string, unknown>, accessToken?: string): Promise<Record<string, unknown>> {
   const response = await fetch(mcpUrl, {
     method: 'POST',
     headers: {
       accept: 'application/json, text/event-stream',
-      authorization: `Bearer ${accessToken}`,
+      ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}),
       'content-type': 'application/json',
     },
     body: JSON.stringify({ jsonrpc: '2.0', id, method, params }),
@@ -196,20 +196,50 @@ async function verify(options: Options): Promise<CheckResult[]> {
   for (const scope of REQUIRED_SCOPES) assert(stringArray(oauth.scopes_supported).includes(scope), `OAuth metadata is missing scope ${scope}`);
   add(checks, 'OAuth discovery', 'authorization code + refresh + PKCE S256 + public registration');
 
-  const unauthenticated = await fetch(options.mcpUrl, {
+  const publicInitialized = await rpc(options.mcpUrl, 1, 'initialize', {
+    protocolVersion: '2025-03-26',
+    capabilities: {},
+    clientInfo: { name: 'open-design-public-verifier', version: '1.0.0' },
+  });
+  assert((publicInitialized.serverInfo as Record<string, unknown>)?.name === 'open-design', 'anonymous endpoint is not Open Design');
+  const publicTools = await rpc(options.mcpUrl, 2, 'tools/list', {});
+  const publicToolList = publicTools.tools as Array<Record<string, unknown>> | undefined;
+  assert(Array.isArray(publicToolList), 'anonymous tools/list did not return tools');
+  const publicBrief = publicToolList.find((tool) => tool.name === 'collect_brief');
+  const publicBriefMeta = publicBrief?._meta as Record<string, unknown> | undefined;
+  const publicBriefSchemes = publicBriefMeta?.securitySchemes as Array<Record<string, unknown>> | undefined;
+  assert(publicBriefSchemes?.[0]?.type === 'noauth', 'collect_brief is not published as an anonymous tool');
+  const publicBriefCall = await rpc(options.mcpUrl, 3, 'tools/call', {
+    name: 'collect_brief',
+    arguments: { artifactType: 'website', title: 'Production verification' },
+  });
+  assert((publicBriefCall.structuredContent as Record<string, unknown> | undefined)?.view === 'brief-form', 'anonymous collect_brief did not return the Custom UI state');
+  const publicWidgetUri = String(publicBriefMeta?.['openai/outputTemplate'] ?? '');
+  assert(publicWidgetUri.startsWith('ui://open-design/artifact-card-'), 'collect_brief is missing its widget URI');
+  const publicWidget = await rpc(options.mcpUrl, 4, 'resources/read', { uri: publicWidgetUri });
+  const publicWidgetContents = publicWidget.contents as Array<Record<string, unknown>> | undefined;
+  assert(publicWidgetContents?.[0]?.mimeType === 'text/html;profile=mcp-app', 'anonymous widget resource is unavailable');
+  add(checks, 'Public brief UI', 'tools/list, collect_brief, and widget resource are anonymous');
+
+  const protectedCall = await fetch(options.mcpUrl, {
     method: 'POST',
     headers: {
       accept: 'application/json, text/event-stream',
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 5,
+      method: 'tools/call',
+      params: { name: 'get_cloud_account', arguments: {} },
+    }),
     signal: AbortSignal.timeout(15_000),
   });
-  assert(unauthenticated.status === 401, `unauthenticated MCP must return 401, got ${unauthenticated.status}`);
-  const challenge = unauthenticated.headers.get('www-authenticate') ?? '';
+  assert(protectedCall.status === 401, `unauthenticated protected tool must return 401, got ${protectedCall.status}`);
+  const challenge = protectedCall.headers.get('www-authenticate') ?? '';
   assert(/^Bearer\b/iu.test(challenge), 'unauthenticated MCP response is missing a Bearer challenge');
   assert(challenge.includes('resource_metadata='), 'Bearer challenge is missing resource_metadata');
-  add(checks, 'OAuth challenge', 'unauthenticated MCP fails closed with resource metadata');
+  add(checks, 'OAuth challenge', 'protected tools fail closed with resource metadata');
 
   const accessToken = process.env[options.accessTokenEnv]?.trim() ?? '';
   if (!accessToken) {
@@ -217,18 +247,18 @@ async function verify(options: Options): Promise<CheckResult[]> {
     return checks;
   }
 
-  const initialized = await rpc(options.mcpUrl, 2, 'initialize', {
+  const initialized = await rpc(options.mcpUrl, 6, 'initialize', {
     protocolVersion: '2025-03-26',
     capabilities: {},
     clientInfo: { name: 'open-design-production-verifier', version: '1.0.0' },
   }, accessToken);
   assert((initialized.serverInfo as Record<string, unknown>)?.name === 'open-design', 'authenticated endpoint is not Open Design');
-  const listed = await rpc(options.mcpUrl, 3, 'tools/list', {}, accessToken);
+  const listed = await rpc(options.mcpUrl, 7, 'tools/list', {}, accessToken);
   const tools = listed.tools as Array<Record<string, unknown>> | undefined;
   assert(Array.isArray(tools), 'authenticated tools/list did not return tools');
   const names = tools.map((tool) => String(tool.name)).sort();
   assert(JSON.stringify(names) === JSON.stringify([...EXPECTED_TOOLS].sort()), `unexpected production tools: ${names.join(', ')}`);
-  const accountCall = await rpc(options.mcpUrl, 4, 'tools/call', { name: 'get_cloud_account', arguments: {} }, accessToken);
+  const accountCall = await rpc(options.mcpUrl, 8, 'tools/call', { name: 'get_cloud_account', arguments: {} }, accessToken);
   const account = accountCall.structuredContent as Record<string, unknown> | undefined;
   assert(account?.loggedIn === true, 'production token did not resolve to a signed-in Open Design user');
   assert(typeof account.balanceStatus === 'string', 'production account did not return wallet status');

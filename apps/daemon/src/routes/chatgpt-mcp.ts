@@ -5,7 +5,11 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import type { Express, Request, Response as ExpressResponse } from 'express';
 import { createRemoteJWKSet, customFetch, jwtVerify } from 'jose';
 
-import { chatGptV1RequiredScopes, createOpenDesignMcpServer } from '../mcp.js';
+import {
+  chatGptV1RequiredScopes,
+  createOpenDesignMcpServer,
+  isChatGptWidgetResourceUri,
+} from '../mcp.js';
 import {
   CHATGPT_STUDIO_COOKIE,
   chatGptCapabilitySecret,
@@ -46,7 +50,7 @@ export interface RegisterChatGptMcpRoutesDeps {
 }
 
 export interface ChatGptMcpPrincipal {
-  mode: 'loopback' | 'development' | 'static' | 'oauth';
+  mode: 'anonymous' | 'loopback' | 'development' | 'static' | 'oauth';
   subject: string;
   scopes: Set<string>;
 }
@@ -347,8 +351,11 @@ function requestedScopes(body: unknown): Set<string> {
   const messages = Array.isArray(body) ? body : [body];
   for (const message of messages) {
     if (!message || typeof message !== 'object') continue;
-    const record = message as { method?: unknown; params?: { name?: unknown } };
-    if (record.method === 'resources/list' || record.method === 'resources/read') {
+    const record = message as { method?: unknown; params?: { name?: unknown; uri?: unknown } };
+    if (
+      record.method === 'resources/list'
+      || (record.method === 'resources/read' && !isChatGptWidgetResourceUri(record.params?.uri))
+    ) {
       scopes.add('opendesign.catalog.read');
       continue;
     }
@@ -356,6 +363,28 @@ function requestedScopes(body: unknown): Set<string> {
     for (const scope of chatGptV1RequiredScopes(String(record.params?.name ?? ''))) scopes.add(scope);
   }
   return scopes;
+}
+
+function isPublicChatGptMcpRequest(body: unknown): boolean {
+  // Anonymous batching is unnecessary for the host handshake and can amplify
+  // repeated widget reads into a disproportionately large public response.
+  if (Array.isArray(body)) return false;
+  return [body].every((message) => {
+    if (!message || typeof message !== 'object') return false;
+    const record = message as {
+      method?: unknown;
+      params?: { name?: unknown; uri?: unknown };
+    };
+    if (
+      record.method === 'initialize'
+      || record.method === 'notifications/initialized'
+      || record.method === 'ping'
+      || record.method === 'tools/list'
+    ) return true;
+    if (record.method === 'tools/call') return record.params?.name === 'collect_brief';
+    if (record.method === 'resources/read') return isChatGptWidgetResourceUri(record.params?.uri);
+    return false;
+  });
 }
 
 interface IntrospectionResponse {
@@ -444,6 +473,9 @@ export async function authorizeChatGptMcpRequest(
   }
 
   const token = bearerToken(request);
+  if (!token && isPublicChatGptMcpRequest(request.body)) {
+    return { ok: true, principal: { mode: 'anonymous', subject: 'anonymous', scopes: new Set() } };
+  }
   const staticToken = String(env.OD_CHATGPT_MCP_TOKEN || env.OD_API_TOKEN || '').trim();
   if (staticToken && token && constantTimeEqual(token, staticToken)) {
     return { ok: true, principal: { mode: 'static', subject: 'single-tenant', scopes: ALL_RUNTIME_SCOPES } };

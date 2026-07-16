@@ -25,11 +25,11 @@ import { postCreateArtifactRequest } from './artifacts/create.js';
 import { classifyAmrAccountFailure } from './integrations/vela-errors.js';
 
 const SERVER_NAME = 'open-design';
-const SERVER_VERSION = '0.2.9';
+const SERVER_VERSION = '0.2.10';
 const MCP_STDIO_IDLE_EXIT_MS = 30 * 60 * 1000;
 // MCP Apps hosts cache widget resources by URI. Bump this whenever the
 // embedded HTML/CSS/JS changes so a failed or stale sandbox is not reused.
-const CHATGPT_WIDGET_URI = 'ui://open-design/artifact-card-v5.html';
+const CHATGPT_WIDGET_URI = 'ui://open-design/artifact-card-v6.html';
 // A running host can retain tool metadata across a daemon/plugin refresh and
 // keep reading the previous URI. Serve the latest widget at that URI too so
 // existing conversations recover without requiring a Codex restart.
@@ -37,7 +37,13 @@ const LEGACY_CHATGPT_WIDGET_URIS = new Set([
   'ui://open-design/artifact-card-v2.html',
   'ui://open-design/artifact-card-v3.html',
   'ui://open-design/artifact-card-v4.html',
+  'ui://open-design/artifact-card-v5.html',
 ]);
+
+export function isChatGptWidgetResourceUri(value: unknown): value is string {
+  const uri = typeof value === 'string' ? value : '';
+  return uri === CHATGPT_WIDGET_URI || LEGACY_CHATGPT_WIDGET_URIS.has(uri);
+}
 const CHATGPT_SIGN_IN_URL = 'https://open-design.ai/amr';
 const CHATGPT_RECHARGE_URL = 'https://open-design.ai/amr/wallet';
 const CHATGPT_V1_TOOL_NAMES = new Set([
@@ -390,7 +396,7 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
             structuredContent: { openDesignBrief: { ...payload, confirmed: true } },
           });
         } catch {}
-        await rpcRequest('ui/message', { role: 'user', content: { type: 'text', text } });
+        await rpcRequest('ui/message', { role: 'user', content: [{ type: 'text', text }] });
         return;
       }
       if (window.openai?.sendFollowUpMessage) {
@@ -616,11 +622,6 @@ const CHATGPT_WIDGET_RESULT_META = {
   'ui/resourceUri': CHATGPT_WIDGET_URI,
   'openai/outputTemplate': CHATGPT_WIDGET_URI,
 };
-
-function isChatGptWidgetUri(uri: unknown): uri is string {
-  return typeof uri === 'string'
-    && (uri === CHATGPT_WIDGET_URI || LEGACY_CHATGPT_WIDGET_URIS.has(uri));
-}
 
 type JsonObject = Record<string, unknown>;
 interface RunMcpOptions { daemonUrl: string | URL }
@@ -1350,7 +1351,7 @@ export async function runMcpStdio({ daemonUrl }: RunMcpOptions): Promise<void> {
 
   server.setRequestHandler(ReadResourceRequestSchema, withMcpActivity(async (req) => {
     const uri = req.params?.uri;
-    if (isChatGptWidgetUri(uri)) {
+    if (isChatGptWidgetResourceUri(uri)) {
       return {
         contents: [
           {
@@ -1517,7 +1518,7 @@ export function createOpenDesignMcpServer({
   });
   server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     const uri = request.params?.uri;
-    if (isChatGptWidgetUri(uri)) {
+    if (isChatGptWidgetResourceUri(uri)) {
       return {
         contents: [{
           uri,
@@ -1566,7 +1567,10 @@ export function createOpenDesignMcpServer({
 }
 
 function chatGptV1ToolDefinition(tool: (typeof TOOL_DEFS)[number]): any {
-  const securitySchemes = [{ type: 'oauth2', scopes: chatGptV1RequiredScopes(tool.name) }];
+  const requiredScopes = chatGptV1RequiredScopes(tool.name);
+  const securitySchemes = tool.name === 'collect_brief'
+    ? [{ type: 'noauth' }]
+    : [{ type: 'oauth2', scopes: requiredScopes }];
   const authMeta = {
     ...tool._meta,
     securitySchemes,

@@ -2,7 +2,7 @@
 
 import { createServer } from 'node:http';
 
-const WIDGET_URI = 'ui://open-design/artifact-card-v5.html';
+const WIDGET_URI = 'ui://open-design/artifact-card-v6.html';
 
 interface JsonRpcResponse {
   error?: { message?: string };
@@ -244,7 +244,8 @@ function mcpAppsHostScript(output: Record<string, unknown>, origin: string, widg
 
         if (message.method === 'ui/message' && message.id !== undefined) {
           send({ jsonrpc: '2.0', id: message.id, result: {} });
-          const submitted = String(message.params?.content?.text || '').split('\\n')[0];
+          const content = Array.isArray(message.params?.content) ? message.params.content : [];
+          const submitted = String(content.find((item) => item?.type === 'text')?.text || '').split('\\n')[0];
           setStatus('MCP Apps · message submitted: ' + submitted);
           return;
         }

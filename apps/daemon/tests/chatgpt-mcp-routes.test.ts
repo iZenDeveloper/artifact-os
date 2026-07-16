@@ -54,7 +54,7 @@ describe('ChatGPT Streamable HTTP MCP', () => {
         'start_run',
       ]);
       expect(Object.fromEntries(tools.tools.map((tool) => [tool.name, tool._meta?.securitySchemes]))).toMatchObject({
-        collect_brief: [{ type: 'oauth2', scopes: [] }],
+        collect_brief: [{ type: 'noauth' }],
         get_cloud_account: [{ type: 'oauth2', scopes: ['opendesign.account.read'] }],
         create_project: [{ type: 'oauth2', scopes: ['opendesign.projects.write'] }],
         start_run: [{ type: 'oauth2', scopes: ['opendesign.runs.write'] }],
@@ -83,7 +83,7 @@ describe('ChatGPT Streamable HTTP MCP', () => {
         'create_artifact',
       ]));
       const startRun = tools.tools.find((tool) => tool.name === 'start_run');
-      const widgetUri = 'ui://open-design/artifact-card-v5.html';
+      const widgetUri = 'ui://open-design/artifact-card-v6.html';
       const collectBrief = tools.tools.find((tool) => tool.name === 'collect_brief');
       expect(collectBrief?._meta?.['openai/outputTemplate']).toBe(widgetUri);
       expect((collectBrief?._meta as any)?.ui?.resourceUri).toBe(widgetUri);
@@ -122,6 +122,7 @@ describe('ChatGPT Streamable HTTP MCP', () => {
         'ui://open-design/artifact-card-v2.html',
         'ui://open-design/artifact-card-v3.html',
         'ui://open-design/artifact-card-v4.html',
+        'ui://open-design/artifact-card-v5.html',
       ]) {
         const legacyWidget = await client.readResource({ uri: legacyUri });
         expect(legacyWidget.contents[0]).toEqual(expect.objectContaining({
@@ -135,10 +136,12 @@ describe('ChatGPT Streamable HTTP MCP', () => {
       expect(widgetHtml).toContain("rpcRequest('tools/call'");
       expect(widgetHtml).toContain("rpcRequest('ui/open-link'");
       expect(widgetHtml).toContain("rpcRequest('ui/message'");
+      expect(widgetHtml).toContain("content: [{ type: 'text', text }]");
+      expect(widgetHtml).not.toContain("content: { type: 'text', text }");
       expect(widgetHtml).toContain("rpcRequest('ui/update-model-context'");
       expect(widgetHtml).toContain(String.raw`const text = lines.join('\n')`);
       expect(widgetHtml).toContain('id="brief-form"');
-      expect(widgetHtml).toContain("version: '0.2.9'");
+      expect(widgetHtml).toContain("version: '0.2.10'");
       expect(widgetHtml).toContain('data-view="compact"');
       expect(widgetHtml).toContain('Authorization complete');
       expect(widgetHtml).toContain('Sign in / Register');
@@ -200,7 +203,10 @@ describe('ChatGPT Streamable HTTP MCP', () => {
   });
 
   it('requires explicit remote auth and accepts the configured development bearer', async () => {
-    const remote = (authorization?: string, body: unknown = { method: 'initialize' }) => ({
+    const remote = (authorization?: string, body: unknown = {
+      method: 'tools/call',
+      params: { name: 'get_cloud_account' },
+    }) => ({
       headers: authorization ? { authorization } : {},
       socket: { remoteAddress: '203.0.113.10' },
       protocol: 'https',
@@ -208,6 +214,10 @@ describe('ChatGPT Streamable HTTP MCP', () => {
       get: (name: string) => name === 'host' ? 'mcp.example.com' : undefined,
     }) as any;
 
+    await expect(authorizeChatGptMcpRequest(remote(undefined, { method: 'initialize' }), {})).resolves.toMatchObject({
+      ok: true,
+      principal: { mode: 'anonymous', subject: 'anonymous' },
+    });
     await expect(authorizeChatGptMcpRequest(remote(), {})).resolves.toMatchObject({
       ok: false,
       status: 503,
@@ -221,6 +231,14 @@ describe('ChatGPT Streamable HTTP MCP', () => {
       ok: true,
       principal: { mode: 'static', subject: 'single-tenant' },
     });
+    await expect(authorizeChatGptMcpRequest(
+      remote('Bearer invalid', { method: 'tools/list' }),
+      { OD_CHATGPT_MCP_TOKEN: 'secret' },
+    )).resolves.toMatchObject({
+      ok: false,
+      status: 401,
+      code: 'CHATGPT_MCP_INVALID_TOKEN',
+    });
   });
 
   it('does not treat a public reverse-proxy request as unauthenticated loopback', async () => {
@@ -228,7 +246,7 @@ describe('ChatGPT Streamable HTTP MCP', () => {
       headers: {},
       socket: { remoteAddress: '127.0.0.1' },
       protocol: 'https',
-      body: { method: 'initialize' },
+      body: { method: 'tools/call', params: { name: 'get_cloud_account' } },
       get: (name: string) => name === 'host' ? 'mcp.open-design.ai' : undefined,
     } as any;
 
@@ -277,6 +295,127 @@ describe('ChatGPT Streamable HTTP MCP', () => {
       authorization_servers: ['https://auth.open-design.ai'],
       scopes_supported: CHATGPT_MCP_SCOPES,
     });
+  });
+
+  it('keeps brief discovery public while protecting account and project data', async () => {
+    const app = express();
+    app.use(express.json());
+    registerChatGptMcpRoutes(app, {
+      getDaemonUrl: () => 'http://127.0.0.1:9',
+      env: {
+        OD_PUBLIC_BASE_URL: 'https://mcp.open-design.ai',
+        OD_CHATGPT_MCP_RESOURCE_URL: 'https://mcp.open-design.ai/mcp',
+        OD_CHATGPT_OAUTH_ISSUER: 'https://auth.open-design.ai',
+      },
+    });
+    const httpServer = app.listen(0, '127.0.0.1');
+    servers.push(httpServer);
+    await new Promise<void>((resolve) => httpServer.once('listening', resolve));
+    const { port } = httpServer.address() as AddressInfo;
+    const endpoint = `http://127.0.0.1:${port}/mcp`;
+    const post = async (id: number, method: string, params: Record<string, unknown>) => {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          accept: 'application/json, text/event-stream',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id, method, params }),
+      });
+      const text = await response.text();
+      const body = response.headers.get('content-type')?.includes('application/json')
+        ? JSON.parse(text)
+        : text.split(/\r?\n/u)
+          .filter((line) => line.startsWith('data:'))
+          .map((line) => JSON.parse(line.slice(5).trim()))
+          .find((message) => message.result || message.error);
+      return { body, response };
+    };
+
+    const publicClient = new Client({ name: 'anonymous-chatgpt-mcp-test', version: '1.0.0' });
+    const publicTransport = new StreamableHTTPClientTransport(new URL(endpoint));
+    await publicClient.connect(publicTransport as unknown as Parameters<typeof publicClient.connect>[0]);
+    try {
+      const listed = await publicClient.listTools();
+      expect(listed.tools).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          name: 'collect_brief',
+          _meta: expect.objectContaining({ securitySchemes: [{ type: 'noauth' }] }),
+        }),
+        expect.objectContaining({ name: 'get_cloud_account' }),
+      ]));
+      const brief = await publicClient.callTool({
+        name: 'collect_brief',
+        arguments: { artifactType: 'website', title: 'Public brief' },
+      }) as any;
+      expect(brief.structuredContent).toMatchObject({ view: 'brief-form' });
+      for (const uri of [
+        'ui://open-design/artifact-card-v2.html',
+        'ui://open-design/artifact-card-v3.html',
+        'ui://open-design/artifact-card-v4.html',
+        'ui://open-design/artifact-card-v5.html',
+        'ui://open-design/artifact-card-v6.html',
+      ]) {
+        const widget = await publicClient.readResource({ uri });
+        expect(widget.contents[0]).toMatchObject({
+          uri,
+          mimeType: 'text/html;profile=mcp-app',
+        });
+      }
+    } finally {
+      await publicClient.close();
+    }
+
+    const account = await post(4, 'tools/call', { name: 'get_cloud_account', arguments: {} });
+    expect(account.response.status).toBe(401);
+    expect(account.response.headers.get('www-authenticate')).toMatch(/^Bearer\b/u);
+
+    const catalog = await post(5, 'resources/read', { uri: 'od://design-systems/private/DESIGN.md' });
+    expect(catalog.response.status).toBe(401);
+
+    const resourceList = await post(6, 'resources/list', {});
+    expect(resourceList.response.status).toBe(401);
+
+    const unknownWidget = await post(7, 'resources/read', {
+      uri: 'ui://open-design/artifact-card-v7.html',
+    });
+    expect(unknownWidget.response.status).toBe(401);
+
+    const mixedBatch = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        accept: 'application/json, text/event-stream',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify([
+        { jsonrpc: '2.0', id: 8, method: 'tools/list', params: {} },
+        {
+          jsonrpc: '2.0',
+          id: 9,
+          method: 'tools/call',
+          params: { name: 'start_run', arguments: {} },
+        },
+      ]),
+    });
+    expect(mixedBatch.status).toBe(401);
+
+    const publicBatch = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        accept: 'application/json, text/event-stream',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify([
+        { jsonrpc: '2.0', id: 10, method: 'tools/list', params: {} },
+        {
+          jsonrpc: '2.0',
+          id: 11,
+          method: 'resources/read',
+          params: { uri: 'ui://open-design/artifact-card-v6.html' },
+        },
+      ]),
+    });
+    expect(publicBatch.status).toBe(401);
   });
 
   it('serves signed tenant previews and exchanges Studio links for an isolated API session', async () => {
@@ -506,8 +645,8 @@ describe('ChatGPT Streamable HTTP MCP', () => {
         stage: 'queued',
       });
       expect(started._meta).toMatchObject({
-        'openai/outputTemplate': 'ui://open-design/artifact-card-v5.html',
-        'ui/resourceUri': 'ui://open-design/artifact-card-v5.html',
+        'openai/outputTemplate': 'ui://open-design/artifact-card-v6.html',
+        'ui/resourceUri': 'ui://open-design/artifact-card-v6.html',
       });
       expect(runBodies).toEqual([{
         projectId: 'p1',
@@ -590,7 +729,7 @@ describe('ChatGPT Streamable HTTP MCP', () => {
           balanceStatus: 'empty',
         },
         _meta: {
-          'openai/outputTemplate': 'ui://open-design/artifact-card-v5.html',
+          'openai/outputTemplate': 'ui://open-design/artifact-card-v6.html',
         },
       });
       expect(runBodies).toHaveLength(4);
@@ -823,6 +962,37 @@ describe('ChatGPT Streamable HTTP MCP', () => {
 
     await expect(authorizeChatGptMcpRequest(
       remote,
+      env,
+      tokenResponse('openid') as any,
+    )).resolves.toMatchObject({
+      ok: false,
+      status: 403,
+      code: 'CHATGPT_MCP_INSUFFICIENT_SCOPE',
+    });
+
+    await expect(authorizeChatGptMcpRequest(
+      {
+        ...remote,
+        body: {
+          method: 'resources/read',
+          params: { uri: 'ui://open-design/artifact-card-v6.html' },
+        },
+      },
+      env,
+      tokenResponse('openid') as any,
+    )).resolves.toMatchObject({
+      ok: true,
+      principal: { mode: 'oauth', subject: 'user-123' },
+    });
+
+    await expect(authorizeChatGptMcpRequest(
+      {
+        ...remote,
+        body: {
+          method: 'resources/read',
+          params: { uri: 'od://design-systems/private/DESIGN.md' },
+        },
+      },
       env,
       tokenResponse('openid') as any,
     )).resolves.toMatchObject({
