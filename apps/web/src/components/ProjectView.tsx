@@ -8976,6 +8976,7 @@ export function ProjectView({
               )}
               designSystemPicker={(
                 <DesignSystemPicker
+                  variant="icon"
                   designSystems={designSystems}
                   selectedId={projectDesignSystemId ?? null}
                   disabled={projectCollab.viewerOnly}

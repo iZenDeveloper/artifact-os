@@ -2663,9 +2663,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
               }}
             />
           ) : null}
-          {designSystemPicker || selectedWorkspaceContexts.length > 0 || stagedSkills.length > 0 || stagedMcpServers.length > 0 || stagedConnectors.length > 0 || staged.length > 0 || activeAppliedPlugin ? (
+          {selectedWorkspaceContexts.length > 0 || stagedSkills.length > 0 || stagedMcpServers.length > 0 || stagedConnectors.length > 0 || staged.length > 0 || activeAppliedPlugin ? (
             <StagedRunContexts
-              designSystemPicker={designSystemPicker}
               workspaceItems={selectedWorkspaceContexts}
               currentWorkspaceContextId={visibleWorkspaceContext?.id ?? null}
               skills={stagedSkills}
@@ -2987,6 +2986,9 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                 />
               )}
             />
+            {/* #5517: the design-system picker sits inline in the composer's
+                icon row (palette icon) instead of the staged-context bar. */}
+            {designSystemPicker}
             {designToolboxOpen ? (
               <div className="composer-toolbox-standalone">
                 {/* Click-catcher backdrop. A <div> (not a <button>) so it never
@@ -3094,38 +3096,13 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
                 title={t('chat.send')}
                 data-tooltip={t('chat.send')}
               >
-                <Icon name="send" size={16} />
-                <span>{t('chat.send')}</span>
+                <Icon name="arrow-up" size={17} />
               </button>
             ) : null}
           </div>
         </div>
-        {projectId ? (
-          <div className="composer-workdir-row">
-            <WorkingDirPicker
-              placement="up"
-              workingDir={workingDir}
-              invalid={workingDirMissing}
-              recentDirs={recentDirs}
-              onOpen={() => void checkWorkingDir()}
-              onPickDirectory={() => {
-                // Fire on the click itself (intent), matching the home
-                // composer's working_dir* elements so one dashboard counts the
-                // action across both surfaces.
-                trackComposerBar({ element: 'working_dir' });
-                void handlePickWorkingDir();
-              }}
-              onSelectRecent={(dir) => {
-                trackComposerBar({ element: 'working_dir_recent' });
-                void setWorkingDirFolder(dir);
-              }}
-              onClear={() => {
-                trackComposerBar({ element: 'working_dir_clear' });
-                void clearWorkingDir();
-              }}
-            />
-          </div>
-        ) : null}
+        {/* #5517 removes the always-on working-dir row under the project
+            composer; the home composer's workdir picker remains the entry. */}
         {uploadError ? <span className="composer-hint">{uploadError}</span> : null}
         {detailsRecord ? (
           <PluginDetailsModal
