@@ -1151,6 +1151,7 @@ export interface Dict {
   'entry.creditsUpgrade': string;
   'entry.creditsOpening': string;
   'entry.creditsRemaining': string;
+  'entry.creditsBonus': string;
   'entry.creditsUsage': string;
   'entry.creditsMemberNoticeTitle': string;
   'entry.creditsMemberNoticeBody': string;

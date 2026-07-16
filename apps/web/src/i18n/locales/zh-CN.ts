@@ -811,6 +811,7 @@ export const zhCN: Dict = {
   "entry.creditsUpgrade": "升级",
   "entry.creditsOpening": "正在打开...",
   "entry.creditsRemaining": "剩余积分",
+  "entry.creditsBonus": "附加积分",
   "entry.creditsUsage": "查看使用情况",
   "entry.creditsMemberNoticeTitle": "额度不足？",
   "entry.creditsMemberNoticeBody": "你当前是 Member，不能自行续额度。需要更多额度时，可以提醒团队 Admin 提额。",

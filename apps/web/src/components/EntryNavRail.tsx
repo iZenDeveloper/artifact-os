@@ -31,7 +31,9 @@ import type {
   WorkspaceDirectoryItem,
   WorkspaceDirectoryResponse,
 } from '@open-design/contracts';
+import { fetchVelaLoginStatus } from '../providers/daemon';
 import { Icon } from './Icon';
+import { PlanWordmark, planBadgeTierForLabel } from './PlanWordmark';
 import { RemixIcon } from './RemixIcon';
 import { InviteDialog } from './InviteDialog';
 import { CreditsPanel } from './CreditsPanel';
@@ -187,8 +189,28 @@ export function EntryNavRail({
     ? formatBillingTier(billing.membershipTier, t)
     : context?.planId?.trim() || (isTeam ? t('entry.billingTierTeam') : t('entry.billingTierFree'));
   const creditsBalance = billing ? billing.totalAvailableCredits : null;
+  // #5517: wordmark badge on the account row (replaces the chevron) and a
+  // small twin inside the menu's billing card. Derive from the raw tier id
+  // first so "team_plus" maps to the plus badge regardless of display label.
+  const planTier = planBadgeTierForLabel(billing?.membershipTier ?? tierLabel);
 
   const [accountOpen, setAccountOpen] = useState(false);
+  // Signed-in account email for the menu head (#5517 shows it under the
+  // display name). The workspace context carries no email, so lazily read the
+  // vela login-status projection the first time the menu opens — never on
+  // mount, so shells without an open menu spend zero requests on it.
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
+  useEffect(() => {
+    if (!accountOpen || accountEmail !== null) return;
+    let cancelled = false;
+    void fetchVelaLoginStatus().then((status) => {
+      if (!cancelled) setAccountEmail(status?.user?.email?.trim() || '');
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountOpen]);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [teamOpen, setTeamOpen] = useState(false);
   const [workspaceItems, setWorkspaceItems] = useState<WorkspaceDirectoryItem[]>([]);
@@ -324,24 +346,10 @@ export function EntryNavRail({
             >
               <span className="entry-nav-rail__account-avatar" aria-hidden>{accountInitial}</span>
               <span className="entry-nav-rail__account-name">{accountName}</span>
-              <Icon name="chevron-down" size={14} />
-            </button>
-            <button
-              type="button"
-              className="entry-nav-rail__credits-chip"
-              onClick={() => setCreditsOpen((v) => !v)}
-              aria-expanded={creditsOpen}
-              aria-label={
-                creditsBalance != null
-                  ? t('entry.creditsAriaWithBalance', { tier: tierLabel, balance: creditsBalance.toLocaleString(locale) })
-                  : t('entry.creditsAria', { tier: tierLabel })
-              }
-              data-testid="entry-nav-credits"
-            >
-              <span className="entry-nav-rail__credits-tier">{tierLabel}</span>
-              <span className="entry-nav-rail__credits-sep" aria-hidden>·</span>
-              <Icon name="sparkles" size={12} />
-              {creditsBalance != null ? creditsBalance.toLocaleString('en-US') : <span aria-hidden>—</span>}
+              {/* #5517: the plan badge replaces the chevron when a tier is
+                  known — the standalone credits chip row is gone; credits
+                  live in the account menu's billing card. */}
+              {planTier ? <PlanWordmark tier={planTier} height={17} /> : <Icon name="chevron-down" size={14} />}
             </button>
             <CreditsPanel
               open={creditsOpen}
@@ -365,14 +373,21 @@ export function EntryNavRail({
                   <div className="entry-nav-rail__account-head">
                     <span className="entry-nav-rail__account-head-avatar" aria-hidden>{accountInitial}</span>
                     <span className="entry-nav-rail__account-head-name">{accountName}</span>
+                    {accountEmail ? (
+                      <span className="entry-nav-rail__account-head-email">{accountEmail}</span>
+                    ) : null}
                   </div>
-                  {/* #5517 billing card: plan + 升级 CTA + credits row. Real
-                      billing data (no 附加积分 row — vela reports one combined
-                      total); the credits row opens the full CreditsPanel. */}
+                  {/* #5517 billing card: plan (+badge) + 升级 CTA + credits and
+                      bonus rows. Credits are real billing data; the bonus row
+                      mirrors #5517's static 0 (vela reports one combined
+                      total). The credits row opens the full CreditsPanel. */}
                   {billing ? (
                     <div className="entry-nav-rail__menu-credits">
                       <div className="entry-nav-rail__menu-credits-head">
-                        <span className="entry-nav-rail__menu-credits-plan">{tierLabel}</span>
+                        <span className="entry-nav-rail__menu-credits-plan">
+                          {tierLabel}
+                          {planTier ? <PlanWordmark tier={planTier} height={11} /> : null}
+                        </span>
                         {canUpgrade ? (
                           <button
                             type="button"
@@ -395,13 +410,19 @@ export function EntryNavRail({
                         }}
                       >
                         <span className="entry-nav-rail__menu-credits-label">
-                          <Icon name="sparkles" size={14} /> {t('entry.creditsRemaining')}
+                          <RemixIcon name="battery-charge-line" size={14} /> {t('entry.creditsRemaining')}
                         </span>
                         <span className="entry-nav-rail__menu-credits-value">
                           {creditsBalance != null ? creditsBalance.toLocaleString('en-US') : '—'}
                           <Icon name="chevron-right" size={14} />
                         </span>
                       </button>
+                      <div className="entry-nav-rail__menu-credits-row">
+                        <span className="entry-nav-rail__menu-credits-label">
+                          <RemixIcon name="battery-charge-line" size={14} /> {t('entry.creditsBonus')}
+                        </span>
+                        <span className="entry-nav-rail__menu-credits-value">0</span>
+                      </div>
                     </div>
                   ) : null}
                   {onToggleTheme ? (

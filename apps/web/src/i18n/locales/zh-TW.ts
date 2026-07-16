@@ -814,6 +814,7 @@ export const zhTW: Dict = {
   "entry.creditsUpgrade": "升級",
   "entry.creditsOpening": "正在開啟...",
   "entry.creditsRemaining": "剩餘積分",
+  "entry.creditsBonus": "附加積分",
   "entry.creditsUsage": "查看使用情況",
   "entry.creditsMemberNoticeTitle": "額度不足？",
   "entry.creditsMemberNoticeBody": "你目前是 Member，不能自行續額度。需要更多額度時，可以提醒團隊 Admin 提額。",

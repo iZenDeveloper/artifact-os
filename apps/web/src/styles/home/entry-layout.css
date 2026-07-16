@@ -6898,10 +6898,14 @@
   min-width: 0;
   padding: 11px 13px;
 }
+/* Same-row email + role layout (our merged dialog): the role select keeps a
+   fixed column so the email input owns the remaining width. #5517's variant
+   stacked the role full-width on its own row — its 100%-width rule squashed
+   the email input to min-content when both landed in one flex row. */
 .entry-invite__panel--split .entry-invite__role {
-  flex: none;
-  width: 100%;
-  padding: 11px 13px;
+  flex: 0 0 150px;
+  width: auto;
+  padding: 11px 34px 11px 13px;
 }
 .entry-invite__collapse {
   display: flex;
@@ -6953,6 +6957,10 @@
   position: relative;
   flex: 0 0 360px;
   overflow: hidden;
+  /* grid + place-items keeps the avatar cluster centered in the art column
+     (it drifted top-left as display:block). */
+  display: grid;
+  place-items: center;
   background: var(--bg-subtle);
   border-left: var(--stroke-thin) solid var(--border);
 }
