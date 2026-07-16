@@ -1241,10 +1241,10 @@ function byokMediaDefaultsForRun(input: {
 function byokOpenCodeProviderFromConfig(
   config: AppConfig,
 ): ByokChatProviderConfig | undefined {
+  if (!isOpenCodeByokChatProtocol(config.apiProtocol)) return undefined;
   const selectedProvider = selectedKnownProviderForConfig(config);
   const model = config.model.trim();
   if (
-    !isOpenCodeByokChatProtocol(config.apiProtocol) ||
     (byokProviderRequiresApiKey(config.apiProtocol, selectedProvider, config.baseUrl) && !config.apiKey.trim()) ||
     !model ||
     model.toLowerCase() === 'default' ||
