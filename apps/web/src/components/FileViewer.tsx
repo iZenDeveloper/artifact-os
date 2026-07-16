@@ -2669,6 +2669,12 @@ export function deckKeyboardShortcutForEvent(event: DeckKeyboardShortcutEvent): 
   return null;
 }
 
+function isEditableKeyboardTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
+}
+
 function normalizeDeckVisualSource(source: string): string {
   return source
     .replace(/\s+(?=<\/body\s*>)/gi, '')
@@ -2967,6 +2973,25 @@ function FileVersionManagerModal({
     const fallback = window.setTimeout(() => setLoadedSrcDoc(srcDoc), 6000);
     return () => window.clearTimeout(fallback);
   }, [srcDoc, loadedSrcDoc]);
+
+  useEffect(() => {
+    if (!isDeckPreview || !selectedContentMatchesVersion || loadingContent) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (document.activeElement === versionPreviewIframeRef.current) return;
+      if (isEditableKeyboardTarget(event.target) || isEditableKeyboardTarget(document.activeElement)) return;
+      const shortcut = deckKeyboardShortcutForEvent(event);
+      if (!shortcut) return;
+      const win = versionPreviewIframeRef.current?.contentWindow;
+      if (!win) return;
+      event.preventDefault();
+      win.postMessage({
+        type: 'od:slide',
+        action: shortcut === 'reset' ? 'first' : shortcut,
+      }, '*');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isDeckPreview, loadingContent, selectedContentMatchesVersion]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
