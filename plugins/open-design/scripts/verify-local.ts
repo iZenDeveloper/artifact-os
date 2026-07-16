@@ -92,6 +92,7 @@ async function validatePackage(pluginRoot: string): Promise<void> {
   const marketplace = await json(resolve(repoRoot, '.agents/plugins/marketplace.json'));
   const plugins = marketplace.plugins as Array<Record<string, unknown>> | undefined;
   const entry = plugins?.find((plugin) => plugin.name === 'open-design');
+  const pluginInterface = manifest.interface as Record<string, unknown> | undefined;
 
   assert(manifest.name === 'open-design', 'plugin name must match the open-design folder');
   assert(typeof manifest.version === 'string', 'plugin version is required');
@@ -103,6 +104,10 @@ async function validatePackage(pluginRoot: string): Promise<void> {
   assert((entry.policy as Record<string, unknown>)?.installation === 'AVAILABLE', 'plugin must be available');
   assert((entry.policy as Record<string, unknown>)?.authentication === 'ON_USE', 'Cloud sign-in must happen on use');
   await access(resolve(pluginRoot, 'skills/create-with-open-design/SKILL.md'));
+  assert(pluginInterface?.logo === './assets/logo.svg', 'plugin list logo must use the square logo asset');
+  const logoSvg = await readFile(resolve(pluginRoot, 'assets/logo.svg'), 'utf8');
+  assert(/viewBox="0 0 64 64"/u.test(logoSvg), 'plugin list logo must keep a square viewBox');
+  assert(!/<text\b/u.test(logoSvg), 'plugin list logo must not use the horizontal wordmark');
 
   for (const forbidden of ['.mcp.json', '.claude-plugin']) {
     try {
