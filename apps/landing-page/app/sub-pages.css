@@ -1769,10 +1769,12 @@ body.sub-page {
   content: '';
   position: absolute;
   left: 50%;
-  top: -128px;
+  /* Pull up past .sub-main's 140px top padding so the art reaches the very
+     top of the page (behind the transparent sticky nav) with no white gap. */
+  top: -168px;
   transform: translateX(-50%);
   width: 100vw;
-  height: 744px;
+  height: 792px;
   z-index: 0;
   pointer-events: none;
   /* Same faded base-image treatment as the /stories hero: a shared OD
