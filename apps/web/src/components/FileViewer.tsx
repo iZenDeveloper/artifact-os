@@ -329,6 +329,8 @@ const PREVIEW_VIEWPORT_PRESETS: PreviewViewportPreset[] = [
   },
 ];
 
+const DESKTOP_PREVIEW_AUTO_FIT_WIDTH = 1440;
+
 function previewViewportIcon(viewport: PreviewViewportId): string {
   if (viewport === 'tablet') return 'tablet-line';
   if (viewport === 'mobile') return 'smartphone-line';
@@ -922,6 +924,18 @@ export function effectivePreviewScale(
   const availableHeight = Math.max(1, canvasSize.height - canvasPadding);
   const fitScale = Math.min(1, availableWidth / preset.width, availableHeight / preset.height);
   return Math.min(previewScale, fitScale);
+}
+
+export function desktopPreviewAutoFitZoomPercent(
+  canvasSize: PreviewCanvasSize | undefined,
+  designWidth = DESKTOP_PREVIEW_AUTO_FIT_WIDTH,
+): number {
+  if (!canvasSize?.width || !Number.isFinite(canvasSize.width) || designWidth <= 0) return 100;
+  return Math.max(1, Math.min(100, (canvasSize.width / designWidth) * 100));
+}
+
+function zoomPercentLabel(zoomPercent: number): string {
+  return `${Math.round(zoomPercent)}%`;
 }
 
 type PreviewOverlayTransform = { scale: number; offsetX: number; offsetY: number };
@@ -6150,6 +6164,7 @@ function HtmlViewer({
   const [serverPoweredPreviewRequired, setServerPoweredPreviewRequired] = useState(false);
   const [inlinedSource, setInlinedSource] = useState<string | null>(null);
   const [zoom, setZoom] = useState(100);
+  const [zoomMode, setZoomMode] = useState<'auto' | 'manual'>('auto');
   const fileViewportKey = previewViewportStateKey(projectId, file);
   const [previewViewport, setPreviewViewportState] = useState<PreviewViewportId>(
     () => htmlPreviewViewportState.get(fileViewportKey) ?? 'desktop',
@@ -6179,6 +6194,8 @@ function HtmlViewer({
 
   useEffect(() => {
     setPreviewViewportState(htmlPreviewViewportState.get(fileViewportKey) ?? 'desktop');
+    setZoom(100);
+    setZoomMode('auto');
   }, [fileViewportKey]);
   const [templateDescription, setTemplateDescription] = useState('');
   const [templateSaveError, setTemplateSaveError] = useState<string | null>(null);
@@ -6612,7 +6629,6 @@ function HtmlViewer({
   const [commentSidePanelCollapsed, setCommentSidePanelCollapsed] = useState(false);
   const [strokePoints, setStrokePoints] = useState<StrokePoint[]>([]);
   const previewStateKey = `${projectId}:${file.name}`;
-  const previewScale = zoom / 100;
   const localCommentSideDockActive = commentPanelOpen && !commentPortalHost;
   const boardPreviewCanvasSize = commentPreviewCanvasSize(previewBodySize, {
     boardMode: localCommentSideDockActive,
@@ -6761,6 +6777,12 @@ function HtmlViewer({
   const [speakerNotesStatus, setSpeakerNotesStatus] = useState<'saved' | 'error' | null>(null);
   const speakerNotesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const boardPreviewScaleOptions = localCommentSideDockActive ? { canvasPadding: 0 } : undefined;
+  const previewZoomPercent = zoomMode === 'auto' && previewViewport === 'desktop'
+    ? desktopPreviewAutoFitZoomPercent(boardPreviewCanvasSize)
+    : zoom;
+  const previewScale = previewZoomPercent / 100;
+  const previewZoomText = zoomPercentLabel(previewZoomPercent);
+  const zoomLevelActive = (level: number) => Math.abs(previewZoomPercent - level) < 0.001;
   const overlayPreviewScale = effectivePreviewScale(
     previewViewport,
     previewScale,
@@ -11403,7 +11425,7 @@ function HtmlViewer({
                       setZoomMenuOpen((v) => !v);
                     }}
                   >
-                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>{zoom}%</span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>{previewZoomText}</span>
                   </button>
                   {zoomMenuOpen ? (
                     <div className="zoom-menu-popover" role="menu">
@@ -11411,15 +11433,16 @@ function HtmlViewer({
                         <button
                           key={level}
                           type="button"
-                          className={`zoom-menu-item${zoom === level ? ' active' : ''}`}
+                          className={`zoom-menu-item${zoomLevelActive(level) ? ' active' : ''}`}
                           role="menuitem"
                           onClick={() => {
+                            setZoomMode('manual');
                             setZoom(level);
                             setZoomMenuOpen(false);
                           }}
                         >
                           <span style={{ fontVariantNumeric: 'tabular-nums' }}>{level}%</span>
-                          {zoom === level ? (
+                          {zoomLevelActive(level) ? (
                             <Icon name="check" size={13} />
                           ) : null}
                         </button>
@@ -11586,16 +11609,17 @@ function HtmlViewer({
                           <button
                             key={level}
                             type="button"
-                            className={`viewer-toolbar-more-item${zoom === level ? ' active' : ''}`}
+                            className={`viewer-toolbar-more-item${zoomLevelActive(level) ? ' active' : ''}`}
                             role="menuitem"
                             onClick={() => {
+                              setZoomMode('manual');
                               setZoom(level);
                               setToolbarMoreOpen(false);
                             }}
                           >
                             <RemixIcon name="zoom-in-line" size={15} />
                             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{level}%</span>
-                            {zoom === level ? <Icon name="check" size={13} /> : null}
+                            {zoomLevelActive(level) ? <Icon name="check" size={13} /> : null}
                           </button>
                         ))}
                       </>

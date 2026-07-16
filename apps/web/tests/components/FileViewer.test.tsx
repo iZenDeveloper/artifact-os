@@ -59,6 +59,7 @@ import {
   appendSavedPreviewCommentOrder,
   applyInspectOverridesToSource,
   commentPreviewCanvasSize,
+  desktopPreviewAutoFitZoomPercent,
   deckKeyboardShortcutForEvent,
   effectivePreviewScale,
   fileVersionPreviewOptions,
@@ -346,6 +347,11 @@ describe('FileViewer preview scale', () => {
 
   it('uses the requested zoom for desktop preview overlays', () => {
     expect(effectivePreviewScale('desktop', 1.5, { width: 320, height: 480 })).toBe(1.5);
+  });
+
+  it('calculates a desktop auto-fit zoom for wide landing pages', () => {
+    expect(desktopPreviewAutoFitZoomPercent({ width: 900, height: 700 })).toBeCloseTo(62.5);
+    expect(desktopPreviewAutoFitZoomPercent({ width: 1600, height: 900 })).toBe(100);
   });
 
   it('only treats unmodified deck keyboard presses as deck shortcuts', () => {
@@ -5136,6 +5142,59 @@ describe('FileViewer tweaks toolbar', () => {
     await waitFor(() => {
       expect(layout.className).not.toContain('comment-preview-layer-with-side-dock');
       expect(Number(layout.style.getPropertyValue('--preview-scale'))).toBeCloseTo((700 - 48) / 1180);
+    });
+  });
+
+  it('auto-fits wide desktop HTML previews until the user manually zooms', async () => {
+    let viewerBodyWidth = 900;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function getBoundingClientRectMock(this: HTMLElement) {
+        if (this.classList.contains('viewer-body')) return testRect(0, 0, viewerBodyWidth, 700);
+        return testRect(0, 0, 0, 0);
+      });
+
+    const { container } = render(
+      <FileViewer
+        projectId="project-1"
+        projectKind="prototype"
+        file={htmlPreviewFile({
+          name: 'wide-autofit-preview.html',
+          path: 'wide-autofit-preview.html',
+          artifactManifest: {
+            version: 1,
+            kind: 'html',
+            title: 'Wide autofit preview',
+            entry: 'wide-autofit-preview.html',
+            renderer: 'html',
+            exports: ['html'],
+          },
+        })}
+        liveHtml='<html><body><main style="min-width:1440px">Wide landing page</main></body></html>'
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '63%' })).toBeTruthy();
+    });
+    const scaledShell = Array.from(container.querySelectorAll('div')).find(
+      (node) => node.style.transform === 'scale(0.625)',
+    );
+    expect(scaledShell).toBeTruthy();
+
+    viewerBodyWidth = 720;
+    window.dispatchEvent(new Event('resize'));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '50%' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '50%' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '75%' }));
+
+    viewerBodyWidth = 1000;
+    window.dispatchEvent(new Event('resize'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '75%' })).toBeTruthy();
     });
   });
 
