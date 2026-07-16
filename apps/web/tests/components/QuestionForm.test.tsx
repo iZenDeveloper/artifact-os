@@ -690,7 +690,7 @@ describe('QuestionFormView', () => {
     );
   });
 
-  it('auto-continues after ten minutes even when required questions are unanswered', () => {
+  it('only auto-continues when no required answer is missing', () => {
     vi.useFakeTimers();
     try {
       const optionalSubmit = vi.fn();
@@ -726,13 +726,9 @@ describe('QuestionFormView', () => {
           onSubmit={requiredSubmit}
         />,
       );
-      expect(screen.getByLabelText(/Auto-continues when the timer ends 10:00/)).toBeTruthy();
+      expect(screen.queryByLabelText(/Auto-continues when the timer ends 10:00/)).toBeNull();
       act(() => vi.advanceTimersByTime(10 * 60 * 1000));
-      expect(requiredSubmit).toHaveBeenCalledWith(
-        expect.stringContaining('[form answers — discovery]'),
-        { platform: '' },
-        'auto',
-      );
+      expect(requiredSubmit).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
     }
@@ -752,7 +748,7 @@ describe('QuestionFormView', () => {
     );
 
     expect(screen.getByText('1 / 3').closest('.question-form-head')).toBeTruthy();
-    expect(screen.getByLabelText(/Auto-continues when the timer ends 10:00/)).toBeTruthy();
+    expect(screen.queryByLabelText(/Auto-continues when the timer ends 10:00/)).toBeNull();
     expect(screen.getByText('Who will see this deck?')).toBeTruthy();
     expect(screen.queryByText('How detailed should it be?')).toBeNull();
     const nextStep = screen.getByRole('button', { name: 'Next step' }) as HTMLButtonElement;
@@ -939,6 +935,52 @@ describe('QuestionFormView', () => {
     expect(onSubmit.mock.calls[0]?.[0]).toContain(
       'Editorial narrative [value: deck-editorial-narrative]',
     );
+  });
+
+  it('normalizes legacy visual tone defaults to the submitted card IDs', () => {
+    const onSubmit = vi.fn();
+    render(
+      <QuestionFormView
+        form={{
+          ...checkboxObjectForm,
+          questions: [
+            {
+              ...checkboxObjectForm.questions[0]!,
+              defaultValue: ['editorial', 'luxury'],
+            },
+          ],
+        }}
+        interactive
+        visualStyleContext="deck"
+        onSubmit={onSubmit}
+      />,
+    );
+
+    expect((screen.getByLabelText('Editorial narrative') as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText('Premium pitch') as HTMLInputElement).checked).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send answers' }));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Editorial narrative [value: deck-editorial-narrative], Premium pitch [value: deck-premium-pitch]',
+      ),
+      { tone: ['deck-editorial-narrative', 'deck-premium-pitch'] },
+      'submit',
+    );
+  });
+
+  it('renders restored legacy visual tone answers on their matching cards', () => {
+    render(
+      <QuestionFormView
+        form={checkboxObjectForm}
+        interactive
+        submittedAnswers={{ tone: ['editorial', 'luxury'] }}
+        visualStyleContext="deck"
+      />,
+    );
+
+    expect((screen.getByLabelText('Editorial narrative') as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText('Premium pitch') as HTMLInputElement).checked).toBe(true);
   });
 
   it('keeps the visual picker compact, shuffles unselected styles, and expands on demand', () => {

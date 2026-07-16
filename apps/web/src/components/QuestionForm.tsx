@@ -25,6 +25,7 @@ import {
   type VisualStyleCard,
   type VisualStyleCategory,
   type VisualStyleContext,
+  type VisualStyleVariant,
 } from '../runtime/visual-style-catalog';
 import { Icon } from './Icon';
 
@@ -84,10 +85,8 @@ interface Props {
   ) => void;
   submitDisabled?: boolean;
   visualStyleContext?: VisualStyleContext;
-  // Every active question form moves on after the timeout. Required fields
-  // still block an explicit submit, but a timeout records them as skipped so
-  // the agent can apply its sensible defaults instead of leaving the user
-  // stranded on an unattended form.
+  // Optional paths can move on after the timeout. A required answer never
+  // becomes a skipped answer merely because the form was left unattended.
   autoContinueAfterTimeout?: boolean;
 }
 
@@ -130,8 +129,8 @@ export const QuestionFormView = forwardRef<QuestionFormHandle, Props>(function Q
   // tag they follow the app UI locale as before.
   const t = useMemo(() => tForLanguageTag(form.lang) ?? uiT, [form.lang, uiT]);
   const initial = useMemo(
-    () => buildInitialState(form, submittedAnswers, draftAnswers),
-    [form, submittedAnswers, draftAnswers],
+    () => buildInitialState(form, submittedAnswers, draftAnswers, visualStyleContext),
+    [form, submittedAnswers, draftAnswers, visualStyleContext],
   );
   const [answers, setAnswers] = useState<Record<string, string | string[]>>(initial);
   const [fileAnswers, setFileAnswers] = useState<Record<string, File[]>>({});
@@ -155,7 +154,10 @@ export const QuestionFormView = forwardRef<QuestionFormHandle, Props>(function Q
   );
   const autoContinuedRef = useRef(false);
   const locked = !interactive || !onSubmit || submittedAnswers !== undefined;
-  const currentAnswers = submittedAnswers ?? answers;
+  // Submitted answers are held by the host in their original wire format.
+  // Use the normalized snapshot for rendering so legacy tone values select
+  // the same visual card that a new submission will send.
+  const currentAnswers = submittedAnswers !== undefined ? initial : answers;
   const stepped = !locked && !hideInternalSubmit && form.questions.length > 1;
   const activeQuestion = form.questions[activeQuestionIndex];
   const isLastQuestion = activeQuestionIndex === form.questions.length - 1;
@@ -258,23 +260,31 @@ export const QuestionFormView = forwardRef<QuestionFormHandle, Props>(function Q
       for (const q of form.questions) {
         if (next[q.id] !== undefined) {
           if (shouldAdoptStreamedDefault(q, next[q.id]!, touched)) {
-            next[q.id] = canonicalizeQuestionValue(q, q.defaultValue!);
+            next[q.id] = canonicalizeQuestionValue(
+              q,
+              q.defaultValue!,
+              visualStyleContext,
+            );
             changed = true;
           }
           continue;
         }
         changed = true;
         if (submittedAnswers && submittedAnswers[q.id] !== undefined) {
-          next[q.id] = canonicalizeQuestionValue(q, submittedAnswers[q.id]!);
+          next[q.id] = canonicalizeQuestionValue(
+            q,
+            submittedAnswers[q.id]!,
+            visualStyleContext,
+          );
         } else if (q.defaultValue !== undefined) {
-          next[q.id] = canonicalizeQuestionValue(q, q.defaultValue);
+          next[q.id] = canonicalizeQuestionValue(q, q.defaultValue, visualStyleContext);
         } else {
           next[q.id] = emptyQuestionValue(q);
         }
       }
       return changed ? next : prev;
     });
-  }, [form, submittedAnswers, touched]);
+  }, [form, submittedAnswers, touched, visualStyleContext]);
 
   function update(id: string, value: string | string[]) {
     if (locked) return;
@@ -402,7 +412,15 @@ export const QuestionFormView = forwardRef<QuestionFormHandle, Props>(function Q
   });
   const ready = withinSelectionLimits && requiredAnswered;
   const canSkipAll = form.questions.every((q) => q.required !== true);
-  const autoContinueEnabled = autoContinueAfterTimeout && !locked && !submitDisabled;
+  // Required answers remain required after a timeout. A flat form may only
+  // auto-continue once every required answer is present; a stepped form can
+  // auto-continue on an optional active step after its earlier requirements
+  // have been met. Fully optional forms retain the countdown throughout.
+  const autoContinueEnabled =
+    autoContinueAfterTimeout &&
+    !locked &&
+    !submitDisabled &&
+    (canSkipAll || (ready && (!stepped || activeQuestion?.required !== true)));
   const currentQuestionReady =
     !activeQuestion ||
     activeQuestion.required !== true ||
@@ -989,15 +1007,16 @@ function VisualStylePicker({
       return cards[cardIndex]!;
     },
   );
-  const selectedOutsidePage = selectedCards.filter(
-    (selected) => !page.some((card) => card.value === selected.value),
+  const compactSelectedCards = selectedCards.slice(
+    0,
+    Math.max(VISUAL_STYLE_PAGE_SIZE, selectedCards.length),
   );
   const compactCards =
-    selectedOutsidePage.length > 0
+    compactSelectedCards.length > 0
       ? [
-          ...selectedOutsidePage,
+          ...compactSelectedCards,
           ...page.filter((card) => !value.includes(card.value)),
-        ].slice(0, VISUAL_STYLE_PAGE_SIZE)
+        ].slice(0, Math.max(VISUAL_STYLE_PAGE_SIZE, compactSelectedCards.length))
       : page;
   const remaining = Math.max(0, cards.length - compactCards.length);
   const galleryCards =
@@ -1420,19 +1439,20 @@ function buildInitialState(
   form: QuestionForm,
   submitted: Record<string, string | string[]> | undefined,
   draft: Record<string, string | string[]> | undefined,
+  visualStyleContext: VisualStyleContext | undefined,
 ): Record<string, string | string[]> {
   const out: Record<string, string | string[]> = {};
   for (const q of form.questions) {
     if (submitted && submitted[q.id] !== undefined) {
-      out[q.id] = canonicalizeQuestionValue(q, submitted[q.id]!);
+      out[q.id] = canonicalizeQuestionValue(q, submitted[q.id]!, visualStyleContext);
       continue;
     }
     if (draft && draft[q.id] !== undefined && q.type !== 'file') {
-      out[q.id] = canonicalizeQuestionValue(q, draft[q.id]!);
+      out[q.id] = canonicalizeQuestionValue(q, draft[q.id]!, visualStyleContext);
       continue;
     }
     if (q.defaultValue !== undefined) {
-      out[q.id] = canonicalizeQuestionValue(q, q.defaultValue);
+      out[q.id] = canonicalizeQuestionValue(q, q.defaultValue, visualStyleContext);
       continue;
     }
     out[q.id] = emptyQuestionValue(q);
@@ -1550,11 +1570,73 @@ function questionAnswerIsPresent(value: string | string[] | undefined): boolean 
 function canonicalizeQuestionValue(
   q: QuestionForm['questions'][number],
   value: string | string[],
+  visualStyleContext: VisualStyleContext | undefined,
 ): string | string[] {
   if (Array.isArray(value)) {
-    return value.map((entry) => formOptionValueForLabel(q, entry));
+    return value.map((entry) =>
+      normalizeVisualStyleQuestionValue(q, entry, visualStyleContext),
+    );
   }
-  return formOptionValueForLabel(q, value);
+  return normalizeVisualStyleQuestionValue(q, value, visualStyleContext);
+}
+
+const LEGACY_VISUAL_STYLE_VARIANTS: Readonly<Record<string, VisualStyleVariant>> = {
+  editorial: 'editorial',
+  'editorial / magazine': 'editorial',
+  magazine: 'editorial',
+  minimal: 'minimal',
+  'modern minimal': 'minimal',
+  'modern-minimal': 'minimal',
+  'soft gradients': 'minimal',
+  'soft-gradient': 'minimal',
+  'soft-gradients': 'minimal',
+  playful: 'playful',
+  'playful / illustrative': 'playful',
+  illustrative: 'playful',
+  utility: 'utility',
+  'tech / utility': 'utility',
+  tech: 'utility',
+  luxury: 'luxury',
+  'luxury / refined': 'luxury',
+  refined: 'luxury',
+  brutalist: 'brutalist',
+  experimental: 'brutalist',
+  human: 'human',
+  'human / approachable': 'human',
+  approachable: 'human',
+};
+
+/**
+ * Maps the original seven tone aliases to the full catalog's stable card
+ * IDs. Unknown/custom answers deliberately pass through unchanged.
+ */
+export function normalizeVisualStyleQuestionValue(
+  q: QuestionForm['questions'][number],
+  value: string,
+  visualStyleContext: VisualStyleContext | undefined,
+): string {
+  const optionValue = formOptionValueForLabel(q, value);
+  if (
+    !visualStyleContext ||
+    q.id !== 'tone' ||
+    (q.type !== 'checkbox' && q.type !== 'radio')
+  ) {
+    return optionValue;
+  }
+
+  const cards = visualStyleCardsForContext(visualStyleContext);
+  const normalized = optionValue.trim().toLocaleLowerCase();
+  const directMatch = cards.find(
+    (card) =>
+      card.value.toLocaleLowerCase() === normalized ||
+      card.title.toLocaleLowerCase() === normalized,
+  );
+  if (directMatch) return directMatch.value;
+
+  const variant = LEGACY_VISUAL_STYLE_VARIANTS[normalized];
+  return variant
+    ? (cards.find((card) => card.variant === variant)?.value ?? optionValue)
+    : optionValue;
 }
 
 function shouldRenderCustomChoice(q: QuestionForm['questions'][number]): boolean {

@@ -54,6 +54,7 @@ import {
 } from "@open-design/contracts";
 import { OdCardView, type BrandBrowserAssistConfirm } from "./OdCard";
 import {
+  normalizeVisualStyleQuestionValue,
   parseSubmittedAnswers,
   QuestionFormView,
   type QuestionFormFileSubmission,
@@ -2668,16 +2669,28 @@ function FormBlock({
         question.options
           ? visualStyleCardsForContext(visualStyleContext)
           : [];
+      const normalizedVisualValues =
+        visualStyleCards.length > 0 && visualStyleContext
+          ? values.map((value) =>
+              normalizeVisualStyleQuestionValue(question, value, visualStyleContext),
+            )
+          : values;
       const visualCards = visualStyleCards.flatMap((card) =>
-        values.includes(card.value) && card.preview
+        normalizedVisualValues.includes(card.value) && card.preview
           ? [{ title: card.title, src: card.preview.src }]
           : [],
       );
       if (visualCards.length > 0) {
         visualItems.push({ label: question.label, cards: visualCards });
-        const selectedLabelsWithoutPreview = visualStyleCards
-          .filter((card) => values.includes(card.value) && !card.preview)
-          .map((card) => formOptionLabelForValue(question, card.value));
+        const selectedLabelsWithoutPreview = normalizedVisualValues
+          .filter(
+            (value) =>
+              !visualStyleCards.some((card) => card.value === value && card.preview),
+          )
+          .map((value) => {
+            const card = visualStyleCards.find((candidate) => candidate.value === value);
+            return card?.title ?? formOptionLabelForValue(question, value);
+          });
         if (selectedLabelsWithoutPreview.length > 0) {
           items.push({
             label: question.label,

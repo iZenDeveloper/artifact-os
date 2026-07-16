@@ -879,7 +879,7 @@ describe('AssistantMessage question forms', () => {
     );
   });
 
-  it('keeps selected visual styles without previews alongside preview cards', () => {
+  it('normalizes every selected legacy visual style to its preview card', () => {
     const form = [
       '<question-form id="discovery" title="Quick brief">',
       JSON.stringify({
@@ -912,7 +912,46 @@ describe('AssistantMessage question forms', () => {
     );
 
     expect(screen.getByRole('img', { name: 'Visual tone: Editorial narrative' })).toBeTruthy();
-    expect(screen.getByText('Luxury / refined')).toBeTruthy();
+    expect(screen.getByRole('img', { name: 'Visual tone: Premium pitch' })).toHaveAttribute(
+      'src',
+      'https://repo-assets.open-design.ai/style-catalog/v1/deck-premium-pitch-v1.webp',
+    );
+  });
+
+  it('keeps a custom visual style selection alongside preview cards', () => {
+    const form = [
+      '<question-form id="discovery" title="Quick brief">',
+      JSON.stringify({
+        questions: [
+          {
+            id: 'tone',
+            label: 'Visual tone',
+            type: 'checkbox',
+            options: ['Editorial / magazine'],
+          },
+        ],
+      }),
+      '</question-form>',
+    ].join('\n');
+
+    render(
+      <AssistantMessage
+        message={baseMessage({
+          content: form,
+          events: [{ kind: 'text', text: form } as ChatMessage['events'][number]],
+        })}
+        streaming={false}
+        projectId="proj-1"
+        projectKind="slide_deck"
+        nextUserContent={[
+          '[form answers for discovery]',
+          '- Visual tone: Editorial / magazine, Warm Japanese editorial',
+        ].join('\n')}
+      />,
+    );
+
+    expect(screen.getByRole('img', { name: 'Visual tone: Editorial narrative' })).toBeTruthy();
+    expect(screen.getByText('Warm Japanese editorial')).toBeTruthy();
   });
 
   it('does not recommend next steps on the same turn as an inline question form', () => {
