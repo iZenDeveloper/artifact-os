@@ -1749,57 +1749,45 @@ body.sub-page {
  */
 /* /plugins/ hub shares the 1180px centered safe area used by /solutions/
    and /agents/, so the three hubs read as one family. */
-.sub-main:has(> .plugins-tile-grid) > .catalog-head,
 .sub-main:has(> .plugins-tile-grid) > .plugins-tile-grid {
   max-width: 1180px;
   margin-inline: auto;
 }
-
-/* Hub restructure: resource cards lead; every hub section shares the
-   1180px centered safe area (the tile grid now lives inside a section,
-   so the older `:has(> .plugins-tile-grid)` rule no longer matches). */
-.sub-main:has(> .plugins-section) > .catalog-head,
-.sub-main:has(> .plugins-section) > .plugins-section,
-.sub-main:has(> .plugins-section) > .plugin-contribute {
-  max-width: 1180px;
+/* Centered hero on the hub — title + lead stack in the middle. */
+.sub-main:has(> .plugins-tile-grid) > .catalog-head {
+  max-width: 780px;
+  margin-inline: auto;
+  text-align: center;
+  padding-top: 32px;
+}
+.sub-main:has(> .plugins-tile-grid) > .catalog-head .lead {
+  max-width: 620px;
   margin-inline: auto;
 }
-.plugins-section {
+
+/* Category tiles lead with an on-brand cover illustration. The cover
+   bleeds to the card edges, so padding moves onto an inner body. */
+.plugins-tile-covered {
+  padding: 0;
+  overflow: hidden;
+}
+.plugins-tile-cover {
+  display: block;
   width: 100%;
-  margin: 40px 0 0;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--bone);
+  border-bottom: 1px solid var(--line);
 }
-.plugins-section + .plugins-section {
-  margin-top: 52px;
-}
-.plugins-section > .plugins-tile-grid {
-  margin: 0;
-}
-.plugins-sec-head {
+.plugins-tile-body {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 26px 24px;
+  flex: 1;
 }
-.plugins-sec-title {
-  margin: 0;
-  font-family: var(--serif);
-  font-weight: 700;
-  font-size: 24px;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-.plugins-sec-more {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  text-decoration: none;
-  white-space: nowrap;
-}
-.plugins-sec-more:hover {
-  color: var(--coral);
+.plugins-tile-covered .plugins-tile-cta {
+  margin-top: auto;
 }
 
 .plugins-tile-grid {

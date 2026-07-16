@@ -44,10 +44,6 @@ export interface PluginsCopy {
   hubMetaTitle: (n: number) => string;
   hubMetaDescription: string;
 
-  /** Section heads on the hub. EN baseline; zh localized, rest fall back to EN. */
-  hubPicksTitle: string;
-  hubPicksMore: string;
-  hubBrowseTitle: string;
 
   tileTemplates: string;
   tileSkills: string;
@@ -237,9 +233,6 @@ const en: PluginsCopy = {
   hubMetaDescription:
     'Browse the open-source Claude skills marketplace — design skills, systems, templates and craft your coding agent runs directly. Works with Claude, Codex, Cursor.',
 
-  hubPicksTitle: "Editor's picks",
-  hubPicksMore: 'See all',
-  hubBrowseTitle: 'Browse by type',
 
   tileTemplates: 'Templates',
   tileSkills: 'Skills',
@@ -566,9 +559,6 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     hubMetaTitle: (n) => `Claude Skills 市场 — ${n}+ 插件 | Open Design`,
     hubMetaDescription:
       '浏览开源的 Claude skills 市场——设计 skills、设计系统、模板与 craft，你的 coding agent 可直接运行。支持 Claude、Codex、Cursor。',
-    hubPicksTitle: '编辑精选',
-    hubPicksMore: '查看全部',
-    hubBrowseTitle: '按类型浏览',
     tileTemplates: '模板',
     tileSkills: '技能',
     tileSystems: '设计系统',

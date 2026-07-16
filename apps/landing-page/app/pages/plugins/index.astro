@@ -16,7 +16,6 @@
  */
 import Layout from '../../_components/sub-page-layout.astro';
 import PluginContribute from '../../_components/plugin-contribute.astro';
-import PluginRow from '../../_components/plugin-row.astro';
 import { getCraftRecords, getSystemRecords } from '../../_lib/catalog';
 import { getBundledPlugins } from '../../_lib/bundled-plugins';
 import { categorizePlugin, bundledRecordOf } from '../../_lib/plugin-facets';
@@ -55,12 +54,6 @@ const systemsCount = systems.length;
 const craftCount = craft.length;
 const totalCount = templatesCount + skillsCount + systemsCount + craftCount;
 
-// Editor's picks — real bundled plugins tagged `featured` (same proxy the
-// Templates catalog uses). Fall back to the first entries when too few are
-// tagged so the hub never renders an empty picks grid.
-const featuredPicks = nonSystems.filter((p) => (p.tags ?? []).includes('featured'));
-const picks = (featuredPicks.length >= 4 ? featuredPicks : nonSystems).slice(0, 8);
-
 const title = pcopy.hubMetaTitle(totalCount);
 const description = pcopy.hubMetaDescription;
 
@@ -79,9 +72,9 @@ const jsonLd = {
 };
 
 const tiles = [
-  { href: href('/plugins/templates/'), title: pcopy.tileTemplates, count: templatesCount, blurb: pcopy.tileTemplatesBlurb, cta: pcopy.browseTemplates },
-  { href: href('/plugins/skills/'),    title: pcopy.tileSkills,    count: skillsCount,    blurb: pcopy.tileSkillsBlurb,    cta: pcopy.browseSkills },
-  { href: href('/plugins/systems/'),   title: pcopy.tileSystems,   count: systemsCount,   blurb: pcopy.tileSystemsBlurb,   cta: pcopy.browseSystems },
+  { href: href('/plugins/templates/'), title: pcopy.tileTemplates, count: templatesCount, blurb: pcopy.tileTemplatesBlurb, cta: pcopy.browseTemplates, cover: '/plugins/covers/templates.webp' },
+  { href: href('/plugins/skills/'),    title: pcopy.tileSkills,    count: skillsCount,    blurb: pcopy.tileSkillsBlurb,    cta: pcopy.browseSkills,    cover: '/plugins/covers/skills.webp' },
+  { href: href('/plugins/systems/'),   title: pcopy.tileSystems,   count: systemsCount,   blurb: pcopy.tileSystemsBlurb,   cta: pcopy.browseSystems,   cover: '/plugins/covers/systems.webp' },
 ];
 ---
 
@@ -95,38 +88,21 @@ const tiles = [
     <p class="lead">{pcopy.hubLead}</p>
   </header>
 
-  {/* Resources first: real editor's-picks plugins are the focus of the hub. */}
-  <section class="plugins-section" aria-label={pcopy.hubPicksTitle}>
-    <div class="plugins-sec-head">
-      <h2 class="plugins-sec-title">{pcopy.hubPicksTitle}</h2>
-      <a class="plugins-sec-more" href={href('/plugins/templates/')}>{pcopy.hubPicksMore} →</a>
-    </div>
-    <div class="catalog-grid catalog-grid-picks">
-      <ol>
-        {picks.map((p, idx) => (
-          <PluginRow item={{ kind: 'bundled', record: p }} index={idx} />
-        ))}
-      </ol>
-    </div>
-  </section>
-
-  {/* Browse by type. */}
-  <section class="plugins-section" aria-label={pcopy.hubBrowseTitle}>
-    <div class="plugins-sec-head">
-      <h2 class="plugins-sec-title">{pcopy.hubBrowseTitle}</h2>
-    </div>
-    <div class="plugins-tile-grid">
-      {tiles.map((tile) => (
-        <a class="plugins-tile" href={tile.href}>
+  {/* Each category collection leads with an on-brand cover illustration. */}
+  <section class="plugins-tile-grid" aria-label={pcopy.hubLabel}>
+    {tiles.map((tile) => (
+      <a class="plugins-tile plugins-tile-covered" href={tile.href}>
+        <img class="plugins-tile-cover" src={tile.cover} alt="" width="720" height="405" loading="lazy" decoding="async" />
+        <div class="plugins-tile-body">
           <div class="plugins-tile-head">
-            <h3 class="plugins-tile-title">{tile.title}</h3>
+            <h2 class="plugins-tile-title">{tile.title}</h2>
             <span class="plugins-tile-count">{tile.count}</span>
           </div>
           <p class="plugins-tile-blurb">{tile.blurb}</p>
           <span class="plugins-tile-cta">{tile.cta} →</span>
-        </a>
-      ))}
-    </div>
+        </div>
+      </a>
+    ))}
   </section>
 
   {/* Contribute entry — de-emphasized, at the bottom. */}
