@@ -163,6 +163,7 @@ Never invent PH rankings or “guaranteed PotD.”
 | Sales deck / demo kit for launch | `sales-enablement` |
 | Lead routing / MQL for launch traffic | `revops` |
 | Pricing / packaging launch | `pricing` |
+| Launch measurement / tracking | `analytics` |
 | Multi-platform social pack | `content-repurposer` / `social-content-factory` |
 | Hooks for teasers | `hook-engine` |
 | Paid amplification | `ads` (structure) + `ad-variants-generator` (creative matrix) |
@@ -237,5 +238,5 @@ Voice on all sample copy must pass DESIGN.md §8 when brand linked.
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `emails`, `cold-email`, `sales-enablement`, `revops`, `pricing`, `ads`, `copywriting`, `cro`, `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`  
+- **Related:** `product-marketing`, `emails`, `cold-email`, `sales-enablement`, `revops`, `pricing`, `ads`, `analytics`, `copywriting`, `cro`, `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`  
 - **Upstream:** [marketingskills/launch](https://github.com/coreyhaines31/marketingskills/tree/main/skills/launch)  

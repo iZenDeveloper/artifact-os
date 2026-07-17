@@ -170,6 +170,7 @@ Fragmented tiny campaigns kill learning.
 | Organic pack from winning angle | `content-repurposer` |
 | Landing message match / CRO | `cro` + `copywriting` |
 | Offline conversions / MQL loop | `revops` |
+| Tracking plan / pixels / UTMs | `analytics` |
 
 Sample ads in this skill: enough angles/formulas for the plan; bulk matrix → hand off.
 
@@ -296,5 +297,5 @@ HTML: platform cards · structure tree · audience table · checklist · sample 
 
 ## Vertical metadata
 
-- **Related:** `ad-variants-generator`, `ad-creative`, `hook-engine`, `product-marketing`, `cro`, `copywriting`, `revops`, `launch`, `content-repurposer`, `marketing-psychology`  
+- **Related:** `ad-variants-generator`, `ad-creative`, `hook-engine`, `product-marketing`, `analytics`, `cro`, `copywriting`, `revops`, `launch`, `content-repurposer`, `marketing-psychology`  
 - **Upstream:** [marketingskills/ads](https://github.com/coreyhaines31/marketingskills/tree/main/skills/ads)  
