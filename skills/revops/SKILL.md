@@ -209,7 +209,7 @@ Benchmarks in tables are **industry reference only** — never invent historical
 | Outbound for net-new | `cold-email` |
 | Talk tracks / decks for SQLs | `sales-enablement` |
 | Launch volume spike ops | `launch` |
-| Pricing packaging | pricing (if installed) |
+| Pricing packaging | `pricing` |
 
 ---
 
@@ -287,5 +287,5 @@ HTML: funnel diagram-ish stage strip + scoring table + routing tree summary + me
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `emails`, `cold-email`, `sales-enablement`, `launch`, `content-strategy`  
+- **Related:** `product-marketing`, `pricing`, `emails`, `cold-email`, `sales-enablement`, `launch`, `content-strategy`  
 - **Upstream:** [marketingskills/revops](https://github.com/coreyhaines31/marketingskills/tree/main/skills/revops)  

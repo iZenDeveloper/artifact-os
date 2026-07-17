@@ -175,6 +175,7 @@ Tell the user which skill to run next:
 | Product / feature launch GTM | `launch` |
 | Sales decks / objections / demos | `sales-enablement` |
 | Lead scoring / routing / MQL handoff | `revops` |
+| Pricing / packaging / tiers | `pricing` |
 | Psychology pass on copy | `marketing-psychology` |
 
 ---
@@ -220,6 +221,6 @@ Ship only if:
 
 - **Vertical:** marketing  
 - **Layer:** strategy / context (before Content Pro packs)  
-- **Related:** `content-strategy`, `sales-enablement`, `revops`, `cro`, `copywriting`, `emails`, `cold-email`, `launch`, `seo-audit`, `ai-seo`, `schema`, `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `marketing-psychology`  
+- **Related:** `content-strategy`, `sales-enablement`, `revops`, `pricing`, `cro`, `copywriting`, `emails`, `cold-email`, `launch`, `seo-audit`, `ai-seo`, `schema`, `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `marketing-psychology`  
 - **Upstream:** [marketingskills/product-marketing](https://github.com/coreyhaines31/marketingskills/tree/main/skills/product-marketing)  
 - **Bridge:** `references/design-md-bridge.md`  

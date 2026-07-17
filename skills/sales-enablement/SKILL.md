@@ -264,5 +264,5 @@ HTML: cover strip + section cards matching the asset (slide list, table, script 
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `revops`, `cold-email`, `emails`, `copywriting`, `cro`, `launch`, `content-strategy`, `marketing-psychology`  
+- **Related:** `product-marketing`, `pricing`, `revops`, `cold-email`, `emails`, `copywriting`, `cro`, `launch`, `content-strategy`, `marketing-psychology`  
 - **Upstream:** [marketingskills/sales-enablement](https://github.com/coreyhaines31/marketingskills/tree/main/skills/sales-enablement)  
