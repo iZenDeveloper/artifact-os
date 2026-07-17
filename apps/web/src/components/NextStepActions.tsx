@@ -223,7 +223,7 @@ interface Props {
   skills?: SkillSummary[];
   // Resolved `@skill` names per featured action, shown in the hover detail.
   toolboxSkillNames?: Partial<Record<DesignToolboxActionId, string | null>>;
-  // Contribute the artifact to the Open Design community gallery.
+  // Contribute the artifact to the Artifact OS community gallery.
   onShareToOpenDesign?: () => void;
   shareToOpenDesignBusy?: boolean;
   variant?: NextStepActionsVariant;
@@ -654,7 +654,10 @@ export function NextStepActions({
 
   return (
     <div className={styles.root} data-testid="next-step-actions">
-      <div className={styles.label}>{t('nextStep.title')}</div>
+      <div className={styles.header}>
+        <div className={styles.label}>{t('nextStep.title')}</div>
+        <div className={styles.subtitle}>{t('nextStep.subtitle')}</div>
+      </div>
       {showBrandRows || showPlanRows || showProjectIncompleteRows || showDesignSystemRows || showToolbox || hasMore ? (
         <div className={styles.toolboxList} data-testid="next-step-toolbox">
           {showPlanRows
@@ -725,34 +728,58 @@ export function NextStepActions({
               })
             : null}
           {showProjectIncompleteRows
-            ? PROJECT_INCOMPLETE_NEXT_STEP_ACTIONS.map((action) => (
-                <button
-                  key={action.id}
-                  type="button"
-                  className={styles.toolboxRow}
-                  data-testid={`next-step-project-action-${action.id}`}
-                  onClick={() => handlePromptAction(action)}
-                >
-                  <Icon name={action.icon} size={14} className={styles.toolboxRowIcon} />
-                  <span className={styles.toolboxRowTitle}>{promptActionTitle(action, t)}</span>
-                  <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
-                </button>
-              ))
+            ? PROJECT_INCOMPLETE_NEXT_STEP_ACTIONS.map((action) => {
+                const title = promptActionTitle(action, t);
+                const description =
+                  action.id === 'project-continue'
+                    ? t('nextStep.projectContinueBody')
+                    : t('nextStep.projectGenerateArtifactBody');
+                return (
+                  <button
+                    key={action.id}
+                    type="button"
+                    className={styles.toolboxRow}
+                    data-testid={`next-step-project-action-${action.id}`}
+                    aria-label={`${title}. ${description}`}
+                    title={description}
+                    onClick={() => handlePromptAction(action)}
+                  >
+                    <Icon name={action.icon} size={14} className={styles.toolboxRowIcon} />
+                    <span className={styles.toolboxRowText}>
+                      <span className={styles.toolboxRowTitle}>{title}</span>
+                      <span className={styles.toolboxRowDescription}>{description}</span>
+                    </span>
+                    <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
+                  </button>
+                );
+              })
             : null}
           {showDesignSystemRows
-            ? DESIGN_SYSTEM_NEXT_STEP_ACTIONS.map((action) => (
-                <button
-                  key={action.id}
-                  type="button"
-                  className={styles.toolboxRow}
-                  data-testid={`next-step-design-system-action-${action.id}`}
-                  onClick={() => handlePromptAction(action)}
-                >
-                  <Icon name={action.icon} size={14} className={styles.toolboxRowIcon} />
-                  <span className={styles.toolboxRowTitle}>{promptActionTitle(action, t)}</span>
-                  <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
-                </button>
-              ))
+            ? DESIGN_SYSTEM_NEXT_STEP_ACTIONS.map((action) => {
+                const title = promptActionTitle(action, t);
+                const description =
+                  action.id === 'design-system-ai-refine'
+                    ? t('nextStep.designSystemAiRefineBody')
+                    : t('nextStep.designSystemAuditKitBody');
+                return (
+                  <button
+                    key={action.id}
+                    type="button"
+                    className={styles.toolboxRow}
+                    data-testid={`next-step-design-system-action-${action.id}`}
+                    aria-label={`${title}. ${description}`}
+                    title={description}
+                    onClick={() => handlePromptAction(action)}
+                  >
+                    <Icon name={action.icon} size={14} className={styles.toolboxRowIcon} />
+                    <span className={styles.toolboxRowText}>
+                      <span className={styles.toolboxRowTitle}>{title}</span>
+                      <span className={styles.toolboxRowDescription}>{description}</span>
+                    </span>
+                    <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
+                  </button>
+                );
+              })
             : null}
           {showToolbox && !showDesignSystemRows
             && !showProjectIncompleteRows
@@ -761,19 +788,24 @@ export function NextStepActions({
             ? FEATURED_DESIGN_TOOLBOX_ACTION_IDS.map((id) => {
                 const action = getDesignToolboxAction(id);
                 if (!action) return null;
+                const title = designToolboxActionTitle(action, t);
+                const description = designToolboxActionDescription(action, t);
                 return (
                   <button
                     key={id}
                     type="button"
                     className={styles.toolboxRow}
                     data-testid={`next-step-toolbox-action-${id}`}
+                    aria-label={`${title}. ${description}`}
+                    title={description}
                     onClick={() => handleToolboxAction(id)}
                     onMouseEnter={(e) => openDetail(id, e.currentTarget.getBoundingClientRect())}
                     onMouseLeave={scheduleClose}
                   >
                     <Icon name={action.icon} size={14} className={styles.toolboxRowIcon} />
-                    <span className={styles.toolboxRowTitle}>
-                      {designToolboxActionTitle(action, t)}
+                    <span className={styles.toolboxRowText}>
+                      <span className={styles.toolboxRowTitle}>{title}</span>
+                      <span className={styles.toolboxRowDescription}>{description}</span>
                     </span>
                     <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
                   </button>
@@ -786,12 +818,17 @@ export function NextStepActions({
               className={styles.moreRow}
               data-testid="next-step-toolbox-more"
               aria-expanded={!!more}
+              aria-label={`${t('nextStep.more')}. ${t('nextStep.moreBody')}`}
+              title={t('nextStep.moreBody')}
               onMouseEnter={(e) => openMore(e.currentTarget.getBoundingClientRect())}
               onMouseLeave={scheduleClose}
               onClick={(e) => openMore(e.currentTarget.getBoundingClientRect())}
             >
               <Icon name="more-horizontal" size={14} className={styles.toolboxRowIcon} />
-              <span className={styles.toolboxRowTitle}>{t('nextStep.more')}</span>
+              <span className={styles.toolboxRowText}>
+                <span className={styles.toolboxRowTitle}>{t('nextStep.more')}</span>
+                <span className={styles.toolboxRowDescription}>{t('nextStep.moreBody')}</span>
+              </span>
               <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
             </button>
           ) : null}
