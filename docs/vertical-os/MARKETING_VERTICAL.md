@@ -68,6 +68,7 @@ Cập nhật: 2026-07 · Aligns with Content Pro **v2.2** + MVP output scope (te
 | 0h | `schema` | **Pilot** | JSON-LD / rich results structured data (marketingskills) |
 | 0i | `cold-email` | **Pilot** | B2B outbound / SDR cold sequences (marketingskills; ≠ lifecycle `emails`) |
 | 0j | `content-strategy` | **Pilot** | Pillars, topic clusters, editorial roadmap (marketingskills) |
+| 0k | `sales-enablement` | **Pilot** | Decks, one-pagers, objections, demo scripts, playbooks (marketingskills) |
 | 1 | `content-repurposer` | **Done** | Core; strategy + ready-to-post; MVP scope locked |
 | 2 | `social-content-factory` | **Done** | Original batch / week |
 | 3 | `hook-engine` | **Done** | Hooks-only lab |
