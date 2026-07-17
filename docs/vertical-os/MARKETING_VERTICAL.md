@@ -61,6 +61,8 @@ Cập nhật: 2026-07 · Aligns with Content Pro **v2.2** + MVP output scope (te
 | 0 | `product-marketing` | **Pilot** | Positioning/ICP context; DESIGN.md bridge; run before packs |
 | 0b | `cro` | **Pilot** | Page/form CRO audit → cro-audit.html (marketingskills bridge) |
 | 0c | `copywriting` | **Pilot** | Full page copy (replaced catalogue stub) |
+| 0d | `seo-audit` | **Pilot** | Technical + on-page SEO audit (marketingskills) |
+| 0e | `ai-seo` | **Pilot** | AEO/GEO / AI citations (marketingskills) |
 | 1 | `content-repurposer` | **Done** | Core; strategy + ready-to-post; MVP scope locked |
 | 2 | `social-content-factory` | **Done** | Original batch / week |
 | 3 | `hook-engine` | **Done** | Hooks-only lab |

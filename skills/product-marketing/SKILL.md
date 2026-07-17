@@ -166,6 +166,8 @@ Tell the user which skill to run next:
 | Paid variants | `ad-variants-generator` / `ad-creative` |
 | Landing CRO / page structure | `cro` |
 | Full page copy rewrite | `copywriting` |
+| Technical SEO audit | `seo-audit` |
+| AI search / citations (AEO/GEO) | `ai-seo` |
 | Psychology pass on copy | `marketing-psychology` |
 
 ---
