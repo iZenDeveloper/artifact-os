@@ -1698,14 +1698,15 @@ async function captureArtifactSlides(
     // Give the deck bridge time to fit fixed-canvas (transform: scale) layouts
     // to the iframe before the first capture. Non-deck pages need a bit longer
     // for image decode + data-URL inlining inside prepareCapture.
-    await delayMs(opts.deck ? 600 : 400);
+    // Non-deck pages prewarm + multi-band capture need longer settle than decks.
+    await delayMs(opts.deck ? 600 : 700);
     await runExportCapture(
       win,
       {
         id: `exp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         mode: opts.mode,
         deck: opts.deck,
-        delay: opts.deck ? 350 : 500,
+        delay: opts.deck ? 350 : 600,
       },
       (slide, total) => {
         slides.push(slide);

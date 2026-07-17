@@ -104,26 +104,26 @@ describe('buildSrcdoc', () => {
     expect(srcdoc).toContain('img.decode');
     expect(srcdoc).toContain('function inlineImagesAsDataUrls()');
     expect(srcdoc).toContain('function rasterizeImageToDataUrl(img)');
-    expect(srcdoc).toContain('function prepareCapture()');
-    // Order: fonts → images → inline → double rAF before paint.
-    expect(srcdoc).toContain(
-      'return waitForFonts()\n      .then(waitForImages)\n      .then(inlineImagesAsDataUrls)',
-    );
+    expect(srcdoc).toContain('function prepareCapture(opts)');
+    expect(srcdoc).toContain('function measureContentSize()');
+    expect(srcdoc).toContain('function unlockDocumentScroll()');
+    expect(srcdoc).toContain('function prewarmScroll()');
     expect(srcdoc).toContain('window.__odCaptureSnapshot = function(opts){');
-    expect(srcdoc).toContain('return prepareCapture().then(function(){');
+    expect(srcdoc).toContain('prepareCapture({ full: !!opts.full, prewarm: !!opts.full })');
   });
 
-  it('tiles long full-page captures and falls back when foreignObject is too tall', () => {
+  it('tiles long full-page captures and paginates PDF as viewport bands', () => {
     const srcdoc = buildSrcdoc('<main style="height:20000px">Tall</main>');
 
     expect(srcdoc).toContain('var MAX_CAPTURE_EDGE = 8192');
     expect(srcdoc).toContain("reject(new Error('page-too-tall'))");
     expect(srcdoc).toContain('function captureFullPageTiled()');
+    expect(srcdoc).toContain('function captureViewportBands()');
     expect(srcdoc).toContain('window.__odCaptureFullPageTiled = function(){');
-    // Export-capture bridge: empty/tall full capture → tiled path.
-    expect(srcdoc).toContain("msg.indexOf('page-too-tall') >= 0");
-    expect(srcdoc).toContain("msg.indexOf('empty-render') >= 0");
-    expect(srcdoc).toContain('return window.__odCaptureFullPageTiled()');
+    expect(srcdoc).toContain('window.__odCaptureFullPageBands = function(){');
+    // Export-capture bridge: non-deck pages emit multi-band slides.
+    expect(srcdoc).toContain('function capturePageImages()');
+    expect(srcdoc).toContain("if (!deck && !single)");
     // Cap DPR so multi-tile stitch stays within canvas memory budgets.
     expect(srcdoc).toContain('var dpr = Math.min(2, window.devicePixelRatio || 1)');
   });

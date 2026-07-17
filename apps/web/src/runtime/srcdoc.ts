@@ -599,9 +599,96 @@ function injectSnapshotBridge(doc: string): string {
     }
   }
   // Cap single foreignObject/canvas dimension. Larger documents are tiled via
-  // viewport scrolls (__odCaptureFullPageTiled) so export does not hit browser
-  // canvas limits or blank multi-megapixel foreignObject paints.
+  // viewport scrolls (__odCaptureFullPageTiled / paginate) so export does not
+  // hit browser canvas limits or blank multi-megapixel foreignObject paints.
   var MAX_CAPTURE_EDGE = 8192;
+  var MAX_PAGE_TILES = 80;
+  function raf2(){
+    return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(function(){ r(); }); }); });
+  }
+  // True content extent — scrollHeight alone under-measures absolute children,
+  // late-expanded blocks, and nested scroll roots (classic incomplete PDF).
+  function measureContentSize(){
+    var de = document.documentElement;
+    var body = document.body;
+    var w = Math.max(
+      window.innerWidth || 0,
+      de ? de.clientWidth || 0 : 0,
+      de ? de.scrollWidth || 0 : 0,
+      body ? body.scrollWidth || 0 : 0,
+      body ? body.offsetWidth || 0 : 0
+    );
+    var h = Math.max(
+      window.innerHeight || 0,
+      de ? de.clientHeight || 0 : 0,
+      de ? de.scrollHeight || 0 : 0,
+      body ? body.scrollHeight || 0 : 0,
+      body ? body.offsetHeight || 0 : 0
+    );
+    try {
+      var sy = window.scrollY || window.pageYOffset || 0;
+      var sx = window.scrollX || window.pageXOffset || 0;
+      var nodes = body ? body.querySelectorAll('*') : [];
+      var limit = Math.min(nodes.length, 10000);
+      for (var i = 0; i < limit; i++){
+        var el = nodes[i];
+        if (!el || !el.getBoundingClientRect) continue;
+        var r = el.getBoundingClientRect();
+        if (!r || (r.width <= 0 && r.height <= 0)) continue;
+        var bottom = r.bottom + sy;
+        var right = r.right + sx;
+        if (bottom > h) h = bottom;
+        if (right > w) w = right;
+      }
+    } catch (_) {}
+    return { w: Math.max(1, Math.ceil(w)), h: Math.max(1, Math.ceil(h)) };
+  }
+  // Expand clipped / nested scroll containers so window scroll can reach full
+  // content (landing pages often put overflow:auto on <main>).
+  function unlockDocumentScroll(){
+    try {
+      if (document.querySelector('style[data-od-capture-unlock]')) return;
+      var s = document.createElement('style');
+      s.setAttribute('data-od-capture-unlock', '1');
+      s.textContent = 'html,body{overflow:visible!important;height:auto!important;max-height:none!important;}' +
+        '[data-od-scroll-unlock]{overflow:visible!important;overflow-x:visible!important;overflow-y:visible!important;' +
+        'max-height:none!important;height:auto!important;}';
+      (document.head || document.documentElement).appendChild(s);
+      var all = document.body ? document.body.querySelectorAll('*') : [];
+      var n = Math.min(all.length, 5000);
+      for (var i = 0; i < n; i++){
+        var el = all[i];
+        try {
+          var st = window.getComputedStyle(el);
+          if (!st) continue;
+          var oy = st.overflowY;
+          var ox = st.overflowX;
+          var scrollableY = (oy === 'auto' || oy === 'scroll' || oy === 'hidden') && el.scrollHeight > el.clientHeight + 24;
+          var scrollableX = (ox === 'auto' || ox === 'scroll' || ox === 'hidden') && el.scrollWidth > el.clientWidth + 24;
+          if (scrollableY || scrollableX) el.setAttribute('data-od-scroll-unlock', '1');
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+  // Walk the page once so lazy images / IntersectionObserver / AOS reveal.
+  function prewarmScroll(){
+    var vh = Math.max(1, window.innerHeight || 1);
+    var size = measureContentSize();
+    var y = 0;
+    function step(){
+      if (y >= size.h) {
+        try { window.scrollTo(0, 0); } catch (_) {}
+        return raf2();
+      }
+      try { window.scrollTo(0, y); } catch (_) {}
+      y += vh;
+      return new Promise(function(r){ setTimeout(r, 50); }).then(raf2).then(step);
+    }
+    return step().then(function(){
+      // Remeasure after lazy content may have expanded the page.
+      return measureContentSize();
+    });
+  }
   function waitForImages(){
     var imgs = Array.prototype.slice.call(document.images || []);
     return Promise.all(imgs.map(function(img){
@@ -658,13 +745,51 @@ function injectSnapshotBridge(doc: string): string {
     }
     return Promise.resolve();
   }
-  function prepareCapture(){
+  function prepareCapture(opts){
+    opts = opts || {};
+    // Full-page only: unlock nested overflow + scroll-prewarm lazy/IO content.
+    // Deck/viewport captures skip the multi-screen walk (too slow per slide).
+    if (opts.full || opts.prewarm) {
+      unlockDocumentScroll();
+      return waitForFonts()
+        .then(function(){ return prewarmScroll(); })
+        .then(waitForImages)
+        .then(inlineImagesAsDataUrls)
+        .then(function(){ return raf2(); });
+    }
     return waitForFonts()
       .then(waitForImages)
       .then(inlineImagesAsDataUrls)
-      .then(function(){
-        return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(function(){ r(); }); }); });
+      .then(function(){ return raf2(); });
+  }
+  // Crop a viewport capture to the band used for the last (overlapping) tile.
+  function cropCaptureBand(img, bandTopCss, bandHCss, viewWCss, viewHCss){
+    try {
+      if (!img || !img.dataUrl) return img;
+      if (bandTopCss <= 0 && bandHCss >= viewHCss - 0.5) return img;
+      var dprX = img.w / Math.max(1, viewWCss);
+      var dprY = img.h / Math.max(1, viewHCss);
+      var sx = 0;
+      var sy = Math.max(0, Math.round(bandTopCss * dprY));
+      var sw = img.w;
+      var sh = Math.max(1, Math.min(img.h - sy, Math.round(bandHCss * dprY)));
+      var c = document.createElement('canvas');
+      c.width = sw;
+      c.height = sh;
+      var ctx = c.getContext('2d');
+      if (!ctx) return img;
+      return new Promise(function(resolve){
+        var im = new Image();
+        im.onload = function(){
+          try {
+            ctx.drawImage(im, sx, sy, sw, sh, 0, 0, sw, sh);
+            resolve({ dataUrl: c.toDataURL('image/png'), w: sw, h: sh });
+          } catch (_) { resolve(img); }
+        };
+        im.onerror = function(){ resolve(img); };
+        im.src = img.dataUrl;
       });
+    } catch (_) { return Promise.resolve(img); }
   }
   function scrollOffset(){
     var doc = document.documentElement;
@@ -715,8 +840,9 @@ function injectSnapshotBridge(doc: string): string {
       var h = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
       var dpr = Math.min(2, window.devicePixelRatio || 1);
       var bgColor = snapshotBackgroundColor();
-      var docW = Math.max(w, document.documentElement.scrollWidth || 0, document.body ? document.body.scrollWidth : 0);
-      var docH = Math.max(h, document.documentElement.scrollHeight || 0, document.body ? document.body.scrollHeight : 0);
+      var extent = measureContentSize();
+      var docW = Math.max(w, extent.w);
+      var docH = Math.max(h, extent.h);
       var full = !!opts.full;
       var capW = full ? docW : w;
       var capH = full ? docH : h;
@@ -768,74 +894,96 @@ function injectSnapshotBridge(doc: string): string {
       img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
     });
   }
-  // Viewport-tile long pages, then stitch — avoids canvas/foreignObject limits
-  // and recovers more image content than a single full-document SVG paint.
-  function captureFullPageTiled(){
-    var w = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1);
-    var h = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
-    var docH = Math.max(h, document.documentElement.scrollHeight || 0, document.body ? document.body.scrollHeight : 0);
-    var docW = Math.max(w, document.documentElement.scrollWidth || 0, document.body ? document.body.scrollWidth : 0);
+  // Capture each viewport band top→bottom (desktop-parity). Used for PDF pages
+  // (multi-image) and for stitching a single tall image. Bands crop the last
+  // overlapping viewport so content is neither duplicated nor truncated.
+  function captureViewportBands(){
     var saved = scrollOffset();
-    var tiles = Math.max(1, Math.ceil(docH / h));
-    var dpr = Math.min(2, window.devicePixelRatio || 1);
-    var bgColor = snapshotBackgroundColor();
-    var parts = [];
-    var i = 0;
+    var viewW = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1);
+    var viewH = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
+    var size = measureContentSize();
+    var docH = Math.max(viewH, size.h);
+    var maxScroll = Math.max(0, docH - viewH);
+    var pages = Math.max(1, Math.ceil(docH / viewH));
+    if (pages > MAX_PAGE_TILES) pages = MAX_PAGE_TILES;
+    var bands = [];
+    var p = 0;
     function next(){
-      if (i >= tiles) {
-        window.scrollTo(saved.x, saved.y);
-        if (parts.length === 1) return Promise.resolve(parts[0]);
-        return Promise.all(parts.map(function(p){
-          return new Promise(function(resolve, reject){
-            var im = new Image();
-            im.onload = function(){ resolve(im); };
-            im.onerror = function(){ reject(new Error('tile load failed')); };
-            im.src = p.dataUrl;
-          });
-        })).then(function(ims){
-          var stitchW = 1;
-          var stitchH = 0;
-          for (var m = 0; m < ims.length; m++){
-            stitchW = Math.max(stitchW, ims[m].naturalWidth || parts[m].w || 1);
-            stitchH += ims[m].naturalHeight || parts[m].h || 0;
-          }
-          var canvas = document.createElement('canvas');
-          canvas.width = Math.max(1, stitchW);
-          canvas.height = Math.max(1, stitchH);
-          var ctx = canvas.getContext('2d');
-          if (!ctx) return Promise.reject(new Error('no 2d context'));
-          ctx.fillStyle = bgColor;
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          var y = 0;
-          for (var t = 0; t < ims.length; t++){
-            var iw = ims[t].naturalWidth || parts[t].w;
-            var ih = ims[t].naturalHeight || parts[t].h;
-            ctx.drawImage(ims[t], 0, y, iw, ih);
-            y += ih;
-          }
-          return { dataUrl: canvas.toDataURL('image/png'), w: canvas.width, h: canvas.height };
-        });
+      if (p >= pages) {
+        try { window.scrollTo(saved.x, saved.y); } catch (_) {}
+        return Promise.resolve({ bands: bands, docH: docH, viewW: viewW, viewH: viewH });
       }
-      window.scrollTo(0, Math.min(i * h, Math.max(0, docH - h)));
-      return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(function(){ r(); }); }); })
-        .then(function(){ return captureSnapshot({ full: false }); })
-        .then(function(img){
-          parts.push(img);
-          i++;
+      var desiredTop = p * viewH;
+      var scrollToY = Math.min(desiredTop, maxScroll);
+      try { window.scrollTo(0, scrollToY); } catch (_) {}
+      // Prefer actual scroll position (browser may clamp).
+      var actualY = window.scrollY || window.pageYOffset || scrollToY;
+      var bandTop = Math.max(0, Math.round(desiredTop - actualY));
+      var remaining = Math.ceil(docH - desiredTop);
+      var bandH = Math.max(1, Math.min(viewH - bandTop, remaining));
+      return raf2().then(function(){ return captureSnapshot({ full: false }); })
+        .then(function(img){ return cropCaptureBand(img, bandTop, bandH, viewW, viewH); })
+        .then(function(cropped){
+          bands.push(cropped);
+          p++;
           return next();
         });
     }
     return next();
   }
+  // Viewport-tile long pages, then stitch by band height (no overlap).
+  function captureFullPageTiled(){
+    return captureViewportBands().then(function(res){
+      var parts = res.bands || [];
+      if (!parts.length) return Promise.reject(new Error('empty-render'));
+      if (parts.length === 1) return parts[0];
+      var bgColor = snapshotBackgroundColor();
+      return Promise.all(parts.map(function(p){
+        return new Promise(function(resolve, reject){
+          var im = new Image();
+          im.onload = function(){ resolve(im); };
+          im.onerror = function(){ reject(new Error('tile load failed')); };
+          im.src = p.dataUrl;
+        });
+      })).then(function(ims){
+        var stitchW = 1;
+        var stitchH = 0;
+        for (var m = 0; m < ims.length; m++){
+          stitchW = Math.max(stitchW, ims[m].naturalWidth || parts[m].w || 1);
+          stitchH += ims[m].naturalHeight || parts[m].h || 0;
+        }
+        // Cap stitch to canvas limits — caller should prefer multi-page PDF.
+        if (stitchW > MAX_CAPTURE_EDGE || stitchH > MAX_CAPTURE_EDGE) {
+          return Promise.reject(new Error('page-too-tall'));
+        }
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, stitchW);
+        canvas.height = Math.max(1, stitchH);
+        var ctx = canvas.getContext('2d');
+        if (!ctx) return Promise.reject(new Error('no 2d context'));
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        var y = 0;
+        for (var t = 0; t < ims.length; t++){
+          var iw = ims[t].naturalWidth || parts[t].w;
+          var ih = ims[t].naturalHeight || parts[t].h;
+          ctx.drawImage(ims[t], 0, y, iw, ih);
+          y += ih;
+        }
+        return { dataUrl: canvas.toDataURL('image/png'), w: canvas.width, h: canvas.height };
+      });
+    });
+  }
   // Exposed so the export-capture bridge (same document) can reuse this renderer.
   window.__odCaptureSnapshot = function(opts){
     opts = opts || {};
-    return prepareCapture().then(function(){
+    return prepareCapture({ full: !!opts.full, prewarm: !!opts.full }).then(function(){
       if (opts.full) {
-        var h = Math.max(1, window.innerHeight || 1);
-        var docH = Math.max(h, document.documentElement.scrollHeight || 0, document.body ? document.body.scrollHeight : 0);
-        var docW = Math.max(window.innerWidth || 1, document.documentElement.scrollWidth || 0);
-        if (docH > MAX_CAPTURE_EDGE || docW > MAX_CAPTURE_EDGE || docH > h * 1.35) {
+        var viewH = Math.max(1, window.innerHeight || 1);
+        var size = measureContentSize();
+        // Prefer tiling whenever content exceeds one viewport — single full
+        // foreignObject paints blank mid-page / clips tall docs.
+        if (size.h > viewH * 1.05 || size.w > MAX_CAPTURE_EDGE || size.h > MAX_CAPTURE_EDGE) {
           return captureFullPageTiled();
         }
       }
@@ -843,7 +991,13 @@ function injectSnapshotBridge(doc: string): string {
     });
   };
   window.__odCaptureFullPageTiled = function(){
-    return prepareCapture().then(captureFullPageTiled);
+    return prepareCapture({ full: true, prewarm: true }).then(captureFullPageTiled);
+  };
+  // Multi-page capture for PDF: one image per viewport band (no stitch).
+  window.__odCaptureFullPageBands = function(){
+    return prepareCapture({ full: true, prewarm: true }).then(function(){
+      return captureViewportBands().then(function(res){ return res.bands || []; });
+    });
   };
   window.addEventListener('message', function(ev){
     var data = ev && ev.data;
@@ -912,28 +1066,34 @@ function injectExportCaptureBridge(doc: string): string {
     });
   }
   function captureImage(deck){
-    // Reuse the shared SVG-foreignObject renderer (injectSnapshotBridge). For a
-    // deck the active slide fills the viewport, so a viewport capture IS the
-    // slide; a non-deck page prefers full-page capture with image inlining and
-    // automatic tiling for long documents (see __odCaptureSnapshot).
+    // Deck: active slide fills the viewport → single viewport capture.
+    // Non-deck long pages: use multi-band capture (see capturePageImages).
     if (typeof window.__odCaptureSnapshot !== 'function') {
       return Promise.reject(new Error('snapshot renderer unavailable'));
     }
-    if (deck) {
-      return window.__odCaptureSnapshot({ full: false }).catch(function(err){
-        // Retry once after a short settle if the first paint was empty.
-        return settle().then(function(){ return window.__odCaptureSnapshot({ full: false }); });
+    return window.__odCaptureSnapshot({ full: false }).catch(function(){
+      return settle().then(function(){ return window.__odCaptureSnapshot({ full: false }); });
+    });
+  }
+  // Non-deck PDF/image: one image per viewport band so long pages export as
+  // multi-page PDFs with full content (not a single clipped foreignObject).
+  function capturePageImages(){
+    if (typeof window.__odCaptureFullPageBands === 'function') {
+      return window.__odCaptureFullPageBands().then(function(bands){
+        if (bands && bands.length) return bands;
+        throw new Error('empty-render');
+      }).catch(function(err){
+        // Fall back to stitched full page, then single viewport.
+        if (typeof window.__odCaptureFullPageTiled === 'function') {
+          return window.__odCaptureFullPageTiled().then(function(img){ return [img]; });
+        }
+        return captureImage(false).then(function(img){ return [img]; });
       });
     }
-    return window.__odCaptureSnapshot({ full: true }).catch(function(err){
-      var msg = String(err && err.message || err || '');
-      if (msg.indexOf('page-too-tall') >= 0 || msg.indexOf('empty-render') >= 0) {
-        if (typeof window.__odCaptureFullPageTiled === 'function') {
-          return window.__odCaptureFullPageTiled();
-        }
-      }
-      throw err;
-    });
+    if (typeof window.__odCaptureSnapshot === 'function') {
+      return window.__odCaptureSnapshot({ full: true }).then(function(img){ return [img]; });
+    }
+    return Promise.reject(new Error('snapshot renderer unavailable'));
   }
   function notes(){
     var el = document.getElementById('speaker-notes');
@@ -960,6 +1120,20 @@ function injectExportCaptureBridge(doc: string): string {
     var single = !!req.single;
     var delay = req.delay || 350;
     Promise.resolve().then(function(){
+      // Long ordinary pages: emit one slide message per viewport band so the
+      // host builds a multi-page PDF covering the full document height.
+      if (!deck && !single) {
+        return settle().then(capturePageImages).then(function(imgs){
+          var total = imgs.length;
+          if (!total) throw new Error('Nothing was captured');
+          for (var i = 0; i < total; i++){
+            var img = imgs[i];
+            if (!img || !img.dataUrl) continue;
+            send({ type:'od:export-capture:slide', id:id, index:i, total:total, dataUrl: img.dataUrl, w: img.w, h: img.h, notes: i===0 ? notes() : '' });
+          }
+          send({ type:'od:export-capture:done', id:id, total: total });
+        });
+      }
       var st = deckState();
       var total = (!single && deck && st.count > 1) ? st.count : 1;
       var notesAll = notes();

@@ -69,8 +69,9 @@ async function renderImage(
   // For a non-deck page, grow the window to the content height so capturePage
   // grabs the full scrollable page rather than just the first viewport.
   if (!input.deck) {
+    // Walk descendants — scrollHeight alone misses absolute/late-expanded blocks.
     const contentHeight = (await window.webContents.executeJavaScript(
-      `Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0)`,
+      `(function(){var de=document.documentElement,body=document.body;var h=Math.max(window.innerHeight||0,de?de.scrollHeight||0:0,body?body.scrollHeight||0:0);try{var sy=window.scrollY||0;var nodes=body?body.querySelectorAll('*'):[];var limit=Math.min(nodes.length,10000);for(var i=0;i<limit;i++){var r=nodes[i].getBoundingClientRect();if(!r||(r.width<=0&&r.height<=0))continue;var b=r.bottom+sy;if(b>h)h=b;}}catch(e){}return Math.ceil(Math.max(1,h));})()`,
       true,
     )) as number;
     if (Number.isFinite(contentHeight) && contentHeight > 0) {
