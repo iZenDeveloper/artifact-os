@@ -169,6 +169,7 @@ Tell the user which skill to run next:
 | Technical SEO audit | `seo-audit` |
 | AI search / citations (AEO/GEO) | `ai-seo` |
 | Lifecycle email sequence | `emails` |
+| Product / feature launch GTM | `launch` |
 | Psychology pass on copy | `marketing-psychology` |
 
 ---

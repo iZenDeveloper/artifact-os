@@ -218,5 +218,5 @@ Apply brand colors only if DESIGN.md palette is available.
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `copywriting`, `cro`, `hook-engine`, `content-repurposer`, `marketing-psychology`  
+- **Related:** `product-marketing`, `launch`, `copywriting`, `cro`, `hook-engine`, `content-repurposer`, `marketing-psychology`  
 - **Upstream:** [marketingskills/emails](https://github.com/coreyhaines31/marketingskills/tree/main/skills/emails)  

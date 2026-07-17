@@ -64,6 +64,7 @@ Cập nhật: 2026-07 · Aligns with Content Pro **v2.2** + MVP output scope (te
 | 0d | `seo-audit` | **Pilot** | Technical + on-page SEO audit (marketingskills) |
 | 0e | `ai-seo` | **Pilot** | AEO/GEO / AI citations (marketingskills) |
 | 0f | `emails` | **Pilot** | Lifecycle email sequences (marketingskills) |
+| 0g | `launch` | **Pilot** | GTM / product launch plan (marketingskills) |
 | 1 | `content-repurposer` | **Done** | Core; strategy + ready-to-post; MVP scope locked |
 | 2 | `social-content-factory` | **Done** | Original batch / week |
 | 3 | `hook-engine` | **Done** | Hooks-only lab |
