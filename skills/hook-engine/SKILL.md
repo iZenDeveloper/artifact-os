@@ -214,5 +214,5 @@ Ship only if:
 
 - **Vertical:** marketing  
 - **Standard:** Content Pro hook layer (shared with v2.1/v2.2 packs)  
-- **Related:** `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `ad-creative`, `marketing-psychology`, `copywriting`  
+- **Related:** `product-marketing` (context first), `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `ad-creative`, `marketing-psychology`, `copywriting`  
 - **Knowledge:** `../content-repurposer/references/marketing/`  

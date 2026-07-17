@@ -58,6 +58,7 @@ Cập nhật: 2026-07 · Aligns with Content Pro **v2.2** + MVP output scope (te
 
 | # | Skill | Status | Notes |
 |---|-------|--------|-------|
+| 0 | `product-marketing` | **Pilot** | Positioning/ICP context; DESIGN.md bridge; run before packs |
 | 1 | `content-repurposer` | **Done** | Core; strategy + ready-to-post; MVP scope locked |
 | 2 | `social-content-factory` | **Done** | Original batch / week |
 | 3 | `hook-engine` | **Done** | Hooks-only lab |

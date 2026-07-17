@@ -2,6 +2,7 @@
 
 | Job | Nested skill | Seed prompt |
 |-----|--------------|-------------|
+| **Positioning / ICP first** | **product-marketing** (repo `skills/`) | Build product-marketing.md + HTML; read Brand DESIGN.md §8; Content Pro defaults |
 | Multi-platform pack | content-repurposer | Content Pro v2.2 pack + strategy + ready-to-post. Source: … |
 | Hooks only | hook-engine | Hook lab weak→strong; surfaces XHS/TT/LI/email/ads. Topic: … |
 | Week of posts | social-content-factory | v2.2 batch 5–7 pieces, pillars ≤3, ready-to-post. Brief: … |
@@ -10,4 +11,6 @@
 
 **Brands:** personal-minimal · personal-bold · professional-clean  
 
-**Handoffs:** hook lab → repurposer · best batch piece → repurposer · best hooks → ad-variants  
+**Handoffs:** product-marketing → hook lab / repurposer · hook lab → repurposer · best batch piece → repurposer · best hooks → ad-variants  
+
+> `product-marketing` ships from the app `skills/` tree (marketingskills bridge pilot), not nested under this pack yet.
