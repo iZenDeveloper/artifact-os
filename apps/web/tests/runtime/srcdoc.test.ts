@@ -156,10 +156,23 @@ describe('buildSrcdoc', () => {
   it('prunes hidden snapshot clone nodes before rasterizing decks', () => {
     const srcdoc = buildSrcdoc(deckHtml, { deck: true });
 
+    // Helper remains available for deck / snapshot paths that still need it.
     expect(srcdoc).toContain('function pruneHiddenSnapshotNodes');
     expect(srcdoc).toContain("computed.display === 'none'");
     expect(srcdoc).toContain("computed.visibility === 'hidden'");
-    expect(srcdoc).toContain('pruneHiddenSnapshotNodes(document.documentElement, clone)');
+  });
+
+  it('serializes FO captures as XHTML (XMLSerializer) with ink-aware blank detection', () => {
+    const srcdoc = buildSrcdoc('<main>Hello &amp; report</main>');
+    // body.innerHTML is not well-formed XML and painted blank on real reports
+    // (vnexpress-ai-seo-audit-2.html). Capture must serialize via XMLSerializer.
+    expect(srcdoc).toContain('new XMLSerializer().serializeToString');
+    expect(srcdoc).toContain('function inlineFoStyles');
+    expect(srcdoc).toContain('var FO_STYLE_PROPS');
+    // Blank detection must count ink, not only first-pixel variance.
+    expect(srcdoc).toContain('darkOrColor');
+    expect(srcdoc).toContain('function scrollToCaptureY');
+    expect(srcdoc).toContain("behavior: 'instant'");
   });
 
   it('injects a deck-stage fallback before the deck bridge for broken runtime decks', () => {
