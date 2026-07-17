@@ -128,7 +128,7 @@ Every piece must be **searchable**, **shareable**, or **both**. Prefer searchabl
 
 Hub first, then spokes; interlink. Most posts can live under `/blog` — dedicated hub URLs only for deep multi-layer guides.
 
-Programmatic at scale → note handoff to programmatic SEO (if installed) / `seo-audit` for IA checks.
+Programmatic at scale → `programmatic-seo` / `seo-audit` for IA checks.
 
 ---
 
