@@ -479,10 +479,6 @@ export async function executeLegacyPayloadDesktopHandoff(
     updatedAt: now,
   };
 
-  await writeJsonFile(prepared.launcherPaths.handoffPath, armed);
-  await writeJsonFile(prepared.launcherPaths.attemptsPath, attempt);
-  await writeJsonFile(prepared.launcherPaths.runtimePath, runtime);
-
   const desktopStamp: SidecarStamp = {
     app: APP_KEYS.DESKTOP,
     ipc: desktopIpcPath,
@@ -521,5 +517,18 @@ export async function executeLegacyPayloadDesktopHandoff(
   } catch {
     return { kind: "aborted", reason: "shutdown-failed" };
   }
+
+  // Commit the armed journal and rewritten runtime/attempt state only after both
+  // the payload child has actually spawned and the old desktop has accepted the
+  // shutdown. Writing earlier would strand an "armed" journal on disk when
+  // `spawn()` throws or the shutdown request fails: the next cold start bails out
+  // of prepareLegacyPayloadDesktopHandoff() with reason "already-armed" and the
+  // install stays pinned to the old desktop generation. The old desktop is still
+  // alive while it acks the shutdown, and the payload waits for its pid to exit
+  // before resuming, so these writes still land before the payload reads them.
+  await writeJsonFile(prepared.launcherPaths.handoffPath, armed);
+  await writeJsonFile(prepared.launcherPaths.attemptsPath, attempt);
+  await writeJsonFile(prepared.launcherPaths.runtimePath, runtime);
+
   return { kind: "scheduled", target };
 }

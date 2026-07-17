@@ -261,6 +261,207 @@ describe("legacy payload desktop handoff", () => {
     }
   });
 
+  async function armedHandoffFixture(): Promise<{
+    launcherPaths: ReturnType<typeof resolveLauncherPaths>;
+    prepared: Extract<
+      Awaited<ReturnType<typeof prepareLegacyPayloadDesktopHandoff>>,
+      { kind: "prepared" }
+    >;
+    root: string;
+  }> {
+    const root = await mkdtemp(join(tmpdir(), "od-daemon-payload-handoff-fail-"));
+    const namespace = "release-beta";
+    const runtimeRoot = join(root, "namespaces", namespace, "runtime");
+    const launcherPaths = resolveLauncherPaths({ channel: "beta", namespace, root });
+    const versionPaths = resolveLauncherVersionPaths({
+      channel: "beta",
+      namespace,
+      root,
+      version: "1.2.3-beta.5",
+    });
+    const outerExecutablePath = join(root, "installed", "Open Design Beta.app", "Contents", "MacOS", "Open Design Beta");
+    const payloadExecutablePath = join(
+      versionPaths.payloadRoot,
+      "Open Design Beta.app",
+      "Contents",
+      "MacOS",
+      "Open Design Beta",
+    );
+    await mkdir(join(payloadExecutablePath, ".."), { recursive: true });
+    await mkdir(join(outerExecutablePath, ".."), { recursive: true });
+    await mkdir(runtimeRoot, { recursive: true });
+    await mkdir(launcherPaths.stateRoot, { recursive: true });
+    await writeFile(payloadExecutablePath, "");
+    await writeFile(outerExecutablePath, "");
+    await writeFile(versionPaths.manifestPath, `${JSON.stringify({
+      channel: "beta",
+      entry: {
+        cwd: "payload/Open Design Beta.app",
+        executable: "payload/Open Design Beta.app/Contents/MacOS/Open Design Beta",
+      },
+      namespace,
+      payloadRoot: "payload",
+      platform: "darwin",
+      schemaVersion: LAUNCHER_SCHEMA_VERSION,
+      version: "1.2.3-beta.5",
+    })}\n`);
+    await writeFile(launcherPaths.runtimePath, `${JSON.stringify({
+      active: { generation: 1, version: "1.2.3-beta.5" },
+      channel: "beta",
+      lastSuccessful: { generation: 0, version: "1.2.3-beta.4" },
+      namespace,
+      schemaVersion: LAUNCHER_SCHEMA_VERSION,
+    })}\n`);
+    await writeFile(launcherPaths.attemptsPath, `${JSON.stringify({
+      channel: "beta",
+      generation: 1,
+      namespace,
+      schemaVersion: LAUNCHER_SCHEMA_VERSION,
+      version: "1.2.3-beta.5",
+    })}\n`);
+    await writeFile(launcherPaths.installPath, `${JSON.stringify({
+      channel: "beta",
+      launchPath: join(root, "installed", "Open Design Beta.app"),
+      namespace,
+      schemaVersion: LAUNCHER_SCHEMA_VERSION,
+    })}\n`);
+
+    const prepared = await prepareLegacyPayloadDesktopHandoff({
+      env: {
+        OD_APP_VERSION: "1.2.3-beta.5",
+        OD_INSTALLATION_DIR: root,
+      },
+      namespace,
+      parentPid: 4321,
+      platform: "darwin",
+      randomId: () => "f5d4a712-8ba9-4c28-bcad-6dbed5db2d7c",
+      runtimeRoot,
+      source: SIDECAR_SOURCES.PACKAGED,
+    });
+    if (prepared.kind !== "prepared") throw new Error("expected prepared handoff");
+
+    // Simulate the old outer confirming: the launcher promoted lastSuccessful to
+    // the payload source and cleared the pending attempt.
+    await writeFile(join(runtimeRoot, "desktop-root.json"), `${JSON.stringify({
+      executablePath: outerExecutablePath,
+      pid: 4321,
+      stamp: {
+        app: APP_KEYS.DESKTOP,
+        ipc: "/tmp/open-design/ipc/release-beta/desktop.sock",
+        mode: "runtime",
+        namespace,
+        source: SIDECAR_SOURCES.PACKAGED,
+      },
+      version: 1,
+    })}\n`);
+    await writeFile(launcherPaths.runtimePath, `${JSON.stringify({
+      active: { generation: 1, version: "1.2.3-beta.5" },
+      channel: "beta",
+      lastSuccessful: { generation: 1, version: "1.2.3-beta.5" },
+      namespace,
+      schemaVersion: LAUNCHER_SCHEMA_VERSION,
+    })}\n`);
+    await rm(launcherPaths.attemptsPath, { force: true });
+
+    return { launcherPaths, prepared, root };
+  }
+
+  it("does not strand launcher state when the payload desktop spawn fails", async () => {
+    const { launcherPaths, prepared, root } = await armedHandoffFixture();
+    try {
+      const spawn = vi.fn(() => {
+        throw new Error("spawn ENOENT");
+      });
+      const requestDesktop = vi.fn(async (message: "shutdown" | "status") => (
+        message === "status"
+          ? { pid: 4321, state: "running" }
+          : { accepted: true }
+      ));
+
+      const result = await executeLegacyPayloadDesktopHandoff(prepared, {
+        confirmTimeoutMs: 100,
+        env: { PATH: "/usr/bin" },
+        now: () => new Date("2026-07-15T02:00:00.000Z"),
+        requestDesktop,
+        sleep: async () => undefined,
+        spawn: spawn as never,
+      });
+
+      expect(result).toEqual({ kind: "aborted", reason: "spawn-failed" });
+      // The shutdown must not have been requested, and no armed journal / runtime
+      // rewrite may remain on disk to block the next cold-start retry.
+      expect(requestDesktop).not.toHaveBeenCalledWith("shutdown");
+      expect(JSON.parse(await readFile(launcherPaths.handoffPath, "utf8"))).toMatchObject({
+        state: "prepared",
+      });
+      expect(JSON.parse(await readFile(launcherPaths.handoffPath, "utf8"))).not.toHaveProperty("target");
+      expect(JSON.parse(await readFile(launcherPaths.runtimePath, "utf8"))).toMatchObject({
+        active: { generation: 1, version: "1.2.3-beta.5" },
+      });
+      await expect(readFile(launcherPaths.attemptsPath, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  });
+
+  it("does not strand launcher state when the old desktop shutdown fails", async () => {
+    const { launcherPaths, prepared, root } = await armedHandoffFixture();
+    try {
+      const child = {
+        once: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
+          if (event === "spawn") queueMicrotask(callback);
+          return child;
+        }),
+        unref: vi.fn(),
+      };
+      const spawn = vi.fn(() => child);
+      const requestDesktop = vi.fn(async (message: "shutdown" | "status") => {
+        if (message === "shutdown") throw new Error("desktop ipc gone");
+        return { pid: 4321, state: "running" };
+      });
+
+      const result = await executeLegacyPayloadDesktopHandoff(prepared, {
+        confirmTimeoutMs: 100,
+        env: { PATH: "/usr/bin" },
+        now: () => new Date("2026-07-15T02:00:00.000Z"),
+        requestDesktop,
+        sleep: async () => undefined,
+        spawn: spawn as never,
+      });
+
+      expect(result).toEqual({ kind: "aborted", reason: "shutdown-failed" });
+      expect(spawn).toHaveBeenCalledOnce();
+      // Even though the payload child already spawned, the failed shutdown must
+      // leave the journal at "prepared" so a later cold start can retry instead
+      // of bailing on "already-armed".
+      expect(JSON.parse(await readFile(launcherPaths.handoffPath, "utf8"))).toMatchObject({
+        state: "prepared",
+      });
+      expect(JSON.parse(await readFile(launcherPaths.handoffPath, "utf8"))).not.toHaveProperty("target");
+      expect(JSON.parse(await readFile(launcherPaths.runtimePath, "utf8"))).toMatchObject({
+        active: { generation: 1, version: "1.2.3-beta.5" },
+      });
+      await expect(readFile(launcherPaths.attemptsPath, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+
+      // A subsequent cold start resumes the prepared handoff rather than reporting
+      // "already-armed".
+      const retry = await prepareLegacyPayloadDesktopHandoff({
+        env: {
+          OD_APP_VERSION: "1.2.3-beta.5",
+          OD_INSTALLATION_DIR: root,
+        },
+        namespace: prepared.descriptor.namespace,
+        parentPid: 4321,
+        platform: "darwin",
+        runtimeRoot: prepared.runtimeRoot,
+        source: SIDECAR_SOURCES.PACKAGED,
+      });
+      expect(retry.kind).toBe("prepared");
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  });
+
   it("does nothing outside the packaged desktop runtime", async () => {
     await expect(prepareLegacyPayloadDesktopHandoff({
       env: {},
