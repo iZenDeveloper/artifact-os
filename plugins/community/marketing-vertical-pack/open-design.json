@@ -1,0 +1,188 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "marketing-vertical-pack",
+  "title": "Marketing Vertical Pack",
+  "title_i18n": {
+    "en": "Marketing Vertical Pack",
+    "zh-CN": "营销垂直包",
+    "vi": "Gói Marketing Vertical"
+  },
+  "version": "1.0.0",
+  "publishedAt": "2026-07-17T00:00:00Z",
+  "description": "Vertical Content OS marketing bundle: Content Pro v2.2 repurposer, hook engine, social batch, ad variants, psychology — plus Personal Minimal / Bold / Professional Clean brands.",
+  "description_i18n": {
+    "en": "Vertical Content OS marketing bundle: Content Pro v2.2 repurposer, hook engine, social batch, ad variants, psychology — plus Personal Minimal / Bold / Professional Clean brands.",
+    "zh-CN": "Vertical Content OS 营销包：Content Pro v2.2 多平台复用、钩子引擎、社媒批次、广告变体、营销心理，以及 Personal Minimal / Bold / Professional Clean 品牌。",
+    "vi": "Gói Marketing Vertical Content OS: Content Pro v2.2 (repurpose, hook lab, batch social, ad variants, psych) + brand Personal Minimal / Bold / Professional Clean."
+  },
+  "author": {
+    "name": "Vertical Content OS",
+    "url": "https://github.com/nexu-io/open-design"
+  },
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/nexu-io/open-design/tree/main/plugins/community/marketing-vertical-pack",
+  "tags": [
+    "marketing",
+    "vertical-os",
+    "content-pro",
+    "repurpose",
+    "hooks",
+    "social",
+    "ads",
+    "bundle",
+    "brand"
+  ],
+  "compat": {
+    "agentSkills": [{ "path": "./SKILL.md" }]
+  },
+  "od": {
+    "kind": "bundle",
+    "taskKind": "new-generation",
+    "mode": "prototype",
+    "scenario": "marketing",
+    "surface": "web",
+    "platform": "desktop",
+    "engineRequirements": {
+      "od": ">=0.15.0"
+    },
+    "preview": {
+      "type": "html",
+      "entry": "./preview/index.html",
+      "motion": "static"
+    },
+    "useCase": {
+      "query": {
+        "en": "Use the Marketing Vertical Pack. Strategy: objective={{objective}}, funnel={{funnel}}, persona={{persona}}. Job: {{job}}. Source / brief:\n{{source}}",
+        "zh-CN": "使用营销垂直包。策略：目标={{objective}}，漏斗={{funnel}}，人群={{persona}}。任务：{{job}}。素材/brief：\n{{source}}",
+        "vi": "Dùng Marketing Vertical Pack. Strategy: objective={{objective}}, funnel={{funnel}}, persona={{persona}}. Việc: {{job}}. Source / brief:\n{{source}}"
+      },
+      "exampleOutputs": [
+        {
+          "path": "./examples/starter-routes.md",
+          "title": "Skill routing cheat sheet"
+        }
+      ]
+    },
+    "context": {
+      "skills": [
+        { "path": "./SKILL.md" },
+        { "ref": "./skills/content-repurposer" },
+        { "ref": "./skills/hook-engine" },
+        { "ref": "./skills/social-content-factory" },
+        { "ref": "./skills/ad-variants-generator" },
+        { "ref": "./skills/marketing-psychology" }
+      ],
+      "designSystem": {
+        "ref": "./design-systems/personal-minimal",
+        "primary": true
+      },
+      "assets": [
+        "./design-systems/personal-minimal/DESIGN.md",
+        "./design-systems/personal-bold/DESIGN.md",
+        "./design-systems/professional-clean/DESIGN.md",
+        "./skills/content-repurposer/references/marketing/README.md"
+      ],
+      "atoms": [
+        "discovery-question-form",
+        "direction-picker",
+        "file-write",
+        "live-artifact",
+        "critique-theater"
+      ]
+    },
+    "pipeline": {
+      "stages": [
+        {
+          "id": "route",
+          "atoms": ["discovery-question-form", "direction-picker"]
+        },
+        {
+          "id": "generate",
+          "atoms": ["file-write", "live-artifact"]
+        },
+        {
+          "id": "critique",
+          "atoms": ["critique-theater"],
+          "repeat": true,
+          "until": "critique.score>=4 || iterations>=2"
+        }
+      ]
+    },
+    "inputs": [
+      {
+        "name": "job",
+        "label": "Job",
+        "type": "select",
+        "required": true,
+        "options": [
+          "content-pack (repurpose)",
+          "hook lab",
+          "social batch",
+          "ad variants",
+          "psychology rewrite"
+        ],
+        "default": "content-pack (repurpose)"
+      },
+      {
+        "name": "objective",
+        "label": "Objective",
+        "type": "select",
+        "required": false,
+        "options": [
+          "awareness",
+          "engagement",
+          "leads",
+          "conversion",
+          "retention",
+          "authority"
+        ],
+        "default": "awareness"
+      },
+      {
+        "name": "funnel",
+        "label": "Funnel stage",
+        "type": "select",
+        "required": false,
+        "options": [
+          "awareness",
+          "consideration",
+          "decision",
+          "retention"
+        ],
+        "default": "awareness"
+      },
+      {
+        "name": "persona",
+        "label": "Persona",
+        "type": "string",
+        "required": false,
+        "placeholder": "e.g. founder B2B SaaS VN, 0–1 PMF"
+      },
+      {
+        "name": "source",
+        "label": "Source / brief",
+        "type": "text",
+        "required": true,
+        "placeholder": "Paste article, notes, topic, or weak draft…"
+      },
+      {
+        "name": "brand",
+        "label": "Brand",
+        "type": "select",
+        "required": false,
+        "options": [
+          "personal-minimal",
+          "personal-bold",
+          "professional-clean"
+        ],
+        "default": "personal-minimal"
+      }
+    ],
+    "capabilities": [
+      "prompt:inject",
+      "fs:write",
+      "fs:read"
+    ]
+  }
+}

@@ -25,13 +25,14 @@ Xây dựng **Vertical Content OS** theo từng giai đoạn, bắt đầu từ 
 | 2 | Tạo tài liệu nội bộ (Vision, Architecture, Guides) | Docs | Cao | Đang thực hiện |
 | 3 | Thiết kế cấu trúc thư mục cho multi-vertical | Architecture | Cao | `skills/marketing/`, `design-systems/personal/`, v.v. |
 | 4 | Tạo 3-4 Design Systems cơ bản | Design System | Cao | Personal Minimal, Personal Bold, Professional Clean, Client Template |
-| 5 | Xây skill `content-repurposer` (ưu tiên cao nhất) | Skill | Rất cao | Workflow repurposing đa nền tảng |
-| 6 | Xây skill `social-content-factory` | Skill | Cao | Tạo nội dung XHS + TikTok + LinkedIn + Threads |
+| 5 | Xây skill `content-repurposer` (ưu tiên cao nhất) | Skill | Rất cao | **Done** · Content Pro v2.2 · **MVP = text + visual direction + script (no video render)** |
+| 5b | Shared marketing refs + `hook-engine` | Skill/Docs | Cao | **Done** · frameworks/psych + hooks lab |
+| 6 | Xây skill `social-content-factory` | Skill | Cao | **Done** · Content Pro v2.2 batch |
 | 7 | Cải thiện / mở rộng `card-xiaohongshu` nếu cần | Skill | Trung bình | Rất quan trọng với creator Việt Nam |
-| 8 | Xây skill `ad-variants-generator` | Skill | Trung bình | Tạo nhiều biến thể ad creative |
+| 8 | Xây skill `ad-variants-generator` | Skill | Trung bình | **Done** · Content Pro v2.2 matrix |
 | 9 | Thêm Brand/Client Switcher vào UI | UI/UX | Cao | Rất cần cho agency |
 | 10 | Thêm Platform Preview Modes (XHS, TikTok, LinkedIn) | UI/UX | Cao | Giúp creator hình dung output |
-| 11 | Tạo Plugin pack cho Marketing Vertical | Plugin | Cao | Dễ cài và chia sẻ |
+| 11 | Tạo Plugin pack cho Marketing Vertical | Plugin | Cao | **Done** · `plugins/community/marketing-vertical-pack` |
 | 12 | Test thực tế với Claude Code / Cursor / Grok | Testing | Cao | Đánh giá chất lượng output |
 | 13 | Viết tài liệu hướng dẫn sử dụng Vertical Pack | Docs | Trung bình | README cho người dùng cuối |
 

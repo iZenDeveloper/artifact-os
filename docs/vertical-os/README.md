@@ -7,10 +7,17 @@ Fork foundation of [nexu-io/open-design](https://github.com/nexu-io/open-design)
 | Doc | Purpose |
 |-----|---------|
 | [VISION.md](./VISION.md) | Product vision & core value |
+| [MARKETING_VERTICAL.md](./MARKETING_VERTICAL.md) | **Canonical** Marketing vertical strategy · segments · pain · scorecard |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Gateway / Vertical / Presentation layers |
 | [ROADMAP.md](./ROADMAP.md) | Phased MVP plan |
 | [GETTING_STARTED.md](./GETTING_STARTED.md) | Dev setup (upstream-oriented) |
-| [VERTICAL_INDEX.md](./VERTICAL_INDEX.md) | Map of verticals → skills → design systems |
+| [VERTICAL_INDEX.md](./VERTICAL_INDEX.md) | Map of verticals → skills → brands |
+| [BRANDS.md](./BRANDS.md) | Brand UI vs `design-systems/<slug>/DESIGN.md` storage |
+| [../skills/content-repurposer/references/marketing/](../../skills/content-repurposer/references/marketing/) | Shared marketing knowledge (frameworks, psych, platforms VN, CRO) |
+| [MARKETING_PACK.md](./MARKETING_PACK.md) | Installable Marketing Vertical plugin pack |
+| [DESIGN_MD_MARKETING_TEMPLATE.md](./DESIGN_MD_MARKETING_TEMPLATE.md) | Brand DESIGN.md template — Voice & Tone §8 standard |
+| [BRANDS.md](./BRANDS.md) | Brand UI vs design-systems storage + voice contract |
+| Locale | **Tiếng Việt (`vi`)** | Home chips · outcomes · packs · apply-skill prompt seeds |
 
 ## Status
 
@@ -34,14 +41,20 @@ Open the URL printed by the dev server (typically `http://localhost:3000`).
 
 ### Marketing vertical — try first
 
-1. Open the **design system picker** (home or project header)  
-   - Use **Brand Switcher** tabs: **Personal | Client | All**  
+1. Open the **Brand** picker (home or project header)  
+   - Tabs: **Personal | Client | All**  
    - Quick chips: Personal Minimal · Personal Bold · Professional Clean  
-   - Trigger shows a **Personal** / **Client** badge when a Vertical OS pack is active  
-2. Skill: **content-repurposer** (Content Pro v2.1)  
-3. Prompt: paste a blog/outline and ask for a multi-platform pack (XHS + TikTok + LinkedIn + Threads + Email)  
+   - Each brand is `design-systems/<slug>/DESIGN.md` (+ optional `assets/`)  
+2. Skills (Marketing stack — all Content Pro **v2.2** where noted):  
+   - **content-repurposer** — multi-platform pack · MVP: **text + visual direction + script** (no video render)  
+   - **hook-engine** — hooks-only lab (weak→strong)  
+   - **social-content-factory** — original batch / week calendar  
+   - **ad-variants-generator** — paid creative matrix  
+   - Knowledge: `skills/content-repurposer/references/marketing/`  
+3. Prompt: paste source + objective / funnel / persona / offer → multi-platform pack with copy-paste ready posts  
+   - Or: “hook lab only” → **hook-engine** before expanding the pack  
 4. After an artifact opens in preview, use the viewport toolbar:  
-   **Desktop / Tablet / Mobile** | **XHS · TikTok · LinkedIn** (Platform Preview) to frame Content Pro ratios (3:4 / 9:16 / 1:1)
+   **Desktop / Tablet / Mobile** | **XHS · TikTok · LinkedIn · Facebook · YouTube** (Platform Preview) to frame Content Pro ratios (3:4 / 9:16 / 1:1 / 4:5 / 16:9)
 
 ## Extension layout (Open Design compatible)
 
@@ -50,17 +63,23 @@ Vertical grouping is by **naming + tags + docs**, not nested folders:
 
 ```
 skills/
-  content-repurposer/          # marketing
+  content-repurposer/          # marketing · full packs
+  hook-engine/                 # marketing · hooks-only lab
   social-content-factory/      # marketing
   ad-variants-generator/       # marketing
   card-xiaohongshu/            # upstream (keep)
 
-design-systems/
-  personal-minimal/            # Vertical OS
-  personal-bold/               # Vertical OS
+design-systems/                # UI: Brands (DESIGN.md + assets/ only required)
+  personal-minimal/            # Vertical OS · Personal
+  personal-bold/               # Vertical OS · Personal
   professional-clean/          # Vertical OS
   …                            # upstream brand systems
+
+plugins/community/
+  marketing-vertical-pack/     # installable bundle (skills + brands)
 ```
+
+**Pack install:** see [MARKETING_PACK.md](./MARKETING_PACK.md) · sync with `pnpm exec tsx scripts/sync-marketing-vertical-pack.ts`
 
 ## Principles
 

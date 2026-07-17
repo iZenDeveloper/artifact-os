@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Marketing Vertical Pack</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #1a1d24;
+      --ink: #f4f1ea;
+      --muted: #9aa3b2;
+      --accent: #e07a5f;
+      --line: #2a303c;
+      --ok: #81b29a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: radial-gradient(1200px 600px at 10% -10%, #2a1f1c 0%, var(--bg) 55%);
+      color: var(--ink);
+      padding: 32px 24px 48px;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+      padding: 4px 10px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+    }
+    h1 { font-size: 28px; margin: 0 0 8px; font-weight: 650; letter-spacing: -0.02em; }
+    .sub { color: var(--muted); margin: 0 0 28px; line-height: 1.5; }
+    .grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1fr 1fr;
+    }
+    @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+    .card h2 {
+      margin: 0 0 6px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .card p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .emoji { font-size: 18px; margin-bottom: 8px; }
+    .brands {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .chip {
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: #12151b;
+      border: 1px solid var(--line);
+      color: var(--ink);
+    }
+    .chip span { color: var(--ok); }
+    footer {
+      margin-top: 28px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="badge">Vertical Content OS · v1.0.0</div>
+    <h1>Marketing Vertical Pack</h1>
+    <p class="sub">
+      Content Pro <strong>v2.2</strong> skills + three brands in one installable bundle.
+      Route once — ship ready-to-post packs, hooks, batches, and ad matrices.
+    </p>
+    <div class="grid">
+      <div class="card">
+        <div class="emoji">♻️</div>
+        <h2>Content Repurposer</h2>
+        <p>One source → XHS · TikTok · LinkedIn · Threads · Email with strategy + ready-to-post.</p>
+      </div>
+      <div class="card">
+        <div class="emoji">🪝</div>
+        <h2>Hook Engine</h2>
+        <p>Weak→strong stop-scroll lab for covers, 0–3s, subjects, and ad headlines.</p>
+      </div>
+      <div class="card">
+        <div class="emoji">🏭</div>
+        <h2>Social Content Factory</h2>
+        <p>Original week batch: pillars, calendar, per-piece ready-to-post.</p>
+      </div>
+      <div class="card">
+        <div class="emoji">🧪</div>
+        <h2>Ad Variants</h2>
+        <p>Paid matrix: angles, headlines, primary text, CTAs — no fake stats.</p>
+      </div>
+    </div>
+    <div class="brands">
+      <div class="chip"><span>●</span> Personal Minimal</div>
+      <div class="chip"><span>●</span> Personal Bold</div>
+      <div class="chip"><span>●</span> Professional Clean</div>
+      <div class="chip">+ marketing knowledge base</div>
+    </div>
+    <footer>
+      Install: <code>od plugin install ./plugins/community/marketing-vertical-pack</code>
+    </footer>
+  </div>
+</body>
+</html>

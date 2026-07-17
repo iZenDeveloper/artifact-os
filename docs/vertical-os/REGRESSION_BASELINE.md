@@ -1,43 +1,69 @@
 # Content Pro regression baseline
 
-**Standard:** Content Pro v2.1  
+**Standard:** Content Pro **v2.2** (craft + strategy + ready-to-post + MVP scope)  
 **Skill:** `content-repurposer`  
-**Pass rule:** calibrated overall **≥ 9.0** on fixed briefs; all three niches ship  
+**Pass rule:** calibrated overall **≥ 9.0** on fixed briefs; all three niches ship; **polish gates P1–P3** pass  
 
-Last run: 2026-07-17
+**Suite definition:** `skills/content-repurposer/references/regression-suite.md`  
+**Pre-ship checklist:** `skills/content-repurposer/references/pre-ship-qa.md`  
+**Latest run artifacts:** `docs/vertical-os/regression-runs/2026-07-17/`
 
-## Suite (3 niches)
+---
 
-| # | Brief | Niche | Score | Verdict | Strengths | Residual minor |
-|---|-------|-------|-------|---------|-----------|----------------|
-| 1 | Startup PMF Fail | Business | **9.1** | **Ship** | Hook cực mạnh; TikTok peak cinematic; CTA rõ | Một số caption hơi dài |
-| 2 | Không 10% Myth | Science | **9.1** | **Ship** | Proof khoa học chắc; energy map tốt; reframe sắc | Peak frame hơi generic |
-| 3 | Nhất Quán Personal Brand | Personal Brand | **9.05** | **Ship** | Metaphor “lớp sơn” hay; peak search autocomplete mạnh | Hook lab hơi nhẹ so với 2 pack kia |
+## Latest scored run · 2026-07-17 (post polish freeze)
+
+| # | Brief id | Niche | Brand | Craft | Marketing | Verdict | Peak / lab notes |
+|---|----------|-------|-------|-------|-----------|---------|------------------|
+| 1 | `reg-business-pmf-fail` | Business | personal-minimal | **9.15** | 9.1 | **Ship** | Peak: CRM Open 120 / Paid **0** freeze |
+| 2 | `reg-science-10pct-myth` | Science | personal-bold | **9.2** | 9.1 | **Ship** | Peak: full-brain map + red X on “10%” |
+| 3 | `reg-personal-brand-consistency` | Personal Brand | personal-minimal | **9.15** | 9.1 | **Ship** | Hook lab **4 pairs**; peak: search autocomplete |
 
 ### Aggregate
 
 | Metric | Value |
 |--------|-------|
-| Mean score | **9.08** |
-| Min score | **9.05** |
+| Mean craft | **9.17** |
+| Min craft | **9.15** |
 | Ship rate | **3/3 (100%)** |
 | Fail rate | **0%** |
 | Consistency (max − min) | **0.05** |
+| Structural lint | **3/3 OK** |
 
-## Interpretation
+### vs prior freeze (pre polish-hard-gate encode)
 
-- Skill đã **ổn định ≥ 9.0** trên Business / Science / Personal Brand — không còn tụt 8.7-class.  
-- Gap drama giữa pack “best” và pack “weaker” trước đây đã đóng.  
-- Residual issues are **polish-tier** (length, peak specificity, hook-lab strength) — not structure failures.
+| Metric | Prior (2026-07-17 morning) | This re-run |
+|--------|----------------------------|-------------|
+| Mean | 9.08 | **9.17** |
+| Min | 9.05 | **9.15** |
+| Personal-brand residual | Hook lab light | **Closed** (4 pairs, parity bar) |
+| Peak residual | Science slightly generic | **Closed** (named non-substitutable shots) |
+
+---
 
 ## Freeze decision
 
-Treat **v2.1 + this suite** as Marketing MVP quality freeze until a pack scores **&lt; 9.0** or a new niche fails.
+| Layer | Status |
+|-------|--------|
+| Craft ≥ 9.0 all niches | **Hold** |
+| Polish P1–P3 | **Hold** — enforced in skill + passed this run |
+| MVP no video render | **Hold** |
+| Brand §8 | **Hold** |
 
-Re-run this suite after any major skill edit.
+Re-run suite after major skill edits. Update this table + drop new folder under `regression-runs/YYYY-MM-DD/`.
 
-## Known polish backlog (non-blocking)
+---
 
-1. **Caption length** — prefer tighter bands; cut filler after CTA.  
-2. **Peak frame specificity** — even science packs need one unforgettable designed frame (not “illustrative stock”).  
-3. **Hook lab parity** — personal-brand packs must show weak→strong pairs as strong as business/science packs.  
+## How to re-run
+
+```text
+1. content-repurposer + brands per brief (regression-suite.md)
+2. Write index.html under docs/vertical-os/regression-runs/<date>/<brief-id>/
+3. pnpm exec tsx scripts/lint-content-repurposer-pack.ts <path>
+4. pre-ship-qa.md · score cards · update this file
+```
+
+---
+
+## Historical note
+
+First freeze scores (Business 9.1 / Science 9.1 / Personal 9.05, mean 9.08) remain valid as pre-harden reference; **this file’s headline numbers are the latest re-run**.

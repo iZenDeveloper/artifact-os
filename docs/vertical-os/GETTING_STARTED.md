@@ -59,7 +59,7 @@ open-design/
 │   ├── daemon/           # Node.js backend daemon
 │   └── desktop/          # Electron app (tùy chọn)
 ├── skills/               # Nơi chứa tất cả skills ← QUAN TRỌNG
-├── design-systems/       # Nơi chứa Design Systems ← QUAN TRỌNG
+├── design-systems/       # Brands (UI) — DESIGN.md + assets/ mỗi slug
 ├── plugins/              # Nơi chứa plugins
 ├── docs/                 # Tài liệu gốc của Open Design
 ├── deploy/               # Docker & deployment config
@@ -68,9 +68,9 @@ open-design/
 
 ## 6. Hiểu nhanh cách Open Design hoạt động
 
-1. User nhập brief + chọn **Skill** + **Design System**
+1. User nhập brief + chọn **Skill** + **Brand** (`design-systems/<slug>/DESIGN.md`)
 2. Web gửi request đến **Daemon**
-3. Daemon load `SKILL.md` + `DESIGN.md`
+3. Daemon load `SKILL.md` + brand `DESIGN.md` (+ `assets/` nếu có)
 4. Gọi Agent (Claude Code / Cursor...) để generate artifact
 5. Artifact được preview trong sandboxed iframe
 6. User export hoặc chỉnh sửa tiếp
@@ -82,24 +82,25 @@ open-design/
 Tạo các thư mục sau trong repo của bạn:
 
 ```
-skills/
-├── shared/                    # Skill dùng chung cho nhiều vertical
-├── marketing/
-│   ├── content-repurposer/
-│   ├── social-content-factory/
-│   └── ad-variants-generator/
-├── education/
-└── legal/
+skills/                              # OD discovers one level under skills/
+├── content-repurposer/              # Marketing · Content Pro v2.2
+├── hook-engine/
+├── social-content-factory/
+├── ad-variants-generator/
+├── marketing-psychology/
+└── …                                # upstream skills
 
 design-systems/
-├── personal/
-│   ├── minimal/
-│   └── bold/
-├── client/
-│   └── professional-clean/
-├── education/
-└── legal/
+├── personal-minimal/
+├── personal-bold/
+├── professional-clean/
+└── …                                # upstream brands
+
+plugins/community/
+└── marketing-vertical-pack/         # installable Marketing bundle
 ```
+
+(Upstream docs still mention nested `skills/marketing/` — this fork uses flat `skills/` + pack for distribution.)
 
 ### 7.2 Tạo Design System đầu tiên
 
