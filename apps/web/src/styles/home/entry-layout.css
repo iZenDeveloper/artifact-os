@@ -277,6 +277,13 @@
   opacity: 1;
   pointer-events: auto;
 }
+/* The global button press feedback (primitives.css `button:active` →
+   `transform: translateY(1px)`) REPLACES this button's centering translate,
+   teleporting it a quadrant away mid-press so the mouseup lands outside it
+   and the click never fires. Re-state the full transform for :active. */
+.entry-nav-rail .entry-nav-rail__collapse:active:not(:disabled) {
+  transform: translate(-50%, -50%) translateY(1px);
+}
 /* Coarse-pointer / non-hover devices can't reveal the collapse button on
    hover, and the topbar toggle is display:none once the rail docks — so the
    rail would strand open. Keep the collapse control permanently visible and
