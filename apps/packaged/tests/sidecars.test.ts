@@ -15,14 +15,16 @@
  * @see apps/daemon/src/legacy-data-migrator.ts
  * @see https://github.com/nexu-io/open-design/issues/710
  */
+import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, posix } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createJsonIpcServer, resolveAppIpcPath } from '@open-design/sidecar';
 import { APP_KEYS, OPEN_DESIGN_SIDECAR_CONTRACT } from '@open-design/sidecar-proto';
+import type { StopProcessesResult, stopProcesses, waitForProcessExit } from '@open-design/platform';
 
 import {
   buildPackagedDaemonSpawnEnv,
@@ -30,6 +32,7 @@ import {
   resolvePackagedChildBaseEnv,
   resolvePackagedElectronNodeCommand,
   resolvePackagedPathEnv,
+  retireExistingSidecarEndpoint,
   waitForStatus,
 } from '../src/sidecars.js';
 import type { PackagedNamespacePaths } from '../src/paths.js';
@@ -565,6 +568,99 @@ describe('waitForStatus child-exit fast-fail', () => {
       expect((captured as Error).message).toContain('sidecar status pid 1234 did not match spawned pid 5678');
     } finally {
       await server.close();
+    }
+  });
+});
+
+describe('retireExistingSidecarEndpoint', () => {
+  /** A real, live PID that is not this process, so `isProcessAlive` is exercised for real. */
+  function spawnLiveChild(): { pid: number; kill: () => void } {
+    const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+    return { pid: child.pid as number, kill: () => child.kill('SIGKILL') };
+  }
+
+  function fakeStopResult(pid: number, opts: { forced?: boolean; survived?: boolean } = {}): StopProcessesResult {
+    return {
+      alreadyStopped: false,
+      forcedPids: opts.forced ? [pid] : [],
+      matchedPids: [pid],
+      remainingPids: opts.survived ? [pid] : [],
+      stoppedPids: opts.survived ? [] : [pid],
+    };
+  }
+
+  async function withWedgedEndpoint(
+    pid: number,
+    run: (ipcPath: string, logPath: string) => Promise<void>,
+  ): Promise<void> {
+    const root = mkdtempSync(join(tmpdir(), 'od-retire-'));
+    const ipcPath = join(root, 'sidecar.sock');
+    const logPath = join(root, 'sidecar.log');
+    // Answers STATUS as a live endpoint but never exits on SHUTDOWN — an orphan
+    // left behind by a force-quit, which is exactly what must be force-stopped.
+    const server = await createJsonIpcServer({
+      socketPath: ipcPath,
+      handler: async () => ({ pid, state: 'running' }),
+    });
+    try {
+      await run(ipcPath, logPath);
+    } finally {
+      await server.close();
+      rmSync(root, { force: true, recursive: true });
+    }
+  }
+
+  it('force-stops an orphaned sidecar that ignores SHUTDOWN', async () => {
+    const child = spawnLiveChild();
+    const stop = vi.fn(async () => fakeStopResult(child.pid, { forced: true })) as unknown as typeof stopProcesses;
+    try {
+      await withWedgedEndpoint(child.pid, async (ipcPath, logPath) => {
+        await retireExistingSidecarEndpoint(ipcPath, logPath, {
+          stopProcesses: stop,
+          waitForExit: (async () => false) as typeof waitForProcessExit,
+        });
+        const log = readFileSync(logPath, 'utf8');
+        expect(log).toContain(`still-running`);
+        expect(log).toContain(`force-stop ipc=${ipcPath} pid=${child.pid} outcome=sigkill`);
+      });
+      expect(stop).toHaveBeenCalledWith([child.pid]);
+    } finally {
+      child.kill();
+    }
+  });
+
+  it('leaves a sidecar that shuts down gracefully alone', async () => {
+    const child = spawnLiveChild();
+    const stop = vi.fn(async () => fakeStopResult(child.pid)) as unknown as typeof stopProcesses;
+    try {
+      await withWedgedEndpoint(child.pid, async (ipcPath, logPath) => {
+        await retireExistingSidecarEndpoint(ipcPath, logPath, {
+          stopProcesses: stop,
+          waitForExit: (async () => true) as typeof waitForProcessExit,
+        });
+        const log = readFileSync(logPath, 'utf8');
+        expect(log).toContain('exited');
+        expect(log).not.toContain('force-stop');
+      });
+      expect(stop).not.toHaveBeenCalled();
+    } finally {
+      child.kill();
+    }
+  });
+
+  it('records survived when an orphan cannot be force-stopped', async () => {
+    const child = spawnLiveChild();
+    const stop = vi.fn(async () => fakeStopResult(child.pid, { survived: true })) as unknown as typeof stopProcesses;
+    try {
+      await withWedgedEndpoint(child.pid, async (ipcPath, logPath) => {
+        await retireExistingSidecarEndpoint(ipcPath, logPath, {
+          stopProcesses: stop,
+          waitForExit: (async () => false) as typeof waitForProcessExit,
+        });
+        expect(readFileSync(logPath, 'utf8')).toContain(`force-stop ipc=${ipcPath} pid=${child.pid} outcome=survived`);
+      });
+    } finally {
+      child.kill();
     }
   });
 });

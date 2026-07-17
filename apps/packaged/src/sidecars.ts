@@ -281,7 +281,31 @@ export async function waitForStatus<T>(
   }
 }
 
-async function retireExistingSidecarEndpoint(ipcPath: string, logPath: string): Promise<void> {
+/** @internal Injectable process controls so tests never signal real PIDs. */
+export type SidecarRetireControls = {
+  stopProcesses: typeof stopProcesses;
+  waitForExit: typeof waitForProcessExit;
+};
+
+/**
+ * Clear a previous sidecar off `ipcPath` before we spawn its replacement.
+ *
+ * Sidecar children have no parent-death watchdog, so a force-quit or crash of
+ * the desktop main process orphans them: they keep running and keep holding
+ * this fixed socket path. Graceful SHUTDOWN is tried first, but a wedged
+ * orphan ignores it — and `prepareIpcPath` only unlinks a socket whose listener
+ * is *gone*, so a live-but-wedged endpoint is never treated as stale and the
+ * sidecar we are about to spawn cannot bind. Escalate to SIGTERM→SIGKILL for
+ * that case, mirroring how `closeManagedChild` already force-stops a managed
+ * child that ignores SHUTDOWN.
+ */
+export async function retireExistingSidecarEndpoint(
+  ipcPath: string,
+  logPath: string,
+  controls: Partial<SidecarRetireControls> = {},
+): Promise<void> {
+  const waitForExit = controls.waitForExit ?? waitForProcessExit;
+  const stop = controls.stopProcesses ?? stopProcesses;
   let status: { pid?: number | null } | null = null;
   try {
     status = await requestJsonIpc<{ pid?: number | null }>(
@@ -308,11 +332,20 @@ async function retireExistingSidecarEndpoint(ipcPath: string, logPath: string): 
   }
 
   if (pid != null && pid !== process.pid && isProcessAlive(pid)) {
-    const exited = await waitForProcessExit(pid, 2500);
+    const exited = await waitForExit(pid, 2500);
     await appendSidecarLifecycleLog(
       logPath,
       `[open-design packaged] existing sidecar endpoint ${exited ? "exited" : "still-running"} ipc=${ipcPath} pid=${pid}`,
     );
+    if (!exited) {
+      const result = await stop([pid]);
+      const gone = !result.remainingPids.includes(pid);
+      const outcome = !gone ? "survived" : result.forcedPids.includes(pid) ? "sigkill" : "sigterm";
+      await appendSidecarLifecycleLog(
+        logPath,
+        `[open-design packaged] existing sidecar endpoint force-stop ipc=${ipcPath} pid=${pid} outcome=${outcome}`,
+      );
+    }
   }
 }
 
