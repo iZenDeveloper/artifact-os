@@ -21286,13 +21286,14 @@ function classifyAmrAccountFailure(text) {
 var SERVER_NAME = "open-design";
 var SERVER_VERSION = "0.2.12";
 var MCP_STDIO_IDLE_EXIT_MS = 30 * 60 * 1e3;
-var CHATGPT_WIDGET_URI = "ui://open-design/artifact-card-v7.html";
+var CHATGPT_WIDGET_URI = "ui://open-design/artifact-card-v8.html";
 var LEGACY_CHATGPT_WIDGET_URIS = /* @__PURE__ */ new Set([
   "ui://open-design/artifact-card-v2.html",
   "ui://open-design/artifact-card-v3.html",
   "ui://open-design/artifact-card-v4.html",
   "ui://open-design/artifact-card-v5.html",
-  "ui://open-design/artifact-card-v6.html"
+  "ui://open-design/artifact-card-v6.html",
+  "ui://open-design/artifact-card-v7.html"
 ]);
 function isChatGptWidgetResourceUri(value) {
   const uri = typeof value === "string" ? value : "";
@@ -21516,6 +21517,7 @@ var CHATGPT_WIDGET_HTML = `<!doctype html>
     .card[data-view="compact"] .preview,
     .card[data-view="compact"] .body { display: none; }
     .card[data-view="artifact"] .compact { display: none; }
+    .card[data-view="brief"] .head { display: none; }
     .card[data-view="brief"] .compact,
     .card[data-view="brief"] .preview,
     .card[data-view="brief"] .body { display: none; }

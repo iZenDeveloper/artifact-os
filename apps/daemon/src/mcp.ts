@@ -29,7 +29,7 @@ const SERVER_VERSION = '0.2.12';
 const MCP_STDIO_IDLE_EXIT_MS = 30 * 60 * 1000;
 // MCP Apps hosts cache widget resources by URI. Bump this whenever the
 // embedded HTML/CSS/JS changes so a failed or stale sandbox is not reused.
-const CHATGPT_WIDGET_URI = 'ui://open-design/artifact-card-v7.html';
+const CHATGPT_WIDGET_URI = 'ui://open-design/artifact-card-v8.html';
 // A running host can retain tool metadata across a daemon/plugin refresh and
 // keep reading the previous URI. Serve the latest widget at that URI too so
 // existing conversations recover without requiring a Codex restart.
@@ -39,6 +39,7 @@ const LEGACY_CHATGPT_WIDGET_URIS = new Set([
   'ui://open-design/artifact-card-v4.html',
   'ui://open-design/artifact-card-v5.html',
   'ui://open-design/artifact-card-v6.html',
+  'ui://open-design/artifact-card-v7.html',
 ]);
 
 export function isChatGptWidgetResourceUri(value: unknown): value is string {
@@ -269,6 +270,7 @@ const CHATGPT_WIDGET_HTML = `<!doctype html>
     .card[data-view="compact"] .preview,
     .card[data-view="compact"] .body { display: none; }
     .card[data-view="artifact"] .compact { display: none; }
+    .card[data-view="brief"] .head { display: none; }
     .card[data-view="brief"] .compact,
     .card[data-view="brief"] .preview,
     .card[data-view="brief"] .body { display: none; }

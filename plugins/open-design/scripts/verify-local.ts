@@ -16,7 +16,7 @@ const EXPECTED_TOOLS = [
   'start_run',
 ] as const;
 
-const WIDGET_URI = 'ui://open-design/artifact-card-v7.html';
+const WIDGET_URI = 'ui://open-design/artifact-card-v8.html';
 
 interface JsonRpcResponse {
   error?: { message?: string };
@@ -184,6 +184,7 @@ async function validateEndpoint(endpoint: string): Promise<void> {
     'ui://open-design/artifact-card-v4.html',
     'ui://open-design/artifact-card-v5.html',
     'ui://open-design/artifact-card-v6.html',
+    'ui://open-design/artifact-card-v7.html',
   ].entries()) {
     const legacyReadResource = await rpc(endpoint, 5 + index, 'resources/read', { uri: legacyUri });
     const legacyContents = legacyReadResource.contents as Array<Record<string, unknown>> | undefined;

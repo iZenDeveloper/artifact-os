@@ -2,7 +2,7 @@
 
 import { createServer } from 'node:http';
 
-const WIDGET_URI = 'ui://open-design/artifact-card-v7.html';
+const WIDGET_URI = 'ui://open-design/artifact-card-v8.html';
 
 interface JsonRpcResponse {
   error?: { message?: string };

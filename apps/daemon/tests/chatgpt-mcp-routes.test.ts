@@ -84,7 +84,7 @@ describe('ChatGPT Streamable HTTP MCP', () => {
         'create_artifact',
       ]));
       const startRun = tools.tools.find((tool) => tool.name === 'start_run');
-      const widgetUri = 'ui://open-design/artifact-card-v7.html';
+      const widgetUri = 'ui://open-design/artifact-card-v8.html';
       const collectBrief = tools.tools.find((tool) => tool.name === 'collect_brief');
       expect(collectBrief?._meta?.['openai/outputTemplate']).toBe(widgetUri);
       expect((collectBrief?._meta as any)?.ui?.resourceUri).toBe(widgetUri);
@@ -125,6 +125,7 @@ describe('ChatGPT Streamable HTTP MCP', () => {
         'ui://open-design/artifact-card-v4.html',
         'ui://open-design/artifact-card-v5.html',
         'ui://open-design/artifact-card-v6.html',
+        'ui://open-design/artifact-card-v7.html',
       ]) {
         const legacyWidget = await client.readResource({ uri: legacyUri });
         expect(legacyWidget.contents[0]).toEqual(expect.objectContaining({
@@ -143,6 +144,8 @@ describe('ChatGPT Streamable HTTP MCP', () => {
       expect(widgetHtml).toContain("rpcRequest('ui/update-model-context'");
       expect(widgetHtml).toContain(String.raw`const text = lines.join('\n')`);
       expect(widgetHtml).toContain('id="brief-form"');
+      expect(widgetHtml).toContain('.card[data-view="brief"] .head { display: none; }');
+      expect(widgetHtml).toContain('<header class="head">');
       expect(widgetHtml).toContain('id="brief-goal-options"');
       expect(widgetHtml).toContain('id="brief-audience-options"');
       expect(widgetHtml).toContain('id="brief-content-options"');
@@ -657,8 +660,8 @@ describe('ChatGPT Streamable HTTP MCP', () => {
         stage: 'queued',
       });
       expect(started._meta).toMatchObject({
-        'openai/outputTemplate': 'ui://open-design/artifact-card-v7.html',
-        'ui/resourceUri': 'ui://open-design/artifact-card-v7.html',
+        'openai/outputTemplate': 'ui://open-design/artifact-card-v8.html',
+        'ui/resourceUri': 'ui://open-design/artifact-card-v8.html',
       });
       expect(runBodies).toEqual([{
         projectId: 'p1',
@@ -741,7 +744,7 @@ describe('ChatGPT Streamable HTTP MCP', () => {
           balanceStatus: 'empty',
         },
         _meta: {
-          'openai/outputTemplate': 'ui://open-design/artifact-card-v7.html',
+          'openai/outputTemplate': 'ui://open-design/artifact-card-v8.html',
         },
       });
       expect(runBodies).toHaveLength(4);
