@@ -701,7 +701,7 @@ export function InlineModelSwitcher({
                 <AgentIcon id={currentAgent.id} size={18} />
               ) : (
                 <span className="inline-switcher__byok-glyph">
-                  <Icon name="link" size={12} />
+                  <Icon name="link" size={14} />
                 </span>
               )}
             </span>
@@ -723,7 +723,7 @@ export function InlineModelSwitcher({
                 <AgentIcon id={currentAgent.id} size={18} />
               ) : (
                 <span className="inline-switcher__byok-glyph">
-                  <Icon name="link" size={12} />
+                  <Icon name="link" size={14} />
                 </span>
               )}
             </span>

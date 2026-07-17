@@ -1,5 +1,7 @@
 import type { SVGProps } from 'react';
 
+import { REMIX_ICON_PATHS } from './remix-icon-paths';
+
 export type IconName =
   | 'alert-triangle'
   | 'arrow-left'
@@ -9,6 +11,7 @@ export type IconName =
   | 'bar-chart-box'
   | 'bell'
   | 'blocks'
+  | 'brain'
   | 'check'
   | 'chevron-down'
   | 'chevron-left'
@@ -103,13 +106,137 @@ interface Props extends Omit<SVGProps<SVGSVGElement>, 'name'> {
   size?: number | string;
 }
 
+// #5517 swapped the app's icon language to Remix Icon (the demo renders
+// `ri-*` font glyphs). Packaged od:// documents cannot load url() fonts at
+// all, so we render the same glyphs as inline SVG path data instead
+// (extracted from remixicon@4.9.1 into remix-icon-paths.ts). Names missing
+// here fall back to the legacy hand-drawn stroke set below.
+const REMIX_ICON: Partial<Record<IconName, string>> = {
+  'alert-triangle': 'error-warning-line',
+  'arrow-left': 'arrow-left-line',
+  'arrow-up': 'arrow-up-line',
+  artboard: 'artboard-2-line',
+  attach: 'attachment-2',
+  'bar-chart-box': 'bar-chart-box-line',
+  bell: 'notification-3-line',
+  blocks: 'layout-grid-line',
+  brain: 'brain-line',
+  check: 'check-line',
+  'chevron-down': 'arrow-down-s-line',
+  'chevron-left': 'arrow-left-s-line',
+  'chevron-right': 'arrow-right-s-line',
+  close: 'close-line',
+  comment: 'chat-1-line',
+  copy: 'file-copy-line',
+  dashboard: 'dashboard-line',
+  discord: 'discord-line',
+  download: 'download-2-line',
+  draw: 'brush-line',
+  edit: 'edit-line',
+  'external-link': 'external-link-line',
+  eye: 'eye-line',
+  'eye-off': 'eye-off-line',
+  file: 'file-line',
+  'file-code': 'file-code-line',
+  'file-text': 'file-text-line',
+  folder: 'folder-line',
+  'folder-filled': 'folder-fill',
+  fork: 'git-branch-line',
+  github: 'github-line',
+  'github-filled': 'github-fill',
+  globe: 'global-line',
+  grid: 'grid-line',
+  'grip-vertical': 'drag-move-line',
+  hammer: 'hammer-line',
+  'help-circle': 'question-line',
+  history: 'history-line',
+  home: 'home-5-line',
+  'home-filled': 'home-5-fill',
+  image: 'image-line',
+  import: 'upload-2-line',
+  info: 'information-line',
+  'integrations-filled': 'puzzle-fill',
+  kanban: 'kanban-view',
+  languages: 'translate-2',
+  'layers-filled': 'stack-fill',
+  layout: 'layout-line',
+  lightbulb: 'lightbulb-line',
+  link: 'link',
+  lock: 'lock-line',
+  'log-out': 'logout-box-r-line',
+  mail: 'mail-line',
+  maximize: 'fullscreen-line',
+  mic: 'mic-line',
+  minimize: 'fullscreen-exit-line',
+  minus: 'subtract-line',
+  moon: 'moon-line',
+  'more-horizontal': 'more-line',
+  orbit: 'planet-line',
+  'paint-bucket': 'paint-line',
+  palette: 'palette-line',
+  'palette-filled': 'palette-fill',
+  'panel-left': 'side-bar-line',
+  pencil: 'pencil-line',
+  play: 'play-line',
+  plus: 'add-line',
+  'plus-filled': 'add-fill',
+  present: 'slideshow-line',
+  puzzle: 'puzzle-line',
+  refresh: 'refresh-line',
+  reload: 'reset-left-line',
+  search: 'search-line',
+  send: 'send-plane-2-line',
+  settings: 'settings-3-line',
+  share: 'share-forward-line',
+  sliders: 'equalizer-line',
+  smartphone: 'smartphone-line',
+  sparkles: 'sparkling-line',
+  spinner: 'loader-4-line',
+  star: 'star-line',
+  stop: 'stop-line',
+  sun: 'sun-line',
+  'sun-moon': 'sun-foggy-line',
+  swatchbook: 'artboard-line',
+  terminal: 'terminal-box-line',
+  'thumbs-down': 'thumb-down-line',
+  'thumbs-up': 'thumb-up-line',
+  trash: 'delete-bin-line',
+  tweaks: 'sound-module-line',
+  upload: 'upload-2-line',
+  users: 'group-line',
+  'video-ai': 'video-ai-line',
+  volume: 'volume-up-line',
+  'zoom-in': 'zoom-in-line',
+  'zoom-out': 'zoom-out-line',
+};
+
 /**
- * Lightweight inline-SVG icon set tuned to the design system. Stroke-based
- * (Feather/Lucide style) so they pair cleanly with `currentColor` and adopt
- * the local text color. Use sparingly inside buttons that already have
- * accessible labels — set `aria-hidden` by default.
+ * Lightweight inline-SVG icon set tuned to the design system. Most names map
+ * to Remix Icon glyphs (#5517 icon language, inlined for od://); the
+ * remaining stroke-based (Feather/Lucide style) drawings below are the
+ * fallback for names Remix doesn't cover. Use sparingly inside buttons that
+ * already have accessible labels — set `aria-hidden` by default.
  */
 export function Icon({ name, size = 14, strokeWidth = 1.6, ...rest }: Props) {
+  const remixGlyph = REMIX_ICON[name];
+  const remixPath = remixGlyph ? REMIX_ICON_PATHS[remixGlyph] : undefined;
+  if (remixPath) {
+    const { className, ...restProps } = rest;
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden
+        focusable="false"
+        className={`${name === 'spinner' ? 'icon-spin ' : ''}${className ?? ''}`.trim() || undefined}
+        {...restProps}
+      >
+        <path d={remixPath} />
+      </svg>
+    );
+  }
   const common = {
     width: size,
     height: size,
