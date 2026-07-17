@@ -236,6 +236,7 @@ Consent before marketing tags (EU/UK/CA) · consent mode · no PII in props · r
 | Offline conversion / CRM | `revops` |
 | Experiment measurement | ab-test if installed |
 | SEO traffic interpretation | `seo-audit` |
+| Churn signals / cancel funnel events | `churn-prevention` |
 
 ---
 
@@ -306,5 +307,5 @@ HTML: decision strip · event table · conversion list · UTM legend · checklis
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `cro`, `ads`, `revops`, `seo-audit`, `launch`, `emails`  
+- **Related:** `product-marketing`, `cro`, `ads`, `revops`, `churn-prevention`, `seo-audit`, `launch`, `emails`  
 - **Upstream:** [marketingskills/analytics](https://github.com/coreyhaines31/marketingskills/tree/main/skills/analytics)  

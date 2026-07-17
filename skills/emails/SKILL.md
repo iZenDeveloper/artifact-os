@@ -186,6 +186,7 @@ Opens / CTR / conversion / unsubscribe — what to watch (no fake benchmarks as 
 - Lead magnet design → lead-magnets (if installed)
 - Cold outbound → cold-email (if installed)
 - MQL recycle / routing triggers → revops (if installed)
+- Cancel / dunning / win-back system design → churn-prevention
 ```
 
 HTML: overview table + each email as a readable “message” block (subject, preview, body, CTA).  
@@ -219,5 +220,5 @@ Apply brand colors only if DESIGN.md palette is available.
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `cold-email`, `revops`, `launch`, `copywriting`, `cro`, `hook-engine`, `content-repurposer`, `marketing-psychology`  
+- **Related:** `product-marketing`, `cold-email`, `revops`, `churn-prevention`, `launch`, `copywriting`, `cro`, `hook-engine`, `content-repurposer`, `marketing-psychology`  
 - **Upstream:** [marketingskills/emails](https://github.com/coreyhaines31/marketingskills/tree/main/skills/emails)  
