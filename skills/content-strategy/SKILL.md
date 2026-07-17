@@ -128,7 +128,7 @@ Every piece must be **searchable**, **shareable**, or **both**. Prefer searchabl
 
 Hub first, then spokes; interlink. Most posts can live under `/blog` — dedicated hub URLs only for deep multi-layer guides.
 
-Programmatic at scale → `programmatic-seo` / `seo-audit` for IA checks.
+Programmatic at scale → `programmatic-seo`. Site hierarchy / nav / URLs → `site-architecture`. Technical crawl → `seo-audit`.
 
 ---
 
@@ -280,5 +280,5 @@ Sample titles must respect DESIGN.md §8 when brand linked.
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `copywriting`, `competitor-profiling`, `competitors`, `programmatic-seo`, `content-repurposer`, `social-content-factory`, `hook-engine`, `seo-audit`, `ai-seo`, `schema`, `launch`, `emails`, `cro`  
+- **Related:** `product-marketing`, `copywriting`, `competitor-profiling`, `competitors`, `programmatic-seo`, `site-architecture`, `content-repurposer`, `social-content-factory`, `hook-engine`, `seo-audit`, `ai-seo`, `schema`, `launch`, `emails`, `cro`  
 - **Upstream:** [marketingskills/content-strategy](https://github.com/coreyhaines31/marketingskills/tree/main/skills/content-strategy)  

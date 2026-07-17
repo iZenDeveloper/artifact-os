@@ -210,5 +210,5 @@ Why each type · data available vs gaps
 
 ## Vertical metadata
 
-- **Related:** `seo-audit`, `ai-seo`, `product-marketing`, `copywriting`, `cro`, `programmatic-seo`, `competitors`  
+- **Related:** `seo-audit`, `ai-seo`, `product-marketing`, `copywriting`, `cro`, `programmatic-seo`, `competitors`, `site-architecture`  
 - **Upstream:** [marketingskills/schema](https://github.com/coreyhaines31/marketingskills/tree/main/skills/schema)  

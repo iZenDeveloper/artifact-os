@@ -77,6 +77,7 @@ Cập nhật: 2026-07 · Aligns with Content Pro **v2.2** + MVP output scope (te
 | 0q | `analytics` | **Pilot** | Tracking plans, events, GA4/GTM, UTMs (marketingskills) |
 | 0r | `competitor-profiling` | **Pilot** | Competitor dossiers from URLs (intel; ≠ public `competitors` pages) |
 | 0s | `churn-prevention` | **Pilot** | Cancel flows, save offers, dunning / retention (marketingskills) |
+| 0t | `site-architecture` | **Pilot** | Page hierarchy, nav, URLs, internal linking (marketingskills IA) |
 | 1 | `content-repurposer` | **Done** | Core; strategy + ready-to-post; MVP scope locked |
 | 2 | `social-content-factory` | **Done** | Original batch / week |
 | 3 | `hook-engine` | **Done** | Hooks-only lab |

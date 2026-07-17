@@ -182,6 +182,7 @@ Tell the user which skill to run next:
 | Programmatic SEO page systems | `programmatic-seo` |
 | Tracking / measurement plan | `analytics` |
 | Churn / cancel / retention systems | `churn-prevention` |
+| Site IA / nav / URL map | `site-architecture` |
 | Psychology pass on copy | `marketing-psychology` |
 
 ---
@@ -227,6 +228,6 @@ Ship only if:
 
 - **Vertical:** marketing  
 - **Layer:** strategy / context (before Content Pro packs)  
-- **Related:** `content-strategy`, `sales-enablement`, `revops`, `pricing`, `ads`, `competitor-profiling`, `competitors`, `programmatic-seo`, `analytics`, `churn-prevention`, `cro`, `copywriting`, `emails`, `cold-email`, `launch`, `seo-audit`, `ai-seo`, `schema`, `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `marketing-psychology`  
+- **Related:** `content-strategy`, `sales-enablement`, `revops`, `pricing`, `ads`, `competitor-profiling`, `competitors`, `programmatic-seo`, `analytics`, `churn-prevention`, `site-architecture`, `cro`, `copywriting`, `emails`, `cold-email`, `launch`, `seo-audit`, `ai-seo`, `schema`, `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `marketing-psychology`  
 - **Upstream:** [marketingskills/product-marketing](https://github.com/coreyhaines31/marketingskills/tree/main/skills/product-marketing)  
 - **Bridge:** `references/design-md-bridge.md`  

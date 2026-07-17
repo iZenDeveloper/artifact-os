@@ -200,6 +200,7 @@ Indexation rate · rankings · traffic · engagement · conversion · thin warni
 | Need | Skill |
 |------|--------|
 | Positioning / ICP | `product-marketing` |
+| Site hierarchy / nav / base URLs | `site-architecture` |
 | Editorial priority of patterns | `content-strategy` |
 | Comparison narrative depth | `competitors` |
 | Template body polish | `copywriting` |
@@ -280,5 +281,5 @@ HTML: playbook cards · pattern diagram · template outline · checklist.
 
 ## Vertical metadata
 
-- **Related:** `seo-audit`, `schema`, `ai-seo`, `content-strategy`, `competitors`, `copywriting`, `product-marketing`, `cro`  
+- **Related:** `seo-audit`, `schema`, `ai-seo`, `content-strategy`, `site-architecture`, `competitors`, `copywriting`, `product-marketing`, `cro`  
 - **Upstream:** [marketingskills/programmatic-seo](https://github.com/coreyhaines31/marketingskills/tree/main/skills/programmatic-seo)  

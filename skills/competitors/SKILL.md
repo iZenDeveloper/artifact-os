@@ -255,5 +255,5 @@ HTML: landscape cards · priority table · one featured page preview · comparis
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `competitor-profiling`, `pricing`, `copywriting`, `cro`, `seo-audit`, `ai-seo`, `schema`, `programmatic-seo`, `sales-enablement`, `content-strategy`, `marketing-psychology`  
+- **Related:** `product-marketing`, `competitor-profiling`, `pricing`, `copywriting`, `cro`, `seo-audit`, `ai-seo`, `schema`, `programmatic-seo`, `site-architecture`, `sales-enablement`, `content-strategy`, `marketing-psychology`  
 - **Upstream:** [marketingskills/competitors](https://github.com/coreyhaines31/marketingskills/tree/main/skills/competitors)  
