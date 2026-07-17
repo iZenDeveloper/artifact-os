@@ -189,7 +189,7 @@ On-page / technical polish → `seo-audit`.
 | FAQ JSON-LD | `schema` |
 | Sales battle cards / decks | `sales-enablement` |
 | Editorial map | `content-strategy` |
-| Scale many pages | programmatic SEO (if installed) |
+| Scale many pages | `programmatic-seo` |
 
 ---
 
@@ -254,5 +254,5 @@ HTML: landscape cards · priority table · one featured page preview · comparis
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `pricing`, `copywriting`, `cro`, `seo-audit`, `ai-seo`, `schema`, `sales-enablement`, `content-strategy`, `marketing-psychology`  
+- **Related:** `product-marketing`, `pricing`, `copywriting`, `cro`, `seo-audit`, `ai-seo`, `schema`, `programmatic-seo`, `sales-enablement`, `content-strategy`, `marketing-psychology`  
 - **Upstream:** [marketingskills/competitors](https://github.com/coreyhaines31/marketingskills/tree/main/skills/competitors)  
