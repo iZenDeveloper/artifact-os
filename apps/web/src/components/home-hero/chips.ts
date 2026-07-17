@@ -56,6 +56,18 @@ export type ChipAction =
       inputs?: Record<string, unknown>;
       projectMetadata?: ProjectMetadata;
     }
+  // Content-creator outcomes bind a Vertical OS skill (content-repurposer,
+  // social-content-factory, ad-creative, card-xiaohongshu, …) rather than a
+  // scenario plugin. `promptSeed` is the empty-composer scaffold; when the
+  // skill is missing the chip still arms projectKind + metadata so submit
+  // produces a content-shaped project.
+  | {
+      kind: 'apply-skill';
+      skillId: string;
+      projectKind: ProjectKind;
+      promptSeed?: string;
+      projectMetadata?: ProjectMetadata;
+    }
   | { kind: 'create-plugin' }
   | { kind: 'open-template-picker' }
   // Routes the user into the Brand Kit tab and opens its New Brand Kit modal,
@@ -85,6 +97,235 @@ export interface HomeHeroChip {
 }
 
 export const HOME_HERO_CHIPS: ReadonlyArray<HomeHeroChip> = [
+  // ── Content Creator outcomes (Vertical Content OS primary rail) ─────────
+  {
+    id: 'content-pack',
+    label: 'Content Pack',
+    icon: 'layers-filled',
+    group: 'create',
+    description: 'XHS · TikTok · LinkedIn · Facebook · YouTube · Email',
+    hint: 'Turn one source into a multi-platform Content Pro pack.',
+    action: {
+      kind: 'apply-skill',
+      skillId: 'content-repurposer',
+      projectKind: 'prototype',
+      promptSeed:
+        'Create a Content Pro multi-platform pack (XHS · TikTok · LinkedIn · Facebook · YouTube · Threads · Email) with strategy + ready-to-post.\nMVP scope: text + visual direction + scripts only (no rendered video / MP4).\n\nStrategy (fill or I will assume):\n- objective: awareness | engagement | leads | conversion | retention | authority\n- funnel_stage: awareness | consideration | decision | retention\n- persona + 1–2 pains:\n- offer (keyword → deliverable):\n- platform_priority (optional):\n- language:\n\nRequirements: paradox hooks, personal stakes, TikTok script + shot list + peak frame description, XHS carousel slides, Facebook caption (hook in first 125 chars), YouTube title+description+thumb direction, ready-to-post, scores ≥9.0.\n\nSource:\n',
+      projectMetadata: {
+        kind: 'prototype',
+        intent: 'content-pack',
+      },
+    },
+  },
+  {
+    id: 'social-content',
+    label: 'Social Content',
+    icon: 'share',
+    group: 'create',
+    description: 'Batch posts across platforms',
+    hint: 'Batch original social posts under Content Pro standards.',
+    action: {
+      kind: 'apply-skill',
+      skillId: 'social-content-factory',
+      projectKind: 'prototype',
+      promptSeed:
+        'Create a Content Pro v2.2 social batch (5–7 pieces) with strategy + ready-to-post.\n\nStrategy: objective / funnel_stage / persona+pains / offer / platforms / language:\nPillars (≤3):\n\nRequirements: paradox hooks, personal stakes, TikTok peak 10/10 where video, per-piece ready-to-post, calibrated scores ≥9.0. No flat fact titles.\n\nTopic / brief:\n',
+      projectMetadata: {
+        kind: 'prototype',
+        intent: 'social-content',
+      },
+    },
+  },
+  {
+    id: 'carousel',
+    label: 'Carousel',
+    icon: 'grid',
+    group: 'create',
+    description: 'XHS / IG multi-card posts',
+    hint: 'Design a 5–7 card vertical carousel (1080×1440).',
+    action: {
+      kind: 'apply-skill',
+      skillId: 'card-xiaohongshu',
+      projectKind: 'prototype',
+      promptSeed:
+        'Design a 5–7 card XHS-style carousel (1080×1440). Strong cover hook, no soft middle cards, twist + offer CTA on the last card. Topic:\n',
+      projectMetadata: {
+        kind: 'prototype',
+        intent: 'carousel',
+      },
+    },
+  },
+  {
+    id: 'short-video',
+    label: 'Short Video',
+    icon: 'play',
+    group: 'create',
+    description: 'TikTok / Reels / Shorts',
+    hint: 'Script + shot list for a 15–25s short-form video.',
+    action: {
+      kind: 'apply-skill',
+      skillId: 'content-repurposer',
+      projectKind: 'video',
+      promptSeed:
+        'Create a TikTok / Reels short (15–25s): 0–3s kill hook, uneven energy map, peak 10/10 cinematic frame, spoken + on-screen text + shot list, offer CTA. Topic:\n',
+      projectMetadata: {
+        kind: 'video',
+        intent: 'short-video',
+      },
+    },
+  },
+  {
+    id: 'linkedin-post',
+    label: 'LinkedIn Post',
+    icon: 'file-text',
+    group: 'create',
+    description: 'Authority posts that convert',
+    hint: 'Tight LinkedIn post: paradox open, sharp question, soft offer.',
+    action: {
+      kind: 'apply-skill',
+      skillId: 'content-repurposer',
+      projectKind: 'prototype',
+      promptSeed:
+        'Write a tight LinkedIn post (900–1600 chars): paradox first line, short scene, 2–3 proofs, insight, sharp question, soft offer CTA. Topic:\n',
+      projectMetadata: {
+        kind: 'prototype',
+        intent: 'linkedin-post',
+      },
+    },
+  },
+  {
+    id: 'facebook-post',
+    label: 'Facebook Post',
+    icon: 'share',
+    group: 'create',
+    description: 'Feed caption + 4:5 visual',
+    hint: 'Peer-tone Facebook feed post: hook before See more, offer CTA.',
+    action: {
+      kind: 'apply-skill',
+      skillId: 'content-repurposer',
+      projectKind: 'prototype',
+      promptSeed:
+        'Write a Facebook feed post (prefer 4:5 visual direction 1080×1350).\nHook in the first 125 characters (before “See more”). Peer/conversational tone — not a LinkedIn clone.\nInclude caption + image direction + optional first comment + hashtags (0–3) + best time + offer CTA.\n\nTopic / brief:\n',
+      projectMetadata: {
+        kind: 'prototype',
+        intent: 'facebook-post',
+      },
+    },
+  },
+  {
+    id: 'youtube',
+    label: 'YouTube',
+    icon: 'play',
+    group: 'create',
+    description: 'Title · thumb · description',
+    hint: 'YouTube package: titles, description, thumbnail direction (+ Shorts script optional).',
+    action: {
+      kind: 'apply-skill',
+      skillId: 'content-repurposer',
+      projectKind: 'prototype',
+      promptSeed:
+        'Create a YouTube package (MVP: text + visual direction + script — no rendered video).\nDeliver: 2–3 title options (≤70 chars prefer), description (hook in first 2 lines + bullets + offer + links), thumbnail direction (16:9 · ≤5 words on-image).\nIf short-form: Shorts script 15–60s with 0–3s kill hook, peak frame, shot list (same energy bar as TikTok, YT-native title).\n\nTopic / brief:\n',
+      projectMetadata: {
+        kind: 'prototype',
+        intent: 'youtube',
+      },
+    },
+  },
+  {
+    id: 'email',
+    label: 'Email',
+    icon: 'send',
+    group: 'create',
+    description: 'Subjects + body with one offer',
+    hint: 'Email with paradox subjects and a single clear offer CTA.',
+    action: {
+      kind: 'apply-skill',
+      skillId: 'content-repurposer',
+      projectKind: 'prototype',
+      promptSeed:
+        'Write an email pack: 3–4 subject lines (one paradox-led), 120–250 word body, one offer CTA. Topic / list segment:\n',
+      projectMetadata: {
+        kind: 'prototype',
+        intent: 'email',
+      },
+    },
+  },
+  {
+    id: 'ad-creative',
+    label: 'Ad Creative',
+    icon: 'sparkles',
+    group: 'create',
+    description: 'Paid ad variants at scale',
+    hint: 'Generate paid ad creative variants from one brief.',
+    action: {
+      kind: 'apply-skill',
+      skillId: 'ad-variants-generator',
+      projectKind: 'prototype',
+      promptSeed:
+        'Create a Content Pro v2.2 paid ad variant matrix (ready-to-paste headlines, primary text, CTAs).\n\nStrategy: objective / funnel / persona:\nPlatform(s): Meta | TikTok | LinkedIn | Google\nOffer + proof (only real):\nConstraints:\n\nTopic / brief:\n',
+      projectMetadata: {
+        kind: 'prototype',
+        intent: 'ad-creative',
+      },
+    },
+  },
+  {
+    id: 'threads',
+    label: 'Threads / X',
+    icon: 'orbit',
+    group: 'create',
+    description: 'Short-form text chains',
+    hint: 'Write a punchy Threads / X chain with personal stakes.',
+    action: {
+      kind: 'apply-skill',
+      skillId: 'content-repurposer',
+      projectKind: 'prototype',
+      promptSeed:
+        'Write a Threads / X chain (4–8 posts). P1 is the strongest hook with personal stakes; last post = offer CTA. Topic:\n',
+      projectMetadata: {
+        kind: 'prototype',
+        intent: 'social-content',
+      },
+    },
+  },
+  {
+    id: 'repurpose',
+    label: 'Repurpose',
+    icon: 'refresh',
+    group: 'create',
+    description: '1 source → many formats',
+    hint: 'Turn one piece into a multi-platform pack.',
+    action: {
+      kind: 'apply-skill',
+      skillId: 'content-repurposer',
+      projectKind: 'prototype',
+      promptSeed:
+        'Repurpose into multi-platform formats (XHS · TikTok · LinkedIn · Facebook · YouTube · Threads · Email) with strategy block + ready-to-post each platform.\n\nStrategy: objective / funnel_stage / persona+pains / offer:\n\nSource:\n',
+      projectMetadata: {
+        kind: 'prototype',
+        intent: 'content-pack',
+      },
+    },
+  },
+  {
+    id: 'hook-engine',
+    label: 'Hook Lab',
+    icon: 'sparkles',
+    group: 'create',
+    description: 'Stop-scroll lines only',
+    hint: 'Weak→strong hooks for cover, 0–3s, LinkedIn L1, subjects, ads.',
+    action: {
+      kind: 'apply-skill',
+      skillId: 'hook-engine',
+      projectKind: 'prototype',
+      promptSeed:
+        'Hook Engine lab (hooks only — not a full pack).\n\nStrategy: objective / funnel_stage / persona+pains / language:\nSurfaces: XHS cover · TikTok 0–3s · LinkedIn L1 · Threads P1 · Email subjects · Ad headlines\n\nDeliver: weak→strong pairs, framework tags, one primary per surface, calibrated hook scores ≥9.0.\n\nSource / weak draft / topic:\n',
+      projectMetadata: {
+        kind: 'prototype',
+        intent: 'hook-engine',
+      },
+    },
+  },
   {
     id: 'create-brand-kit',
     // Inline English fallback only — the rendered label is localized through
@@ -347,7 +588,7 @@ export const HOME_HERO_CHIPS: ReadonlyArray<HomeHeroChip> = [
     label: 'Create plugin',
     icon: 'edit',
     group: 'migrate',
-    hint: 'Author a reusable Open Design plugin and add it to My plugins.',
+    hint: 'Author a reusable Artifact OS plugin and add it to My plugins.',
     action: { kind: 'create-plugin' },
   },
   {
@@ -380,18 +621,36 @@ export function chipsForGroup(group: ChipGroup): HomeHeroChip[] {
   return HOME_HERO_CHIPS.filter((c) => c.group === group);
 }
 
-// Display order for the inline `create` scenario rail. The composer leads with
-// Website clone (the fastest "paste a URL, get a site" on-ramp), then the slide
-// deck ("Slides") and the core build scenarios in decreasing generality
-// (Prototype → Wireframe → Mobile → Document → Animation), then the media
-// scenarios. Brand Kit is intentionally omitted here so it trails the scenario
-// set — it dispatches into the Brand Kit tab rather than seeding a scenario
-// plugin. Any create chip not listed keeps its catalog order after the explicit
-// entries (see `orderedCreateChips`).
+// Display order for the inline `create` scenario rail. Vertical Content OS
+// leads with creator outcomes (Content Pack / Social / Carousel / …), then
+// keeps the classic design surfaces (deck / prototype / …) so Website / Slide
+// are no longer the only visible path. Brand Kit is intentionally omitted
+// here so it trails — it dispatches into the Brand Kit tab rather than
+// seeding a scenario. Any create chip not listed keeps catalog order after
+// the explicit entries (see `orderedCreateChips`).
+// Creator-facing Quick Start order (large tiles). Design surfaces trail.
+export const CREATOR_QUICK_START_IDS = [
+  'content-pack',
+  'hook-engine',
+  'carousel',
+  'short-video',
+  'linkedin-post',
+  'facebook-post',
+  'youtube',
+  'threads',
+  'email',
+  'ad-creative',
+  'repurpose',
+] as const;
+
+export type CreatorQuickStartId = (typeof CREATOR_QUICK_START_IDS)[number];
+
 export const CREATE_RAIL_ORDER = [
-  'web-clone',
+  ...CREATOR_QUICK_START_IDS,
+  'social-content',
   'deck',
   'prototype',
+  'web-clone',
   'wireframe',
   'mobile',
   'document',
@@ -402,6 +661,16 @@ export const CREATE_RAIL_ORDER = [
   'video',
   'audio',
 ] as const;
+
+export function isCreatorQuickStartId(id: string): id is CreatorQuickStartId {
+  return (CREATOR_QUICK_START_IDS as readonly string[]).includes(id);
+}
+
+export function orderedCreatorQuickStarts(): HomeHeroChip[] {
+  return CREATOR_QUICK_START_IDS
+    .map((id) => findChip(id))
+    .filter((chip): chip is HomeHeroChip => Boolean(chip));
+}
 
 // Chip ids the onboarding "build a design system" teaser intentionally omits.
 // Video and Audio are the trailing pure-media outputs in CREATE_RAIL_ORDER and

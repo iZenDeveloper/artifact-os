@@ -24,9 +24,17 @@ import { Icon } from "./Icon";
 import {
 	isDesignSystemProject,
 	isPublishedDesignSystemProject,
-	resolveProjectDesignSystemId,
 } from "./design-system-project";
 import { LiveArtifactBadges } from "./LiveArtifactBadges";
+import {
+	projectCardBrandLabel,
+	projectCardCategory,
+	projectCardStatusBucket,
+	projectCardStatusIsActive,
+	projectCardStatusLabel,
+	projectCardTypeLabel,
+	type ProjectCardCategory,
+} from "./project-card-meta";
 import { Toast } from "./Toast";
 
 type SubTab = "recent" | "yours";
@@ -71,6 +79,7 @@ export const STATUS_LABEL_KEYS = {
 
 interface Props {
 	projects: Project[];
+	/** Retained for call-site compatibility; skill name no longer shown on cards. */
 	skills: SkillSummary[];
 	designSystems: DesignSystemSummary[];
 	onOpen: (id: string) => void;
@@ -85,7 +94,7 @@ interface Props {
 
 export function DesignsTab({
 	projects,
-	skills,
+	skills: _skills,
 	designSystems,
 	onOpen,
 	onOpenLiveArtifact,
@@ -187,12 +196,11 @@ export function DesignsTab({
 				// projectCover) instead of a raw HTML file preview, so skip the
 				// file scan entirely for them.
 				if (project.metadata?.kind === "brand") return [project.id, null] as const;
-				if (project.metadata?.entryFile && !designSystemProject) return [project.id, null] as const;
-				let files: Awaited<ReturnType<typeof fetchProjectFiles>>;
+				let files: Awaited<ReturnType<typeof fetchProjectFiles>> = [];
 				try {
 					files = await fetchProjectFiles(project.id);
 				} catch {
-					return [project.id, null] as const;
+					files = [];
 				}
 				if (designSystemProject) {
 					const logo = findDesignSystemLogoFile(files);
@@ -205,7 +213,8 @@ export function DesignsTab({
 					return [project.id, null] as const;
 				}
 				const image = files
-					.filter((f) => f.kind === "image")
+					.filter((f) => f.kind === "image" || /\.(png|jpe?g|webp|gif|svg)$/iu.test(f.path ?? f.name))
+					.filter((f) => f.type !== "dir")
 					.sort((a, b) => b.mtime - a.mtime)[0];
 				if (image) {
 					return [
@@ -221,6 +230,23 @@ export function DesignsTab({
 						project.id,
 						{ kind: "video" as const, name: video.path ?? video.name },
 					] as const;
+				}
+				const entry = project.metadata?.entryFile;
+				const htmlFiles = files.filter(
+					(f) => f.type !== "dir" && (f.kind === "html" || /\.html?$/i.test(f.path ?? f.name)),
+				);
+				// Prefer declared HTML entry, then index.html, then newest HTML file.
+				const resolvedHtml = (() => {
+					if (entry && /\.html?$/i.test(entry)) return entry;
+					const index = htmlFiles.find(
+						(f) => (f.path ?? f.name) === "index.html" || f.name === "index.html",
+					);
+					if (index) return index.path ?? index.name;
+					const newest = [...htmlFiles].sort((a, b) => b.mtime - a.mtime)[0];
+					return newest ? (newest.path ?? newest.name) : null;
+				})();
+				if (resolvedHtml) {
+					return [project.id, { kind: "html" as const, name: resolvedHtml }] as const;
 				}
 				return [project.id, null] as const;
 			}),
@@ -387,10 +413,6 @@ export function DesignsTab({
 		[filtered],
 	);
 
-	const skillName = (id: string | null) =>
-		skills.find((s) => s.id === id)?.name ?? "";
-	const dsName = (id: string | null) =>
-		designSystems.find((d) => d.id === id)?.title ?? "";
 	const toggleSelected = (id: string) => {
 		setSelected((curr) => {
 			const next = new Set(curr);
@@ -715,8 +737,6 @@ export function DesignsTab({
 				<div className="design-grid">
 					{filtered.map((item) => {
 						const p = item.project;
-						const skill = skillName(p.skillId);
-						const ds = dsName(resolveProjectDesignSystemId(p));
 						if (item.type === "live-artifact") {
 							const artifact = item.liveArtifact;
 							const title = liveArtifactCardTitle(p, artifact);
@@ -761,7 +781,11 @@ export function DesignsTab({
 										/>
 									</div>
 									<div className="design-card-meta-block">
-										<ProjectTag category="live-artifact" />
+										<div className="design-card-tag-row">
+											<span className="design-card-tag tag-live-artifact">
+												{projectCardTypeLabel("live-artifact", t)}
+											</span>
+										</div>
 										<LiveArtifactBadges
 											className="design-card-badges"
 											status={artifact.status}
@@ -770,16 +794,15 @@ export function DesignsTab({
 										<div className="design-card-name" title={title}>
 											{title}
 										</div>
-										<div className="design-card-meta">
-											<span className="ds">{metaLead}</span>
-											{" · "}
+										<div className="design-card-brand" title={metaLead}>
+											{metaLead}
+										</div>
+										<div className="design-card-status">
 											{artifactStatusLabel(
 												artifact.status,
 												artifact.refreshStatus,
 												t,
 											)}
-											{" · "}
-											{relativeTime(item.updatedAt, t)}
 										</div>
 									</div>
 								</div>
@@ -792,6 +815,13 @@ export function DesignsTab({
 						const isSelected = selected.has(p.id);
 						const designSystemProject = isDesignSystemProject(p);
 						const publishedDesignSystem = isPublishedDesignSystemProject(p, designSystems);
+						const typeCategory: ProjectCardCategory = designSystemProject
+							? "design-system"
+							: projectCardCategory(p);
+						const statusBucket = projectCardStatusBucket(status, {
+							published: publishedDesignSystem,
+						});
+						const brandLabel = projectCardBrandLabel(p, designSystems, t);
 						return (
 							<div
 								key={p.id}
@@ -945,8 +975,15 @@ export function DesignsTab({
 										<img className="thumb-media" src={cover.src} alt="" loading="lazy" />
 									) : cover.kind === "video" && cover.src ? (
 										<video className="thumb-media" src={cover.src} muted preload="metadata" playsInline />
-									) : cover.kind === "html" ? (
-										<span className="project-thumb-glyph">{cover.initial}</span>
+									) : cover.kind === "html" && cover.src ? (
+										<iframe
+											className="thumb-iframe"
+											src={cover.src}
+											title=""
+											loading="lazy"
+											sandbox="allow-scripts"
+											tabIndex={-1}
+										/>
 									) : (
 										<span className="project-thumb-glyph">{cover.initial}</span>
 									)}
@@ -958,35 +995,26 @@ export function DesignsTab({
 								</div>
 								<div className="design-card-meta-block">
 									<div className="design-card-tag-row">
-										{designSystemProject ? (
-											<DesignSystemProjectTag />
-										) : (
-											<ProjectTag category={projectCategory(p)} />
-										)}
+										<span className={`design-card-tag tag-${typeCategory}`}>
+											{projectCardTypeLabel(typeCategory, t)}
+										</span>
 									</div>
 									<div className="design-card-name" title={p.name}>
 										{p.name}
 									</div>
-									<div className="design-card-meta">
-										<span className="design-card-meta-main">
-											{ds ? (
-												<span className="ds">{ds}</span>
-											) : (
-												<span>{t("designs.cardFreeform")}</span>
-											)}
-											{skill ? ` · ${skill}` : ""}
-											{" · "}
-											<span
-												className={`design-card-status design-card-status-${publishedDesignSystem ? "published" : status}`}
-											>
-												{publishedDesignSystem ? t("designs.status.published") : statusLabel(status, t)}
-											</span>
-										</span>
-										{sub === "recent" || sub === "yours" ? (
-											<span className="design-card-meta-time">
-												{relativeTime(p.updatedAt, t)}
-											</span>
+									<div
+										className={`design-card-brand${p.designSystemId ? "" : " is-none"}`}
+										title={brandLabel}
+									>
+										{brandLabel}
+									</div>
+									<div
+										className={`design-card-status design-card-status-${statusBucket}`}
+									>
+										{projectCardStatusIsActive(statusBucket) ? (
+											<span className="design-card-status-dot" aria-hidden />
 										) : null}
+										{projectCardStatusLabel(statusBucket, t)}
 									</div>
 								</div>
 							</div>
@@ -1016,9 +1044,12 @@ export function DesignsTab({
 										</div>
 									) : (
 										colProjects.map(({ project: p }) => {
-											const skill = skillName(p.skillId);
-											const ds = dsName(resolveProjectDesignSystemId(p));
 											const designSystemProject = isDesignSystemProject(p);
+											const typeCategory: ProjectCardCategory = designSystemProject
+												? "design-system"
+												: projectCardCategory(p);
+											const statusBucket = projectCardStatusBucket(status);
+											const brandLabel = projectCardBrandLabel(p, designSystems, t);
 											return (
 												<div
 													key={p.id}
@@ -1046,27 +1077,27 @@ export function DesignsTab({
 													>
 														<Icon name="close" size={12} />
 													</button>
+													<div className="design-card-tag-row">
+														<span className={`design-card-tag tag-${typeCategory}`}>
+															{projectCardTypeLabel(typeCategory, t)}
+														</span>
+													</div>
 													<div
 														className="design-kanban-card-name"
 														title={p.name}
 													>
 														{p.name}
 													</div>
-													{designSystemProject ? (
-														<div className="design-card-tag-row">
-															<DesignSystemProjectTag />
-														</div>
-													) : null}
-													<div className="design-kanban-card-meta">
-														{ds ? (
-															<span className="ds">{ds}</span>
-														) : (
-															<span>{t("designs.cardFreeform")}</span>
-														)}
-														{skill ? ` · ${skill}` : ""}
-														{sub === "recent" || sub === "yours"
-															? ` · ${relativeTime(p.updatedAt, t)}`
-															: ""}
+													<div
+														className={`design-card-brand${p.designSystemId ? "" : " is-none"}`}
+														title={brandLabel}
+													>
+														{brandLabel}
+													</div>
+													<div
+														className={`design-card-status design-card-status-${statusBucket}`}
+													>
+														{projectCardStatusLabel(statusBucket, t)}
 													</div>
 												</div>
 											);
@@ -1332,44 +1363,6 @@ function ProjectBrandCover({
 				onError={() => setIndex((current) => current + 1)}
 			/>
 		</span>
-	);
-}
-
-type ProjectCategory = "prototype" | "live-artifact" | "slide" | "media" | "brand";
-
-function projectCategory(project: Project): ProjectCategory {
-	const meta = project.metadata;
-	if (meta?.intent === "live-artifact" || project.skillId === "live-artifact") {
-		return "live-artifact";
-	}
-	if (meta?.kind === "deck") return "slide";
-	if (meta?.kind === "brand") return "brand";
-	if (meta?.kind === "image" || meta?.kind === "video" || meta?.kind === "audio") {
-		return "media";
-	}
-	return "prototype";
-}
-
-function ProjectTag({ category }: { category: ProjectCategory }) {
-	const t = useT();
-	const label =
-		category === "live-artifact"
-			? t("designs.tagLiveArtifact")
-			: category === "slide"
-				? t("designs.tagSlide")
-				: category === "brand"
-					? "Brand"
-				: category === "media"
-					? t("designs.tagMedia")
-					: t("designs.tagPrototype");
-	return (
-		<span className={`design-card-tag tag-${category}`}>{label}</span>
-	);
-}
-
-function DesignSystemProjectTag() {
-	return (
-		<span className="design-card-tag tag-design-system">Design System</span>
 	);
 }
 

@@ -50,6 +50,13 @@ export interface PlaceholderScenarioDef {
 export const PLACEHOLDER_BASE_HINT_KEY: keyof Dict = 'homeHero.carousel.hint';
 
 export const PLACEHOLDER_SCENARIO_DEFS: ReadonlyArray<PlaceholderScenarioDef> = [
+  // Content-creator outcomes lead the carousel for Vertical Content OS.
+  { id: 'content-pack-brief', textKey: 'homeHero.outcome.multiPlatformPackPrompt', chipId: 'content-pack' },
+  { id: 'repurpose-five', textKey: 'homeHero.outcome.repurposeFivePrompt', chipId: 'content-pack' },
+  { id: 'hook-lab', textKey: 'homeHero.outcome.hookLabPrompt', chipId: 'hook-engine' },
+  { id: 'social-batch', textKey: 'homeHero.outcome.socialBatchPrompt', chipId: 'social-content' },
+  { id: 'xhs-carousel', textKey: 'homeHero.outcome.xhsCarouselPrompt', chipId: 'carousel' },
+  { id: 'short-video-script', textKey: 'homeHero.outcome.shortVideoPrompt', chipId: 'short-video' },
   { id: 'one-page-brief', textKey: 'homeHero.carousel.onePageBrief', chipId: 'document' },
   { id: 'notes-to-deck', textKey: 'homeHero.carousel.notesToDeck', chipId: 'deck' },
   { id: 'signup-flow', textKey: 'homeHero.carousel.signupFlow', chipId: 'prototype' },

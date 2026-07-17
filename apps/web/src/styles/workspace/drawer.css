@@ -444,12 +444,15 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  min-height: 168px;
+  /* Thumb is fixed 16:9; min-height only needs room for meta under the cover. */
+  min-height: 0;
 }
 .design-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
 .design-card-thumb {
-  flex: 1;
-  min-height: 100px;
+  flex: none;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -457,6 +460,7 @@
   color: var(--text-faint);
   font-size: 38px;
   position: relative;
+  overflow: hidden;
 }
 .design-card-thumb::before {
   /* Folder-shape icon */
@@ -486,7 +490,7 @@
   padding: 10px 12px 12px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   border-top: 1px solid var(--border-soft);
   background: var(--bg-panel);
 }
@@ -498,6 +502,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--text-strong);
+}
+.design-card-brand {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--accent);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.design-card-brand.is-none {
+  color: var(--text-muted);
+  font-weight: 400;
 }
 .design-card-meta {
   display: flex;
@@ -523,11 +540,35 @@
   color: var(--accent);
 }
 .design-card-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
   font-weight: 500;
+}
+.design-card-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
 }
 .design-card-status-running {
   color: var(--accent);
 }
+.design-card-status-need_input {
+  color: var(--amber);
+}
+.design-card-status-idle {
+  color: var(--text-muted);
+}
+.design-card-status-completed {
+  color: var(--green);
+}
+.design-card-status-failed {
+  color: var(--red);
+}
+/* Legacy run-status class names still used by kanban column chrome */
 .design-card-status-awaiting_input,
 .design-card-status-incomplete {
   color: var(--amber);
@@ -537,12 +578,7 @@
 .design-card-status-canceled {
   color: var(--text-muted);
 }
-.design-card-status-succeeded {
-  color: var(--green);
-}
-.design-card-status-failed {
-  color: var(--red);
-}
+.design-card-status-succeeded,
 .design-card-status-published {
   color: var(--green);
 }
@@ -763,6 +799,10 @@
 .project-thumb::after {
   display: none;
 }
+.project-thumb-html {
+  overflow: hidden;
+  background: #fff;
+}
 .design-card-thumb .thumb-media {
   position: absolute;
   inset: 0;
@@ -771,7 +811,8 @@
   object-fit: cover;
   display: block;
 }
-.design-card-thumb .thumb-iframe {
+.design-card-thumb .thumb-iframe,
+.project-thumb-html .thumb-iframe {
   position: absolute;
   top: 0;
   left: 0;

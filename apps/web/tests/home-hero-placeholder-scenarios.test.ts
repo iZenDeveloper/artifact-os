@@ -14,13 +14,17 @@ import { en } from '../src/i18n/locales/en';
 const TIMING = DEFAULT_TYPEWRITER_TIMING;
 
 describe('PLACEHOLDER_SCENARIO_DEFS bindings', () => {
-  it('binds every scenario to an apply-scenario create chip that exists', () => {
+  it('binds every scenario to a create chip that can seed a project', () => {
     for (const def of PLACEHOLDER_SCENARIO_DEFS) {
       const chip = findChip(def.chipId);
       expect(chip, `chip "${def.chipId}" for scenario "${def.id}"`).toBeDefined();
-      // One-click create reuses the rail's apply-scenario path; a chip that
-      // navigates away (create-plugin / template / brand-kit) would dead-end.
-      expect(chip?.action.kind, `scenario "${def.id}"`).toBe('apply-scenario');
+      // One-click create reuses rail chips that seed a project (scenario plugin
+      // or content skill). Chips that navigate away (create-plugin / template /
+      // brand-kit) would dead-end.
+      expect(
+        chip?.action.kind === 'apply-scenario' || chip?.action.kind === 'apply-skill',
+        `scenario "${def.id}" action kind`,
+      ).toBe(true);
       expect(chip?.group).toBe('create');
     }
   });
@@ -28,7 +32,21 @@ describe('PLACEHOLDER_SCENARIO_DEFS bindings', () => {
   it('only binds create templates that actually render a carousel', () => {
     // These are the templates with hand-curated carousel lines. Other templates
     // can still render a carousel through prompt-example or label fallbacks.
-    const SUPPORTED = new Set(['document', 'deck', 'prototype', 'wireframe', 'mobile', 'hyperframes']);
+    // Templates with hand-curated carousel lines. Other create chips (e.g.
+    // threads / repurpose) fall back to prompt-examples or label seeds.
+    const SUPPORTED = new Set([
+      'content-pack',
+      'hook-engine',
+      'social-content',
+      'carousel',
+      'short-video',
+      'document',
+      'deck',
+      'prototype',
+      'wireframe',
+      'mobile',
+      'hyperframes',
+    ]);
     const used = new Set(PLACEHOLDER_SCENARIO_DEFS.map((d) => d.chipId));
     for (const chipId of used) {
       expect(SUPPORTED.has(chipId), `chipId "${chipId}" is not a carousel template`).toBe(true);
