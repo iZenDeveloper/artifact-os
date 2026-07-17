@@ -6,8 +6,8 @@ emoji: "⚔️"
 description: |
   Competitor comparison and alternative pages for SEO and sales — singular
   alternative, plural alternatives, you vs X, A vs B. Honest positioning,
-  modular competitor data. Internal battle cards → sales-enablement; full
-  SEO audit → seo-audit; AI citations → ai-seo.
+  modular competitor data. Research dossiers first → competitor-profiling;
+  battle cards → sales-enablement; SEO audit → seo-audit.
 triggers:
   - "competitors"
   - "competitor comparison"
