@@ -40,10 +40,15 @@ function isUserSystem(system: DesignSystemSummary): boolean {
   return system.source === 'user' || system.isEditable === true;
 }
 
+/** Fixed popover box so hovering/selecting Personal Minimal ↔ Bold does not reflow. */
+const DS_PICKER_POPOVER_WIDTH = 560;
+const DS_PICKER_POPOVER_HEIGHT = 400;
+
 interface PopoverAnchor {
   left: number;
   width: number;
-  maxHeight: number;
+  /** Fixed height (not max-height) so preview content changes do not resize the shell. */
+  height: number;
   // Vertical placement: when the trigger sits near the bottom of the
   // viewport (e.g. the composer-top picker) the popover opens upward,
   // anchored by `bottom`; otherwise it opens downward, anchored by `top`.
@@ -146,7 +151,8 @@ export function DesignSystemPicker({
       if (!trigger) return;
       const rect = trigger.getBoundingClientRect();
       const viewport = window.innerWidth;
-      const popoverWidth = Math.min(640, Math.max(320, viewport - 24));
+      // Prefer fixed width; only shrink on very narrow viewports.
+      const popoverWidth = Math.min(DS_PICKER_POPOVER_WIDTH, Math.max(320, viewport - 24));
       const left = Math.max(8, Math.min(viewport - popoverWidth - 8, rect.left));
       const gap = 6;
       const margin = 12;
@@ -154,20 +160,23 @@ export function DesignSystemPicker({
       const spaceAbove = rect.top - gap - margin;
       // Open upward when there isn't enough room below (the composer-top
       // picker is near the viewport bottom) but there is more room above.
-      const openUp = spaceBelow < 320 && spaceAbove > spaceBelow;
+      const openUp = spaceBelow < DS_PICKER_POPOVER_HEIGHT && spaceAbove > spaceBelow;
+      const available = openUp ? spaceAbove : spaceBelow;
+      // Fixed height clamped once to viewport — content swaps must not change it.
+      const height = Math.max(280, Math.min(DS_PICKER_POPOVER_HEIGHT, available));
       if (openUp) {
         setAnchor({
           bottom: window.innerHeight - rect.top + gap,
           left,
           width: popoverWidth,
-          maxHeight: Math.max(220, Math.min(420, spaceAbove)),
+          height,
         });
       } else {
         setAnchor({
           top: rect.bottom + gap,
           left,
           width: popoverWidth,
-          maxHeight: Math.max(220, Math.min(420, spaceBelow)),
+          height,
         });
       }
     }
@@ -341,7 +350,7 @@ export function DesignSystemPicker({
               bottom: anchor.bottom,
               left: anchor.left,
               width: anchor.width,
-              maxHeight: anchor.maxHeight,
+              height: anchor.height,
             }}
           >
             <div

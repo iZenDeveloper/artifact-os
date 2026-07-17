@@ -3005,9 +3005,9 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .composer-send:disabled {
 }
 .project-ds-picker-popover {
   position: fixed;
-  /* width + max-height come from the trigger-anchored inline style so the
-     popover can flip above the trigger (composer-top placement) and stay
-     within the viewport. */
+  /* width + height are fixed via inline style (see DesignSystemPicker) so
+     switching Personal Minimal ↔ Bold / Client kits does not reflow the shell. */
+  box-sizing: border-box;
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -3016,6 +3016,8 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .composer-send:disabled {
   flex-direction: column;
   z-index: 140;
   overflow: hidden;
+  /* Prefer the fixed height from JS; never grow with preview content. */
+  min-height: 0;
 }
 .project-ds-picker-search {
   display: flex;
@@ -3103,18 +3105,21 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .composer-send:disabled {
 }
 .project-ds-picker-body {
   display: grid;
-  grid-template-columns: minmax(210px, 0.84fr) minmax(300px, 1.16fr);
+  grid-template-columns: minmax(200px, 0.84fr) minmax(280px, 1.16fr);
   flex: 1 1 auto;
   min-height: 0;
+  height: 100%;
   overflow: hidden;
 }
 .project-ds-picker-list {
+  overflow-x: hidden;
   overflow-y: auto;
   padding: 5px;
   display: flex;
   flex-direction: column;
   gap: 1px;
   border-right: 1px solid var(--border);
+  min-height: 0;
 }
 /* Group heading separating "your systems" from "official presets", matching the
    Design Systems tab split. Sticks to the top while scrolling the list. */
@@ -3209,11 +3214,14 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .composer-send:disabled {
   text-align: center;
 }
 .project-ds-picker-preview {
+  overflow-x: hidden;
   overflow-y: auto;
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-height: 0;
+  min-width: 0;
 }
 .project-ds-picker-preview-kit-wrap,
 .project-ds-picker-preview-kit {
@@ -3224,6 +3232,8 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .composer-send:disabled {
   flex-direction: column;
   gap: 10px;
   min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
 }
 .project-ds-picker-preview-open {
   margin-top: 8px;
