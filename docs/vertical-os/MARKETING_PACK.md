@@ -17,6 +17,7 @@ Installable Open Design **bundle** for Artifact OS · Marketing.
 - hook-engine  
 - social-content-factory  
 - ad-variants-generator  
+- variants-comparison  
 - marketing-psychology  
 - Root `SKILL.md` = intent router  
 

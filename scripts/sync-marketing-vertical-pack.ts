@@ -15,6 +15,7 @@ const skills = [
   'hook-engine',
   'social-content-factory',
   'ad-variants-generator',
+  'variants-comparison',
   'marketing-psychology',
 ] as const;
 

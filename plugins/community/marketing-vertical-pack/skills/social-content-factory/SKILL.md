@@ -275,5 +275,5 @@ Ship only if:
 
 - **Vertical:** marketing  
 - **Standard:** Content Pro **v2.2** (craft + strategy + ready-to-post)  
-- **Related:** `content-repurposer`, `hook-engine`, `ad-variants-generator`, `ad-creative`, `card-xiaohongshu`  
+- **Related (strategy first):** `social` · `content-repurposer`, `hook-engine`, `ad-variants-generator`, `ad-creative`, `card-xiaohongshu`  
 - **Knowledge:** `../content-repurposer/references/marketing/`  

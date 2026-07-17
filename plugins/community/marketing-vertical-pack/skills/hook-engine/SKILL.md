@@ -170,10 +170,11 @@ For each requested surface, pick **primary + 2 alts**:
 2. **Strategy slice**  
 3. **Primary picks** (one line per surface — hero table)  
 4. **Hook lab table** — # · Framework · Weak · Strong · Score · Surface fit · Ship?  
-5. **Rewrite protocol** (if user gave a weak line)  
-6. **Psych / framework notes** (why primary wins — 3 bullets max)  
-7. **Handoff** — next skill (`content-repurposer` for full pack, `ad-variants-generator` for paid matrix, `social-content-factory` for batch)  
-8. **QA checklist**
+5. **Variants comparison** (`#variants-comparison`) when the user asks “which is better” **or** ≥3 strong candidates compete on one surface — side-by-side top 2–3 with Ship/Test (see `../variants-comparison/references/comparison-board.md`)  
+6. **Rewrite protocol** (if user gave a weak line)  
+7. **Psych / framework notes** (why primary wins — 3 bullets max)  
+8. **Handoff** — next skill (`content-repurposer` for full pack, `ad-variants-generator` for paid matrix, `social-content-factory` for batch, `variants-comparison` for a dedicated decision board)  
+9. **QA checklist**
 
 UX polish never replaces a stop-scroll line.
 
@@ -214,5 +215,5 @@ Ship only if:
 
 - **Vertical:** marketing  
 - **Standard:** Content Pro hook layer (shared with v2.1/v2.2 packs)  
-- **Related:** `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `ad-creative`, `marketing-psychology`, `copywriting`  
+- **Related:** `product-marketing` (context first), `variants-comparison` (pick among hooks), `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `ad-creative`, `marketing-psychology`, `copywriting`  
 - **Knowledge:** `../content-repurposer/references/marketing/`  

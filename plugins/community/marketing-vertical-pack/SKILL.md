@@ -20,6 +20,7 @@ This pack bundles shippable skills + brands. Prefer the nested skill that matche
 | Hooks only (weak→strong, cover / 0–3s / subjects / ads) | **hook-engine** | `skills/hook-engine/SKILL.md` |
 | Original weekly/batch social calendar | **social-content-factory** | `skills/social-content-factory/SKILL.md` |
 | Paid ad headline / primary / CTA matrix | **ad-variants-generator** | `skills/ad-variants-generator/SKILL.md` |
+| Side-by-side pick (hooks / ads / captions) | **variants-comparison** | `skills/variants-comparison/SKILL.md` |
 | Psych framing / honest persuasion rewrite | **marketing-psychology** | `skills/marketing-psychology/SKILL.md` |
 
 **Shared knowledge** (always available via content-repurposer):
@@ -58,3 +59,5 @@ If no brand is active, default **Personal Minimal** and label the assumption.
 - “Hook lab only for this topic…” → hook-engine  
 - “1-week social batch, 3 pillars…” → social-content-factory  
 - “10 Meta ad variants for this offer…” → ad-variants-generator  
+- “Which of these 3 hooks should we ship?” → variants-comparison  
+

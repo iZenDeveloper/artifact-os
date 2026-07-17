@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Variants Comparison · Example board</title>
+  <style>
+    :root {
+      --canvas: #fafaf8;
+      --surface: #fff;
+      --muted: #f2f1ee;
+      --border: #e6e4df;
+      --ink: #1a1a1a;
+      --sec: #5c5c5c;
+      --accent: #1f4b99;
+      --soft: #e8eef8;
+      --ship: #1f4b99;
+      --test: #6b5b2e;
+      --kill: #8a8a8a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      background: var(--canvas);
+      color: var(--ink);
+      line-height: 1.55;
+    }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { font-family: "Source Serif 4", Georgia, serif; font-size: 1.65rem; margin: 0 0 8px; }
+    h2 { font-size: 1.1rem; margin: 28px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent);
+      border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+      padding: 3px 8px;
+      border-radius: 999px;
+      margin: 0 6px 8px 0;
+    }
+    .sub { color: var(--sec); margin: 0 0 18px; }
+    .strategy {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      font-size: 0.92rem;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 100%;
+    }
+    .card[data-pick="ship"] {
+      outline: 2px solid var(--ship);
+      background: linear-gradient(180deg, var(--soft), var(--surface) 40%);
+    }
+    .card[data-pick="test"] {
+      outline: 2px dashed color-mix(in srgb, var(--test) 55%, transparent);
+    }
+    .card[data-pick="kill"] { opacity: 0.7; }
+    .card-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .label { font-weight: 700; letter-spacing: 0.04em; }
+    .pick {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+    }
+    .pick.ship { color: #fff; background: var(--ship); border-color: var(--ship); }
+    .pick.test { color: var(--test); border-color: color-mix(in srgb, var(--test) 45%, transparent); background: #f7f3e8; }
+    .pick.kill { color: var(--kill); }
+    .body-copy {
+      font-size: 1.02rem;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .meta { color: var(--sec); font-size: 0.82rem; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      font-size: 11px;
+      background: var(--muted);
+      border-radius: 999px;
+      padding: 3px 8px;
+      color: var(--sec);
+    }
+    .chip b { color: var(--ink); }
+    .note { font-size: 0.86rem; color: var(--sec); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: var(--muted); }
+    .paste {
+      background: var(--muted);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      margin: 0;
+    }
+    .muted { color: var(--sec); font-size: 0.9rem; }
+    .row-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 720px) {
+      .row-cards { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <span class="badge">Variants Comparison</span>
+    <span class="badge">hook · LinkedIn L1</span>
+    <span class="badge">Content Pro decision layer</span>
+    <h1>Which opening line ships?</h1>
+    <p class="sub">Example board — replace candidates with your run. Scores are illustrative for layout only.</p>
+
+    <div class="strategy">
+      <strong>Strategy:</strong>
+      Objective <em>authority</em> · Funnel <em>awareness → consideration</em> ·
+      Persona <em>B2B founder (Assumed)</em> · Surface <em>LinkedIn L1</em> ·
+      Offer <em>comment “FRAME” for 1-page consistency checklist</em>
+    </div>
+
+    <h2 id="board">1. Side-by-side</h2>
+    <div class="board" role="list">
+      <article class="card" data-pick="ship" role="listitem">
+        <div class="card-top">
+          <span class="label">A · Paradox</span>
+          <span class="pick ship">Ship</span>
+        </div>
+        <p class="body-copy">Your feed is “good enough” — and still invisible. Nobody remembers <strong>one sentence</strong> that is yours.</p>
+        <p class="meta">Framework: paradox · ~98 chars · professional tone</p>
+        <div class="chips">
+          <span class="chip">Hook <b>9.3</b></span>
+          <span class="chip">Persona <b>9.1</b></span>
+          <span class="chip">Funnel <b>8.8</b></span>
+          <span class="chip">Brand <b>9.0</b></span>
+          <span class="chip">Risk <b>9.2</b></span>
+        </div>
+        <p class="note">Stops scroll with cost of “good enough”; open loop without hard sell on L1.</p>
+      </article>
+
+      <article class="card" data-pick="test" role="listitem">
+        <div class="card-top">
+          <span class="label">B · Almost-loss</span>
+          <span class="pick test">Test</span>
+        </div>
+        <p class="body-copy">Every post that drifts tone quietly <strong>erases</strong> six months of recognition you already paid for.</p>
+        <p class="meta">Framework: almost_loss · ~95 chars · higher stakes</p>
+        <div class="chips">
+          <span class="chip">Hook <b>9.0</b></span>
+          <span class="chip">Persona <b>8.8</b></span>
+          <span class="chip">Funnel <b>9.0</b></span>
+          <span class="chip">Brand <b>8.9</b></span>
+          <span class="chip">Risk <b>8.7</b></span>
+        </div>
+        <p class="note">Stronger loss frame — test vs A to learn paradox vs almost-loss on this persona.</p>
+      </article>
+
+      <article class="card" data-pick="kill" role="listitem">
+        <div class="card-top">
+          <span class="label">C · Flat</span>
+          <span class="pick kill">Kill</span>
+        </div>
+        <p class="body-copy fail" style="text-decoration: line-through; color: var(--kill); font-weight: 500;">
+          5 tips to build a consistent personal brand this week
+        </p>
+        <p class="meta">Framework: listicle · flat-hook ban</p>
+        <div class="chips">
+          <span class="chip">Hook <b>5.5</b></span>
+          <span class="chip">Persona <b>7.0</b></span>
+          <span class="chip">Funnel <b>6.5</b></span>
+          <span class="chip">Brand <b>7.5</b></span>
+          <span class="chip">Risk <b>9.0</b></span>
+        </div>
+        <p class="note">Safe but scroll-past. No personal bill, no open loop.</p>
+      </article>
+    </div>
+
+    <h2 id="scores">2. Score matrix</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Criterion</th>
+          <th>A</th>
+          <th>B</th>
+          <th>C</th>
+          <th>Weight</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Hook / stop-scroll</td><td>9.3</td><td>9.0</td><td>5.5</td><td>0.30</td></tr>
+        <tr><td>Persona fit</td><td>9.1</td><td>8.8</td><td>7.0</td><td>0.25</td></tr>
+        <tr><td>Funnel fit</td><td>8.8</td><td>9.0</td><td>6.5</td><td>0.20</td></tr>
+        <tr><td>Brand voice</td><td>9.0</td><td>8.9</td><td>7.5</td><td>0.15</td></tr>
+        <tr><td>Risk (clean ↑)</td><td>9.2</td><td>8.7</td><td>9.0</td><td>0.10</td></tr>
+        <tr>
+          <th>Weighted total</th>
+          <th>9.08</th>
+          <th>8.91</th>
+          <th>6.68</th>
+          <th>1.00</th>
+        </tr>
+      </tbody>
+    </table>
+    <p class="muted">Ship must clear flat-hook ban + brand ban list even if total is high.</p>
+
+    <h2 id="picks">3. Ready-to-paste</h2>
+    <div class="row-cards">
+      <div>
+        <p><strong>Ship · Variant A</strong></p>
+        <pre class="paste">Your feed is “good enough” — and still invisible. Nobody remembers one sentence that is yours.</pre>
+      </div>
+      <div>
+        <p><strong>Test · Variant B</strong></p>
+        <pre class="paste">Every post that drifts tone quietly erases six months of recognition you already paid for.</pre>
+      </div>
+    </div>
+
+    <h2 id="handoff">4. Handoff</h2>
+    <div class="strategy">
+      <ul style="margin: 0; padding-left: 1.2rem;">
+        <li>Live A/B on LinkedIn impressions → <code>ab-testing</code></li>
+        <li>Expand Ship into multi-platform pack → <code>content-repurposer</code></li>
+        <li>More candidates → <code>hook-engine</code>, then re-board</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

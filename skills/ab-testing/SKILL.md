@@ -224,6 +224,7 @@ Cadence: weekly health · bi-weekly conclude/launch · monthly backlog · quarte
 | Where to test / ideas | `cro` |
 | Tracking / events | `analytics` |
 | Variant copy | `copywriting` / `hook-engine` |
+| Side-by-side creative pick | `variants-comparison` |
 | Ad creative tests | `ads` + `ad-variants-generator` |
 | Cancel-flow tests | `churn-prevention` |
 | Pricing tests | `pricing` |

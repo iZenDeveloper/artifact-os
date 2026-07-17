@@ -10,11 +10,11 @@
   },
   "version": "1.0.0",
   "publishedAt": "2026-07-17T00:00:00Z",
-  "description": "Artifact OS marketing bundle: Content Pro v2.2 repurposer, hook engine, social batch, ad variants, psychology — plus Personal Minimal / Bold / Professional Clean brands.",
+  "description": "Artifact OS marketing bundle: Content Pro v2.2 repurposer, hook engine, social batch, ad variants, variants comparison board, psychology — plus Personal Minimal / Bold / Professional Clean brands.",
   "description_i18n": {
-    "en": "Artifact OS marketing bundle: Content Pro v2.2 repurposer, hook engine, social batch, ad variants, psychology — plus Personal Minimal / Bold / Professional Clean brands.",
-    "zh-CN": "Artifact OS 营销包：Content Pro v2.2 多平台复用、钩子引擎、社媒批次、广告变体、营销心理，以及 Personal Minimal / Bold / Professional Clean 品牌。",
-    "vi": "Gói Marketing Artifact OS: Content Pro v2.2 (repurpose, hook lab, batch social, ad variants, psych) + brand Personal Minimal / Bold / Professional Clean."
+    "en": "Artifact OS marketing bundle: Content Pro v2.2 repurposer, hook engine, social batch, ad variants, variants comparison board, psychology — plus Personal Minimal / Bold / Professional Clean brands.",
+    "zh-CN": "Artifact OS 营销包：Content Pro v2.2 多平台复用、钩子引擎、社媒批次、广告变体、变体对比板、营销心理，以及 Personal Minimal / Bold / Professional Clean 品牌。",
+    "vi": "Gói Marketing Artifact OS: Content Pro v2.2 (repurpose, hook lab, batch social, ad variants, so sánh variants, psych) + brand Personal Minimal / Bold / Professional Clean."
   },
   "author": {
     "name": "Artifact OS",
@@ -71,6 +71,7 @@
         { "ref": "./skills/hook-engine" },
         { "ref": "./skills/social-content-factory" },
         { "ref": "./skills/ad-variants-generator" },
+        { "ref": "./skills/variants-comparison" },
         { "ref": "./skills/marketing-psychology" }
       ],
       "designSystem": {

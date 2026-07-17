@@ -19,6 +19,7 @@
 | `hook-engine` | Hooks-only lab (weak→strong) |
 | `social-content-factory` | Original social batch / week calendar |
 | `ad-variants-generator` | Paid creative matrix |
+| `variants-comparison` | Side-by-side A/B decision board (Ship / Test) |
 | `marketing-psychology` | Honest psych framing |
 | *(root `SKILL.md`)* | Router — pick the right nested skill |
 
@@ -61,6 +62,7 @@ Canonical sources (edit these, then sync):
 - `skills/hook-engine/`  
 - `skills/social-content-factory/`  
 - `skills/ad-variants-generator/`  
+- `skills/variants-comparison/`  
 - `skills/marketing-psychology/`  
 - `design-systems/personal-{minimal,bold}/`  
 - `design-systems/professional-clean/`  

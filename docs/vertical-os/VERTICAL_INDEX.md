@@ -15,6 +15,7 @@ Registry of Artifact OS extensions on top of Open Design.
 | Skill | hook-engine | `skills/hook-engine/` | **Hooks-only lab** · weak→strong · multi-surface primaries |
 | Skill | social-content-factory | `skills/social-content-factory/` | Batch original · **Content Pro v2.2** (strategy + ready-to-post) |
 | Skill | ad-variants-generator | `skills/ad-variants-generator/` | Paid matrix · **Content Pro v2.2** |
+| Skill | variants-comparison | `skills/variants-comparison/` | **A/B decision board** · side-by-side Ship/Test cards · embed `#variants-comparison` |
 | Standard | Content Pro v2.1/v2.2 | `skills/content-repurposer/references/content-pro-standards.md` | Personal stakes, peak drama, no middle sag, calibrated scores |
 | Regression | Baseline suite | `docs/vertical-os/REGRESSION_BASELINE.md` + `skills/content-repurposer/references/regression-suite.md` | **3/3 ship · mean 9.08** · polish P1–P3 **blocking** · lint: `scripts/lint-content-repurposer-pack.ts` |
 | UI | Brand Switcher | `DesignSystemPicker` + `runtime/vertical-brand.ts` | Personal / Client / All tabs + quick chips + badge |
@@ -32,6 +33,7 @@ Registry of Artifact OS extensions on top of Open Design.
 | Creator short-form batch | personal-bold | social-content-factory |
 | Agency client LinkedIn pack | professional-clean | content-repurposer |
 | Paid tests | professional-clean or personal-bold | ad-variants-generator (+ hook-engine for headlines) |
+| Pick among hooks / ad rows | personal-minimal or active brand | variants-comparison |
 
 ## Education (planned)
 

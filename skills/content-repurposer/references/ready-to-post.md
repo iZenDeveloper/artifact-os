@@ -110,6 +110,10 @@ Each platform card: **Copy caption** as plain text in a `<pre>` or clear blockqu
 For objective `leads` or `conversion`, add **1 alternate hook** per top-2 platforms (not full second pack).  
 Label: `Variant B — hook only`.
 
+When the user needs a **decision board** (side-by-side scores, Ship vs Test), add section
+`#variants-comparison` with 2–3 cards — see `skills/variants-comparison/references/comparison-board.md`
+or run skill `variants-comparison` stand-alone.
+
 ## Marketing score (alongside Content Pro scores)
 
 | Dimension | 1–10 | Gate |

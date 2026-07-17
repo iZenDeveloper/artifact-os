@@ -41,6 +41,7 @@ od:
 
 Produce a **structured matrix of ad variants** for testing — not a single “best” ad.
 
+**Campaign structure / budgets / targeting / kill rules** → `ads`.  
 **Hooks-only lab** (organic + ads headlines) → `hook-engine`.  
 **Organic batch / pack** → `social-content-factory` / `content-repurposer`.
 
@@ -117,7 +118,8 @@ Weak→strong for the hero headline per angle.
 4. **Ready-to-paste table** (copy-friendly)  
 5. Compliance / risk flags  
 6. Top 3 recommended tests (why)  
-7. Handoff: organic pack → `content-repurposer`; more hooks → `hook-engine`
+7. **Variants comparison board** (`#variants-comparison`) — side-by-side cards for the **top 2–3** test rows (Ship + Test badges, scores). Spec: `../variants-comparison/references/comparison-board.md`  
+8. Handoff: organic pack → `content-repurposer`; more hooks → `hook-engine`; live experiment design → `ab-testing` / `variants-comparison`
 
 ---
 
@@ -137,5 +139,5 @@ Weak→strong for the hero headline per angle.
 
 - **Vertical:** marketing  
 - **Standard:** Content Pro **v2.2** (strategy + shippable matrix)  
-- **Related:** `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-creative`  
+- **Related:** `ads` (paid strategy/ops first), `hook-engine`, `variants-comparison` (top-row decision board), `content-repurposer`, `social-content-factory`, `ad-creative`, `ab-testing`  
 - **Knowledge:** `../content-repurposer/references/marketing/`  

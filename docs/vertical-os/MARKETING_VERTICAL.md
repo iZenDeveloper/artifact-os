@@ -47,7 +47,7 @@ Cập nhật: 2026-07 · Aligns with Content Pro **v2.2** + MVP output scope (te
 | Email Sequence | P2 | **Not in MVP** |
 | Landing / Sales page | P2 | **Not in MVP** |
 | Competitor analysis | P3 | **Not in MVP** |
-| Variants Comparison UI | P2 | **Gap** |
+| Variants Comparison UI | P2 | **Shipped (lightweight)** · skill `variants-comparison` + embed `#variants-comparison` in packs |
 | Client Package export | P2 | **Gap** |
 
 ---
@@ -222,8 +222,8 @@ Shared by: content-repurposer, hook-engine, social-content-factory, ad-variants,
 | # | Item | Why |
 |---|------|-----|
 | 1 | **Use & harden** repurposer packs against regression baseline | **Done** · polish P1–P3 freeze + suite + pre-ship QA + lint script |
-| 2 | **Variants Comparison** lightweight UI or HTML section | Marketer A/B pain |
-| 3 | **Client Package export** (zip: captions + notes + brand slug) | Agency path |
+| 2 | **Variants Comparison** lightweight UI or HTML section | **Done** · `skills/variants-comparison` + board embed in hook/ad/repurposer |
+| 3 | **Client Package export** (zip: captions + notes + brand slug) | Agency path · **next** |
 | 4 | More **client** brand examples (template filled) | Freelancer multi-client |
 | 5 | Giai đoạn 2: calendar depth / email sequence | After MVP feedback |
 | 1b | **Re-run** 3 regression briefs with agent (record scores) | Confirm freeze after harden |

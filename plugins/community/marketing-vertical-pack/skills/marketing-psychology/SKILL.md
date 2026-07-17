@@ -4,59 +4,102 @@ zh_name: "营销心理"
 en_name: "Marketing Psychology"
 emoji: "🧠"
 description: |
-  Apply honest behavioral levers to hooks, offers, and CTAs. Prefer Artifact OS shared
-  marketing knowledge (psychology.md + frameworks) over generic persuasion spam.
+  Apply behavioral science and mental models to marketing — persuasion, pricing
+  psychology, design/delivery, growth models — honestly, no dark patterns.
+  Prefer with copywriting/cro/offers; shared psychology.md when present.
 triggers:
   - "marketing psychology"
-  - "behavioral copy"
-  - "persuasion"
-  - "framing"
-  - "cognitive bias"
+  - "behavioral science marketing"
+  - "mental models marketing"
+  - "persuasion principles"
+  - "pricing psychology"
+  - "cognitive bias marketing"
   - "tâm lý marketing"
-  - "social proof"
-  - "scarcity"
+  - "behavioral copy"
+  - "framing"
+  - "loss aversion"
+  - "social proof ethics"
 category: content
 scenario: marketing
-featured: 75
-tags: ["marketing", "psychology", "copy", "vertical-os"]
+featured: 83
+tags:
+  - marketing
+  - psychology
+  - behavioral
+  - copy
+  - vertical-os
+  - marketingskills
 od:
-  mode: design-system
-  category: marketing-creative
+  mode: prototype
+  surface: web
+  platform: desktop
+  scenario: marketing
+  preview:
+    type: html
+    entry: psychology-pass.html
+    reload: debounce-100
   design_system:
     requires: false
   example_prompt: |
-    Review this copy and rewrite hooks/CTAs using honest social proof, loss aversion,
-    and reciprocity. No fake scarcity. Align with Content Pro personal-stakes rules.
+    Apply marketing psychology to this copy/offer/flow. Read product-marketing.md
+    + DESIGN.md §8 + content-repurposer psychology.md if present. Write
+    psychology-pass.md + psychology-pass.html: models used, rewrites, risks.
+    No fake scarcity or deceptive proof.
+  example_prompt_i18n:
+    zh-CN: "对文案/优惠/流程做营销心理分析：读 product-marketing 与 DESIGN.md §8；输出 psychology-pass.md + HTML。禁止假稀缺与欺骗性证明。"
+    vi: "Psychology pass cho copy/offer/flow: đọc product-marketing + DESIGN.md §8; xuất psychology-pass.md + HTML. Không scarcity giả."
+  upstream: "https://github.com/coreyhaines31/marketingskills/tree/main/skills/marketing-psychology"
 ---
 
 # Marketing Psychology (Artifact OS)
 
-Tighten **hooks, framing, and CTAs** with behavioral science — **without deception**.
+You apply **behavioral science** to marketing decisions — with ethics first.
 
-## Mandatory knowledge
+**Job:** select models · diagnose friction · rewrite framing/CTAs · pricing psych
+notes · flag dark-pattern risk.  
+**Not your job:** full page rewrite alone → `copywriting` / `copy-editing`; offer
+rebuild alone → `offers`.
 
-Read before rewriting:
+Adapted from [marketingskills/marketing-psychology](https://github.com/coreyhaines31/marketingskills/tree/main/skills/marketing-psychology) (MIT).
 
-1. Active Brand `DESIGN.md` **§8 Voice & Tone** (if any) + `../content-repurposer/references/brand-voice.md`  
-2. `../content-repurposer/references/marketing/psychology.md` — levers + ethics  
-3. `../content-repurposer/references/marketing/frameworks.md` — PAS / AIDA / …  
-4. `../content-repurposer/references/marketing/cro-basics.md` — one-offer discipline  
-5. `../content-repurposer/references/content-pro-standards.md` — flat-hook ban, personal stakes  
+## Mandatory context
 
-## Workflow
+1. Brand `DESIGN.md` **§8**  
+2. `product-marketing.md`  
+3. Shared moat when present:  
+   - `../content-repurposer/references/marketing/psychology.md`  
+   - `../content-repurposer/references/marketing/frameworks.md`  
 
-1. Identify objective + funnel (if missing, assume awareness → consideration)  
-2. Map current copy to weak psych patterns (fake urgency, vague “learn more”, no stakes)  
-3. Rewrite with **one primary lever** per piece + personal stakes when Content Pro applies  
-4. Output: before → after table + recommended lever + risk notes  
+## How to use
+
+1. State the decision (hook, price display, CTA, onboarding friction…)  
+2. Pick 2–5 relevant models (not the whole catalog)  
+3. Apply → specific rewrites  
+4. List **banned** manipulative versions  
+5. Hand off execution skill  
+
+## Model clusters (summary)
+
+**Foundations** · buyer psychology · persuasion (honest social proof, commitment,
+authority, reciprocity) · pricing psych · design/delivery · growth/scaling.
+
+Prefer **loss framing only when true risk** · social proof only when real · scarcity
+only when real.
+
+## Output
+
+`psychology-pass.md` + `psychology-pass.html`  
+
+```
+## Context · Models applied · Before/After · Risks rejected · Handoff
+```
 
 ## Hard rules
 
-- No fake social proof, scarcity, or metrics  
-- Respect active Brand DESIGN.md claims  
-- Prefer *you/body/home* stakes over abstract spectacle  
-- CTA = keyword **+** concrete offer  
+No fake scarcity/timers · no invented testimonials · no dark patterns · brand voice
+wins over “conversion at all costs.”
 
-## Related
+## Vertical metadata
 
-- `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `copywriting`  
+- **Related:** `copywriting`, `copy-editing`, `cro`, `offers`, `pricing`, `paywalls`, `hook-engine`, `product-marketing`  
+- **Upstream:** [marketingskills/marketing-psychology](https://github.com/coreyhaines31/marketingskills/tree/main/skills/marketing-psychology)  
