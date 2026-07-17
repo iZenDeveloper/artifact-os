@@ -164,7 +164,8 @@ Tell the user which skill to run next:
 | Multi-platform content pack | `content-repurposer` |
 | Batch social calendar | `social-content-factory` |
 | Paid variants | `ad-variants-generator` / `ad-creative` |
-| Landing CRO / page structure | Install or invoke `cro` (upstream marketingskills) after this context exists |
+| Landing CRO / page structure | `cro` |
+| Full page copy rewrite | `copywriting` |
 | Psychology pass on copy | `marketing-psychology` |
 
 ---
@@ -210,6 +211,6 @@ Ship only if:
 
 - **Vertical:** marketing  
 - **Layer:** strategy / context (before Content Pro packs)  
-- **Related:** `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `marketing-psychology`, `copywriting`  
+- **Related:** `cro`, `copywriting`, `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `marketing-psychology`  
 - **Upstream:** [marketingskills/product-marketing](https://github.com/coreyhaines31/marketingskills/tree/main/skills/product-marketing)  
 - **Bridge:** `references/design-md-bridge.md`  

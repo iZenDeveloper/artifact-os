@@ -3,6 +3,8 @@
 | Job | Nested skill | Seed prompt |
 |-----|--------------|-------------|
 | **Positioning / ICP first** | **product-marketing** (repo `skills/`) | Build product-marketing.md + HTML; read Brand DESIGN.md §8; Content Pro defaults |
+| **Page conversion audit** | **cro** | cro-audit.md + HTML; scorecard + Quick Wins / tests / CTA alts |
+| **Page / landing copy** | **copywriting** | page-copy.md + HTML; hero + sections; DESIGN.md §8 |
 | Multi-platform pack | content-repurposer | Content Pro v2.2 pack + strategy + ready-to-post. Source: … |
 | Hooks only | hook-engine | Hook lab weak→strong; surfaces XHS/TT/LI/email/ads. Topic: … |
 | Week of posts | social-content-factory | v2.2 batch 5–7 pieces, pillars ≤3, ready-to-post. Brief: … |
