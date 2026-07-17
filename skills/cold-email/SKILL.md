@@ -222,5 +222,5 @@ Brand colors only if DESIGN.md palette is available.
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `sales-enablement`, `revops`, `emails`, `copywriting`, `launch`, `cro`, `hook-engine`, `marketing-psychology`  
+- **Related:** `product-marketing`, `customer-research`, `sales-enablement`, `revops`, `emails`, `copywriting`, `launch`, `cro`, `hook-engine`, `marketing-psychology`  
 - **Upstream:** [marketingskills/cold-email](https://github.com/coreyhaines31/marketingskills/tree/main/skills/cold-email)  

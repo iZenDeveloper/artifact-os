@@ -79,6 +79,8 @@ Cập nhật: 2026-07 · Aligns with Content Pro **v2.2** + MVP output scope (te
 | 0s | `churn-prevention` | **Pilot** | Cancel flows, save offers, dunning / retention (marketingskills) |
 | 0t | `site-architecture` | **Pilot** | Page hierarchy, nav, URLs, internal linking (marketingskills IA) |
 | 0u | `ab-testing` | **Pilot** | Experiment design, sample size, ICE program (marketingskills) |
+| 0v | `customer-research` | **Pilot** | VOC, themes, JTBD, research personas (marketingskills) |
+| 0w | `lead-magnets` | **Pilot** | Lead magnet strategy, gating, distribution (marketingskills) |
 | 1 | `content-repurposer` | **Done** | Core; strategy + ready-to-post; MVP scope locked |
 | 2 | `social-content-factory` | **Done** | Original batch / week |
 | 3 | `hook-engine` | **Done** | Hooks-only lab |
