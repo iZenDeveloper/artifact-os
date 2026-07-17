@@ -259,13 +259,20 @@ export const QuestionFormView = forwardRef<QuestionFormHandle, Props>(function Q
       const next = { ...prev };
       for (const q of form.questions) {
         if (next[q.id] !== undefined) {
-          if (shouldAdoptStreamedDefault(q, next[q.id]!, touched)) {
-            next[q.id] = canonicalizeQuestionValue(
+          if (shouldAdoptStreamedDefault(q, next[q.id]!, touched, visualStyleContext)) {
+            const adopted = canonicalizeQuestionValue(
               q,
               q.defaultValue!,
               visualStyleContext,
             );
-            changed = true;
+            // Only commit when the value actually changes. Defaults that equal
+            // the empty placeholder (color #000000, range min, switch false,
+            // empty text) would otherwise flip `changed` every effect run and
+            // trigger "Maximum update depth exceeded".
+            if (!questionValuesEqual(next[q.id]!, adopted)) {
+              next[q.id] = adopted;
+              changed = true;
+            }
           }
           continue;
         }
@@ -435,12 +442,16 @@ export const QuestionFormView = forwardRef<QuestionFormHandle, Props>(function Q
   }, [onReadyChange, locked, ready]);
   useEffect(() => {
     if (!autoContinueEnabled) {
-      setAutoContinueRemaining(OPTIONAL_FORM_AUTO_CONTINUE_SECONDS);
       autoContinuedRef.current = false;
+      setAutoContinueRemaining((current) =>
+        current === OPTIONAL_FORM_AUTO_CONTINUE_SECONDS
+          ? current
+          : OPTIONAL_FORM_AUTO_CONTINUE_SECONDS,
+      );
       return;
     }
-    setAutoContinueRemaining(OPTIONAL_FORM_AUTO_CONTINUE_SECONDS);
     autoContinuedRef.current = false;
+    setAutoContinueRemaining(OPTIONAL_FORM_AUTO_CONTINUE_SECONDS);
     const timer = window.setInterval(() => {
       setAutoContinueRemaining((current) => Math.max(0, current - 1));
     }, 1000);
@@ -808,6 +819,12 @@ export const QuestionFormView = forwardRef<QuestionFormHandle, Props>(function Q
                 >
                   {autoContinueCountdown}
                 </span>
+              ) : activeQuestion?.required === true && !currentQuestionReady ? (
+                // Disabled buttons often suppress title tooltips in browsers, so
+                // surface the "fill required first" reason as visible copy.
+                <span className="qf-hint qf-required-block-hint" role="status">
+                  {t('qf.submitDisabledTitle')}
+                </span>
               ) : null}
               {activeQuestion?.required === true ? null : (
                 <Button
@@ -867,27 +884,34 @@ export const QuestionFormView = forwardRef<QuestionFormHandle, Props>(function Q
             </span>
           ) : null}
           {!locked && !stepped ? (
-            <span className="qf-submit-actions">
-              {canSkipAll ? (
+            <>
+              {!canSkipAll && !ready && !autoContinueEnabled ? (
+                <span className="qf-hint qf-required-block-hint" role="status">
+                  {t('qf.submitDisabledTitle')}
+                </span>
+              ) : null}
+              <span className="qf-submit-actions">
+                {canSkipAll ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={handleSkipAll}
+                    disabled={submitDisabled}
+                  >
+                    {t('questions.skipAll')}
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
-                  variant="ghost"
-                  onClick={handleSkipAll}
-                  disabled={submitDisabled}
+                  variant="primary"
+                  onClick={handleSubmit}
+                  disabled={submitDisabled || !ready}
+                  title={!submitDisabled && ready ? t('qf.submitTitle') : t('qf.submitDisabledTitle')}
                 >
-                  {t('questions.skipAll')}
+                  {form.submitLabel ?? t('qf.submitDefault')}
                 </Button>
-              ) : null}
-              <Button
-                type="button"
-                variant="primary"
-                onClick={handleSubmit}
-                disabled={submitDisabled || !ready}
-                title={!submitDisabled && ready ? t('qf.submitTitle') : t('qf.submitDisabledTitle')}
-              >
-                {form.submitLabel ?? t('qf.submitDefault')}
-              </Button>
-            </span>
+              </span>
+            </>
           ) : null}
         </div>
       )}
@@ -1476,10 +1500,32 @@ function shouldAdoptStreamedDefault(
   q: QuestionForm['questions'][number],
   current: string | string[],
   touched: ReadonlySet<string>,
+  visualStyleContext?: VisualStyleContext,
 ): boolean {
   if (q.defaultValue === undefined || touched.has(q.id)) return false;
+  // Already holding the streamed default — nothing left to adopt. Critical
+  // when default === empty placeholder (e.g. color #000000): without this
+  // guard the backfill effect never stabilizes.
+  const canonicalDefault = canonicalizeQuestionValue(
+    q,
+    q.defaultValue,
+    visualStyleContext,
+  );
+  if (questionValuesEqual(current, canonicalDefault)) return false;
   if (Array.isArray(current)) return current.length === 0;
   return current === emptyQuestionValue(q);
+}
+
+function questionValuesEqual(
+  a: string | string[],
+  b: string | string[],
+): boolean {
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b)) return false;
+    if (a.length !== b.length) return false;
+    return a.every((entry, index) => entry === b[index]);
+  }
+  return a === b;
 }
 
 function draftSafeAnswers(

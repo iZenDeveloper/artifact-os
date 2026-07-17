@@ -38,11 +38,16 @@ Produce a **structured matrix of ad variants** for testing — not a single “b
 ## Rules
 
 - Follow Design System voice (Personal Bold ≠ Professional Clean)
-- No fake statistics
+- **Hook first:** every variant needs **paradox / cost / almost-loss / shock** in the first line — bare facts fail
+- Prefer **story beat + Fact + Emotion + Insight** over bare claims
+- CTA must be **specific + offer** (keyword alone is not enough)
+- No fake statistics; no empty hype; clean ≠ weak
 - Label speculative claims for human review
 - Keep headline length realistic per platform
+- Align with Content Pro **v2**: `../content-repurposer/references/content-pro-standards.md`
 
 ## Vertical metadata
 
 - **Vertical:** marketing
+- **Standard:** Content Pro **v2** (hooks/CTA/insight layer)
 - **Related:** `content-repurposer`, `social-content-factory`, `ad-creative`

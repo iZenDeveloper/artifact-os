@@ -1,48 +1,72 @@
-# Platform specs (Marketing vertical)
+# Platform specs — Content Pro v2
 
-Quick reference for `content-repurposer`. Prefer native norms over lowest-common-denominator copy.
+Quality rules: `content-pro-standards.md` (v2).  
+This file = sizes, lengths, deliverable fields.
 
-## Xiaohongshu (XHS / 小红书)
+## Xiaohongshu (XHS)
 
-- Image ratio: **3:4** — 1080×1440 preferred
-- Carousel: commonly 5–9 images (platform max higher; stay scannable)
-- Cover must stop the scroll: large title, clear payoff
-- Value-dense, save-worthy; tags and practical examples work well
-- Avoid hard-sell on first card
+| Item | Spec |
+|------|------|
+| Size | **1080×1440** · **3:4** |
+| Cards | **5–7** |
+| Cover | Paradox/cost hook (flat fact = fail) |
+| On-image | **≤8–12 words** |
+| Caption | Story + bullets + **offer CTA** |
+| Tags | **5–8** |
+| KPI | Save + comment + share-worthy cover |
+| Target score | **≥ 8.5** |
 
 ## TikTok
 
-- Vertical 9:16 (1080×1920) for covers / storyboard frames
-- Hook ≤ 2s; total script often 30–45s for educational content
-- On-screen captions critical (many watch muted)
-- CTA: follow, comment keyword, link in bio
+| Item | Spec |
+|------|------|
+| Ratio | **9:16** |
+| Length | **15–25s** (max ~40s) |
+| Hook | **0–3s** kill line with cost/paradox |
+| Rhythm | Change every **3–5s** |
+| On-screen | **≤8 words/line** |
+| Required | Beat table: spoken · text · **exact visual** · energy |
+| CTA | Mid + end; keyword **+ offer** |
+| KPI | Watch time + share + save |
+| Target score | **≥ 8.5** |
 
 ## LinkedIn
 
-- Post: strong first 140–200 characters before fold
-- Carousel documents: 1080×1080 or 1080×1350
-- Professional tone unless Personal Bold DS is active
-- Hashtags: 3–5 relevant max
+| Item | Spec |
+|------|------|
+| Length | **1200–2200 characters** |
+| Hook | Paradox/cost first line |
+| Carousel | **4–6** · **1080×1080** optional |
+| Hashtags | **3–5** |
+| Target score | **≥ 8.0** |
 
 ## Threads
 
-- Short posts; thread length 4–8 typical
-- Conversational; line breaks help
-- Link behavior limited — prioritize reply/CTA in-text
+| Item | Spec |
+|------|------|
+| Posts | **4–8** |
+| Per post | **1–3 sentences** |
+| P1 | Strongest hook |
+| End | Offer CTA |
+| Target score | **≥ 8.0** |
 
 ## Email
 
-- Subject ≤ ~50–60 characters when possible
-- Preheader ~40–90 characters
-- Single primary CTA
-- Mobile-first: short sections, clear button label
+| Item | Spec |
+|------|------|
+| Subjects | **3–4** · **4–8 words** (one paradox-led) |
+| Body | **120–250 words** |
+| CTA | **1 primary offer** |
+| Target score | **≥ 8.0** |
 
-## Export checklist
+## Export fields (HTML pack)
 
-| Platform | Deliverable |
+| Platform | Must export |
 |----------|-------------|
-| XHS | PNG/JPG sequence or HTML cards + caption |
-| TikTok | Script + on-screen text + shot list |
-| LinkedIn | Post body + optional carousel HTML/PDF |
-| Threads | Numbered post list |
-| Email | Subjects + HTML or markdown body |
+| All | Hook lab (weak vs strong) · self-scores |
+| XHS | Cards + caption + tags + offer |
+| TikTok | Beat table + B-roll/collage board |
+| LinkedIn | Full post ± carousel |
+| Threads | Numbered posts |
+| Email | Subjects + preheader + body |
+| Conversion | Keyword → offer matrix |

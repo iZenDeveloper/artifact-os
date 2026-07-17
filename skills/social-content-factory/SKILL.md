@@ -4,18 +4,19 @@ zh_name: "社媒内容工厂"
 en_name: "Social Content Factory"
 emoji: "🏭"
 description: |
-  Generate a batch of native social posts from a brief or product angle for XHS, TikTok, LinkedIn, and Threads.
-  Complements content-repurposer (batch original vs single-source repurpose).
+  Batch original social posts (XHS, TikTok, LinkedIn, Threads) under Content Pro v2:
+  paradox hooks, story not fact dumps, viral TikTok shot lists, CTAs with real offers. Target 9+/10.
 triggers:
   - "social content factory"
   - "batch social posts"
   - "content batch"
+  - "content pro batch"
   - "lô nội dung social"
   - "xưởng content"
 category: content
 scenario: marketing
 featured: 80
-tags: ["social", "batch", "marketing", "vertical-os"]
+tags: ["social", "batch", "marketing", "vertical-os", "content-pro"]
 od:
   mode: prototype
   surface: web
@@ -28,36 +29,65 @@ od:
   design_system:
     requires: true
   example_prompt: |
-    Create a 1-week social content batch (XHS, TikTok, LinkedIn, Threads) for my brief.
-    Follow the active Design System. Provide captions + visual direction.
+    1-week Content Pro v2 batch. Every piece: paradox hook, stakes, insight drama, CTA offer.
+    TikTok items need filmable shot lists. No flat fact titles.
 ---
 
-# Social Content Factory (Vertical Content OS)
+# Social Content Factory — Content Pro **v2**
 
-Batch **original** social content from a brief (not the same as repurposing one long asset).
+Batch **original** posts from a brief.  
+Long-form source → use `content-repurposer`.
 
-## When to use
+**Mandatory:** `../content-repurposer/references/content-pro-standards.md` (v2).
 
-- User wants a **week of posts** or a **campaign batch**
-- Starting from a product/angle, not from an existing article/transcript  
-  → If they have a long source doc, prefer `content-repurposer`
+---
+
+## Bar
+
+- Target **9+/10** per piece  
+- **7.x clean copy fails** — rewrite hooks + offers  
+- Flat fact hooks banned  
+- CTA = keyword **+ offer**  
+- TikTok pieces need concrete B-roll notes  
+
+---
+
+## Per-piece requirements
+
+1. Hook with **paradox / cost / almost-loss**  
+2. Mini-story (stakes + turn)  
+3. Insight with drama + portable lesson  
+4. Platform-native length  
+5. CTA offer matrix row  
+6. Visual direction (TikTok: shot list)  
+
+### Platform bands
+
+| Platform | Format | Hook bar |
+|----------|--------|----------|
+| XHS | 5–7 cards 1080×1440 | Cover ≥ 8.5 |
+| TikTok | 15–25s | 0–3s kill + drama peak |
+| LinkedIn | 1200–2200 chars | Paradox line 1 |
+| Threads | 4–8 posts | P1 punch |
+
+---
 
 ## Workflow
 
-1. Clarify offer, audience, language, CTA, platforms, volume (default: 5–7 pieces)
-2. Build a content pillar map (3 pillars max)
-3. For each piece: hook, body, CTA, visual note, platform
-4. Render an HTML board: calendar view + per-post detail cards
-5. Apply active Design System voice + visuals
+1. Pillars ≤ 3 · volume default 5–7  
+2. For each piece write weak→strong hook pair; ship strong only  
+3. HTML calendar + detail cards + offer column  
+4. Self-score; rewrite any item &lt; 8.5 on hook  
 
-## Output
+## QA
 
-- Content calendar table (day / platform / pillar / hook)
-- Full captions per post
-- Visual direction per post (size + layout)
-- Optional variants (A/B hooks) for top 2 posts
+- [ ] Flat-hook ban  
+- [ ] Story not fact dump  
+- [ ] Offer CTA  
+- [ ] TikTok shot list if video  
+- [ ] DS punch without hype spam  
 
 ## Vertical metadata
 
-- **Vertical:** marketing
-- **Related:** `content-repurposer`, `ad-variants-generator`, `card-xiaohongshu`
+- **Standard:** Content Pro **v2**  
+- **Related:** `content-repurposer`, `ad-variants-generator`  

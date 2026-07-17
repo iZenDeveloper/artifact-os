@@ -92,10 +92,11 @@ A light, breathable canvas with near-black type and a single restrained accent. 
 
 ## 8. Voice & Brand
 
-- Tone: calm, clear, expert-but-human
-- Prefer concrete verbs and short sentences
+- Tone: calm, clear, expert-but-human — **clean ≠ weak**
+- Hooks may use paradox, cost, or almost-loss for punch; still no empty hype
+- Prefer concrete verbs, short sentences, and story with stakes over fact dumps
 - Avoid hype words: “game-changing”, “revolutionary”, “crush it”
-- Microcopy is literal (“Save this”, “Reply with your niche”) not clever-for-clever’s-sake
+- Microcopy is literal and offer-led (“Comment BẠCH TUỘC — gửi 5 fact tiếp”) not vague “follow me”
 - Bilingual (VI/EN) allowed; keep the same tone in both
 
 ## 9. Anti-patterns
