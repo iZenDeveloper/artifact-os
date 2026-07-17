@@ -598,15 +598,73 @@ function injectSnapshotBridge(doc: string): string {
       if (removals[r].parentNode) removals[r].parentNode.removeChild(removals[r]);
     }
   }
+  // Cap single foreignObject/canvas dimension. Larger documents are tiled via
+  // viewport scrolls (__odCaptureFullPageTiled) so export does not hit browser
+  // canvas limits or blank multi-megapixel foreignObject paints.
+  var MAX_CAPTURE_EDGE = 8192;
   function waitForImages(){
     var imgs = Array.prototype.slice.call(document.images || []);
     return Promise.all(imgs.map(function(img){
-      if (img.complete) return Promise.resolve();
-      return new Promise(function(resolve){
-        img.addEventListener('load', resolve, { once: true });
-        img.addEventListener('error', resolve, { once: true });
+      var p = Promise.resolve();
+      if (!img.complete) {
+        p = new Promise(function(resolve){
+          img.addEventListener('load', resolve, { once: true });
+          img.addEventListener('error', resolve, { once: true });
+        });
+      }
+      return p.then(function(){
+        if (typeof img.decode === 'function') return img.decode().catch(function(){});
       });
     }));
+  }
+  // Chromium often refuses to paint remote <img> inside SVG foreignObject.
+  // Bake same-document images into data: URLs before cloning so export PDF/PNG
+  // keeps product screenshots and hero art (common incomplete-PDF failure).
+  function rasterizeImageToDataUrl(img){
+    return new Promise(function(resolve){
+      try {
+        if (!img || !img.naturalWidth || !img.naturalHeight) { resolve(null); return; }
+        var c = document.createElement('canvas');
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        var ctx = c.getContext('2d');
+        if (!ctx) { resolve(null); return; }
+        ctx.drawImage(img, 0, 0);
+        resolve(c.toDataURL('image/png'));
+      } catch (_) {
+        // Tainted canvas (cross-origin without CORS) — leave original src.
+        resolve(null);
+      }
+    });
+  }
+  function inlineImagesAsDataUrls(){
+    var imgs = Array.prototype.slice.call(document.images || []);
+    return Promise.all(imgs.map(function(img){
+      if (!img || !img.src) return Promise.resolve();
+      if (/^data:/i.test(img.src)) return Promise.resolve();
+      return rasterizeImageToDataUrl(img).then(function(dataUrl){
+        if (!dataUrl) return;
+        try {
+          img.setAttribute('src', dataUrl);
+          img.removeAttribute('srcset');
+          img.removeAttribute('sizes');
+        } catch (_) {}
+      });
+    }));
+  }
+  function waitForFonts(){
+    if (document.fonts && document.fonts.ready) {
+      return document.fonts.ready.catch(function(){});
+    }
+    return Promise.resolve();
+  }
+  function prepareCapture(){
+    return waitForFonts()
+      .then(waitForImages)
+      .then(inlineImagesAsDataUrls)
+      .then(function(){
+        return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(function(){ r(); }); }); });
+      });
   }
   function scrollOffset(){
     var doc = document.documentElement;
@@ -649,20 +707,23 @@ function injectSnapshotBridge(doc: string): string {
   // Rasterize the current view (or the whole document, when opts.full) via an
   // SVG <foreignObject>. Returns a Promise so it can be reused by both the
   // od:snapshot message handler AND the export-capture bridge (image export /
-  // PDF) — the foreignObject path is fast and never blocks on external
-  // image network loads the way a DOM-cloning rasterizer does.
+  // PDF). Images must already be inlined as data: URLs (see prepareCapture).
   function captureSnapshot(opts){
     opts = opts || {};
     return new Promise(function(resolve, reject){
       var w = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1);
       var h = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
-      var dpr = window.devicePixelRatio || 1;
+      var dpr = Math.min(2, window.devicePixelRatio || 1);
       var bgColor = snapshotBackgroundColor();
       var docW = Math.max(w, document.documentElement.scrollWidth || 0, document.body ? document.body.scrollWidth : 0);
       var docH = Math.max(h, document.documentElement.scrollHeight || 0, document.body ? document.body.scrollHeight : 0);
       var full = !!opts.full;
       var capW = full ? docW : w;
       var capH = full ? docH : h;
+      if (full && (capW > MAX_CAPTURE_EDGE || capH > MAX_CAPTURE_EDGE)) {
+        reject(new Error('page-too-tall'));
+        return;
+      }
       var clone = document.documentElement.cloneNode(true);
       clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
       inlineSnapshotStyles(document.documentElement, clone);
@@ -707,9 +768,82 @@ function injectSnapshotBridge(doc: string): string {
       img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
     });
   }
+  // Viewport-tile long pages, then stitch — avoids canvas/foreignObject limits
+  // and recovers more image content than a single full-document SVG paint.
+  function captureFullPageTiled(){
+    var w = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1);
+    var h = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
+    var docH = Math.max(h, document.documentElement.scrollHeight || 0, document.body ? document.body.scrollHeight : 0);
+    var docW = Math.max(w, document.documentElement.scrollWidth || 0, document.body ? document.body.scrollWidth : 0);
+    var saved = scrollOffset();
+    var tiles = Math.max(1, Math.ceil(docH / h));
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var bgColor = snapshotBackgroundColor();
+    var parts = [];
+    var i = 0;
+    function next(){
+      if (i >= tiles) {
+        window.scrollTo(saved.x, saved.y);
+        if (parts.length === 1) return Promise.resolve(parts[0]);
+        return Promise.all(parts.map(function(p){
+          return new Promise(function(resolve, reject){
+            var im = new Image();
+            im.onload = function(){ resolve(im); };
+            im.onerror = function(){ reject(new Error('tile load failed')); };
+            im.src = p.dataUrl;
+          });
+        })).then(function(ims){
+          var stitchW = 1;
+          var stitchH = 0;
+          for (var m = 0; m < ims.length; m++){
+            stitchW = Math.max(stitchW, ims[m].naturalWidth || parts[m].w || 1);
+            stitchH += ims[m].naturalHeight || parts[m].h || 0;
+          }
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, stitchW);
+          canvas.height = Math.max(1, stitchH);
+          var ctx = canvas.getContext('2d');
+          if (!ctx) return Promise.reject(new Error('no 2d context'));
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          var y = 0;
+          for (var t = 0; t < ims.length; t++){
+            var iw = ims[t].naturalWidth || parts[t].w;
+            var ih = ims[t].naturalHeight || parts[t].h;
+            ctx.drawImage(ims[t], 0, y, iw, ih);
+            y += ih;
+          }
+          return { dataUrl: canvas.toDataURL('image/png'), w: canvas.width, h: canvas.height };
+        });
+      }
+      window.scrollTo(0, Math.min(i * h, Math.max(0, docH - h)));
+      return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(function(){ r(); }); }); })
+        .then(function(){ return captureSnapshot({ full: false }); })
+        .then(function(img){
+          parts.push(img);
+          i++;
+          return next();
+        });
+    }
+    return next();
+  }
   // Exposed so the export-capture bridge (same document) can reuse this renderer.
   window.__odCaptureSnapshot = function(opts){
-    return waitForImages().then(function(){ return captureSnapshot(opts || {}); });
+    opts = opts || {};
+    return prepareCapture().then(function(){
+      if (opts.full) {
+        var h = Math.max(1, window.innerHeight || 1);
+        var docH = Math.max(h, document.documentElement.scrollHeight || 0, document.body ? document.body.scrollHeight : 0);
+        var docW = Math.max(window.innerWidth || 1, document.documentElement.scrollWidth || 0);
+        if (docH > MAX_CAPTURE_EDGE || docW > MAX_CAPTURE_EDGE || docH > h * 1.35) {
+          return captureFullPageTiled();
+        }
+      }
+      return captureSnapshot(opts);
+    });
+  };
+  window.__odCaptureFullPageTiled = function(){
+    return prepareCapture().then(captureFullPageTiled);
   };
   window.addEventListener('message', function(ev){
     var data = ev && ev.data;
@@ -751,8 +885,13 @@ function injectExportCaptureBridge(doc: string): string {
   function settle(){
     var fonts = (document.fonts && document.fonts.ready) ? document.fonts.ready.catch(function(){}) : Promise.resolve();
     var imgs = Promise.all(Array.prototype.slice.call(document.images||[]).map(function(img){
-      if (img.complete) return Promise.resolve();
-      return new Promise(function(r){ img.addEventListener('load', r, {once:true}); img.addEventListener('error', r, {once:true}); });
+      var p = Promise.resolve();
+      if (!img.complete) {
+        p = new Promise(function(r){ img.addEventListener('load', r, {once:true}); img.addEventListener('error', r, {once:true}); });
+      }
+      return p.then(function(){
+        if (typeof img.decode === 'function') return img.decode().catch(function(){});
+      });
     }));
     return Promise.all([fonts, imgs]).then(raf).then(raf);
   }
@@ -775,11 +914,26 @@ function injectExportCaptureBridge(doc: string): string {
   function captureImage(deck){
     // Reuse the shared SVG-foreignObject renderer (injectSnapshotBridge). For a
     // deck the active slide fills the viewport, so a viewport capture IS the
-    // slide; a non-deck page captures the full document.
+    // slide; a non-deck page prefers full-page capture with image inlining and
+    // automatic tiling for long documents (see __odCaptureSnapshot).
     if (typeof window.__odCaptureSnapshot !== 'function') {
       return Promise.reject(new Error('snapshot renderer unavailable'));
     }
-    return window.__odCaptureSnapshot({ full: !deck });
+    if (deck) {
+      return window.__odCaptureSnapshot({ full: false }).catch(function(err){
+        // Retry once after a short settle if the first paint was empty.
+        return settle().then(function(){ return window.__odCaptureSnapshot({ full: false }); });
+      });
+    }
+    return window.__odCaptureSnapshot({ full: true }).catch(function(err){
+      var msg = String(err && err.message || err || '');
+      if (msg.indexOf('page-too-tall') >= 0 || msg.indexOf('empty-render') >= 0) {
+        if (typeof window.__odCaptureFullPageTiled === 'function') {
+          return window.__odCaptureFullPageTiled();
+        }
+      }
+      throw err;
+    });
   }
   function notes(){
     var el = document.getElementById('speaker-notes');

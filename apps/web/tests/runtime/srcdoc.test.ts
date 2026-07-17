@@ -93,6 +93,41 @@ describe('buildSrcdoc', () => {
     expect(srcdoc).toContain("reject(new Error('empty-render'))");
   });
 
+  // Incomplete PDF exports: remote <img> blank inside SVG foreignObject, long
+  // pages hit canvas limits, fonts still loading. prepareCapture + tiling fix.
+  it('prepares captures by waiting for fonts, decoding images, and inlining as data URLs', () => {
+    const srcdoc = buildSrcdoc('<main><img src="https://cdn.example/hero.png" alt=""></main>');
+
+    expect(srcdoc).toContain('function waitForFonts()');
+    expect(srcdoc).toContain('document.fonts.ready');
+    expect(srcdoc).toContain('function waitForImages()');
+    expect(srcdoc).toContain('img.decode');
+    expect(srcdoc).toContain('function inlineImagesAsDataUrls()');
+    expect(srcdoc).toContain('function rasterizeImageToDataUrl(img)');
+    expect(srcdoc).toContain('function prepareCapture()');
+    // Order: fonts → images → inline → double rAF before paint.
+    expect(srcdoc).toContain(
+      'return waitForFonts()\n      .then(waitForImages)\n      .then(inlineImagesAsDataUrls)',
+    );
+    expect(srcdoc).toContain('window.__odCaptureSnapshot = function(opts){');
+    expect(srcdoc).toContain('return prepareCapture().then(function(){');
+  });
+
+  it('tiles long full-page captures and falls back when foreignObject is too tall', () => {
+    const srcdoc = buildSrcdoc('<main style="height:20000px">Tall</main>');
+
+    expect(srcdoc).toContain('var MAX_CAPTURE_EDGE = 8192');
+    expect(srcdoc).toContain("reject(new Error('page-too-tall'))");
+    expect(srcdoc).toContain('function captureFullPageTiled()');
+    expect(srcdoc).toContain('window.__odCaptureFullPageTiled = function(){');
+    // Export-capture bridge: empty/tall full capture → tiled path.
+    expect(srcdoc).toContain("msg.indexOf('page-too-tall') >= 0");
+    expect(srcdoc).toContain("msg.indexOf('empty-render') >= 0");
+    expect(srcdoc).toContain('return window.__odCaptureFullPageTiled()');
+    // Cap DPR so multi-tile stitch stays within canvas memory budgets.
+    expect(srcdoc).toContain('var dpr = Math.min(2, window.devicePixelRatio || 1)');
+  });
+
   it('renders snapshot SVGs through data URLs so canvas export stays origin-clean', () => {
     const srcdoc = buildSrcdoc('<main style="color:red">Hero</main>');
 

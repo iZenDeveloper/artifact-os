@@ -27,7 +27,9 @@ type StubOptions = {
   savePath?: string | null;
   pdfBytes?: Uint8Array;
   measuredPageSize?: { height: number; width: number };
-  failOn?: 'load' | 'waitUntilReady' | 'measurePageSize' | 'printToPdf' | 'write';
+  failOn?: 'load' | 'waitUntilReady' | 'settleContent' | 'measurePageSize' | 'printToPdf' | 'write';
+  /** When true, omit settleContent so older stubs stay valid. */
+  omitSettleContent?: boolean;
 };
 
 type PrintToPdfCallOptions = {
@@ -66,6 +68,14 @@ function createStubTarget(options: StubOptions = {}): {
       calls.push('waitUntilReady');
       failAt('waitUntilReady');
     },
+    ...(options.omitSettleContent
+      ? {}
+      : {
+          async settleContent() {
+            calls.push('settleContent');
+            failAt('settleContent');
+          },
+        }),
     async measurePageSize() {
       calls.push('measurePageSize');
       failAt('measurePageSize');
@@ -103,7 +113,7 @@ describe('savePrintReadyDocumentAsPdf', () => {
   // The #1774 invariant: the export shows a Save dialog and writes the
   // file to disk, in that order. It never opens a printer dialog — the
   // only render call is the dialogless printToPdf().
-  test('shows the Save dialog, then renders and writes, in order', async () => {
+  test('shows the Save dialog, then settles content, renders and writes, in order', async () => {
     const { target, calls } = createStubTarget();
 
     await savePrintReadyDocumentAsPdf('<html></html>', 'nonce-2', target);
@@ -112,6 +122,43 @@ describe('savePrintReadyDocumentAsPdf', () => {
       'promptSavePath',
       'load',
       'waitUntilReady',
+      'settleContent',
+      'measurePageSize',
+      'printToPdf',
+      'write',
+      'dispose',
+    ]);
+  });
+
+  test('skips settleContent when the target omits it (test stubs / older hosts)', async () => {
+    const { target, calls } = createStubTarget({ omitSettleContent: true });
+
+    await savePrintReadyDocumentAsPdf('<html></html>', 'nonce-no-settle', target);
+
+    expect(calls).toEqual([
+      'promptSavePath',
+      'load',
+      'waitUntilReady',
+      'measurePageSize',
+      'printToPdf',
+      'write',
+      'dispose',
+    ]);
+    expect(calls).not.toContain('settleContent');
+  });
+
+  test('continues to print when settleContent throws (best-effort fonts/images)', async () => {
+    const { target, calls, written } = createStubTarget({ failOn: 'settleContent' });
+
+    const result = await savePrintReadyDocumentAsPdf('<html></html>', 'nonce-settle-fail', target);
+
+    expect(result).toEqual({ ok: true, path: '/tmp/picked.pdf' });
+    expect(written).toHaveLength(1);
+    expect(calls).toEqual([
+      'promptSavePath',
+      'load',
+      'waitUntilReady',
+      'settleContent',
       'measurePageSize',
       'printToPdf',
       'write',
@@ -176,6 +223,7 @@ describe('savePrintReadyDocumentAsPdf', () => {
       'promptSavePath',
       'load',
       'waitUntilReady',
+      'settleContent',
       'measurePageSize',
       'printToPdf',
       'dispose',

@@ -763,6 +763,22 @@ export async function exportProjectAsPdf(opts: {
   title: string;
   versionId?: string;
 }): Promise<ProjectPdfExportResult> {
+  // Prefer screenshot (raster) PDF via desktop Chromium when available — vector
+  // printToPDF can drop CJK glyphs and print CSS often blanks images. Only fall
+  // through when the off-screen renderer is genuinely unavailable (501 / offline).
+  const screenshot = await exportProjectScreenshotPdf({
+    projectId: opts.projectId,
+    fileName: opts.filePath,
+    title: opts.title,
+    deck: opts.deck,
+    ...(opts.versionId ? { versionId: opts.versionId } : {}),
+  });
+  if (screenshot.ok) return 'desktop';
+  if (!('unavailable' in screenshot)) {
+    // Semantic renderer failure: still try vector, then client capture.
+    console.warn('[exportProjectAsPdf] screenshot PDF failed:', screenshot.error);
+  }
+
   try {
     const resp = await fetch(`/api/projects/${encodeURIComponent(opts.projectId)}/export/pdf`, {
       body: JSON.stringify({
@@ -1680,15 +1696,16 @@ async function captureArtifactSlides(
   try {
     const win = await waitForIframeWindow(iframe, Math.min(timeoutMs, 15_000));
     // Give the deck bridge time to fit fixed-canvas (transform: scale) layouts
-    // to the iframe before the first capture.
-    await delayMs(opts.deck ? 600 : 150);
+    // to the iframe before the first capture. Non-deck pages need a bit longer
+    // for image decode + data-URL inlining inside prepareCapture.
+    await delayMs(opts.deck ? 600 : 400);
     await runExportCapture(
       win,
       {
         id: `exp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         mode: opts.mode,
         deck: opts.deck,
-        delay: 350,
+        delay: opts.deck ? 350 : 500,
       },
       (slide, total) => {
         slides.push(slide);
@@ -1751,15 +1768,21 @@ export async function exportArtifactAsPdf(
     deck: opts.deck,
     mode: 'image',
     onProgress: opts.onProgress,
-    timeoutMs: opts.timeoutMs,
+    // Long pages + image inlining need more budget than the default 45s.
+    timeoutMs: opts.timeoutMs ?? (opts.deck ? 90_000 : 120_000),
   });
   const images = slides.filter((s) => s.dataUrl && s.w > 0 && s.h > 0);
-  if (!images.length) throw new Error('Nothing was captured for PDF export');
+  if (!images.length) {
+    throw new Error(
+      'Nothing was captured for PDF export (images may still be loading or blocked). Try Export as Image, or open Desktop for Chromium screenshot PDF.',
+    );
+  }
 
   const { jsPDF } = await import('jspdf');
   const filename = `${safeFilename(title, 'artifact')}.pdf`;
 
-  if (opts.deck) {
+  // Deck, or multi-tile captures: one PDF page per image (preserves aspect).
+  if (opts.deck || images.length > 1) {
     const first = images[0]!;
     const pdf = new jsPDF({
       orientation: first.w >= first.h ? 'landscape' : 'portrait',
@@ -1769,13 +1792,14 @@ export async function exportArtifactAsPdf(
     });
     images.forEach((s, i) => {
       if (i > 0) pdf.addPage([s.w, s.h], s.w >= s.h ? 'landscape' : 'portrait');
-      pdf.addImage(s.dataUrl!, 'PNG', 0, 0, s.w, s.h);
+      pdf.addImage(s.dataUrl!, 'PNG', 0, 0, s.w, s.h, undefined, 'FAST');
     });
     triggerDownload(pdf.output('blob'), filename);
     return;
   }
 
-  // Non-deck: slice the tall full-page capture into A4-proportioned pages.
+  // Single tall capture: slice into A4-proportioned pages without re-encoding
+  // mid-content cuts more than necessary (y-offset trick).
   const img = images[0]!;
   const pageW = img.w;
   const pageH = Math.max(1, Math.round(pageW * Math.SQRT2)); // A4 portrait ≈ 1:1.414
@@ -1783,7 +1807,7 @@ export async function exportArtifactAsPdf(
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [pageW, pageH], compress: true });
   for (let p = 0; p < pages; p++) {
     if (p > 0) pdf.addPage([pageW, pageH], 'portrait');
-    pdf.addImage(img.dataUrl!, 'PNG', 0, -p * pageH, img.w, img.h);
+    pdf.addImage(img.dataUrl!, 'PNG', 0, -p * pageH, img.w, img.h, undefined, 'FAST');
   }
   triggerDownload(pdf.output('blob'), filename);
 }

@@ -3762,6 +3762,10 @@ describe('FileViewer SVG artifacts', () => {
           : typeof (input as { url?: unknown })?.url === 'string'
             ? (input as { url: string }).url
             : '';
+      // Screenshot path unavailable → vector Save dialog can be canceled.
+      if (url === '/api/projects/project-1/export/pdf-image') {
+        return new Response(JSON.stringify({ error: { message: 'desktop only' } }), { status: 501 });
+      }
       if (url === '/api/projects/project-1/export/pdf') {
         return new Response(JSON.stringify({ ok: true, canceled: true }), { status: 200 });
       }

@@ -86,6 +86,8 @@ export async function exportPdfFromHtml(input: DesktopExportPdfInput): Promise<D
   try {
     await window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(buildPrintableDocument(input))}`);
     await waitForPrintableContent(window);
+    // Second settle pass — late CSS background images / web fonts.
+    await waitForPrintableContent(window);
     if (input.deck) await unhideDeckSlidesForPrint(window);
     const pageSize = input.deck ? DECK_PAGE_SIZE : await inferPageSize(window);
     const pdf = await window.webContents.printToPDF(printToPdfOptions(pageSize));
@@ -129,6 +131,11 @@ export type PrintReadyPdfTarget = {
   load: (html: string, options: PrintReadyPdfOptions) => Promise<void>;
   /** Resolve once the document signals print-readiness for `nonce`. */
   waitUntilReady: (nonce: string) => Promise<void>;
+  /**
+   * Optional second settle after the handshake (fonts/images/background URLs).
+   * Used by the Electron target; tests may omit it.
+   */
+  settleContent?: () => Promise<void>;
   /** Measure non-deck content so dialogless PDFs do not fall back to Letter. */
   measurePageSize: () => Promise<PageSize>;
   /** Render the loaded document to PDF bytes (Electron printToPDF). */
@@ -169,6 +176,16 @@ export async function savePrintReadyDocumentAsPdf(
   try {
     await target.load(html, options);
     await target.waitUntilReady(nonce);
+    // Extra settle for fonts/images after the sandboxed iframe handshake.
+    // The handshake can fire once layout stabilizes while late images still
+    // paint; a short double-rAF + image wait reduces blank-image PDFs.
+    if (target.settleContent) {
+      try {
+        await target.settleContent();
+      } catch {
+        // Best-effort — proceed to print with whatever is ready.
+      }
+    }
     const pageSize = options.deck ? DECK_PAGE_SIZE : await target.measurePageSize();
     const pdf = await target.printToPdf(printToPdfOptions(pageSize));
     await target.write(savePath, pdf);
@@ -219,6 +236,13 @@ export function createElectronPdfTarget(): PrintReadyPdfTarget {
     async waitUntilReady(nonce) {
       if (!window) throw new Error("PDF render window has not been loaded");
       await waitForPrintReadyHandshake(window.webContents, nonce);
+    },
+    async settleContent() {
+      if (!window) throw new Error("PDF render window has not been loaded");
+      await waitForPrintableContent(window);
+      // Unhide deck slides if the wrapper loaded a deck without going through
+      // exportPdfFromHtml (which already calls unhideDeckSlidesForPrint).
+      await unhideDeckSlidesForPrint(window);
     },
     async measurePageSize() {
       if (!window) throw new Error("PDF render window has not been loaded");
