@@ -161,6 +161,7 @@ Tell the user which skill to run next:
 | Goal | Next skill |
 |------|------------|
 | Hooks only | `hook-engine` |
+| Content pillars / editorial roadmap | `content-strategy` |
 | Multi-platform content pack | `content-repurposer` |
 | Batch social calendar | `social-content-factory` |
 | Paid variants | `ad-variants-generator` / `ad-creative` |
@@ -217,6 +218,6 @@ Ship only if:
 
 - **Vertical:** marketing  
 - **Layer:** strategy / context (before Content Pro packs)  
-- **Related:** `cro`, `copywriting`, `emails`, `cold-email`, `launch`, `seo-audit`, `ai-seo`, `schema`, `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `marketing-psychology`  
+- **Related:** `content-strategy`, `cro`, `copywriting`, `emails`, `cold-email`, `launch`, `seo-audit`, `ai-seo`, `schema`, `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `marketing-psychology`  
 - **Upstream:** [marketingskills/product-marketing](https://github.com/coreyhaines31/marketingskills/tree/main/skills/product-marketing)  
 - **Bridge:** `references/design-md-bridge.md`  
