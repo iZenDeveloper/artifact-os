@@ -137,11 +137,11 @@ Reject spine if insight is cliché **or** stakes are only abstract science.
 Must include:
 
 1. Cover + **Content Pro v2.1** + **calibrated** self-scores  
-2. **Hook lab** (weak vs strong; primary = strong)  
+2. **Hook lab** (weak vs strong; primary = strong; **full punch even for personal-brand**)  
 3. Spine with **personal stakes** + trade-off + portable lesson  
-4. XHS full cards (note punch line on **each** card) + caption + tags + offer  
+4. XHS full cards (punch per card) + **tight** caption + tags + offer  
 5. TikTok beat table: spoken / on-screen / **exact visual** / energy **1–10**  
-6. **Energy map** + **peak frame** callout  
+6. **Energy map** + **peak frame** (one non-substitutable shot — not generic stock)  
 7. **B-roll / collage board**  
 8. LinkedIn (tight) / Threads / Email  
 9. **CTA offer matrix**  

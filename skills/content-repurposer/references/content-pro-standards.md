@@ -9,7 +9,8 @@ Learned from production reviews:
 
 - Clean HTML + spine is necessary but **not sufficient**.  
 - Viewers must **remember, share, or act** — not just understand the fact.  
-- **Consistency:** drama + emotional pull must match the best pack quality every time (e.g. “bạch tuộc” 9.1 vs “Trái Đất 5 giây” 8.7 — the gap is personal stakes + TikTok peak + middle-card punch).
+- **Consistency:** drama + emotional pull must match the best pack quality every time (e.g. “bạch tuộc” 9.1 vs “Trái Đất 5 giây” 8.7 — the gap is personal stakes + TikTok peak + middle-card punch).  
+- **Regression freeze (2026-07):** Business / Science / Personal Brand suite all **≥ 9.05** (mean **9.08**, ship **3/3**). See `docs/vertical-os/REGRESSION_BASELINE.md`.
 
 ---
 
@@ -159,7 +160,7 @@ Vague CTAs fail: “Follow for more”, “Like if you agree” (as sole CTA).
 | Structure | **C1** Hook · **C2–4** escalate personal stakes · **C5 Twist** must punch · **Last** Insight + offer CTA |
 | Card energy | Cover peak open · **middle/end cannot sag** · twist ≥ cover − 0.5 |
 | On-image text | **Max 8–12 words**; large type |
-| Caption | Story + bullets + offer CTA; strong line breaks |
+| Caption | Story + bullets + offer CTA; strong line breaks; **prefer ≤ ~220 words equivalent — cut filler after CTA** |
 | Tags | **5–8**, hot + niche |
 | North star | Save + comment + **share-worthy cover** |
 
@@ -222,6 +223,10 @@ For each beat:
 | Heart CGI → near flatline | Generic octopus stock |
 | Body still flying 1670 km/h while ground locks | “Show superstorm and tsunami” |
 | Speed-ramp debris freeze-frame | Same energy as setup shots |
+| Search autocomplete “nhất quán” → one branded frame | “Illustrative chart / stock talking head” as peak |
+| One **iconic** designed frame only that pack owns | Peak that could swap into any science video unchanged |
+
+**Regression note:** science packs often pass energy map but still ship a **slightly generic peak frame** — always name a single non-substitutable shot.
 
 ### TikTok anti-patterns
 
@@ -280,11 +285,11 @@ For each beat:
 
 When generating `index.html`, include:
 
-1. **Hook lab** — weak vs strong (primary = strong)  
+1. **Hook lab** — weak vs strong (primary = strong); **same punch bar for personal-brand as business/science** (lab cannot be “light”)  
 2. **Spine** with **personal stakes** + trade-off + portable lesson  
 3. Platform sections + timed beats + visual direction  
-4. TikTok **energy map** + **peak frame** callout  
-5. XHS note: punch line on **each** card (esp. C5/C6)  
+4. TikTok **energy map** + **peak frame** callout (non-substitutable shot named)  
+5. XHS note: punch line on **each** card (esp. C5/C6); captions **tight** (trim after CTA)  
 6. **B-roll / collage board**  
 7. **CTA offer matrix**  
 8. **Calibrated self-scores** + consistency checklist vs best pack  
