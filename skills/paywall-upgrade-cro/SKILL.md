@@ -16,6 +16,9 @@ od:
 
 # paywall-upgrade-cro
 
+> **Prefer full skill `paywalls`** for Artifact OS pilots (richer playbooks + od: preview).  
+> This file remains as a light catalogue stub.
+
 > Curated from Corey Haines.
 
 ## What it does

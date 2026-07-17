@@ -81,6 +81,13 @@ Cập nhật: 2026-07 · Aligns with Content Pro **v2.2** + MVP output scope (te
 | 0u | `ab-testing` | **Pilot** | Experiment design, sample size, ICE program (marketingskills) |
 | 0v | `customer-research` | **Pilot** | VOC, themes, JTBD, research personas (marketingskills) |
 | 0w | `lead-magnets` | **Pilot** | Lead magnet strategy, gating, distribution (marketingskills) |
+| 0x | `onboarding` | **Pilot** | Activation / aha / first session (marketingskills P0) |
+| 0y | `paywalls` | **Pilot** | In-app upgrade screens (prefer over light paywall-upgrade-cro) |
+| 0z | `offers` | **Pilot** | Offer construction, value equation, guarantees (marketingskills P0) |
+| 0aa | `signup` | **Pilot** | Registration / signup flow CRO (marketingskills P0) |
+| 0ab | `popups` | **Pilot** | Popup/overlay CRO + triggers (marketingskills P0) |
+| 0ac | `prospecting` | **Pilot** | Qualified prospect lists pre-outbound (marketingskills P0) |
+| 0ad | `marketing-plan` | **Pilot** | AARRR fCMO plan + ops stack (marketingskills P0) |
 | 1 | `content-repurposer` | **Done** | Core; strategy + ready-to-post; MVP scope locked |
 | 2 | `social-content-factory` | **Done** | Original batch / week |
 | 3 | `hook-engine` | **Done** | Hooks-only lab |

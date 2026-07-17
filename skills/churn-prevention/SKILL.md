@@ -306,5 +306,5 @@ Sample microcopy must pass DESIGN.md §8 when brand linked.
 
 ## Vertical metadata
 
-- **Related:** `emails`, `pricing`, `analytics`, `ab-testing`, `product-marketing`, `paywall-upgrade-cro`, `cro`, `revops`  
+- **Related:** `emails`, `pricing`, `onboarding`, `paywalls`, `analytics`, `ab-testing`, `product-marketing`, `paywall-upgrade-cro`, `cro`, `revops`  
 - **Upstream:** [marketingskills/churn-prevention](https://github.com/coreyhaines31/marketingskills/tree/main/skills/churn-prevention)  

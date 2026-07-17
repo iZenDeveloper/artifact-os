@@ -186,6 +186,13 @@ Tell the user which skill to run next:
 | A/B test / experiment design | `ab-testing` |
 | Customer / VOC research | `customer-research` |
 | Lead magnet / gated offer | `lead-magnets` |
+| Onboarding / activation | `onboarding` |
+| Signup flow CRO | `signup` |
+| In-app paywalls | `paywalls` |
+| Offer construction | `offers` |
+| Popups / capture overlays | `popups` |
+| Prospect list building | `prospecting` |
+| Full marketing plan (AARRR) | `marketing-plan` |
 | Psychology pass on copy | `marketing-psychology` |
 
 ---
@@ -231,6 +238,6 @@ Ship only if:
 
 - **Vertical:** marketing  
 - **Layer:** strategy / context (before Content Pro packs)  
-- **Related:** `content-strategy`, `sales-enablement`, `revops`, `pricing`, `ads`, `competitor-profiling`, `competitors`, `programmatic-seo`, `analytics`, `churn-prevention`, `site-architecture`, `ab-testing`, `customer-research`, `lead-magnets`, `cro`, `copywriting`, `emails`, `cold-email`, `launch`, `seo-audit`, `ai-seo`, `schema`, `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `marketing-psychology`  
+- **Related:** `marketing-plan`, `content-strategy`, `sales-enablement`, `revops`, `pricing`, `offers`, `ads`, `competitor-profiling`, `competitors`, `programmatic-seo`, `analytics`, `churn-prevention`, `onboarding`, `signup`, `paywalls`, `popups`, `prospecting`, `site-architecture`, `ab-testing`, `customer-research`, `lead-magnets`, `cro`, `copywriting`, `emails`, `cold-email`, `launch`, `seo-audit`, `ai-seo`, `schema`, `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `marketing-psychology`  
 - **Upstream:** [marketingskills/product-marketing](https://github.com/coreyhaines31/marketingskills/tree/main/skills/product-marketing)  
 - **Bridge:** `references/design-md-bridge.md`  
