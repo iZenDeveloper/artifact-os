@@ -66,6 +66,7 @@ Cập nhật: 2026-07 · Aligns with Content Pro **v2.2** + MVP output scope (te
 | 0f | `emails` | **Pilot** | Lifecycle email sequences (marketingskills) |
 | 0g | `launch` | **Pilot** | GTM / product launch plan (marketingskills) |
 | 0h | `schema` | **Pilot** | JSON-LD / rich results structured data (marketingskills) |
+| 0i | `cold-email` | **Pilot** | B2B outbound / SDR cold sequences (marketingskills; ≠ lifecycle `emails`) |
 | 1 | `content-repurposer` | **Done** | Core; strategy + ready-to-post; MVP scope locked |
 | 2 | `social-content-factory` | **Done** | Original batch / week |
 | 3 | `hook-engine` | **Done** | Hooks-only lab |
@@ -77,8 +78,8 @@ Supporting (shipped light): `marketing-psychology`.
 ### Later (not MVP)
 
 - `landing-page-optimizer`  
-- `email-sequence-writer`  
-- `content-calendar-planner`  
+- `content-strategy` / `content-calendar-planner`  
+- (lifecycle + cold email covered by pilots `emails` + `cold-email`)  
 - `performance-critique`  
 - `video-motion-from-script` (Giai đoạn 3 — consumes repurposer scripts)
 
