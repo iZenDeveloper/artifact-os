@@ -65,9 +65,9 @@ help buyers decide, and position your product without FUD.
 
 **Job:** competitor data model · page set plan · full outlines/copy by format ·
 SEO notes.  
-**Not your job:** internal sales battle decks alone → `sales-enablement`; technical
-site crawl → `seo-audit`; AI citation strategy → `ai-seo`; scaled pSEO templates →
-programmatic SEO if installed.
+**Not your job:** research dossiers from URLs → `competitor-profiling` first;
+internal sales battle decks alone → `sales-enablement`; technical site crawl →
+`seo-audit`; AI citation strategy → `ai-seo`; scaled pSEO → `programmatic-seo`.
 
 Adapted from [marketingskills/competitors](https://github.com/coreyhaines31/marketingskills/tree/main/skills/competitors) (MIT).
 
@@ -182,6 +182,7 @@ On-page / technical polish → `seo-audit`.
 | Need | Skill |
 |------|--------|
 | Positioning / ICP | `product-marketing` |
+| Research dossiers / SSOT intel | `competitor-profiling` |
 | Pricing accuracy | `pricing` |
 | Full page polish | `copywriting` / `cro` |
 | Technical SEO | `seo-audit` |
@@ -254,5 +255,5 @@ HTML: landscape cards · priority table · one featured page preview · comparis
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `pricing`, `copywriting`, `cro`, `seo-audit`, `ai-seo`, `schema`, `programmatic-seo`, `sales-enablement`, `content-strategy`, `marketing-psychology`  
+- **Related:** `product-marketing`, `competitor-profiling`, `pricing`, `copywriting`, `cro`, `seo-audit`, `ai-seo`, `schema`, `programmatic-seo`, `sales-enablement`, `content-strategy`, `marketing-psychology`  
 - **Upstream:** [marketingskills/competitors](https://github.com/coreyhaines31/marketingskills/tree/main/skills/competitors)  
