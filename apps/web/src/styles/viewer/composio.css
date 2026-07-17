@@ -934,7 +934,14 @@
    real <button> so keyboard users can reach and toggle it; reset the UA
    button chrome to the shared chip look and give focus a visible ring. */
 .qf-chip-other { border-style: dashed; }
-button.qf-chip-other { font: inherit; color: inherit; text-align: inherit; }
+/* Reset UA button chrome only — do not use `font: inherit` (shorthand
+   overrides .qf-chip font-size and makes "Other" larger than option chips).
+   Leave font-size/weight to .qf-chip / .qf-chip-on so it matches peers. */
+button.qf-chip-other {
+  font-family: inherit;
+  color: inherit;
+  text-align: inherit;
+}
 button.qf-chip-other:focus-visible { outline: 2px solid var(--accent, var(--border-strong)); outline-offset: 2px; }
 button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
 /* The collapsed custom field still occupies a slot in .qf-field's 6px

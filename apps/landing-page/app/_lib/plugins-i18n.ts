@@ -227,8 +227,8 @@ const en: PluginsCopy = {
   hubLabel: 'Plugin library',
   hubHeading: (n) => `${n} plugins for your coding agent`,
   hubLead:
-    'Open Design is built around four kinds of plugin. Templates and Skills are what your agent runs; Systems and Craft are how it stays on-brand and accessible. Pick a section to drill in, or jump straight to a slug if you already know which one you want.',
-  hubMetaTitle: (n) => `Claude Skills Marketplace — ${n}+ Plugins | Open Design`,
+    'Artifact OS is built around four kinds of plugin. Templates and Skills are what your agent runs; Systems and Craft are how it stays on-brand and accessible. Pick a section to drill in, or jump straight to a slug if you already know which one you want.',
+  hubMetaTitle: (n) => `Claude Skills Marketplace — ${n}+ Plugins | Artifact OS`,
   hubMetaDescription:
     'Browse the open-source Claude skills marketplace — design skills, systems, templates and craft your coding agent runs directly. Works with Claude, Codex, Cursor.',
 
@@ -259,7 +259,7 @@ const en: PluginsCopy = {
   skillsHeading: (n) => `${n} Claude skills for design`,
   skillsLead:
     'Skills the agent loads mid-task — copywriting, color theory, creative direction, brainstorming. There’s no static demo because the outcome depends on your input, so each detail page reads like a brief: title, description, triggers, attribution.',
-  skillsMetaTitle: (n) => `Claude Skills for Design — ${n} Open-Source Skills | Open Design`,
+  skillsMetaTitle: (n) => `Claude Skills for Design — ${n} Open-Source Skills | Artifact OS`,
   skillsMetaDescription:
     'Browse open-source Claude skills for design — copywriting, color, creative direction and more your coding agent loads mid-task. Works with Claude, Codex & Cursor.',
 
@@ -267,16 +267,16 @@ const en: PluginsCopy = {
   systemsHeading: () => 'Design systems, ready for your agent',
   systemsLead:
     'Browse real-world design system examples — brand-grade palette, typography, motion and voice your coding agent can snap any project to. Every system is open-source and runs with Claude, Codex, Cursor and more.',
-  systemsMetaTitle: (n) => `Design System Examples — ${n} Open-Source Design Systems | Open Design`,
+  systemsMetaTitle: (n) => `Design System Examples — ${n} Open-Source Design Systems | Artifact OS`,
   systemsMetaDescription:
     'Browse design system examples your coding agent can apply automatically — brand-grade palette, typography, motion and voice from real-world design systems. Open-source, BYOK, works with Claude, Codex and Cursor.',
   systemsAboutHead: 'What is a design system?',
   systemsAboutBody:
-    'A design system is a reusable set of brand foundations — color palette, typography, spacing, motion and voice — that keeps every screen consistent. In Open Design each design system is a plugin: snap a project to one and your coding agent inherits the palette, type, motion and voice automatically, so everything it generates stays on-brand.',
+    'A design system is a reusable set of brand foundations — color palette, typography, spacing, motion and voice — that keeps every screen consistent. In Artifact OS each design system is a plugin: snap a project to one and your coding agent inherits the palette, type, motion and voice automatically, so everything it generates stays on-brand.',
   systemsMdHead: 'Every system is a DESIGN.md file',
   systemsMdBody: [
     'Each design system here is a single DESIGN.md — a human- and agent-readable markdown spec that captures the brand’s visual theme, color roles, typography scale, and interaction language. It lives in your repo, versions in git, and travels with your project.',
-    'Point Claude Code, Cursor, or any coding agent at the file and every component, page, and asset it generates inherits the same identity. DESIGN.md is an open, Apache-2.0 format; Open Design is the open-source, local-first library and tooling built around it.',
+    'Point Claude Code, Cursor, or any coding agent at the file and every component, page, and asset it generates inherits the same identity. DESIGN.md is an open, Apache-2.0 format; Artifact OS is the open-source, local-first library and tooling built around it.',
   ],
   systemsMdSnippet: `# Design System Inspired by Linear
 
@@ -308,7 +308,7 @@ carry the hierarchy and color is used sparingly for intent.
     },
   ],
   systemsMdSpecNote:
-    'DESIGN.md is an open format (Apache-2.0). Open Design’s systems are free to read, fork, and contribute to on GitHub.',
+    'DESIGN.md is an open format (Apache-2.0). Artifact OS’s systems are free to read, fork, and contribute to on GitHub.',
   systemsFaqHead: 'Frequently asked questions',
   systemsFaq: (n) => [
     {
@@ -321,11 +321,11 @@ carry the hierarchy and color is used sparingly for intent.
     },
     {
       q: 'How do I use a DESIGN.md with Claude Code or Cursor?',
-      a: 'Save the file to your project root and tell your agent to follow it. Open Design can also snap a project to a system so every plugin output inherits the same identity automatically.',
+      a: 'Save the file to your project root and tell your agent to follow it. Artifact OS can also snap a project to a system so every plugin output inherits the same identity automatically.',
     },
     {
       q: 'Are these design systems free?',
-      a: 'Yes. Every system here is open source and free to read, download, fork, and contribute to. Open Design itself is Apache-2.0 and local-first.',
+      a: 'Yes. Every system here is open source and free to read, download, fork, and contribute to. Artifact OS itself is Apache-2.0 and local-first.',
     },
     {
       q: 'How many design systems are there?',
@@ -333,12 +333,12 @@ carry the hierarchy and color is used sparingly for intent.
     },
     {
       q: 'Can I create my own DESIGN.md?',
-      a: 'Yes — author a DESIGN.md by hand, or let Open Design generate one from a reference site, then reuse it across every project and agent.',
+      a: 'Yes — author a DESIGN.md by hand, or let Artifact OS generate one from a reference site, then reuse it across every project and agent.',
     },
   ],
   tokensHead: 'Design tokens',
   tokensLead: (n) =>
-    `${n} tokens conforming to the Open Design token contract — the same structured palette, type, spacing, and motion values your agent reads to theme any artifact.`,
+    `${n} tokens conforming to the Artifact OS token contract — the same structured palette, type, spacing, and motion values your agent reads to theme any artifact.`,
   tokenGroupLabels: {
     surface: 'Surface',
     text: 'Text',
@@ -370,7 +370,7 @@ carry the hierarchy and color is used sparingly for intent.
     poster: 'Poster',
   },
   detailSystemLabel: 'design system',
-  detailSystemTitleSuffix: 'palette, typography & tokens for your agent · Open Design',
+  detailSystemTitleSuffix: 'palette, typography & tokens for your agent · Artifact OS',
   detailSystemKeywords: (name) =>
     `${name} design system, ${name} DESIGN.md, ${name} design tokens, design system example, open-source design system`,
   searchPlaceholder: 'Search by name or keyword…',
@@ -502,7 +502,7 @@ carry the hierarchy and color is used sparingly for intent.
 → ${url}`,
 
   // Templates grid (PR #3185)
-  templatesMetaTitle: 'Free Design Templates — Fork & Ship (Apache-2.0) — Open Design',
+  templatesMetaTitle: 'Free Design Templates — Fork & Ship (Apache-2.0) — Artifact OS',
   templatesMetaDescription:
     'Agent-built design templates you can fork and ship — prototypes, slides, image and video artifacts. Free, open-source (Apache-2.0), BYOK, run on your own keys.',
   templatesHeroEyebrow: 'Open Source Claude Design',
@@ -516,9 +516,9 @@ carry the hierarchy and color is used sparingly for intent.
   faqHead: 'FAQ',
   faqItems: [
     {
-      question: 'What are Open Design templates?',
+      question: 'What are Artifact OS templates?',
       answer:
-        'Bundled-plugin templates that ship with Open Design — the open source Claude Design alternative. Each one is a runnable artifact: a prototype, slide deck, image generator, video composition, or HyperFrames motion piece. Your local agent runs the plugin against its prompt and an optional example HTML, and produces a ready-to-share asset on your own machine.',
+        'Bundled-plugin templates that ship with Artifact OS — the open source Claude Design alternative. Each one is a runnable artifact: a prototype, slide deck, image generator, video composition, or HyperFrames motion piece. Your local agent runs the plugin against its prompt and an optional example HTML, and produces a ready-to-share asset on your own machine.',
     },
     {
       question: 'How are templates licensed?',
@@ -528,7 +528,7 @@ carry the hierarchy and color is used sparingly for intent.
     {
       question: 'Can I run them with my own API keys?',
       answer:
-        "Yes. Open Design is BYOK at every layer — your Claude / OpenAI / local-model credentials never leave your machine. The marketing site doesn't proxy any inference; the live previews you see on the catalogue rows come from posters and Cloudflare Stream URLs the templates ship with, not from a hosted runtime.",
+        "Yes. Artifact OS is BYOK at every layer — your Claude / OpenAI / local-model credentials never leave your machine. The marketing site doesn't proxy any inference; the live previews you see on the catalogue rows come from posters and Cloudflare Stream URLs the templates ship with, not from a hosted runtime.",
     },
     {
       question: 'How do I contribute a template?',
@@ -538,7 +538,7 @@ carry the hierarchy and color is used sparingly for intent.
     {
       question: 'How is this different from Claude Design Studio?',
       answer:
-        "Claude Design Studio is Anthropic's hosted product. Open Design is the <strong>open source Claude Design alternative</strong> — every template, prompt, and design system in this catalogue lives in a public repo, runs locally against the keys you choose, and can be extended through plugins anyone can author. We mirror the same artifact taxonomy (prototypes, slides, images, video) so the mental model carries over, but everything down to the agent runtime stays on your machine.",
+        "Claude Design Studio is Anthropic's hosted product. Artifact OS is the <strong>open source Claude Design alternative</strong> — every template, prompt, and design system in this catalogue lives in a public repo, runs locally against the keys you choose, and can be extended through plugins anyone can author. We mirror the same artifact taxonomy (prototypes, slides, images, video) so the mental model carries over, but everything down to the agent runtime stays on your machine.",
     },
     {
       question: 'Where do the previews come from?',
@@ -553,8 +553,8 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     hubLabel: '插件库',
     hubHeading: (n) => `给你 coding agent 的 ${n} 个插件`,
     hubLead:
-      'Open Design 围绕四类插件构建：Templates 与 Skills 是 agent 真正运行的内容，Systems 与 Craft 让它保持品牌一致和可访问。点进任意一类深入查看，或直接跳到你已经知道 slug 的那一项。',
-    hubMetaTitle: (n) => `Claude Skills 市场 — ${n}+ 插件 | Open Design`,
+      'Artifact OS 围绕四类插件构建：Templates 与 Skills 是 agent 真正运行的内容，Systems 与 Craft 让它保持品牌一致和可访问。点进任意一类深入查看，或直接跳到你已经知道 slug 的那一项。',
+    hubMetaTitle: (n) => `Claude Skills 市场 — ${n}+ 插件 | Artifact OS`,
     hubMetaDescription:
       '浏览开源的 Claude skills 市场——设计 skills、设计系统、模板与 craft，你的 coding agent 可直接运行。支持 Claude、Codex、Cursor。',
     tileTemplates: '模板',
@@ -581,19 +581,19 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     skillsHeading: (n) => `${n} 个 Claude 设计技能`,
     skillsLead:
       'agent 在任务中加载的技能——文案、配色、创意指导、头脑风暴。没有静态 demo，输出取决于你的输入，所以每个详情页像一份简报：标题、描述、触发词、出处。',
-    skillsMetaTitle: (n) => `Claude 设计技能 — ${n} 个开源 skills | Open Design`,
+    skillsMetaTitle: (n) => `Claude 设计技能 — ${n} 个开源 skills | Artifact OS`,
     skillsMetaDescription:
       '浏览开源的 Claude 设计 skills——文案、配色、创意指导等，你的 coding agent 在任务中即时加载。支持 Claude、Codex、Cursor。',
     systemsLabel: '插件 · 设计系统',
     systemsHeading: () => '为你的 agent 准备的设计系统',
     systemsLead:
       '浏览真实世界的设计系统范例——品牌级的色板、字体、动效与文风，你的 coding agent 可一键套用到任何项目。每个系统都开源，支持 Claude、Codex、Cursor 等。',
-    systemsMetaTitle: (n) => `设计系统范例 — ${n} 个开源设计系统 | Open Design`,
+    systemsMetaTitle: (n) => `设计系统范例 — ${n} 个开源设计系统 | Artifact OS`,
     systemsMetaDescription:
       '浏览你的 coding agent 可自动套用的设计系统范例——来自真实品牌的色板、字体、动效与文风。开源、BYOK，支持 Claude、Codex、Cursor。',
     systemsAboutHead: '什么是设计系统？',
     systemsAboutBody:
-      '设计系统是一套可复用的品牌基础——色板、字体、间距、动效与文风——让每个界面保持一致。在 Open Design 中，每个设计系统都是一个插件：把项目绑到某个系统，你的 coding agent 会自动继承它的色板、字体、动效与文风，产出始终贴合品牌。',
+      '设计系统是一套可复用的品牌基础——色板、字体、间距、动效与文风——让每个界面保持一致。在 Artifact OS 中，每个设计系统都是一个插件：把项目绑到某个系统，你的 coding agent 会自动继承它的色板、字体、动效与文风，产出始终贴合品牌。',
     detailSystemLabel: '设计系统',
     searchPlaceholder: '按名称或关键词搜索…',
     searchNoResults: '没有匹配项，换个关键词试试。',
@@ -650,7 +650,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     previewSummaryAria: (title) => `打开 ${title} 的互动预览`,
     previewIframeTitle: (title) => `${title} 互动预览`,
     // PR #3185 follow-up: localize templates-page chrome + FAQ
-    templatesMetaTitle: '免费设计模板 — 复刻即用（Apache-2.0）— Open Design',
+    templatesMetaTitle: '免费设计模板 — 复刻即用（Apache-2.0）— Artifact OS',
     templatesMetaDescription:
       'Agent 生成的设计模板，可复刻即用 — 原型、幻灯片、图像与视频产物。免费开源（Apache-2.0）、BYOK，用你自己的密钥运行。',
     templatesHeroEyebrow: '开源 Claude Design',
@@ -664,9 +664,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     faqHead: '常见问题',
     faqItems: [
       {
-        question: '什么是 Open Design 模板？',
+        question: '什么是 Artifact OS 模板？',
         answer:
-          'Open Design 附带的打包插件模板 — Open Design 是开源的 Claude Design 替代品。每个模板都是一个可运行的交付物：原型、幻灯片组、图像生成器、视频合成或 HyperFrames 动画作品。本地 agent 根据提示词和可选的示例 HTML 运行插件，在你的机器上生成可立即分享的资源。',
+          'Artifact OS 附带的打包插件模板 — Artifact OS 是开源的 Claude Design 替代品。每个模板都是一个可运行的交付物：原型、幻灯片组、图像生成器、视频合成或 HyperFrames 动画作品。本地 agent 根据提示词和可选的示例 HTML 运行插件，在你的机器上生成可立即分享的资源。',
       },
       {
         question: '模板采用什么许可证？',
@@ -676,7 +676,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: '我可以用自己的 API 密钥运行它们吗？',
         answer:
-          '可以。Open Design 在每个层级都支持 BYOK（自带密钥）— 你的 Claude / OpenAI / 本地模型凭证永远不会离开你的机器。营销网站不会代理任何推理；你在目录行中看到的实时预览来自模板附带的海报和 Cloudflare Stream URL，而不是来自托管的运行时。',
+          '可以。Artifact OS 在每个层级都支持 BYOK（自带密钥）— 你的 Claude / OpenAI / 本地模型凭证永远不会离开你的机器。营销网站不会代理任何推理；你在目录行中看到的实时预览来自模板附带的海报和 Cloudflare Stream URL，而不是来自托管的运行时。',
       },
       {
         question: '我如何贡献一个模板？',
@@ -686,7 +686,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: '这与 Claude Design Studio 有什么区别？',
         answer:
-          'Claude Design Studio 是 Anthropic 的托管产品。Open Design 是**开源的 Claude Design 替代品** — 此目录中的每个模板、提示词和设计系统都存在于公开仓库中，针对你选择的密钥在本地运行，并可通过任何人都能创作的插件进行扩展。我们采用相同的交付物分类法（原型、幻灯片、图像、视频），便于概念转移，但从 agent 运行时到其他所有内容都保留在你的机器上。',
+          'Claude Design Studio 是 Anthropic 的托管产品。Artifact OS 是**开源的 Claude Design 替代品** — 此目录中的每个模板、提示词和设计系统都存在于公开仓库中，针对你选择的密钥在本地运行，并可通过任何人都能创作的插件进行扩展。我们采用相同的交付物分类法（原型、幻灯片、图像、视频），便于概念转移，但从 agent 运行时到其他所有内容都保留在你的机器上。',
       },
       {
         question: '预览从哪里来？',
@@ -697,8 +697,8 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
   },
   'zh-tw': {
     hubLabel: '外掛庫', hubHeading: (n) => `給你 coding agent 的 ${n} 個外掛`,
-    hubLead: 'Open Design 圍繞四類外掛構建：Templates 與 Skills 是 agent 真正執行的內容，Systems 與 Craft 讓它保持品牌一致與可存取性。',
-    hubMetaTitle: (n) => `Claude Skills 市集 — ${n}+ 外掛 | Open Design`,
+    hubLead: 'Artifact OS 圍繞四類外掛構建：Templates 與 Skills 是 agent 真正執行的內容，Systems 與 Craft 讓它保持品牌一致與可存取性。',
+    hubMetaTitle: (n) => `Claude Skills 市集 — ${n}+ 外掛 | Artifact OS`,
     hubMetaDescription:
       '瀏覽開源的 Claude skills 市集——設計 skills、設計系統、範本與 craft，你的 coding agent 可直接執行。支援 Claude、Codex、Cursor。',
     tileTemplates: '範本', tileSkills: '技能', tileSystems: '設計系統', tileCraft: '工藝',
@@ -720,16 +720,16 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     skillsLabel: '外掛 · 技能',
     skillsHeading: (n) => `${n} 個 Claude 設計技能`,
     skillsLead: 'agent 任務中載入的技能——文案、色彩、創意指導、發想。沒有靜態 demo，因為產出取決於你的輸入；每個詳情頁讀起來像一份 brief：標題、描述、觸發條件、署名。',
-    skillsMetaTitle: (n) => `Claude 設計技能 — ${n} 個開源 skills | Open Design`,
+    skillsMetaTitle: (n) => `Claude 設計技能 — ${n} 個開源 skills | Artifact OS`,
     skillsMetaDescription:
       '瀏覽開源的 Claude 設計 skills——文案、配色、創意指導等，你的 coding agent 在任務途中即時載入。支援 Claude、Codex、Cursor。',
     systemsLabel: '外掛 · 設計系統',
     systemsHeading: () => '為你的 agent 準備的設計系統',
     systemsLead: '瀏覽真實世界的設計系統範例——品牌級的色票、字體、動效與語氣，你的 coding agent 可一鍵套用到任何專案。每個系統都開源，支援 Claude、Codex、Cursor 等。',
-    systemsMetaTitle: (n) => `設計系統範例 — ${n} 個開源設計系統 | Open Design`,
+    systemsMetaTitle: (n) => `設計系統範例 — ${n} 個開源設計系統 | Artifact OS`,
     systemsMetaDescription: '瀏覽你的 coding agent 可自動套用的設計系統範例——來自真實品牌的色票、字體、動效與語氣。開源、BYOK，支援 Claude、Codex、Cursor。',
     systemsAboutHead: '什麼是設計系統？',
-    systemsAboutBody: '設計系統是一套可重用的品牌基礎——色票、字體、間距、動效與語氣——讓每個介面保持一致。在 Open Design 中，每個設計系統都是一個外掛：綁定專案到某個系統，你的 coding agent 會自動繼承它的色票、字體、動效與語氣，產出始終貼合品牌。',
+    systemsAboutBody: '設計系統是一套可重用的品牌基礎——色票、字體、間距、動效與語氣——讓每個介面保持一致。在 Artifact OS 中，每個設計系統都是一個外掛：綁定專案到某個系統，你的 coding agent 會自動繼承它的色票、字體、動效與語氣，產出始終貼合品牌。',
     detailSystemLabel: '設計系統',
     searchPlaceholder: '依名稱或關鍵字搜尋…',
     searchNoResults: '沒有相符項目，換個關鍵字試試。',
@@ -774,9 +774,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     faqHead: '常見問題',
     faqItems: [
       {
-        question: 'Open Design 範本是什麼？',
+        question: 'Artifact OS 範本是什麼？',
         answer:
-          'Open Design 隨附的套裝外掛範本 — 開源 Claude Design 替代方案。每一個都是可執行的成品：原型、簡報、圖像生成器、影片編排或 HyperFrames 動畫作品。你的本機 agent 會針對其提示和可選的範例 HTML 執行外掛，並在你自己的機器上生成可立即分享的資產。',
+          'Artifact OS 隨附的套裝外掛範本 — 開源 Claude Design 替代方案。每一個都是可執行的成品：原型、簡報、圖像生成器、影片編排或 HyperFrames 動畫作品。你的本機 agent 會針對其提示和可選的範例 HTML 執行外掛，並在你自己的機器上生成可立即分享的資產。',
       },
       {
         question: '範本如何授權？',
@@ -786,7 +786,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: '我可以用自己的 API 金鑰執行它們嗎？',
         answer:
-          '可以。Open Design 在每一層都支持 BYOK — 你的 Claude / OpenAI / 本機模型憑證永遠不會離開你的機器。行銷網站不會代理任何推理；你在目錄列中看到的即時預覽來自範本隨附的海報和 Cloudflare Stream URL，而非託管執行時環境。',
+          '可以。Artifact OS 在每一層都支持 BYOK — 你的 Claude / OpenAI / 本機模型憑證永遠不會離開你的機器。行銷網站不會代理任何推理；你在目錄列中看到的即時預覽來自範本隨附的海報和 Cloudflare Stream URL，而非託管執行時環境。',
       },
       {
         question: '我如何貢獻範本？',
@@ -796,7 +796,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: '這與 Claude Design Studio 有什麼不同？',
         answer:
-          'Claude Design Studio 是 Anthropic 的託管產品。Open Design 是 <strong>開源 Claude Design 替代方案</strong> — 此目錄中的每一個範本、提示和設計系統都存在於公開回購中、針對你選擇的金鑰在本機執行，並可透過任何人都能編寫的外掛進行擴充。我們採用相同的成品分類系統（原型、簡報、圖像、影片），所以心理模型保持一致，但從 agent 執行時環境一切都保留在你的機器上。',
+          'Claude Design Studio 是 Anthropic 的託管產品。Artifact OS 是 <strong>開源 Claude Design 替代方案</strong> — 此目錄中的每一個範本、提示和設計系統都存在於公開回購中、針對你選擇的金鑰在本機執行，並可透過任何人都能編寫的外掛進行擴充。我們採用相同的成品分類系統（原型、簡報、圖像、影片），所以心理模型保持一致，但從 agent 執行時環境一切都保留在你的機器上。',
       },
       {
         question: '預覽從何而來？',
@@ -868,9 +868,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     },
   },
   ja: {
-    hubMetaTitle: (n) => `Claude Skills マーケットプレイス — ${n}+ プラグイン | Open Design`,
+    hubMetaTitle: (n) => `Claude Skills マーケットプレイス — ${n}+ プラグイン | Artifact OS`,
     hubMetaDescription: 'オープンソースの Claude skills マーケットプレイス——デザイン skills、デザインシステム、テンプレート、craft を coding agent が直接実行。Claude、Codex、Cursor に対応。',
-    skillsMetaTitle: (n) => `デザイン向け Claude Skills — ${n} 個のオープンソース skills | Open Design`,
+    skillsMetaTitle: (n) => `デザイン向け Claude Skills — ${n} 個のオープンソース skills | Artifact OS`,
     skillsMetaDescription: 'オープンソースのデザイン向け Claude skills——コピーライティング、配色、クリエイティブディレクションなどを coding agent がタスク中に読み込み。Claude、Codex、Cursor に対応。',
     hubLabel: 'プラグインライブラリ', hubHeading: (n) => `${n} 個の組み合わせ可能なパーツ`,
     tileTemplates: 'テンプレート', tileSkills: 'スキル', tileSystems: 'システム', tileCraft: 'クラフト',
@@ -882,7 +882,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     shareLead: '下のメッセージをコピーしてから、共有したいプラットフォームに移動して貼り付けてください。',
     shareCopyText: 'テキストをコピー', shareCopyLink: 'リンクのみコピー', shareJumpTo: 'プラットフォームへ：',
     shareTemplate: ({ title, url }) => `🎨 @OpenDesignHQ で ${title} を発見 —— オープンソースの Claude Design 代替。\n✨ ローカル優先 · BYOK · あなたのエージェントが設計する。\n\n→ ${url}`,
-    hubLead: 'Open Design は 4 種類のプラグインを軸に作られています：テンプレートとスキルは agent が実行するもの、システムとクラフトはブランドとアクセシビリティを守るもの。セクションを選んで掘り下げるか、目当ての slug が決まっているなら直接ジャンプしてください。',
+    hubLead: 'Artifact OS は 4 種類のプラグインを軸に作られています：テンプレートとスキルは agent が実行するもの、システムとクラフトはブランドとアクセシビリティを守るもの。セクションを選んで掘り下げるか、目当ての slug が決まっているなら直接ジャンプしてください。',
     tileTemplatesBlurb: 'ビジュアルで実行可能なテンプレート——プロトタイプ、スライド、画像／動画ジェネレーター、モーション合成。すべての項目に example.html が同梱されており、fork してデータを差し替えればすぐ出荷できます。',
     tileSkillsBlurb: 'agent がタスク途中で読み込む指示スキル——コピー、カラーセオリー、クリエイティブディレクション、ブレスト。純粋な SKILL.md テキストで、結果はあなたの入力次第です。',
     tileSystemsBlurb: 'ブランドに紐づくデザインシステム——パレット、タイポグラフィ、モーション、トーン。プロジェクトをシステムに紐づければ、すべてのプラグイン出力が同じアイデンティティを引き継ぎます。',
@@ -916,7 +916,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     previewSummaryAria: (title) => `${title} のインタラクティブプレビューを開く`,
     previewIframeTitle: (title) => `${title} のインタラクティブプレビュー`,
     // PR #3185 follow-up: localize templates-page chrome + FAQ
-    templatesMetaTitle: '無料デザインテンプレート — フォークしてそのまま公開（Apache-2.0）— Open Design',
+    templatesMetaTitle: '無料デザインテンプレート — フォークしてそのまま公開（Apache-2.0）— Artifact OS',
     templatesMetaDescription:
       'エージェントが作るデザインテンプレートをフォークしてそのまま公開 — プロトタイプ、スライド、画像・動画アーティファクト。無料・オープンソース（Apache-2.0）、BYOK、あなた自身のキーで実行。',
     templatesHeroEyebrow: 'Open Source Claude Design',
@@ -930,9 +930,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     faqHead: 'よくある質問',
     faqItems: [
       {
-        question: 'Open Designのテンプレートとは？',
+        question: 'Artifact OSのテンプレートとは？',
         answer:
-          'Open Designに付属するバンドル型プラグインテンプレートです。Open DesignはオープンソースのClaude Design代替ツールです。各テンプレートは実行可能なアーティファクト — プロトタイプ、スライドセット、画像生成器、動画コンポジション、またはHyperFramesモーション作品のいずれか。ローカルエージェントがプロンプトとオプションのサンプルHTMLに対してプラグインを実行し、あなたのマシン上で共有可能なアセットを生成します。',
+          'Artifact OSに付属するバンドル型プラグインテンプレートです。Artifact OSはオープンソースのClaude Design代替ツールです。各テンプレートは実行可能なアーティファクト — プロトタイプ、スライドセット、画像生成器、動画コンポジション、またはHyperFramesモーション作品のいずれか。ローカルエージェントがプロンプトとオプションのサンプルHTMLに対してプラグインを実行し、あなたのマシン上で共有可能なアセットを生成します。',
       },
       {
         question: 'テンプレートのライセンスは？',
@@ -942,7 +942,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: '自分のAPIキーで実行できますか？',
         answer:
-          '可能です。Open Designはあらゆる層でBYOK対応 — あなたのClaude / OpenAI / ローカルモデルの認証情報はマシンを離れません。マーケティングサイトは推論をプロキシしません。カタログ行に表示されるライブプレビューはテンプレートに付属するポスターとCloudflare Stream URLから来たもので、ホストされたランタイムからではありません。',
+          '可能です。Artifact OSはあらゆる層でBYOK対応 — あなたのClaude / OpenAI / ローカルモデルの認証情報はマシンを離れません。マーケティングサイトは推論をプロキシしません。カタログ行に表示されるライブプレビューはテンプレートに付属するポスターとCloudflare Stream URLから来たもので、ホストされたランタイムからではありません。',
       },
       {
         question: 'テンプレートはどうやって投稿しますか？',
@@ -952,7 +952,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Claude Design Studioとの違いは？',
         answer:
-          'Claude Design StudioはAnthropicのホスト型プロダクトです。Open Designは<strong>オープンソースのClaude Design代替ツール</strong> — このカタログ内のすべてのテンプレート、プロンプト、デザインシステムは公開リポジトリに存在し、あなたが選んだキーでローカルで実行でき、誰でも作成できるプラグインを通じて拡張可能です。同じアーティファクト分類（プロトタイプ、スライド、画像、動画）をミラーしているのでメンタルモデルは引き継がれますが、エージェントランタイムまですべてあなたのマシン上に留まります。',
+          'Claude Design StudioはAnthropicのホスト型プロダクトです。Artifact OSは<strong>オープンソースのClaude Design代替ツール</strong> — このカタログ内のすべてのテンプレート、プロンプト、デザインシステムは公開リポジトリに存在し、あなたが選んだキーでローカルで実行でき、誰でも作成できるプラグインを通じて拡張可能です。同じアーティファクト分類（プロトタイプ、スライド、画像、動画）をミラーしているのでメンタルモデルは引き継がれますが、エージェントランタイムまですべてあなたのマシン上に留まります。',
       },
       {
         question: 'プレビューはどこから来ていますか？',
@@ -1024,9 +1024,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     },
   },
   ko: {
-    hubMetaTitle: (n) => `Claude Skills 마켓플레이스 — ${n}+ 플러그인 | Open Design`,
+    hubMetaTitle: (n) => `Claude Skills 마켓플레이스 — ${n}+ 플러그인 | Artifact OS`,
     hubMetaDescription: '오픈소스 Claude skills 마켓플레이스 둘러보기——디자인 skills, 디자인 시스템, 템플릿, craft를 coding agent가 바로 실행합니다. Claude, Codex, Cursor 지원.',
-    skillsMetaTitle: (n) => `디자인용 Claude Skills — 오픈소스 skills ${n}개 | Open Design`,
+    skillsMetaTitle: (n) => `디자인용 Claude Skills — 오픈소스 skills ${n}개 | Artifact OS`,
     skillsMetaDescription: '오픈소스 디자인용 Claude skills 둘러보기——카피라이팅, 컬러, 크리에이티브 디렉션 등을 coding agent가 작업 중에 불러옵니다. Claude, Codex, Cursor 지원.',
     hubLabel: '플러그인 라이브러리', hubHeading: (n) => `${n}개의 조합 가능한 구성요소`,
     tileTemplates: '템플릿', tileSkills: '스킬', tileSystems: '시스템', tileCraft: '크래프트',
@@ -1038,7 +1038,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     shareLead: '아래 메시지를 복사한 다음 공유할 플랫폼으로 이동해 붙여넣으세요.',
     shareCopyText: '텍스트 복사', shareCopyLink: '링크만 복사', shareJumpTo: '플랫폼으로:',
     shareTemplate: ({ title, url }) => `🎨 @OpenDesignHQ에서 ${title} 발견 —— 오픈 소스 Claude Design 대안.\n✨ 로컬 우선 · BYOK · 에이전트가 디자인합니다.\n\n→ ${url}`,
-    hubLead: 'Open Design은 네 가지 플러그인 종류를 중심으로 구성됩니다: 템플릿과 스킬은 agent가 실행하는 것, 시스템과 크래프트는 브랜드와 접근성을 지키는 것. 섹션을 골라 들어가거나, 원하는 slug를 알고 있다면 바로 이동하세요.',
+    hubLead: 'Artifact OS은 네 가지 플러그인 종류를 중심으로 구성됩니다: 템플릿과 스킬은 agent가 실행하는 것, 시스템과 크래프트는 브랜드와 접근성을 지키는 것. 섹션을 골라 들어가거나, 원하는 slug를 알고 있다면 바로 이동하세요.',
     tileTemplatesBlurb: '시각적이고 실행 가능한 템플릿——프로토타입, 슬라이드, 이미지 및 비디오 생성기, 모션 컴포지션. 모든 항목에 example.html이 포함되어 있어 fork하고 데이터만 바꾸면 바로 출시할 수 있습니다.',
     tileSkillsBlurb: 'agent가 작업 중에 로드하는 지시 스킬——카피라이팅, 컬러 이론, 크리에이티브 디렉션, 브레인스토밍. 순수 SKILL.md 텍스트이며 결과는 입력에 따라 달라집니다.',
     tileSystemsBlurb: '브랜드에 고정된 디자인 시스템——팔레트, 타이포그래피, 모션, 보이스. 프로젝트를 시스템에 연결하면 모든 플러그인 출력이 동일한 아이덴티티를 계승합니다.',
@@ -1072,7 +1072,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     previewSummaryAria: (title) => `${title} 인터랙티브 프리뷰 열기`,
     previewIframeTitle: (title) => `${title} 인터랙티브 프리뷰`,
     // PR #3185 follow-up: localize templates-page chrome + FAQ
-    templatesMetaTitle: '무료 디자인 템플릿 — 포크 후 바로 배포 (Apache-2.0) — Open Design',
+    templatesMetaTitle: '무료 디자인 템플릿 — 포크 후 바로 배포 (Apache-2.0) — Artifact OS',
     templatesMetaDescription:
       '에이전트가 만든 디자인 템플릿을 포크해 바로 배포하세요 — 프로토타입, 슬라이드, 이미지·비디오 아티팩트. 무료 오픈소스(Apache-2.0), BYOK, 내 키로 실행.',
     templatesHeroEyebrow: 'Open Source Claude Design',
@@ -1086,9 +1086,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     faqHead: '자주 묻는 질문',
     faqItems: [
       {
-        question: 'Open Design 템플릿이란 무엇인가요?',
+        question: 'Artifact OS 템플릿이란 무엇인가요?',
         answer:
-          'Open Design — open source Claude Design 대체 솔루션과 함께 제공되는 번들 플러그인 템플릿입니다. 각각은 실행 가능한 아티팩트입니다: 프로토타입, 슬라이드 덱, 이미지 생성기, 비디오 컴포지션 또는 HyperFrames 모션 작품. 로컬 에이전트가 플러그인을 프롬프트 및 선택적 예제 HTML에 대해 실행하면, 자신의 머신에서 공유할 준비가 된 에셋을 생성합니다.',
+          'Artifact OS — open source Claude Design 대체 솔루션과 함께 제공되는 번들 플러그인 템플릿입니다. 각각은 실행 가능한 아티팩트입니다: 프로토타입, 슬라이드 덱, 이미지 생성기, 비디오 컴포지션 또는 HyperFrames 모션 작품. 로컬 에이전트가 플러그인을 프롬프트 및 선택적 예제 HTML에 대해 실행하면, 자신의 머신에서 공유할 준비가 된 에셋을 생성합니다.',
       },
       {
         question: '템플릿은 어떤 라이선스를 사용하나요?',
@@ -1098,7 +1098,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: '자신의 API 키로 실행할 수 있나요?',
         answer:
-          '네, 가능합니다. Open Design은 모든 계층에서 BYOK를 지원합니다 — Claude / OpenAI / 로컬 모델 인증 정보가 머신을 떠나지 않습니다. 마케팅 사이트는 추론을 프록시하지 않고, 카탈로그 행에서 보는 라이브 미리보기는 호스팅된 런타임이 아니라 템플릿과 함께 제공되는 포스터 및 Cloudflare Stream URL에서 나옵니다.',
+          '네, 가능합니다. Artifact OS은 모든 계층에서 BYOK를 지원합니다 — Claude / OpenAI / 로컬 모델 인증 정보가 머신을 떠나지 않습니다. 마케팅 사이트는 추론을 프록시하지 않고, 카탈로그 행에서 보는 라이브 미리보기는 호스팅된 런타임이 아니라 템플릿과 함께 제공되는 포스터 및 Cloudflare Stream URL에서 나옵니다.',
       },
       {
         question: '템플릿을 기여하려면 어떻게 하나요?',
@@ -1108,7 +1108,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Claude Design Studio와 다른 점이 뭐죠?',
         answer:
-          'Claude Design Studio는 Anthropic의 호스팅 제품입니다. Open Design은 <strong>open source Claude Design 대체 솔루션</strong>입니다 — 이 카탈로그의 모든 템플릿, 프롬프트, 디자인 시스템은 공개 리포지토리에 있고, 선택한 키에 대해 로컬에서 실행되며, 누구나 작성할 수 있는 플러그인을 통해 확장할 수 있습니다. 동일한 아티팩트 분류(프로토타입, 슬라이드, 이미지, 비디오)를 반영하므로 멘탈 모델이 유지되지만, 에이전트 런타임까지 모든 것이 머신에 머물러 있습니다.',
+          'Claude Design Studio는 Anthropic의 호스팅 제품입니다. Artifact OS은 <strong>open source Claude Design 대체 솔루션</strong>입니다 — 이 카탈로그의 모든 템플릿, 프롬프트, 디자인 시스템은 공개 리포지토리에 있고, 선택한 키에 대해 로컬에서 실행되며, 누구나 작성할 수 있는 플러그인을 통해 확장할 수 있습니다. 동일한 아티팩트 분류(프로토타입, 슬라이드, 이미지, 비디오)를 반영하므로 멘탈 모델이 유지되지만, 에이전트 런타임까지 모든 것이 머신에 머물러 있습니다.',
       },
       {
         question: '미리보기는 어디서 나오나요?',
@@ -1180,9 +1180,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     },
   },
   de: {
-    hubMetaTitle: (n) => `Claude Skills Marktplatz — ${n}+ Plugins | Open Design`,
+    hubMetaTitle: (n) => `Claude Skills Marktplatz — ${n}+ Plugins | Artifact OS`,
     hubMetaDescription: 'Durchstöbere den Open-Source-Marktplatz für Claude skills——Design-skills, Designsysteme, Vorlagen und craft, die dein coding agent direkt ausführt. Funktioniert mit Claude, Codex, Cursor.',
-    skillsMetaTitle: (n) => `Claude Skills für Design — ${n} Open-Source-skills | Open Design`,
+    skillsMetaTitle: (n) => `Claude Skills für Design — ${n} Open-Source-skills | Artifact OS`,
     skillsMetaDescription: 'Durchstöbere Open-Source Claude skills fürs Design——Texten, Farbe, Creative Direction und mehr, die dein coding agent mitten in der Aufgabe lädt. Mit Claude, Codex & Cursor.',
     hubLabel: 'Plugin-Bibliothek', hubHeading: (n) => `${n} kombinierbare Bausteine`,
     tileTemplates: 'Vorlagen', tileSkills: 'Skills', tileSystems: 'Systeme', tileCraft: 'Handwerk',
@@ -1194,7 +1194,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     shareLead: 'Kopiere die Nachricht unten und füge sie auf der gewünschten Plattform ein.',
     shareCopyText: 'Text kopieren', shareCopyLink: 'Nur Link kopieren', shareJumpTo: 'Zur Plattform:',
     shareTemplate: ({ title, url }) => `🎨 Gerade entdeckt: ${title} auf @OpenDesignHQ — die Open-Source-Alternative zu Claude Design.\n✨ Local-first · BYOK · dein Agent designt.\n\n→ ${url}`,
-    hubLead: 'Open Design ist um vier Plugin-Arten herum gebaut: Templates und Skills sind das, was dein Agent ausführt; Systems und Craft halten Marke und Zugänglichkeit. Wähle eine Sektion zum Vertiefen oder springe direkt zu einem Slug, wenn du schon weißt, welches du willst.',
+    hubLead: 'Artifact OS ist um vier Plugin-Arten herum gebaut: Templates und Skills sind das, was dein Agent ausführt; Systems und Craft halten Marke und Zugänglichkeit. Wähle eine Sektion zum Vertiefen oder springe direkt zu einem Slug, wenn du schon weißt, welches du willst.',
     tileTemplatesBlurb: 'Visuelle, lauffähige Templates — Prototypen, Slides, Bild- und Video-Generatoren, Motion-Kompositionen. Jeder Eintrag liefert eine example.html, sodass du forken, Daten austauschen und ausliefern kannst.',
     tileSkillsBlurb: 'Instruktions-Skills, die der Agent mitten in einer Aufgabe lädt — Texten, Farbenlehre, Creative Direction, Brainstorming. Reine SKILL.md-Prosa; das Ergebnis hängt von deiner Eingabe ab.',
     tileSystemsBlurb: 'Marken-verankerte Designsysteme — Palette, Typografie, Motion, Voice. Verbinde ein Projekt mit einem System und jedes Plugin-Output erbt dieselbe Identität.',
@@ -1228,7 +1228,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     previewSummaryAria: (title) => `Interaktive Vorschau für ${title} öffnen`,
     previewIframeTitle: (title) => `${title} Interaktive Vorschau`,
     // PR #3185 follow-up: localize templates-page chrome + FAQ
-    templatesMetaTitle: 'Kostenlose Design-Vorlagen — Forken & Ausliefern (Apache-2.0) — Open Design',
+    templatesMetaTitle: 'Kostenlose Design-Vorlagen — Forken & Ausliefern (Apache-2.0) — Artifact OS',
     templatesMetaDescription:
       'Vom Agent erstellte Design-Vorlagen zum Forken und Ausliefern — Prototypen, Folien, Bild- und Video-Artefakte. Kostenlos, Open Source (Apache-2.0), BYOK, mit deinen eigenen Keys.',
     templatesHeroEyebrow: 'Open Source Claude Design',
@@ -1242,9 +1242,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     faqHead: 'FAQ',
     faqItems: [
       {
-        question: 'Was sind Open Design Templates?',
+        question: 'Was sind Artifact OS Templates?',
         answer:
-          'Gebündelte Plugin-Templates, die mit Open Design — der open source Claude Design Alternative — ausgeliefert werden. Jedes ist ein ausführbares Artefakt: ein Prototyp, ein Slide Deck, ein Bildgenerator, eine Video-Komposition oder ein HyperFrames Motion-Stück. Dein lokaler Agent führt das Plugin gegen seinen Prompt und optional gegen ein Beispiel-HTML aus und erzeugt ein fertiges, teilbares Asset auf deinem eigenen Rechner.',
+          'Gebündelte Plugin-Templates, die mit Artifact OS — der open source Claude Design Alternative — ausgeliefert werden. Jedes ist ein ausführbares Artefakt: ein Prototyp, ein Slide Deck, ein Bildgenerator, eine Video-Komposition oder ein HyperFrames Motion-Stück. Dein lokaler Agent führt das Plugin gegen seinen Prompt und optional gegen ein Beispiel-HTML aus und erzeugt ein fertiges, teilbares Asset auf deinem eigenen Rechner.',
       },
       {
         question: 'Unter welcher Lizenz stehen die Templates?',
@@ -1254,7 +1254,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Kann ich sie mit meinen eigenen API-Keys ausführen?',
         answer:
-          'Ja. Open Design ist BYOK auf jeder Ebene — deine Claude / OpenAI / Local-Model-Zugangsdaten verlassen niemals deinen Rechner. Die Marketing-Website proxyt keine Inferenz; die Live-Vorschauversionen, die du in den Katalogzeilen siehst, stammen von Postern und Cloudflare Stream URLs, die die Templates mitbringen, nicht von einer gehosteten Runtime.',
+          'Ja. Artifact OS ist BYOK auf jeder Ebene — deine Claude / OpenAI / Local-Model-Zugangsdaten verlassen niemals deinen Rechner. Die Marketing-Website proxyt keine Inferenz; die Live-Vorschauversionen, die du in den Katalogzeilen siehst, stammen von Postern und Cloudflare Stream URLs, die die Templates mitbringen, nicht von einer gehosteten Runtime.',
       },
       {
         question: 'Wie trage ich ein Template bei?',
@@ -1264,7 +1264,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Wie unterscheidet sich das von Claude Design Studio?',
         answer:
-          'Claude Design Studio ist Anthropics gehostetes Produkt. Open Design ist die <strong>open source Claude Design Alternative</strong> — jedes Template, jeder Prompt und jedes Design System in diesem Katalog lebt in einem öffentlichen Repo, läuft lokal gegen die Keys deiner Wahl und kann durch Plugins erweitert werden, die jeder verfassen kann. Wir verwenden die gleiche Artefakt-Taxonomie (Prototypen, Slides, Bilder, Video), damit die mentale Modellierung übertragbar ist, aber alles bis hinunter zur Agent-Runtime bleibt auf deinem Rechner.',
+          'Claude Design Studio ist Anthropics gehostetes Produkt. Artifact OS ist die <strong>open source Claude Design Alternative</strong> — jedes Template, jeder Prompt und jedes Design System in diesem Katalog lebt in einem öffentlichen Repo, läuft lokal gegen die Keys deiner Wahl und kann durch Plugins erweitert werden, die jeder verfassen kann. Wir verwenden die gleiche Artefakt-Taxonomie (Prototypen, Slides, Bilder, Video), damit die mentale Modellierung übertragbar ist, aber alles bis hinunter zur Agent-Runtime bleibt auf deinem Rechner.',
       },
       {
         question: 'Woher kommen die Vorschauversionen?',
@@ -1336,9 +1336,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     },
   },
   fr: {
-    hubMetaTitle: (n) => `Marketplace Claude Skills — ${n}+ plugins | Open Design`,
+    hubMetaTitle: (n) => `Marketplace Claude Skills — ${n}+ plugins | Artifact OS`,
     hubMetaDescription: 'Explorez la marketplace open source de Claude skills——skills de design, design systems, modèles et craft que votre coding agent exécute directement. Compatible Claude, Codex, Cursor.',
-    skillsMetaTitle: (n) => `Claude Skills pour le design — ${n} skills open source | Open Design`,
+    skillsMetaTitle: (n) => `Claude Skills pour le design — ${n} skills open source | Artifact OS`,
     skillsMetaDescription: 'Explorez les Claude skills open source pour le design——rédaction, couleur, direction créative et plus, que votre coding agent charge en pleine tâche. Compatible Claude, Codex et Cursor.',
     hubLabel: 'Bibliothèque de plugins', hubHeading: (n) => `${n} éléments composables`,
     tileTemplates: 'Modèles', tileSkills: 'Skills', tileSystems: 'Systèmes', tileCraft: 'Artisanat',
@@ -1350,7 +1350,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     shareLead: 'Copiez le message ci-dessous, puis ouvrez la plateforme de votre choix et collez.',
     shareCopyText: 'Copier le texte', shareCopyLink: 'Copier le lien', shareJumpTo: 'Aller sur :',
     shareTemplate: ({ title, url }) => `🎨 Découvert : ${title} sur @OpenDesignHQ — l’alternative open-source à Claude Design.\n✨ Local-first · BYOK · votre agent fait le design.\n\n→ ${url}`,
-    hubLead: 'Open Design s’articule autour de quatre types de plugins : Templates et Skills sont ce que ton agent exécute ; Systems et Craft maintiennent la marque et l’accessibilité. Choisis une section ou saute directement à un slug si tu sais déjà ce que tu veux.',
+    hubLead: 'Artifact OS s’articule autour de quatre types de plugins : Templates et Skills sont ce que ton agent exécute ; Systems et Craft maintiennent la marque et l’accessibilité. Choisis une section ou saute directement à un slug si tu sais déjà ce que tu veux.',
     tileTemplatesBlurb: 'Templates visuels et exécutables — prototypes, slides, générateurs d’image et de vidéo, compositions motion. Chaque entrée embarque un example.html : forke, change les données, expédie.',
     tileSkillsBlurb: 'Skills d’instruction que l’agent charge en cours de tâche — copie, théorie des couleurs, direction créative, brainstorming. Pure prose SKILL.md ; le résultat dépend de ton input.',
     tileSystemsBlurb: 'Design systems ancrés à la marque — palette, typographie, motion, voix. Branche un projet à un système et chaque sortie de plugin hérite de la même identité.',
@@ -1384,7 +1384,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     previewSummaryAria: (title) => `Ouvrir l’aperçu interactif de ${title}`,
     previewIframeTitle: (title) => `Aperçu interactif de ${title}`,
     // PR #3185 follow-up: localize templates-page chrome + FAQ
-    templatesMetaTitle: 'Modèles de design gratuits — Forkez & publiez (Apache-2.0) — Open Design',
+    templatesMetaTitle: 'Modèles de design gratuits — Forkez & publiez (Apache-2.0) — Artifact OS',
     templatesMetaDescription:
       'Des modèles de design créés par l’agent, à forker et publier — prototypes, slides, artefacts image et vidéo. Gratuit, open-source (Apache-2.0), BYOK, exécutés avec vos propres clés.',
     templatesHeroEyebrow: 'Open Source Claude Design',
@@ -1398,9 +1398,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     faqHead: 'FAQ',
     faqItems: [
       {
-        question: "Qu'est-ce que les modèles Open Design ?",
+        question: "Qu'est-ce que les modèles Artifact OS ?",
         answer:
-          "Des modèles avec plugins intégrés qui sont livrés avec Open Design — l'alternative open source à Claude Design. Chacun est un artefact exécutable : un prototype, un diaporama, un générateur d'images, une composition vidéo, ou une pièce de mouvement HyperFrames. Votre agent local exécute le plugin selon son prompt et un HTML d'exemple optionnel, et produit un atout prêt à partager sur votre propre machine.",
+          "Des modèles avec plugins intégrés qui sont livrés avec Artifact OS — l'alternative open source à Claude Design. Chacun est un artefact exécutable : un prototype, un diaporama, un générateur d'images, une composition vidéo, ou une pièce de mouvement HyperFrames. Votre agent local exécute le plugin selon son prompt et un HTML d'exemple optionnel, et produit un atout prêt à partager sur votre propre machine.",
       },
       {
         question: 'Comment les modèles sont-ils licenciés ?',
@@ -1410,7 +1410,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Puis-je les exécuter avec mes propres clés API ?',
         answer:
-          "Oui. Open Design est BYOK à tous les niveaux — vos identifiants Claude / OpenAI / modèle local ne quittent jamais votre machine. Le site marketing ne proxy aucune inférence ; les aperçus en direct que vous voyez sur les lignes du catalogue proviennent des affiches et des URLs Cloudflare Stream que les modèles livrent, pas d'un runtime hébergé.",
+          "Oui. Artifact OS est BYOK à tous les niveaux — vos identifiants Claude / OpenAI / modèle local ne quittent jamais votre machine. Le site marketing ne proxy aucune inférence ; les aperçus en direct que vous voyez sur les lignes du catalogue proviennent des affiches et des URLs Cloudflare Stream que les modèles livrent, pas d'un runtime hébergé.",
       },
       {
         question: 'Comment puis-je contribuer un modèle ?',
@@ -1420,7 +1420,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'En quoi cela diffère-t-il de Claude Design Studio ?',
         answer:
-          "Claude Design Studio est le produit hébergé d'Anthropic. Open Design est l'<strong>alternative open source à Claude Design</strong> — chaque modèle, prompt et système de design dans ce catalogue vit dans un repo public, s'exécute localement avec les clés que vous choisissez, et peut être étendu via des plugins que n'importe qui peut créer. Nous reflétions la même taxonomie d'artefacts (prototypes, diaporamas, images, vidéo) pour que le modèle mental soit transférable, mais tout, jusqu'au runtime de l'agent, reste sur votre machine.",
+          "Claude Design Studio est le produit hébergé d'Anthropic. Artifact OS est l'<strong>alternative open source à Claude Design</strong> — chaque modèle, prompt et système de design dans ce catalogue vit dans un repo public, s'exécute localement avec les clés que vous choisissez, et peut être étendu via des plugins que n'importe qui peut créer. Nous reflétions la même taxonomie d'artefacts (prototypes, diaporamas, images, vidéo) pour que le modèle mental soit transférable, mais tout, jusqu'au runtime de l'agent, reste sur votre machine.",
       },
       {
         question: "D'où viennent les aperçus ?",
@@ -1492,9 +1492,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     },
   },
   ru: {
-    hubMetaTitle: (n) => `Маркетплейс Claude Skills — ${n}+ плагинов | Open Design`,
+    hubMetaTitle: (n) => `Маркетплейс Claude Skills — ${n}+ плагинов | Artifact OS`,
     hubMetaDescription: 'Откройте опенсорсный маркетплейс Claude skills——дизайн-skills, дизайн-системы, шаблоны и craft, которые ваш coding agent запускает напрямую. Работает с Claude, Codex, Cursor.',
-    skillsMetaTitle: (n) => `Claude Skills для дизайна — ${n} опенсорсных skills | Open Design`,
+    skillsMetaTitle: (n) => `Claude Skills для дизайна — ${n} опенсорсных skills | Artifact OS`,
     skillsMetaDescription: 'Откройте опенсорсные Claude skills для дизайна——копирайтинг, цвет, креативное руководство и не только, что ваш coding agent подгружает по ходу задачи. Работает с Claude, Codex и Cursor.',
     hubLabel: 'Библиотека плагинов', hubHeading: (n) => `${n} компонуемых элементов`,
     tileTemplates: 'Шаблоны', tileSkills: 'Скиллы', tileSystems: 'Системы', tileCraft: 'Ремесло',
@@ -1506,7 +1506,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     shareLead: 'Скопируйте сообщение ниже, затем перейдите на нужную платформу и вставьте.',
     shareCopyText: 'Скопировать текст', shareCopyLink: 'Только ссылка', shareJumpTo: 'Перейти:',
     shareTemplate: ({ title, url }) => `🎨 Нашёл ${title} на @OpenDesignHQ — open-source альтернативу Claude Design.\n✨ Локально · BYOK · агент сам делает дизайн.\n\n→ ${url}`,
-    hubLead: 'Open Design построен вокруг четырёх видов плагинов: Templates и Skills — это то, что выполняет твой agent; Systems и Craft удерживают бренд и доступность. Выбери раздел для углубления или сразу перейди по slug, если уже знаешь, что нужно.',
+    hubLead: 'Artifact OS построен вокруг четырёх видов плагинов: Templates и Skills — это то, что выполняет твой agent; Systems и Craft удерживают бренд и доступность. Выбери раздел для углубления или сразу перейди по slug, если уже знаешь, что нужно.',
     tileTemplatesBlurb: 'Визуальные, исполняемые шаблоны — прототипы, слайды, генераторы изображений и видео, motion-композиции. Каждая запись поставляется с example.html — форкни, замени данные, отправляй.',
     tileSkillsBlurb: 'Инструкционные навыки, которые agent подгружает по ходу задачи — копирайтинг, теория цвета, креативное руководство, брейншторм. Чистый текст SKILL.md; результат зависит от твоего ввода.',
     tileSystemsBlurb: 'Привязанные к бренду дизайн-системы — палитра, типографика, motion, тон. Привяжи проект к системе, и любой вывод плагина наследует ту же идентичность.',
@@ -1540,7 +1540,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     previewSummaryAria: (title) => `Открыть интерактивное превью ${title}`,
     previewIframeTitle: (title) => `Интерактивное превью ${title}`,
     // PR #3185 follow-up: localize templates-page chrome + FAQ
-    templatesMetaTitle: 'Бесплатные дизайн-шаблоны — форк и публикация (Apache-2.0) — Open Design',
+    templatesMetaTitle: 'Бесплатные дизайн-шаблоны — форк и публикация (Apache-2.0) — Artifact OS',
     templatesMetaDescription:
       'Дизайн-шаблоны, созданные агентом, — форкайте и публикуйте: прототипы, слайды, изображения и видео. Бесплатно, open-source (Apache-2.0), BYOK, запуск на своих ключах.',
     templatesHeroEyebrow: 'Open Source Claude Design',
@@ -1554,9 +1554,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     faqHead: 'FAQ',
     faqItems: [
       {
-        question: 'Что такое шаблоны Open Design?',
+        question: 'Что такое шаблоны Artifact OS?',
         answer:
-          'Шаблоны с встроенными плагинами, которые поставляются с Open Design — открытую альтернативу Claude Design. Каждый из них — это исполняемый артефакт: прототип, слайд-дек, генератор изображений, видеокомпозиция или motion-piece на HyperFrames. Локальный агент запускает плагин по его промпту и опциональному примеру HTML, и создаёт готовый к публикации ассет на вашей машине.',
+          'Шаблоны с встроенными плагинами, которые поставляются с Artifact OS — открытую альтернативу Claude Design. Каждый из них — это исполняемый артефакт: прототип, слайд-дек, генератор изображений, видеокомпозиция или motion-piece на HyperFrames. Локальный агент запускает плагин по его промпту и опциональному примеру HTML, и создаёт готовый к публикации ассет на вашей машине.',
       },
       {
         question: 'Как лицензируются шаблоны?',
@@ -1566,7 +1566,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Могу ли я запускать их с собственными API-ключами?',
         answer:
-          'Да. Open Design работает с собственными ключами на каждом уровне — ваши учётные данные Claude / OpenAI / локальной модели никогда не покидают машину. Сайт маркетинга не проксирует никакое inference; live-превью, которые вы видите в строках каталога, поступают из постеров и Cloudflare Stream URL, которые поставляются с шаблонами, а не из размещённого runtime.',
+          'Да. Artifact OS работает с собственными ключами на каждом уровне — ваши учётные данные Claude / OpenAI / локальной модели никогда не покидают машину. Сайт маркетинга не проксирует никакое inference; live-превью, которые вы видите в строках каталога, поступают из постеров и Cloudflare Stream URL, которые поставляются с шаблонами, а не из размещённого runtime.',
       },
       {
         question: 'Как мне внести свой шаблон?',
@@ -1576,7 +1576,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Чем это отличается от Claude Design Studio?',
         answer:
-          'Claude Design Studio — это размещённый продукт Anthropic. Open Design — это <strong>открытая альтернатива Claude Design</strong> — каждый шаблон, промпт и дизайн-система в этом каталоге находятся в публичном репо, работают локально с выбранными вами ключами и могут быть расширены через плагины, которые может написать кто угодно. Мы используем ту же таксономию артефактов (прототипы, слайды, изображения, видео), чтобы ментальная модель совпадала, но всё, вплоть до runtime агента, остаётся на вашей машине.',
+          'Claude Design Studio — это размещённый продукт Anthropic. Artifact OS — это <strong>открытая альтернатива Claude Design</strong> — каждый шаблон, промпт и дизайн-система в этом каталоге находятся в публичном репо, работают локально с выбранными вами ключами и могут быть расширены через плагины, которые может написать кто угодно. Мы используем ту же таксономию артефактов (прототипы, слайды, изображения, видео), чтобы ментальная модель совпадала, но всё, вплоть до runtime агента, остаётся на вашей машине.',
       },
       {
         question: 'Откуда берутся превью?',
@@ -1648,9 +1648,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     },
   },
   es: {
-    hubMetaTitle: (n) => `Marketplace de Claude Skills — ${n}+ plugins | Open Design`,
+    hubMetaTitle: (n) => `Marketplace de Claude Skills — ${n}+ plugins | Artifact OS`,
     hubMetaDescription: 'Explora el marketplace open source de Claude skills——skills de diseño, design systems, plantillas y craft que tu coding agent ejecuta directamente. Compatible con Claude, Codex, Cursor.',
-    skillsMetaTitle: (n) => `Claude Skills para diseño — ${n} skills open source | Open Design`,
+    skillsMetaTitle: (n) => `Claude Skills para diseño — ${n} skills open source | Artifact OS`,
     skillsMetaDescription: 'Explora los Claude skills open source para diseño——copywriting, color, dirección creativa y más que tu coding agent carga durante la tarea. Compatible con Claude, Codex y Cursor.',
     hubLabel: 'Biblioteca de plugins', hubHeading: (n) => `${n} piezas componibles`,
     tileTemplates: 'Plantillas', tileSkills: 'Skills', tileSystems: 'Sistemas', tileCraft: 'Oficio',
@@ -1662,7 +1662,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     shareLead: 'Copia el mensaje y abre la plataforma donde quieras compartirlo.',
     shareCopyText: 'Copiar texto', shareCopyLink: 'Solo el enlace', shareJumpTo: 'Ir a:',
     shareTemplate: ({ title, url }) => `🎨 Acabo de descubrir ${title} en @OpenDesignHQ — la alternativa open-source a Claude Design.\n✨ Local-first · BYOK · tu agente diseña.\n\n→ ${url}`,
-    hubLead: 'Open Design se construye alrededor de cuatro tipos de plugin: Templates y Skills son lo que tu agent ejecuta; Systems y Craft mantienen marca y accesibilidad. Elige una sección para profundizar o salta directo a un slug si ya sabes cuál quieres.',
+    hubLead: 'Artifact OS se construye alrededor de cuatro tipos de plugin: Templates y Skills son lo que tu agent ejecuta; Systems y Craft mantienen marca y accesibilidad. Elige una sección para profundizar o salta directo a un slug si ya sabes cuál quieres.',
     tileTemplatesBlurb: 'Templates visuales y ejecutables — prototipos, slides, generadores de imagen y video, composiciones motion. Cada entrada incluye un example.html: forkea, cambia los datos, despacha.',
     tileSkillsBlurb: 'Skills de instrucción que el agent carga a mitad de tarea — copy, teoría del color, dirección creativa, brainstorming. Prosa pura de SKILL.md; el resultado depende de tu input.',
     tileSystemsBlurb: 'Design systems anclados a la marca — paleta, tipografía, motion, voz. Conecta un proyecto a un sistema y cada salida de plugin hereda la misma identidad.',
@@ -1696,7 +1696,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     previewSummaryAria: (title) => `Abrir vista previa interactiva de ${title}`,
     previewIframeTitle: (title) => `Vista previa interactiva de ${title}`,
     // PR #3185 follow-up: localize templates-page chrome + FAQ
-    templatesMetaTitle: 'Plantillas de diseño gratis — Bifurca y publica (Apache-2.0) — Open Design',
+    templatesMetaTitle: 'Plantillas de diseño gratis — Bifurca y publica (Apache-2.0) — Artifact OS',
     templatesMetaDescription:
       'Plantillas de diseño creadas por el agente para bifurcar y publicar — prototipos, diapositivas, artefactos de imagen y vídeo. Gratis, open-source (Apache-2.0), BYOK, ejecuta con tus propias claves.',
     templatesHeroEyebrow: 'Open Source Claude Design',
@@ -1710,9 +1710,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     faqHead: 'Preguntas frecuentes',
     faqItems: [
       {
-        question: '¿Qué son las plantillas de Open Design?',
+        question: '¿Qué son las plantillas de Artifact OS?',
         answer:
-          'Plantillas de plugins integrados que se incluyen con Open Design — la alternativa open source a Claude Design. Cada una es un artefacto ejecutable: un prototipo, un conjunto de diapositivas, un generador de imágenes, una composición de vídeo o una pieza de movimiento HyperFrames. Tu agente local ejecuta el plugin contra su prompt y un HTML de ejemplo opcional, y produce un activo listo para compartir en tu máquina.',
+          'Plantillas de plugins integrados que se incluyen con Artifact OS — la alternativa open source a Claude Design. Cada una es un artefacto ejecutable: un prototipo, un conjunto de diapositivas, un generador de imágenes, una composición de vídeo o una pieza de movimiento HyperFrames. Tu agente local ejecuta el plugin contra su prompt y un HTML de ejemplo opcional, y produce un activo listo para compartir en tu máquina.',
       },
       {
         question: '¿Cómo se licencian las plantillas?',
@@ -1722,7 +1722,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: '¿Puedo ejecutarlas con mis propias claves API?',
         answer:
-          'Sí. Open Design es BYOK en todas las capas — tus credenciales de Claude, OpenAI o modelo local nunca abandonan tu máquina. El sitio de marketing no realiza proxy de ninguna inferencia; las vistas previas en directo que ves en las filas del catálogo provienen de posters y URLs de Cloudflare Stream que se incluyen con las plantillas, no de un runtime alojado.',
+          'Sí. Artifact OS es BYOK en todas las capas — tus credenciales de Claude, OpenAI o modelo local nunca abandonan tu máquina. El sitio de marketing no realiza proxy de ninguna inferencia; las vistas previas en directo que ves en las filas del catálogo provienen de posters y URLs de Cloudflare Stream que se incluyen con las plantillas, no de un runtime alojado.',
       },
       {
         question: '¿Cómo contribuyo con una plantilla?',
@@ -1732,7 +1732,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: '¿En qué se diferencia de Claude Design Studio?',
         answer:
-          'Claude Design Studio es el producto alojado de Anthropic. Open Design es la <strong>alternativa open source a Claude Design</strong> — cada plantilla, prompt y sistema de diseño en este catálogo vive en un repositorio público, se ejecuta localmente contra las claves que elijas, y puede extenderse mediante plugins que cualquiera puede crear. Espejamos la misma taxonomía de artefactos (prototipos, diapositivas, imágenes, vídeo) para que el modelo mental sea coherente, pero todo, incluido el runtime del agente, permanece en tu máquina.',
+          'Claude Design Studio es el producto alojado de Anthropic. Artifact OS es la <strong>alternativa open source a Claude Design</strong> — cada plantilla, prompt y sistema de diseño en este catálogo vive en un repositorio público, se ejecuta localmente contra las claves que elijas, y puede extenderse mediante plugins que cualquiera puede crear. Espejamos la misma taxonomía de artefactos (prototipos, diapositivas, imágenes, vídeo) para que el modelo mental sea coherente, pero todo, incluido el runtime del agente, permanece en tu máquina.',
       },
       {
         question: '¿De dónde vienen las vistas previas?',
@@ -1804,9 +1804,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     },
   },
   'pt-br': {
-    hubMetaTitle: (n) => `Marketplace de Claude Skills — ${n}+ plugins | Open Design`,
+    hubMetaTitle: (n) => `Marketplace de Claude Skills — ${n}+ plugins | Artifact OS`,
     hubMetaDescription: 'Explore o marketplace open source de Claude skills——skills de design, design systems, templates e craft que seu coding agent executa direto. Funciona com Claude, Codex, Cursor.',
-    skillsMetaTitle: (n) => `Claude Skills para design — ${n} skills open source | Open Design`,
+    skillsMetaTitle: (n) => `Claude Skills para design — ${n} skills open source | Artifact OS`,
     skillsMetaDescription: 'Explore os Claude skills open source para design——copywriting, cor, direção criativa e mais que seu coding agent carrega no meio da tarefa. Funciona com Claude, Codex e Cursor.',
     hubLabel: 'Biblioteca de plugins', hubHeading: (n) => `${n} peças combináveis`,
     tileTemplates: 'Templates', tileSkills: 'Skills', tileSystems: 'Sistemas', tileCraft: 'Ofício',
@@ -1818,7 +1818,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     shareLead: 'Copie a mensagem e abra a plataforma onde quer compartilhar.',
     shareCopyText: 'Copiar texto', shareCopyLink: 'Só o link', shareJumpTo: 'Ir para:',
     shareTemplate: ({ title, url }) => `🎨 Acabei de descobrir ${title} no @OpenDesignHQ — a alternativa open-source ao Claude Design.\n✨ Local-first · BYOK · seu agente faz o design.\n\n→ ${url}`,
-    hubLead: 'Open Design é construído em torno de quatro tipos de plugin: Templates e Skills são o que seu agent executa; Systems e Craft mantêm marca e acessibilidade. Escolha uma seção para se aprofundar ou pule direto para um slug se já sabe o que quer.',
+    hubLead: 'Artifact OS é construído em torno de quatro tipos de plugin: Templates e Skills são o que seu agent executa; Systems e Craft mantêm marca e acessibilidade. Escolha uma seção para se aprofundar ou pule direto para um slug se já sabe o que quer.',
     tileTemplatesBlurb: 'Templates visuais e executáveis — protótipos, slides, geradores de imagem e vídeo, composições motion. Cada entrada vem com um example.html: forke, troque os dados, entregue.',
     tileSkillsBlurb: 'Skills de instrução que o agent carrega no meio da tarefa — copy, teoria das cores, direção criativa, brainstorming. Pura prosa de SKILL.md; o resultado depende do seu input.',
     tileSystemsBlurb: 'Design systems ancorados na marca — paleta, tipografia, motion, voz. Conecte um projeto a um sistema e toda saída de plugin herda a mesma identidade.',
@@ -1852,7 +1852,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     previewSummaryAria: (title) => `Abrir pré-visualização interativa de ${title}`,
     previewIframeTitle: (title) => `Pré-visualização interativa de ${title}`,
     // PR #3185 follow-up: localize templates-page chrome + FAQ
-    templatesMetaTitle: 'Modelos de design grátis — Faça fork e publique (Apache-2.0) — Open Design',
+    templatesMetaTitle: 'Modelos de design grátis — Faça fork e publique (Apache-2.0) — Artifact OS',
     templatesMetaDescription:
       'Modelos de design criados pelo agente para fazer fork e publicar — protótipos, slides, artefatos de imagem e vídeo. Grátis, open-source (Apache-2.0), BYOK, rode com suas próprias chaves.',
     templatesHeroEyebrow: 'Open Source Claude Design',
@@ -1866,9 +1866,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     faqHead: 'Perguntas Frequentes',
     faqItems: [
       {
-        question: 'O que são os templates Open Design?',
+        question: 'O que são os templates Artifact OS?',
         answer:
-          'Templates com plugin integrado que vêm com Open Design — a alternativa open source para Claude Design. Cada um é um artefato executável: um protótipo, deck de apresentação, gerador de imagem, composição de vídeo ou uma peça de motion HyperFrames. Seu agente local executa o plugin contra seu prompt e um HTML de exemplo opcional, gerando um ativo pronto para compartilhar na sua máquina.',
+          'Templates com plugin integrado que vêm com Artifact OS — a alternativa open source para Claude Design. Cada um é um artefato executável: um protótipo, deck de apresentação, gerador de imagem, composição de vídeo ou uma peça de motion HyperFrames. Seu agente local executa o plugin contra seu prompt e um HTML de exemplo opcional, gerando um ativo pronto para compartilhar na sua máquina.',
       },
       {
         question: 'Como os templates são licenciados?',
@@ -1878,7 +1878,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Posso executá-los com minhas próprias chaves de API?',
         answer:
-          'Sim. Open Design é BYOK em todas as camadas — suas credenciais Claude / OpenAI / modelo local nunca saem da sua máquina. O site de marketing não faz proxy de nenhuma inferência; as visualizações ao vivo que você vê nas linhas do catálogo vêm de cartazes e URLs do Cloudflare Stream que os templates incluem, não de um runtime hospedado.',
+          'Sim. Artifact OS é BYOK em todas as camadas — suas credenciais Claude / OpenAI / modelo local nunca saem da sua máquina. O site de marketing não faz proxy de nenhuma inferência; as visualizações ao vivo que você vê nas linhas do catálogo vêm de cartazes e URLs do Cloudflare Stream que os templates incluem, não de um runtime hospedado.',
       },
       {
         question: 'Como contribuo com um template?',
@@ -1888,7 +1888,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Como isso difere do Claude Design Studio?',
         answer:
-          'Claude Design Studio é o produto hospedado da Anthropic. Open Design é a <strong>alternativa open source para Claude Design</strong> — cada template, prompt e design system neste catálogo reside em um repositório público, executa localmente contra as chaves que você escolhe e pode ser estendido através de plugins que qualquer pessoa pode criar. Espelhamos a mesma taxonomia de artefatos (protótipos, apresentações, imagens, vídeo) para que o modelo mental seja transferível, mas tudo, até o runtime do agente, fica na sua máquina.',
+          'Claude Design Studio é o produto hospedado da Anthropic. Artifact OS é a <strong>alternativa open source para Claude Design</strong> — cada template, prompt e design system neste catálogo reside em um repositório público, executa localmente contra as chaves que você escolhe e pode ser estendido através de plugins que qualquer pessoa pode criar. Espelhamos a mesma taxonomia de artefatos (protótipos, apresentações, imagens, vídeo) para que o modelo mental seja transferível, mas tudo, até o runtime do agente, fica na sua máquina.',
       },
       {
         question: 'De onde vêm as visualizações?',
@@ -1960,9 +1960,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     },
   },
   it: {
-    hubMetaTitle: (n) => `Marketplace di Claude Skills — ${n}+ plugin | Open Design`,
+    hubMetaTitle: (n) => `Marketplace di Claude Skills — ${n}+ plugin | Artifact OS`,
     hubMetaDescription: 'Esplora il marketplace open source di Claude skills——skills di design, design system, template e craft che il tuo coding agent esegue direttamente. Compatibile con Claude, Codex, Cursor.',
-    skillsMetaTitle: (n) => `Claude Skills per il design — ${n} skills open source | Open Design`,
+    skillsMetaTitle: (n) => `Claude Skills per il design — ${n} skills open source | Artifact OS`,
     skillsMetaDescription: 'Esplora i Claude skills open source per il design——copywriting, colore, direzione creativa e altro che il tuo coding agent carica durante il task. Compatibile con Claude, Codex e Cursor.',
     hubLabel: 'Libreria plugin', hubHeading: (n) => `${n} pezzi componibili`,
     tileTemplates: 'Modelli', tileSkills: 'Skill', tileSystems: 'Sistemi', tileCraft: 'Artigianato',
@@ -1974,7 +1974,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     shareLead: 'Copia il messaggio e apri la piattaforma su cui vuoi condividere.',
     shareCopyText: 'Copia testo', shareCopyLink: 'Solo il link', shareJumpTo: 'Vai a:',
     shareTemplate: ({ title, url }) => `🎨 Ho appena scoperto ${title} su @OpenDesignHQ — l’alternativa open-source a Claude Design.\n✨ Local-first · BYOK · il tuo agente progetta.\n\n→ ${url}`,
-    hubLead: 'Open Design è costruito attorno a quattro tipi di plugin: Templates e Skill sono ciò che il tuo agent esegue; Systems e Craft tengono insieme brand e accessibilità. Scegli una sezione in cui scendere o salta a uno slug se sai già quale ti serve.',
+    hubLead: 'Artifact OS è costruito attorno a quattro tipi di plugin: Templates e Skill sono ciò che il tuo agent esegue; Systems e Craft tengono insieme brand e accessibilità. Scegli una sezione in cui scendere o salta a uno slug se sai già quale ti serve.',
     tileTemplatesBlurb: 'Template visuali ed eseguibili — prototipi, slide, generatori di immagine e video, composizioni motion. Ogni voce porta un example.html: fai fork, cambia i dati, spedisci.',
     tileSkillsBlurb: 'Skill di istruzione che l’agent carica a metà task — copy, teoria del colore, direzione creativa, brainstorming. Pura prosa SKILL.md; il risultato dipende dall’input.',
     tileSystemsBlurb: 'Design system ancorati al brand — palette, tipografia, motion, voice. Aggancia un progetto a un sistema e ogni output di plugin eredita la stessa identità.',
@@ -2008,7 +2008,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     previewSummaryAria: (title) => `Apri anteprima interattiva di ${title}`,
     previewIframeTitle: (title) => `Anteprima interattiva di ${title}`,
     // PR #3185 follow-up: localize templates-page chrome + FAQ
-    templatesMetaTitle: 'Template di design gratuiti — Fai fork e pubblica (Apache-2.0) — Open Design',
+    templatesMetaTitle: 'Template di design gratuiti — Fai fork e pubblica (Apache-2.0) — Artifact OS',
     templatesMetaDescription:
       'Template di design creati dall’agente da forkare e pubblicare — prototipi, slide, artefatti di immagini e video. Gratis, open-source (Apache-2.0), BYOK, esegui con le tue chiavi.',
     templatesHeroEyebrow: 'Open Source Claude Design',
@@ -2022,9 +2022,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     faqHead: 'Domande Frequenti',
     faqItems: [
       {
-        question: 'Cosa sono i template di Open Design?',
+        question: 'Cosa sono i template di Artifact OS?',
         answer:
-          "Template con plugin inclusi che vengono forniti con Open Design — l'alternativa open source a Claude Design. Ogni template è un artefatto eseguibile: un prototipo, un mazzo di slide, un generatore di immagini, una composizione video o un pezzo di motion di HyperFrames. L'agente locale esegue il plugin rispetto al suo prompt e a un HTML di esempio opzionale, e produce un asset pronto da condividere sul tuo computer.",
+          "Template con plugin inclusi che vengono forniti con Artifact OS — l'alternativa open source a Claude Design. Ogni template è un artefatto eseguibile: un prototipo, un mazzo di slide, un generatore di immagini, una composizione video o un pezzo di motion di HyperFrames. L'agente locale esegue il plugin rispetto al suo prompt e a un HTML di esempio opzionale, e produce un asset pronto da condividere sul tuo computer.",
       },
       {
         question: 'Come sono licenziati i template?',
@@ -2034,7 +2034,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Posso eseguirli con le mie chiavi API?',
         answer:
-          'Sì. Open Design è BYOK a tutti i livelli — le tue credenziali Claude / OpenAI / modello locale non lasciano mai la tua macchina. Il sito di marketing non effettua proxy di alcuna inferenza; le anteprime live che vedi sulle righe del catalogo provengono da poster e URL di Cloudflare Stream che i template includono, non da un runtime ospitato.',
+          'Sì. Artifact OS è BYOK a tutti i livelli — le tue credenziali Claude / OpenAI / modello locale non lasciano mai la tua macchina. Il sito di marketing non effettua proxy di alcuna inferenza; le anteprime live che vedi sulle righe del catalogo provengono da poster e URL di Cloudflare Stream che i template includono, non da un runtime ospitato.',
       },
       {
         question: 'Come contribuisco con un template?',
@@ -2044,7 +2044,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Come si differenzia da Claude Design Studio?',
         answer:
-          "Claude Design Studio è il prodotto hosted di Anthropic. Open Design è l'<strong>alternativa open source a Claude Design</strong> — ogni template, prompt e design system in questo catalogo vive in un repo pubblico, viene eseguito localmente rispetto alle chiavi che scegli, e può essere esteso attraverso plugin che chiunque può creare. Rispecchiamo la stessa tassonomia di artefatti (prototipi, slide, immagini, video) così il modello mentale rimane lo stesso, ma tutto fino al runtime dell'agente rimane sulla tua macchina.",
+          "Claude Design Studio è il prodotto hosted di Anthropic. Artifact OS è l'<strong>alternativa open source a Claude Design</strong> — ogni template, prompt e design system in questo catalogo vive in un repo pubblico, viene eseguito localmente rispetto alle chiavi che scegli, e può essere esteso attraverso plugin che chiunque può creare. Rispecchiamo la stessa tassonomia di artefatti (prototipi, slide, immagini, video) così il modello mentale rimane lo stesso, ma tutto fino al runtime dell'agente rimane sulla tua macchina.",
       },
       {
         question: 'Da dove provengono le anteprime?',
@@ -2116,9 +2116,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     },
   },
   id: {
-    hubMetaTitle: (n) => `Marketplace Claude Skills — ${n}+ Plugin | Open Design`,
+    hubMetaTitle: (n) => `Marketplace Claude Skills — ${n}+ Plugin | Artifact OS`,
     hubMetaDescription: 'Jelajahi marketplace open-source Claude skills——skills desain, design system, template, dan craft yang langsung dijalankan coding agent kamu. Mendukung Claude, Codex, Cursor.',
-    skillsMetaTitle: (n) => `Claude Skills untuk Desain — ${n} skills Open-Source | Open Design`,
+    skillsMetaTitle: (n) => `Claude Skills untuk Desain — ${n} skills Open-Source | Artifact OS`,
     skillsMetaDescription: 'Jelajahi Claude skills open-source untuk desain——copywriting, warna, arahan kreatif, dan lainnya yang dimuat coding agent kamu saat bekerja. Mendukung Claude, Codex & Cursor.',
     hubLabel: 'Pustaka plugin', hubHeading: (n) => `${n} potongan yang bisa digabungkan`,
     tileTemplates: 'Template', tileSkills: 'Skill', tileSystems: 'Sistem', tileCraft: 'Kerajinan',
@@ -2130,7 +2130,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     shareLead: 'Salin pesan di bawah, lalu buka platform yang ingin Anda gunakan dan tempel.',
     shareCopyText: 'Salin teks', shareCopyLink: 'Salin tautan', shareJumpTo: 'Buka:',
     shareTemplate: ({ title, url }) => `🎨 Baru nemu ${title} di @OpenDesignHQ — alternatif open-source untuk Claude Design.\n✨ Local-first · BYOK · agent kamu yang nge-desain.\n\n→ ${url}`,
-    hubLead: 'Open Design dibangun di sekitar empat jenis plugin: Templates dan Skills adalah yang dijalankan agent kamu; Systems dan Craft menjaga brand dan aksesibilitas. Pilih satu bagian untuk mendalami, atau lompat langsung ke slug kalau sudah tahu mau yang mana.',
+    hubLead: 'Artifact OS dibangun di sekitar empat jenis plugin: Templates dan Skills adalah yang dijalankan agent kamu; Systems dan Craft menjaga brand dan aksesibilitas. Pilih satu bagian untuk mendalami, atau lompat langsung ke slug kalau sudah tahu mau yang mana.',
     tileTemplatesBlurb: 'Template visual dan dapat dijalankan — prototipe, slide, generator gambar dan video, komposisi motion. Setiap entri membawa example.html: fork, ganti data, kirim.',
     tileSkillsBlurb: 'Skill instruksi yang dimuat agent di tengah tugas — copywriting, teori warna, arah kreatif, brainstorming. Murni prosa SKILL.md; hasil tergantung input kamu.',
     tileSystemsBlurb: 'Design system yang berlabuh di brand — palet, tipografi, motion, voice. Kaitkan proyek ke system, dan setiap output plugin mewarisi identitas yang sama.',
@@ -2175,9 +2175,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     faqHead: 'FAQ',
     faqItems: [
       {
-        question: 'Apa itu template Open Design?',
+        question: 'Apa itu template Artifact OS?',
         answer:
-          'Template plugin bundel yang disertakan dengan Open Design — alternatif open source Claude Design. Masing-masing adalah artefak yang dapat dijalankan: prototipe, deck slide, generator gambar, komposisi video, atau piece motion HyperFrames. Agen lokal Anda menjalankan plugin terhadap prompt-nya dan contoh HTML opsional, dan menghasilkan aset siap bagikan di mesin Anda sendiri.',
+          'Template plugin bundel yang disertakan dengan Artifact OS — alternatif open source Claude Design. Masing-masing adalah artefak yang dapat dijalankan: prototipe, deck slide, generator gambar, komposisi video, atau piece motion HyperFrames. Agen lokal Anda menjalankan plugin terhadap prompt-nya dan contoh HTML opsional, dan menghasilkan aset siap bagikan di mesin Anda sendiri.',
       },
       {
         question: 'Bagaimana lisensi template?',
@@ -2187,7 +2187,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Bisakah saya menjalankannya dengan kunci API saya sendiri?',
         answer:
-          'Ya. Open Design adalah BYOK di setiap layer — kredensial Claude / OpenAI / local-model Anda tidak pernah meninggalkan mesin Anda. Situs pemasaran tidak mem-proxy inference apa pun; preview langsung yang Anda lihat di baris katalog berasal dari poster dan URL Cloudflare Stream yang disertakan template, bukan dari runtime yang di-host.',
+          'Ya. Artifact OS adalah BYOK di setiap layer — kredensial Claude / OpenAI / local-model Anda tidak pernah meninggalkan mesin Anda. Situs pemasaran tidak mem-proxy inference apa pun; preview langsung yang Anda lihat di baris katalog berasal dari poster dan URL Cloudflare Stream yang disertakan template, bukan dari runtime yang di-host.',
       },
       {
         question: 'Bagaimana cara saya berkontribusi template?',
@@ -2197,7 +2197,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Bagaimana perbedaannya dengan Claude Design Studio?',
         answer:
-          'Claude Design Studio adalah produk hosted Anthropic. Open Design adalah <strong>alternatif open source Claude Design</strong> — setiap template, prompt, dan design system di katalog ini tinggal di repo publik, berjalan lokal terhadap kunci yang Anda pilih, dan dapat diperluas melalui plugin yang siapa pun bisa buat. Kami mencerminkan taksonomi artefak yang sama (prototipe, slide, gambar, video) sehingga model mental terbawa, tetapi semuanya hingga runtime agen tetap di mesin Anda.',
+          'Claude Design Studio adalah produk hosted Anthropic. Artifact OS adalah <strong>alternatif open source Claude Design</strong> — setiap template, prompt, dan design system di katalog ini tinggal di repo publik, berjalan lokal terhadap kunci yang Anda pilih, dan dapat diperluas melalui plugin yang siapa pun bisa buat. Kami mencerminkan taksonomi artefak yang sama (prototipe, slide, gambar, video) sehingga model mental terbawa, tetapi semuanya hingga runtime agen tetap di mesin Anda.',
       },
       {
         question: 'Dari mana preview berasal?',
@@ -2269,9 +2269,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     },
   },
   pl: {
-    hubMetaTitle: (n) => `Marketplace Claude Skills — ${n}+ wtyczek | Open Design`,
+    hubMetaTitle: (n) => `Marketplace Claude Skills — ${n}+ wtyczek | Artifact OS`,
     hubMetaDescription: 'Przeglądaj otwartoźródłowy marketplace Claude skills——skills do designu, systemy projektowe, szablony i craft, które Twój coding agent uruchamia bezpośrednio. Działa z Claude, Codex, Cursor.',
-    skillsMetaTitle: (n) => `Claude Skills do designu — ${n} otwartych skills | Open Design`,
+    skillsMetaTitle: (n) => `Claude Skills do designu — ${n} otwartych skills | Artifact OS`,
     skillsMetaDescription: 'Przeglądaj otwartoźródłowe Claude skills do designu——copywriting, kolor, kierunek kreatywny i więcej, które Twój coding agent ładuje w trakcie zadania. Działa z Claude, Codex i Cursor.',
     hubLabel: 'Biblioteka pluginów', hubHeading: (n) => `${n} komponowalnych elementów`,
     tileTemplates: 'Szablony', tileSkills: 'Umiejętności', tileSystems: 'Systemy', tileCraft: 'Rzemiosło',
@@ -2283,7 +2283,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     shareLead: 'Skopiuj wiadomość poniżej, otwórz wybraną platformę i wklej.',
     shareCopyText: 'Kopiuj tekst', shareCopyLink: 'Skopiuj link', shareJumpTo: 'Przejdź do:',
     shareTemplate: ({ title, url }) => `🎨 Właśnie odkryłem ${title} na @OpenDesignHQ — open-source’ową alternatywę dla Claude Design.\n✨ Local-first · BYOK · twój agent projektuje.\n\n→ ${url}`,
-    hubLead: 'Open Design opiera się na czterech rodzajach wtyczek: Templates i Skills to to, co uruchamia twój agent; Systems i Craft pilnują marki i dostępności. Wybierz sekcję, by zejść głębiej, albo skocz prosto do sluga, jeśli już wiesz, czego chcesz.',
+    hubLead: 'Artifact OS opiera się na czterech rodzajach wtyczek: Templates i Skills to to, co uruchamia twój agent; Systems i Craft pilnują marki i dostępności. Wybierz sekcję, by zejść głębiej, albo skocz prosto do sluga, jeśli już wiesz, czego chcesz.',
     tileTemplatesBlurb: 'Wizualne, wykonywalne szablony — prototypy, slajdy, generatory obrazów i wideo, kompozycje motion. Każda pozycja ma example.html: forkujesz, podmieniasz dane, wysyłasz.',
     tileSkillsBlurb: 'Wtyczki instrukcyjne, które agent wczytuje w trakcie zadania — copywriting, teoria koloru, kierunek kreatywny, burze mózgów. Czysty tekst SKILL.md; wynik zależy od twojego inputu.',
     tileSystemsBlurb: 'Design systemy zakotwiczone w marce — paleta, typografia, motion, głos. Podepnij projekt do systemu, a każdy output wtyczki dziedziczy tę samą tożsamość.',
@@ -2328,9 +2328,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     faqHead: 'FAQ',
     faqItems: [
       {
-        question: 'Czym są szablony Open Design?',
+        question: 'Czym są szablony Artifact OS?',
         answer:
-          "Szablony z wbudowanymi wtyczkami, które dostarczane są z Open Design — open source'ową alternatywą Claude Design. Każdy to artefakt, który można uruchomić: prototyp, prezentacja, generator obrazów, kompozycja wideo lub piece motion HyperFrames. Twój lokalny agent uruchamia wtyczkę względem jej promptu i opcjonalnego przykładowego HTML-a, produkcując gotowy do udostępnienia zasób na Twojej maszynie.",
+          "Szablony z wbudowanymi wtyczkami, które dostarczane są z Artifact OS — open source'ową alternatywą Claude Design. Każdy to artefakt, który można uruchomić: prototyp, prezentacja, generator obrazów, kompozycja wideo lub piece motion HyperFrames. Twój lokalny agent uruchamia wtyczkę względem jej promptu i opcjonalnego przykładowego HTML-a, produkcując gotowy do udostępnienia zasób na Twojej maszynie.",
       },
       {
         question: 'Na jakiej licencji są szablony?',
@@ -2340,7 +2340,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Czy mogę uruchamiać je z własnymi kluczami API?',
         answer:
-          'Tak. Open Design to BYOK na każdej warstwie — Twoje dane uwierzytelniające Claude / OpenAI / lokalnego modelu nigdy nie opuszczają Twoją maszynę. Witryna marketingowa nie realizuje żadnych wnioskodawań; podglądy na żywo, które widzisz na rzędach katalogów, pochodzą z plakatów i adresów URL Cloudflare Stream, które dostarczają szablony, a nie z hostowanego środowiska uruchomieniowego.',
+          'Tak. Artifact OS to BYOK na każdej warstwie — Twoje dane uwierzytelniające Claude / OpenAI / lokalnego modelu nigdy nie opuszczają Twoją maszynę. Witryna marketingowa nie realizuje żadnych wnioskodawań; podglądy na żywo, które widzisz na rzędach katalogów, pochodzą z plakatów i adresów URL Cloudflare Stream, które dostarczają szablony, a nie z hostowanego środowiska uruchomieniowego.',
       },
       {
         question: 'Jak wnieść swój szablon?',
@@ -2350,7 +2350,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Czym różni się to od Claude Design Studio?',
         answer:
-          "Claude Design Studio to hostowany produkt firmy Anthropic. Open Design to <strong>open source'owa alternatywa Claude Design</strong> — każdy szablon, prompt i system designu w tym katalogu żyje w publicznym repozytorium, uruchamia się lokalnie względem wybranych przez Ciebie kluczy i może być rozszerzany poprzez wtyczki, które każdy może napisać. Dublujemy tę samą taksonomię artefaktów (prototypy, slajdy, obrazy, wideo), aby model mentalny był spójny, ale wszystko aż do środowiska uruchomieniowego agenta pozostaje na Twojej maszynie.",
+          "Claude Design Studio to hostowany produkt firmy Anthropic. Artifact OS to <strong>open source'owa alternatywa Claude Design</strong> — każdy szablon, prompt i system designu w tym katalogu żyje w publicznym repozytorium, uruchamia się lokalnie względem wybranych przez Ciebie kluczy i może być rozszerzany poprzez wtyczki, które każdy może napisać. Dublujemy tę samą taksonomię artefaktów (prototypy, slajdy, obrazy, wideo), aby model mentalny był spójny, ale wszystko aż do środowiska uruchomieniowego agenta pozostaje na Twojej maszynie.",
       },
       {
         question: 'Skąd pochodzą podglądy?',
@@ -2422,9 +2422,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     },
   },
   ar: {
-    hubMetaTitle: (n) => `سوق Claude Skills — ${n}+ إضافة | Open Design`,
+    hubMetaTitle: (n) => `سوق Claude Skills — ${n}+ إضافة | Artifact OS`,
     hubMetaDescription: 'تصفّح سوق Claude skills مفتوح المصدر——skills التصميم وأنظمة التصميم والقوالب و craft التي يشغّلها coding agent مباشرة. يعمل مع Claude وCodex وCursor.',
-    skillsMetaTitle: (n) => `Claude Skills للتصميم — ${n} skills مفتوحة المصدر | Open Design`,
+    skillsMetaTitle: (n) => `Claude Skills للتصميم — ${n} skills مفتوحة المصدر | Artifact OS`,
     skillsMetaDescription: 'تصفّح Claude skills مفتوحة المصدر للتصميم——كتابة المحتوى والألوان والإخراج الإبداعي وغيرها يحمّلها coding agent أثناء المهمة. يعمل مع Claude وCodex و Cursor.',
     hubLabel: 'مكتبة الإضافات', hubHeading: (n) => `${n} قطعة قابلة للتركيب`,
     tileTemplates: 'قوالب', tileSkills: 'مهارات', tileSystems: 'أنظمة', tileCraft: 'حِرَفية',
@@ -2436,7 +2436,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     shareLead: 'انسخ الرسالة أدناه، ثم انتقل إلى المنصة التي تريد المشاركة عليها والصقها.',
     shareCopyText: 'انسخ النص', shareCopyLink: 'انسخ الرابط فقط', shareJumpTo: 'انتقل إلى:',
     shareTemplate: ({ title, url }) => `🎨 اكتشفت للتو ${title} على @OpenDesignHQ — البديل مفتوح المصدر لـ Claude Design.\n✨ محلي أولًا · BYOK · وكيلك يصمّم.\n\n→ ${url}`,
-    hubLead: 'تم بناء Open Design حول أربعة أنواع من الإضافات: القوالب والمهارات هي ما يشغّله الـ agent؛ والأنظمة والحرفة تحافظان على الهوية وإمكانية الوصول. اختر قسما للتعمق، أو انتقل مباشرة إلى slug إذا كنت تعرف ما تريد.',
+    hubLead: 'تم بناء Artifact OS حول أربعة أنواع من الإضافات: القوالب والمهارات هي ما يشغّله الـ agent؛ والأنظمة والحرفة تحافظان على الهوية وإمكانية الوصول. اختر قسما للتعمق، أو انتقل مباشرة إلى slug إذا كنت تعرف ما تريد.',
     tileTemplatesBlurb: 'قوالب مرئية وقابلة للتشغيل — نماذج أولية، شرائح، مولّدات صور وفيديو، تركيبات حركة. كل مدخل يأتي مع example.html: انسخ، بدّل البيانات، اطلق.',
     tileSkillsBlurb: 'مهارات إرشاد يحملها الـ agent أثناء المهمة — كتابة، نظرية الألوان، توجيه إبداعي، عصف ذهني. نص SKILL.md خالص؛ النتيجة تعتمد على مدخلاتك.',
     tileSystemsBlurb: 'أنظمة تصميم مرتبطة بالهوية — لوحة ألوان، تيبوغرافيا، حركة، صوت. اربط مشروعا بنظام، فترث كل مخرجات الإضافات نفس الهوية.',
@@ -2481,9 +2481,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     faqHead: 'الأسئلة الشائعة',
     faqItems: [
       {
-        question: 'ما هي قوالب Open Design؟',
+        question: 'ما هي قوالب Artifact OS؟',
         answer:
-          'قوالب مدمجة تأتي مع Open Design — البديل مفتوح المصدر لـ Claude Design. كل واحد منها أداة قابلة للتشغيل: نموذج أولي أو مجموعة شرائح أو مولد صور أو مركبة فيديو أو قطعة حركة HyperFrames. يقوم وكيلك المحلي بتشغيل المكون على أساس أمره وملف HTML توضيحي اختياري، وينتج أصل جاهز للمشاركة على جهازك.',
+          'قوالب مدمجة تأتي مع Artifact OS — البديل مفتوح المصدر لـ Claude Design. كل واحد منها أداة قابلة للتشغيل: نموذج أولي أو مجموعة شرائح أو مولد صور أو مركبة فيديو أو قطعة حركة HyperFrames. يقوم وكيلك المحلي بتشغيل المكون على أساس أمره وملف HTML توضيحي اختياري، وينتج أصل جاهز للمشاركة على جهازك.',
       },
       {
         question: 'كيف يتم ترخيص القوالب؟',
@@ -2493,7 +2493,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'هل يمكنني تشغيلها باستخدام مفاتيح API الخاصة بي؟',
         answer:
-          'نعم. Open Design هو BYOK في كل طبقة — بيانات اعتماد Claude و OpenAI والنموذج المحلي الخاصة بك لا تترك جهازك أبداً. موقع التسويق لا يوجه أي استدلال؛ المعاينات المباشرة التي تراها في صفوف الكتالوج تأتي من الملصقات وعناوين URL لـ Cloudflare Stream التي يأتي معها القالب، وليس من وقت تشغيل مستضاف.',
+          'نعم. Artifact OS هو BYOK في كل طبقة — بيانات اعتماد Claude و OpenAI والنموذج المحلي الخاصة بك لا تترك جهازك أبداً. موقع التسويق لا يوجه أي استدلال؛ المعاينات المباشرة التي تراها في صفوف الكتالوج تأتي من الملصقات وعناوين URL لـ Cloudflare Stream التي يأتي معها القالب، وليس من وقت تشغيل مستضاف.',
       },
       {
         question: 'كيف أساهم بقالب؟',
@@ -2503,7 +2503,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'كيف يختلف هذا عن Claude Design Studio؟',
         answer:
-          'Claude Design Studio هو المنتج المستضاف من Anthropic. Open Design هو <strong>البديل مفتوح المصدر لـ Claude Design</strong> — كل قالب وأمر ونظام تصميم في هذا الكتالوج يوجد في مستودع عام، يعمل محلياً ضد المفاتيح التي تختارها، ويمكن توسيعه من خلال المكونات التي يمكن لأي شخص تأليفها. نعكس نفس تصنيف الأداة (نماذج أولية وشرائح وصور وفيديو) بحيث ينقل النموذج العقلي، لكن كل شيء وصولاً إلى وقت التشغيل للوكيل يبقى على جهازك.',
+          'Claude Design Studio هو المنتج المستضاف من Anthropic. Artifact OS هو <strong>البديل مفتوح المصدر لـ Claude Design</strong> — كل قالب وأمر ونظام تصميم في هذا الكتالوج يوجد في مستودع عام، يعمل محلياً ضد المفاتيح التي تختارها، ويمكن توسيعه من خلال المكونات التي يمكن لأي شخص تأليفها. نعكس نفس تصنيف الأداة (نماذج أولية وشرائح وصور وفيديو) بحيث ينقل النموذج العقلي، لكن كل شيء وصولاً إلى وقت التشغيل للوكيل يبقى على جهازك.',
       },
       {
         question: 'من أين تأتي المعاينات؟',
@@ -2575,9 +2575,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     },
   },
   tr: {
-    hubMetaTitle: (n) => `Claude Skills Pazarı — ${n}+ Eklenti | Open Design`,
+    hubMetaTitle: (n) => `Claude Skills Pazarı — ${n}+ Eklenti | Artifact OS`,
     hubMetaDescription: 'Açık kaynaklı Claude skills pazarına göz atın——coding agent\'ınızın doğrudan çalıştırdığı tasarım skills, tasarım sistemleri, şablonlar ve craft. Claude, Codex, Cursor ile çalışır.',
-    skillsMetaTitle: (n) => `Tasarım için Claude Skills — ${n} Açık Kaynak skills | Open Design`,
+    skillsMetaTitle: (n) => `Tasarım için Claude Skills — ${n} Açık Kaynak skills | Artifact OS`,
     skillsMetaDescription: 'Tasarım için açık kaynaklı Claude skills\'e göz atın——metin yazarlığı, renk, kreatif yönetim ve coding agent\'ınızın görev sırasında yüklediği daha fazlası. Claude, Codex ve Cursor ile çalışır.',
     hubLabel: 'Eklenti kütüphanesi', hubHeading: (n) => `${n} birleştirilebilir parça`,
     tileTemplates: 'Şablonlar', tileSkills: 'Yetenekler', tileSystems: 'Sistemler', tileCraft: 'Zanaat',
@@ -2589,7 +2589,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     shareLead: 'Aşağıdaki mesajı kopyala, dilediğin platformu açıp yapıştır.',
     shareCopyText: 'Metni kopyala', shareCopyLink: 'Sadece linki kopyala', shareJumpTo: 'Şuraya git:',
     shareTemplate: ({ title, url }) => `🎨 Yeni keşfettim: ${title} (@OpenDesignHQ) — Claude Design’a açık kaynaklı alternatif.\n✨ Local-first · BYOK · ajanın tasarlıyor.\n\n→ ${url}`,
-    hubLead: 'Open Design dört eklenti türü etrafında inşa edilmiştir: Templates ve Skills agent’ın çalıştırdığı, Systems ve Craft ise marka ve erişilebilirliği koruyan parçalar. Bir bölüme dal ya da hangi slug’u istediğini biliyorsan doğrudan oraya zıpla.',
+    hubLead: 'Artifact OS dört eklenti türü etrafında inşa edilmiştir: Templates ve Skills agent’ın çalıştırdığı, Systems ve Craft ise marka ve erişilebilirliği koruyan parçalar. Bir bölüme dal ya da hangi slug’u istediğini biliyorsan doğrudan oraya zıpla.',
     tileTemplatesBlurb: 'Görsel ve çalıştırılabilir şablonlar — prototipler, slaytlar, görsel ve video üreticileri, motion kompozisyonları. Her giriş example.html ile gelir: fork, veri değiştir, gönder.',
     tileSkillsBlurb: 'Agent’ın görev sırasında yüklediği yönerge skill’leri — metin yazımı, renk teorisi, kreatif yönlendirme, beyin fırtınası. Saf SKILL.md metni; sonuç input’una göre değişir.',
     tileSystemsBlurb: 'Markaya bağlanmış tasarım sistemleri — palet, tipografi, motion, ses. Bir projeyi bir sisteme bağla, tüm eklenti çıktıları aynı kimliği miras alsın.',
@@ -2623,7 +2623,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     previewSummaryAria: (title) => `${title} için etkileşimli önizlemeyi aç`,
     previewIframeTitle: (title) => `${title} etkileşimli önizleme`,
     // PR #3185 follow-up: localize templates-page chrome + FAQ
-    templatesMetaTitle: 'Ücretsiz Tasarım Şablonları — Fork’la ve Yayınla (Apache-2.0) — Open Design',
+    templatesMetaTitle: 'Ücretsiz Tasarım Şablonları — Fork’la ve Yayınla (Apache-2.0) — Artifact OS',
     templatesMetaDescription:
       'Ajan tarafından üretilen, fork’layıp yayınlayabileceğin tasarım şablonları — prototipler, slaytlar, görsel ve video çıktıları. Ücretsiz, açık kaynak (Apache-2.0), BYOK, kendi anahtarlarınla çalıştır.',
     templatesHeroEyebrow: 'Open Source Claude Design',
@@ -2637,9 +2637,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     faqHead: 'SSS',
     faqItems: [
       {
-        question: 'Open Design şablonları nedir?',
+        question: 'Artifact OS şablonları nedir?',
         answer:
-          "Open Design ile birlikte gelen eklenti paketlenmiş şablonlar — açık kaynak Claude Design alternatifi. Her biri çalıştırılabilir bir artifact: prototip, slayt seti, resim oluşturucu, video композисі veya HyperFrames hareket parçası. Yerel aracınız eklentiyi prompt ve isteğe bağlı örnek HTML'e karşı çalıştırır ve makinenizde paylaşılmaya hazır bir asset üretir.",
+          "Artifact OS ile birlikte gelen eklenti paketlenmiş şablonlar — açık kaynak Claude Design alternatifi. Her biri çalıştırılabilir bir artifact: prototip, slayt seti, resim oluşturucu, video композисі veya HyperFrames hareket parçası. Yerel aracınız eklentiyi prompt ve isteğe bağlı örnek HTML'e karşı çalıştırır ve makinenizde paylaşılmaya hazır bir asset üretir.",
       },
       {
         question: 'Şablonlar nasıl lisanslanır?',
@@ -2649,7 +2649,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Kendi API anahtarlarımla çalıştırabilir miyim?',
         answer:
-          "Evet. Open Design her katmanda BYOK'dur — Claude / OpenAI / yerel model kimlik bilgileriniz makinenizi asla terk etmez. Pazarlama sitesi herhangi bir inference proxy'si değildir; katalog satırlarında gördüğünüz canlı önizlemeler posterlerden ve şablonların sağladığı Cloudflare Stream URL'lerinden gelir, barındırılan bir runtime'dan değil.",
+          "Evet. Artifact OS her katmanda BYOK'dur — Claude / OpenAI / yerel model kimlik bilgileriniz makinenizi asla terk etmez. Pazarlama sitesi herhangi bir inference proxy'si değildir; katalog satırlarında gördüğünüz canlı önizlemeler posterlerden ve şablonların sağladığı Cloudflare Stream URL'lerinden gelir, barındırılan bir runtime'dan değil.",
       },
       {
         question: 'Nasıl şablon katkısında bulunurum?',
@@ -2659,7 +2659,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: "Bu, Claude Design Studio'dan nasıl farklı?",
         answer:
-          "Claude Design Studio, Anthropic'in barındırılan ürünüdür. Open Design, <strong>açık kaynak Claude Design alternatifidir</strong> — bu katalogdaki her şablon, prompt ve tasarım sistemi genel bir repo'da yaşar, seçtiğiniz anahtarlara karşı yerel olarak çalışır ve herkesin yazabileceği eklentiler aracılığıyla genişletilebilir. Aynı artifact taksonomisini (prototipler, slaytlar, resimler, video) yansıtıyoruz, böylece zihinsel model devam eder, ancak aracı runtime'a kadar her şey makinenizde kalır.",
+          "Claude Design Studio, Anthropic'in barındırılan ürünüdür. Artifact OS, <strong>açık kaynak Claude Design alternatifidir</strong> — bu katalogdaki her şablon, prompt ve tasarım sistemi genel bir repo'da yaşar, seçtiğiniz anahtarlara karşı yerel olarak çalışır ve herkesin yazabileceği eklentiler aracılığıyla genişletilebilir. Aynı artifact taksonomisini (prototipler, slaytlar, resimler, video) yansıtıyoruz, böylece zihinsel model devam eder, ancak aracı runtime'a kadar her şey makinenizde kalır.",
       },
       {
         question: 'Önizlemeler nereden geliyor?',
@@ -2731,9 +2731,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     },
   },
   uk: {
-    hubMetaTitle: (n) => `Маркетплейс Claude Skills — ${n}+ плагінів | Open Design`,
+    hubMetaTitle: (n) => `Маркетплейс Claude Skills — ${n}+ плагінів | Artifact OS`,
     hubMetaDescription: 'Перегляньте опенсорсний маркетплейс Claude skills——дизайн-skills, дизайн-системи, шаблони та craft, які ваш coding agent запускає напряму. Працює з Claude, Codex, Cursor.',
-    skillsMetaTitle: (n) => `Claude Skills для дизайну — ${n} опенсорсних skills | Open Design`,
+    skillsMetaTitle: (n) => `Claude Skills для дизайну — ${n} опенсорсних skills | Artifact OS`,
     skillsMetaDescription: 'Перегляньте опенсорсні Claude skills для дизайну——копірайтинг, колір, креативний напрям та інше, що ваш coding agent завантажує під час завдання. Працює з Claude, Codex і Cursor.',
     hubLabel: 'Бібліотека плагінів', hubHeading: (n) => `${n} компонованих елементів`,
     tileTemplates: 'Шаблони', tileSkills: 'Навички', tileSystems: 'Системи', tileCraft: 'Ремесло',
@@ -2745,7 +2745,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     shareLead: 'Скопіюйте повідомлення нижче, потім перейдіть на платформу й вставте.',
     shareCopyText: 'Копіювати текст', shareCopyLink: 'Тільки посилання', shareJumpTo: 'Перейти:',
     shareTemplate: ({ title, url }) => `🎨 Щойно знайшов ${title} на @OpenDesignHQ — open-source альтернативу Claude Design.\n✨ Local-first · BYOK · ваш агент робить дизайн.\n\n→ ${url}`,
-    hubLead: 'Open Design побудовано навколо чотирьох видів плагінів: Templates і Skills — те, що виконує твій agent; Systems і Craft утримують бренд і доступність. Обери розділ для занурення або одразу перейди по slug, якщо вже знаєш, що потрібно.',
+    hubLead: 'Artifact OS побудовано навколо чотирьох видів плагінів: Templates і Skills — те, що виконує твій agent; Systems і Craft утримують бренд і доступність. Обери розділ для занурення або одразу перейди по slug, якщо вже знаєш, що потрібно.',
     tileTemplatesBlurb: 'Візуальні, виконувані шаблони — прототипи, слайди, генератори зображень і відео, motion-композиції. Кожен запис іде з example.html: форкай, міняй дані, відправляй.',
     tileSkillsBlurb: 'Інструкційні навички, які agent підвантажує під час задачі — копірайтинг, теорія кольору, креативне керівництво, брейншторм. Чистий текст SKILL.md; результат залежить від твого input.',
     tileSystemsBlurb: 'Прив’язані до бренду дизайн-системи — палітра, типографіка, motion, тон. Прив’яжи проєкт до системи, і будь-який вивід плагіна успадковує ту саму ідентичність.',
@@ -2790,9 +2790,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     faqHead: 'Часті питання',
     faqItems: [
       {
-        question: 'Що таке шаблони Open Design?',
+        question: 'Що таке шаблони Artifact OS?',
         answer:
-          'Bundled-plugin шаблони, які поставляються з Open Design — відкритим вихідним кодом Claude Design альтернативою. Кожен з них — це запускаємий артефакт: прототип, колода слайдів, генератор зображень, відеокомпозиція або HyperFrames motion-кусок. Ваш локальний агент запускає плагін проти його промпту та опціонального прикладу HTML і створює готовий до поширення актив на вашій машині.',
+          'Bundled-plugin шаблони, які поставляються з Artifact OS — відкритим вихідним кодом Claude Design альтернативою. Кожен з них — це запускаємий артефакт: прототип, колода слайдів, генератор зображень, відеокомпозиція або HyperFrames motion-кусок. Ваш локальний агент запускає плагін проти його промпту та опціонального прикладу HTML і створює готовий до поширення актив на вашій машині.',
       },
       {
         question: 'Як ліцензуються шаблони?',
@@ -2802,7 +2802,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Чи можу я запускати їх зі своїми ключами API?',
         answer:
-          'Так. Open Design використовує BYOK на кожному рівні — ваші облікові дані Claude / OpenAI / локальної моделі ніколи не залишають вашу машину. Маркетинговий сайт не проксує жодних висновків; живі попередження, які ви бачите в рядах каталогу, походять від постерів і URL-адрес Cloudflare Stream, які поставляються з шаблонами, а не від розміщеного середовища виконання.',
+          'Так. Artifact OS використовує BYOK на кожному рівні — ваші облікові дані Claude / OpenAI / локальної моделі ніколи не залишають вашу машину. Маркетинговий сайт не проксує жодних висновків; живі попередження, які ви бачите в рядах каталогу, походять від постерів і URL-адрес Cloudflare Stream, які поставляються з шаблонами, а не від розміщеного середовища виконання.',
       },
       {
         question: 'Як я можу внести шаблон?',
@@ -2812,7 +2812,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Чим це відрізняється від Claude Design Studio?',
         answer:
-          'Claude Design Studio — це розміщений продукт Anthropic. Open Design — це <strong>відкритий вихідний код Claude Design альтернатива</strong> — кожен шаблон, промпт і система дизайну в цьому каталозі живуть у публічному репозиторії, запускаються локально проти обраних вами ключів і можуть розширюватися через плагіни, які може написати будь-хто. Ми дзеркалимо ту ж таксономію артефактів (прототипи, слайди, зображення, відео), щоб ментальна модель перенеслася, але все — від агента виконання до агента — залишається на вашій машині.',
+          'Claude Design Studio — це розміщений продукт Anthropic. Artifact OS — це <strong>відкритий вихідний код Claude Design альтернатива</strong> — кожен шаблон, промпт і система дизайну в цьому каталозі живуть у публічному репозиторії, запускаються локально проти обраних вами ключів і можуть розширюватися через плагіни, які може написати будь-хто. Ми дзеркалимо ту ж таксономію артефактів (прототипи, слайди, зображення, відео), щоб ментальна модель перенеслася, але все — від агента виконання до агента — залишається на вашій машині.',
       },
       {
         question: 'Звідки беруться попередження?',
@@ -2884,9 +2884,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     },
   },
   vi: {
-    hubMetaTitle: (n) => `Marketplace Claude Skills — ${n}+ plugin | Open Design`,
+    hubMetaTitle: (n) => `Marketplace Claude Skills — ${n}+ plugin | Artifact OS`,
     hubMetaDescription: 'Khám phá marketplace Claude skills mã nguồn mở——skills thiết kế, design system, mẫu và craft mà coding agent của bạn chạy trực tiếp. Hoạt động với Claude, Codex, Cursor.',
-    skillsMetaTitle: (n) => `Claude Skills cho thiết kế — ${n} skills mã nguồn mở | Open Design`,
+    skillsMetaTitle: (n) => `Claude Skills cho thiết kế — ${n} skills mã nguồn mở | Artifact OS`,
     skillsMetaDescription: 'Khám phá Claude skills mã nguồn mở cho thiết kế——viết nội dung, màu sắc, định hướng sáng tạo và hơn thế mà coding agent của bạn tải giữa tác vụ. Hoạt động với Claude, Codex & Cursor.',
     hubLabel: 'Thư viện plugin', hubHeading: (n) => `${n} thành phần có thể ghép nối`,
     tileTemplates: 'Mẫu', tileSkills: 'Kỹ năng', tileSystems: 'Hệ thống', tileCraft: 'Thủ công',
@@ -2898,7 +2898,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     shareLead: 'Sao chép nội dung dưới đây, rồi mở nền tảng bạn muốn chia sẻ và dán vào.',
     shareCopyText: 'Sao chép', shareCopyLink: 'Chỉ sao chép link', shareJumpTo: 'Mở:',
     shareTemplate: ({ title, url }) => `🎨 Vừa khám phá ${title} trên @OpenDesignHQ — giải pháp mã nguồn mở thay thế Claude Design.\n✨ Ưu tiên local · BYOK · agent của bạn thiết kế.\n\n→ ${url}`,
-    hubLead: 'Open Design xoay quanh bốn loại plugin: Templates và Skills là thứ agent của bạn chạy; Systems và Craft giữ thương hiệu và tính tiếp cận. Chọn một mục để đào sâu, hoặc nhảy thẳng tới một slug nếu bạn đã biết cần gì.',
+    hubLead: 'Artifact OS xoay quanh bốn loại plugin: Templates và Skills là thứ agent của bạn chạy; Systems và Craft giữ thương hiệu và tính tiếp cận. Chọn một mục để đào sâu, hoặc nhảy thẳng tới một slug nếu bạn đã biết cần gì.',
     tileTemplatesBlurb: 'Templates trực quan và chạy được — nguyên mẫu, slide, bộ sinh ảnh và video, bố cục motion. Mỗi mục có example.html: fork, đổi dữ liệu, ship ngay.',
     tileSkillsBlurb: 'Các skill chỉ dẫn mà agent nạp giữa tác vụ — copy, lý thuyết màu, chỉ đạo sáng tạo, brainstorm. Văn xuôi SKILL.md thuần; kết quả tuỳ input của bạn.',
     tileSystemsBlurb: 'Design system bám thương hiệu — bảng màu, kiểu chữ, motion, giọng nói. Gán một dự án vào một system và mọi đầu ra plugin sẽ kế thừa cùng một danh tính.',
@@ -2943,9 +2943,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     faqHead: 'Câu hỏi thường gặp',
     faqItems: [
       {
-        question: 'Mẫu Open Design là gì?',
+        question: 'Mẫu Artifact OS là gì?',
         answer:
-          'Các mẫu plugin đi kèm với Open Design — phiên bản alternative open source của Claude Design. Mỗi mẫu là một artifact có thể chạy được: một prototype, bộ slide, trình tạo ảnh, video composition, hoặc một motion piece HyperFrames. Agent cục bộ của bạn chạy plugin với prompt và một HTML ví dụ tùy chọn, và tạo ra một asset sẵn sàng chia sẻ trên máy của bạn.',
+          'Các mẫu plugin đi kèm với Artifact OS — phiên bản alternative open source của Claude Design. Mỗi mẫu là một artifact có thể chạy được: một prototype, bộ slide, trình tạo ảnh, video composition, hoặc một motion piece HyperFrames. Agent cục bộ của bạn chạy plugin với prompt và một HTML ví dụ tùy chọn, và tạo ra một asset sẵn sàng chia sẻ trên máy của bạn.',
       },
       {
         question: 'Các mẫu được cấp phép như thế nào?',
@@ -2955,7 +2955,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Tôi có thể chạy chúng với API key của riêng mình không?',
         answer:
-          'Có. Open Design là BYOK ở mọi tầng — thông tin Claude / OpenAI / local-model của bạn không bao giờ rời khỏi máy của bạn. Trang marketing không proxy bất kỳ inference nào; các bản xem trước trực tiếp bạn thấy trên các hàng danh mục đến từ các poster và URL Cloudflare Stream mà các mẫu đi kèm, không phải từ một runtime được lưu trữ.',
+          'Có. Artifact OS là BYOK ở mọi tầng — thông tin Claude / OpenAI / local-model của bạn không bao giờ rời khỏi máy của bạn. Trang marketing không proxy bất kỳ inference nào; các bản xem trước trực tiếp bạn thấy trên các hàng danh mục đến từ các poster và URL Cloudflare Stream mà các mẫu đi kèm, không phải từ một runtime được lưu trữ.',
       },
       {
         question: 'Làm cách nào để đóng góp một mẫu?',
@@ -2965,7 +2965,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Cái này khác biệt như thế nào so với Claude Design Studio?',
         answer:
-          'Claude Design Studio là sản phẩm được lưu trữ của Anthropic. Open Design là <strong>phiên bản alternative open source của Claude Design</strong> — mỗi mẫu, prompt và design system trong danh mục này đều tồn tại trong một repo công khai, chạy cục bộ với các key bạn chọn, và có thể được mở rộng thông qua các plugin mà bất kỳ ai cũng có thể viết. Chúng tôi phản chiếu cùng một taxonomy artifact (prototype, slide, ảnh, video) để mô hình tinh thần vẫn tương tự, nhưng mọi thứ từ runtime agent vẫn ở trên máy của bạn.',
+          'Claude Design Studio là sản phẩm được lưu trữ của Anthropic. Artifact OS là <strong>phiên bản alternative open source của Claude Design</strong> — mỗi mẫu, prompt và design system trong danh mục này đều tồn tại trong một repo công khai, chạy cục bộ với các key bạn chọn, và có thể được mở rộng thông qua các plugin mà bất kỳ ai cũng có thể viết. Chúng tôi phản chiếu cùng một taxonomy artifact (prototype, slide, ảnh, video) để mô hình tinh thần vẫn tương tự, nhưng mọi thứ từ runtime agent vẫn ở trên máy của bạn.',
       },
       {
         question: 'Các bản xem trước đến từ đâu?',
@@ -3037,9 +3037,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     },
   },
   nl: {
-    hubMetaTitle: (n) => `Claude Skills Marktplaats — ${n}+ plugins | Open Design`,
+    hubMetaTitle: (n) => `Claude Skills Marktplaats — ${n}+ plugins | Artifact OS`,
     hubMetaDescription: 'Verken de open-source marktplaats voor Claude skills——design-skills, designsystemen, templates en craft die je coding agent direct uitvoert. Werkt met Claude, Codex, Cursor.',
-    skillsMetaTitle: (n) => `Claude Skills voor design — ${n} open-source skills | Open Design`,
+    skillsMetaTitle: (n) => `Claude Skills voor design — ${n} open-source skills | Artifact OS`,
     skillsMetaDescription: 'Verken open-source Claude skills voor design——copywriting, kleur, creatieve regie en meer die je coding agent midden in een taak laadt. Werkt met Claude, Codex & Cursor.',
     hubLabel: 'Plugin-bibliotheek', hubHeading: (n) => `${n} combineerbare onderdelen`,
     tileTemplates: 'Templates', tileSkills: 'Skills', tileSystems: 'Systemen', tileCraft: 'Vakmanschap',
@@ -3051,7 +3051,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     shareLead: 'Kopieer het bericht hieronder en plak het op het platform van jouw keuze.',
     shareCopyText: 'Tekst kopiëren', shareCopyLink: 'Alleen de link', shareJumpTo: 'Ga naar:',
     shareTemplate: ({ title, url }) => `🎨 Net ontdekt: ${title} op @OpenDesignHQ — het open-source alternatief voor Claude Design.\n✨ Local-first · BYOK · jouw agent ontwerpt.\n\n→ ${url}`,
-    hubLead: 'Open Design is gebouwd rond vier soorten plug-ins: Templates en Skills zijn wat je agent draait; Systems en Craft houden merk en toegankelijkheid op orde. Kies een sectie om dieper in te duiken, of spring direct naar een slug als je al weet wat je wilt.',
+    hubLead: 'Artifact OS is gebouwd rond vier soorten plug-ins: Templates en Skills zijn wat je agent draait; Systems en Craft houden merk en toegankelijkheid op orde. Kies een sectie om dieper in te duiken, of spring direct naar een slug als je al weet wat je wilt.',
     tileTemplatesBlurb: 'Visuele, draaiende templates — prototypes, slides, beeld- en videogeneratoren, motion-composities. Elke entry levert een example.html: fork, wissel data, ship.',
     tileSkillsBlurb: 'Instructie-skills die de agent halverwege een taak laadt — copy, kleurtheorie, creatieve regie, brainstorm. Pure SKILL.md-tekst; het resultaat hangt af van je input.',
     tileSystemsBlurb: 'Merk-verankerde designsystemen — palet, typografie, motion, voice. Koppel een project aan een systeem en elke plug-in-output erft dezelfde identiteit.',
@@ -3096,9 +3096,9 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
     faqHead: 'Veelgestelde vragen',
     faqItems: [
       {
-        question: 'Wat zijn Open Design-sjablonen?',
+        question: 'Wat zijn Artifact OS-sjablonen?',
         answer:
-          'Gebundelde plugin-sjablonen die bij Open Design horen — het open source Claude Design-alternatief. Elk sjabloon is een runnable artifact: een prototype, presentatiedeck, imagegenerator, videocompositie of HyperFrames motion piece. Je lokale agent voert de plugin uit tegen zijn prompt en optionele voorbeeld-HTML, en produceert een klaar-om-te-delen asset op je eigen machine.',
+          'Gebundelde plugin-sjablonen die bij Artifact OS horen — het open source Claude Design-alternatief. Elk sjabloon is een runnable artifact: een prototype, presentatiedeck, imagegenerator, videocompositie of HyperFrames motion piece. Je lokale agent voert de plugin uit tegen zijn prompt en optionele voorbeeld-HTML, en produceert een klaar-om-te-delen asset op je eigen machine.',
       },
       {
         question: 'Onder welke licentie vallen de sjablonen?',
@@ -3108,7 +3108,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Kan ik ze uitvoeren met mijn eigen API-keys?',
         answer:
-          "Ja. Open Design is BYOK op elk niveau — je Claude / OpenAI / lokale-model-referenties verlaten je machine nooit. De marketingsite proxy geen inference; de live voorbeelden die je in de catalogusrijen ziet, komen van posters en Cloudflare Stream URL's die de sjablonen meebrengen, niet van een gehoste runtime.",
+          "Ja. Artifact OS is BYOK op elk niveau — je Claude / OpenAI / lokale-model-referenties verlaten je machine nooit. De marketingsite proxy geen inference; de live voorbeelden die je in de catalogusrijen ziet, komen van posters en Cloudflare Stream URL's die de sjablonen meebrengen, niet van een gehoste runtime.",
       },
       {
         question: 'Hoe draag ik een sjabloon bij?',
@@ -3118,7 +3118,7 @@ const overrides: Partial<Record<LandingLocaleCode, Partial<PluginsCopy>>> = {
       {
         question: 'Wat is het verschil met Claude Design Studio?',
         answer:
-          "Claude Design Studio is Anthropic's gehoste product. Open Design is het <strong>open source Claude Design-alternatief</strong> — elk sjabloon, prompt en designsysteem in deze catalogus leeft in een openbare repo, draait lokaal tegen de keys die je kiest, en kan worden uitgebreid via plugins die iedereen kan schrijven. We spiegelen dezelfde artifact-taxonomie (prototypes, slides, images, video) zodat het mentale model overeenkomt, maar alles tot en met de agent runtime blijft op je machine.",
+          "Claude Design Studio is Anthropic's gehoste product. Artifact OS is het <strong>open source Claude Design-alternatief</strong> — elk sjabloon, prompt en designsysteem in deze catalogus leeft in een openbare repo, draait lokaal tegen de keys die je kiest, en kan worden uitgebreid via plugins die iedereen kan schrijven. We spiegelen dezelfde artifact-taxonomie (prototypes, slides, images, video) zodat het mentale model overeenkomt, maar alles tot en met de agent runtime blijft op je machine.",
       },
       {
         question: 'Waar komen de voorbeelden vandaan?',

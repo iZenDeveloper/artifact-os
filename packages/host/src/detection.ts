@@ -96,7 +96,7 @@ export function getOpenDesignHost(scope: OpenDesignHostGlobalScope = globalThis)
   return isOpenDesignHostBridge(candidate) ? candidate : null;
 }
 
-/** True when a valid Open Design host bridge is present on `scope`. */
+/** True when a valid Artifact OS host bridge is present on `scope`. */
 export function isOpenDesignHostAvailable(scope: OpenDesignHostGlobalScope = globalThis): boolean {
   return getOpenDesignHost(scope) != null;
 }

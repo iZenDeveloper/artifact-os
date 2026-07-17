@@ -47,7 +47,10 @@ import {
 import { sessionModeToTracking } from '@open-design/contracts/analytics';
 import {
   chipsForGroup,
+  findChip,
+  isCreatorQuickStartId,
   orderedCreateChips,
+  orderedCreatorQuickStarts,
   type ChipGroup,
   type HomeHeroChip,
 } from './home-hero/chips';
@@ -97,7 +100,6 @@ import { SessionModeToggle } from './SessionModeToggle';
 import { assetTitle } from './LibraryAssetMeta';
 import { libraryAssetRawUrl } from '../providers/registry';
 import type { LibraryAsset } from '@open-design/contracts';
-import { WorkingDirPicker } from './WorkingDirPicker';
 import {
   ProjectReferenceModal,
   type ProjectReferenceSelection,
@@ -114,6 +116,14 @@ import {
   PLACEHOLDER_BASE_HINT_KEY,
   type PlaceholderScenario,
 } from './home-hero/placeholderScenarios';
+import {
+  orderWithPins,
+  readPinnedCreatorChips,
+  togglePinnedCreatorChip,
+  writePinnedCreatorChips,
+} from './home-hero/creator-pins';
+import { CREATOR_POPULAR_PACKS } from './home-hero/creator-popular-packs';
+import { navigate } from '../router';
 
 export interface HomeHeroSubmitHandler {
   (): void;
@@ -358,12 +368,15 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     contextItemCount,
     error,
     showActivePluginChip = true,
-    workingDir = null,
-    recentDirs = [],
-    onPickWorkingDir,
+    // Working-directory picker is intentionally not rendered on Home (lives
+    // in Settings → Project locations / in-project composer). Props remain for
+    // HomeView compatibility and plus-menu "local code" flows.
+    workingDir: _workingDir = null,
+    recentDirs: _recentDirs = [],
+    onPickWorkingDir: _onPickWorkingDir,
     onPickLocalCodeDir,
-    onSelectRecentWorkingDir,
-    onClearWorkingDir,
+    onSelectRecentWorkingDir: _onSelectRecentWorkingDir,
+    onClearWorkingDir: _onClearWorkingDir,
     onExamplePromptStatusChange,
     onStartBlankProject,
     executionSwitcher,
@@ -381,7 +394,24 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   const [projectReferenceOpen, setProjectReferenceOpen] = useState(false);
   const [figmaHelpOpen, setFigmaHelpOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  // Brand mode is a Home-level intent signal for creators (Personal vs Client
+  // deliverables). Persisted locally; shown in the context strip under the
+  // prompt so users always know what the next project inherits.
+  const [brandMode, setBrandMode] = useState<'personal' | 'client'>(() => {
+    if (typeof localStorage === 'undefined') return 'personal';
+    try {
+      const stored = localStorage.getItem('od:home-brand-mode');
+      return stored === 'client' ? 'client' : 'personal';
+    } catch {
+      return 'personal';
+    }
+  });
+  const [pinnedCreatorIds, setPinnedCreatorIds] = useState<string[]>(() => readPinnedCreatorChips());
   const homeHeroRef = useRef<HTMLElement | null>(null);
+  const creatorQuickStarts = useMemo(
+    () => orderWithPins(orderedCreatorQuickStarts(), pinnedCreatorIds),
+    [pinnedCreatorIds],
+  );
   // Two-flash attention pulse on the send button; armed via the
   // imperative `pulseSend()` handle, cleared when the animation ends.
   const [sendAttention, setSendAttention] = useState(false);
@@ -667,7 +697,9 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   // Excludes action chips (Brand Kit / Figma) that navigate away instead of
   // seeding a template, so the dropdown matches the rail's template set.
   const templateChips = useMemo(
-    () => orderedCreateChips().filter((chip) => chip.action.kind === 'apply-scenario'),
+    () => orderedCreateChips().filter(
+      (chip) => chip.action.kind === 'apply-scenario' || chip.action.kind === 'apply-skill',
+    ),
     [],
   );
   const activeExamplePlugins = useMemo(
@@ -920,6 +952,56 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
       token,
     });
     onPickSkill(skill, next);
+  }
+
+  function pickCreatorCategory(chip: HomeHeroChip) {
+    onPickChip(chip);
+    trackHomeChatComposerClick(analytics.track, {
+      page_name: 'home',
+      area: 'chat_composer',
+      element: 'plugin_chip',
+      chip_id: chip.id,
+    });
+    requestAnimationFrame(() => {
+      editorRef.current?.focus();
+      triggerSendAttention();
+    });
+  }
+
+  function handleTogglePin(chipId: string, event: { stopPropagation: () => void }) {
+    event.stopPropagation();
+    setPinnedCreatorIds((current) => {
+      const next = togglePinnedCreatorChip(chipId, current);
+      writePinnedCreatorChips(next);
+      return next;
+    });
+  }
+
+  function setBrandModePersist(mode: 'personal' | 'client') {
+    setBrandMode(mode);
+    try {
+      localStorage.setItem('od:home-brand-mode', mode);
+    } catch {
+      // ignore
+    }
+  }
+
+  function pickPopularPack(packId: string) {
+    const pack = CREATOR_POPULAR_PACKS.find((item) => item.id === packId);
+    if (!pack) return;
+    const chip = findChip(pack.chipId);
+    if (chip) onPickChip(chip);
+    onPromptChange(t(pack.promptKey));
+    trackHomeChatComposerClick(analytics.track, {
+      page_name: 'home',
+      area: 'chat_composer',
+      element: 'action_chip',
+      chip_id: pack.chipId,
+    });
+    requestAnimationFrame(() => {
+      editorRef.current?.focus();
+      triggerSendAttention();
+    });
   }
 
   function pickMcp(server: McpServerConfig) {
@@ -1224,14 +1306,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
 
   return (
     <section ref={homeHeroRef} className="home-hero" data-testid="home-hero">
-      <div className="home-hero__brand" aria-hidden>
-        <span className="home-hero__brand-mark od-brand-glyph" />
-        <span className="home-hero__brand-name">Open Design</span>
-      </div>
       <h1 className="home-hero__title">{t('homeHero.title')}</h1>
-      <p className="home-hero__subtitle">
-        {t('homeHero.subtitlePrefix')}
-      </p>
 
       <div
         className={`home-hero__input-card${
@@ -1994,61 +2069,129 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
         </div>
       </div>
 
-      {onDesignSystemChange || onPickWorkingDir ? (
-        <div className="home-hero__workdir-row">
-          {onDesignSystemChange ? (
-            <DesignSystemPicker
-              variant="home"
-              designSystems={designSystems}
-              selectedId={selectedDesignSystemId}
-              onChange={onDesignSystemChange}
-            />
-          ) : null}
-          {onDesignSystemChange && onPickWorkingDir ? (
-            <span className="home-hero__workdir-divider" aria-hidden />
-          ) : null}
-          {onPickWorkingDir ? (
-            <WorkingDirPicker
-              workingDir={workingDir}
-              recentDirs={recentDirs}
-              onPickDirectory={() => {
-                trackHomeChatComposerClick(analytics.track, {
-                  page_name: 'home',
-                  area: 'chat_composer',
-                  element: 'working_dir',
-                });
-                void onPickWorkingDir();
-              }}
-              onSelectRecent={(dir) => {
-                trackHomeChatComposerClick(analytics.track, {
-                  page_name: 'home',
-                  area: 'chat_composer',
-                  element: 'working_dir_recent',
-                });
-                onSelectRecentWorkingDir?.(dir);
-              }}
-              onClear={() => {
-                trackHomeChatComposerClick(analytics.track, {
-                  page_name: 'home',
-                  area: 'chat_composer',
-                  element: 'working_dir_clear',
-                });
-                onClearWorkingDir?.();
-              }}
-            />
-          ) : null}
+      {onDesignSystemChange ? (
+        <div className="home-hero__workdir-row home-hero__workdir-row--creator">
+          <DesignSystemPicker
+            variant="home"
+            designSystems={designSystems}
+            selectedId={selectedDesignSystemId}
+            onChange={onDesignSystemChange}
+          />
+          <div className="home-hero__brand-mode" data-testid="home-hero-brand-mode" role="group" aria-label={t('homeHero.brandMode.label')}>
+            <button
+              type="button"
+              className={`home-hero__brand-mode-btn${brandMode === 'personal' ? ' is-active' : ''}`}
+              aria-pressed={brandMode === 'personal'}
+              onClick={() => setBrandModePersist('personal')}
+            >
+              {t('homeHero.brandMode.personal')}
+            </button>
+            <button
+              type="button"
+              className={`home-hero__brand-mode-btn${brandMode === 'client' ? ' is-active' : ''}`}
+              aria-pressed={brandMode === 'client'}
+              onClick={() => setBrandModePersist('client')}
+            >
+              {t('homeHero.brandMode.client')}
+            </button>
+          </div>
         </div>
       ) : null}
 
       {recommendationSlot}
 
-      {activeCreateChip ? null : (
-        <div className="home-hero__template-section" data-testid="home-hero-template-section">
+      {!activeCreateChip || isCreatorQuickStartId(activeCreateChip.id) ? (
+        <div className="home-hero__creator-quick" data-testid="home-hero-creator-quick">
+          <div className="home-hero__creator-quick-head">
+            <h2 className="home-hero__creator-quick-title">{t('homeHero.outcomesHeading')}</h2>
+            <p className="home-hero__creator-quick-hint">{t('homeHero.quickStartHint')}</p>
+          </div>
+          <div className="home-hero__creator-grid" role="list">
+            {creatorQuickStarts.map((chip) => {
+              const isActive = activeChipId === chip.id;
+              const isPinned = pinnedCreatorIds.includes(chip.id);
+              const disabled = pluginsLoading || pendingChipId !== null || pendingPluginId !== null;
+              return (
+                <div
+                  key={chip.id}
+                  role="listitem"
+                  className={`home-hero__creator-tile${isActive ? ' is-active' : ''}${isPinned ? ' is-pinned' : ''}${guidePulseChipId === chip.id ? ' home-hero__attention-sheen' : ''}`}
+                >
+                  <button
+                    type="button"
+                    className="home-hero__creator-tile-main"
+                    data-testid={`home-hero-creator-${chip.id}`}
+                    data-chip-id={chip.id}
+                    disabled={disabled}
+                    onClick={() => pickCreatorCategory(chip)}
+                    title={homeHeroChipTitle(chip, t)}
+                  >
+                    <span className="home-hero__creator-tile-art" aria-hidden>
+                      <ScenarioArt chipId={chip.id} fallbackIcon={chip.icon} />
+                    </span>
+                    <span className="home-hero__creator-tile-title">
+                      {homeHeroChipLabel(chip.id, t)}
+                    </span>
+                    <span className="home-hero__creator-tile-desc">
+                      {homeHeroChipDescription(chip.id, t)}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`home-hero__creator-pin${isPinned ? ' is-pinned' : ''}`}
+                    aria-label={isPinned ? t('homeHero.unpinCategory') : t('homeHero.pinCategory')}
+                    aria-pressed={isPinned}
+                    title={isPinned ? t('homeHero.unpinCategory') : t('homeHero.pinCategory')}
+                    onClick={(event) => handleTogglePin(chip.id, event)}
+                  >
+                    <Icon name="star" size={12} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {!activeCreateChip ? (
+        <div className="home-hero__popular" data-testid="home-hero-popular">
+          <div className="home-hero__popular-head">
+            <h2 className="home-hero__popular-title">{t('homeHero.popularHeading')}</h2>
+            <p className="home-hero__popular-hint">{t('homeHero.popularHint')}</p>
+          </div>
+          <div className="home-hero__popular-grid" role="list">
+            {CREATOR_POPULAR_PACKS.map((pack) => (
+              <button
+                key={pack.id}
+                type="button"
+                role="listitem"
+                className="home-hero__popular-card"
+                data-testid={`home-hero-pack-${pack.id}`}
+                style={{ '--pack-accent': pack.accent } as CSSProperties}
+                disabled={pluginsLoading || pendingChipId !== null || pendingPluginId !== null}
+                onClick={() => pickPopularPack(pack.id)}
+              >
+                <span className="home-hero__popular-thumb" aria-hidden>
+                  <Icon name={pack.icon} size={22} />
+                </span>
+                <span className="home-hero__popular-body">
+                  <span className="home-hero__popular-card-title">{t(pack.titleKey)}</span>
+                  <span className="home-hero__popular-card-desc">{t(pack.descKey)}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {!activeCreateChip ? (
+        <div className="home-hero__template-section home-hero__template-section--secondary" data-testid="home-hero-template-section">
           <div className="home-hero__template-heading">
-            {t('homeHero.startWithTemplate')}
+            {t('homeHero.moreFormats')}
           </div>
           <RailGroup
             group="create"
+            chips={orderedCreateChips().filter((chip) => !isCreatorQuickStartId(chip.id) && chip.action.kind !== 'create-brand-kit')}
             activeChipId={activeChipId}
             pendingChipId={pendingChipId}
             pendingPluginId={pendingPluginId}
@@ -2073,7 +2216,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
             />
           </RailGroup>
         </div>
-      )}
+      ) : null}
 
       {activeSubChips.length > 0 && isSubChipParent(activeChipId) ? (
         <SubTypeRow
@@ -2151,7 +2294,26 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
         </div>
       ) : null}
 
-      {blankProjectEntry}
+      <div className="home-hero__secondary" data-testid="home-hero-secondary">
+        {blankProjectEntry}
+        <div className="home-hero__secondary-links">
+          <button
+            type="button"
+            className="home-hero__secondary-link"
+            onClick={() => navigate({ kind: 'home', view: 'plugins' })}
+          >
+            {t('homeHero.linkSkillsPlugins')}
+          </button>
+          <span className="home-hero__secondary-sep" aria-hidden>·</span>
+          <button
+            type="button"
+            className="home-hero__secondary-link"
+            onClick={() => navigate({ kind: 'home', view: 'design-systems' })}
+          >
+            {t('homeHero.linkDesignSystems')}
+          </button>
+        </div>
+      </div>
 
       {error ? (
         <div role="alert" className="home-hero__error">
@@ -3278,15 +3440,18 @@ function RailGroup({
   variant = 'rail',
   pulseChipId = null,
   onHoverChip,
+  chips: chipsOverride,
   children,
-}: RailGroupProps) {
+}: RailGroupProps & { chips?: HomeHeroChip[] }) {
   const t = useT();
   // The inline create rail leads with the slide deck and runs through the core
   // build scenarios in a fixed order (see `orderedCreateChips`); every other
-  // group renders in catalog order.
+  // group renders in catalog order. Callers can pass `chips` to show a subset
+  // (e.g. design formats only, after creator Quick Start tiles).
   const chips = useMemo(
-    () => (group === 'create' ? orderedCreateChips() : chipsForGroup(group)),
-    [group],
+    () => chipsOverride
+      ?? (group === 'create' ? orderedCreateChips() : chipsForGroup(group)),
+    [chipsOverride, group],
   );
   const isTabs = variant === 'tabs';
 
@@ -3750,6 +3915,18 @@ function ShortcutsMenu({
 // Scenario subtitle shown under the title on the illustrated card rail.
 function homeHeroChipDescription(chipId: string, t: ReturnType<typeof useT>): string {
   switch (chipId) {
+    case 'content-pack': return t('homeHero.chip.contentPackDesc');
+    case 'social-content': return t('homeHero.chip.socialContentDesc');
+    case 'carousel': return t('homeHero.chip.carouselDesc');
+    case 'short-video': return t('homeHero.chip.shortVideoDesc');
+    case 'linkedin-post': return t('homeHero.chip.linkedinPostDesc');
+    case 'facebook-post': return t('homeHero.chip.facebookPostDesc');
+    case 'youtube': return t('homeHero.chip.youtubeDesc');
+    case 'threads': return t('homeHero.chip.threadsDesc');
+    case 'email': return t('homeHero.chip.emailDesc');
+    case 'ad-creative': return t('homeHero.chip.adCreativeDesc');
+    case 'repurpose': return t('homeHero.chip.repurposeDesc');
+    case 'hook-engine': return t('homeHero.chip.hookEngineDesc');
     case 'prototype': return t('homeHero.chip.prototypeDesc');
     case 'web-clone': return t('homeHero.chip.webCloneDesc');
     case 'wireframe': return t('homeHero.chip.wireframeDesc');
@@ -3791,6 +3968,18 @@ function fallbackPlaceholderScenarioText(
 // consumed once picked (e.g. "Open a chat that builds a clickable prototype").
 function homeHeroChipTitle(chip: HomeHeroChip, t: ReturnType<typeof useT>): string {
   switch (chip.id) {
+    case 'content-pack': return t('homeHero.chip.contentPackNext');
+    case 'social-content': return t('homeHero.chip.socialContentNext');
+    case 'carousel': return t('homeHero.chip.carouselNext');
+    case 'short-video': return t('homeHero.chip.shortVideoNext');
+    case 'linkedin-post': return t('homeHero.chip.linkedinPostNext');
+    case 'facebook-post': return t('homeHero.chip.facebookPostNext');
+    case 'youtube': return t('homeHero.chip.youtubeNext');
+    case 'threads': return t('homeHero.chip.threadsNext');
+    case 'email': return t('homeHero.chip.emailNext');
+    case 'ad-creative': return t('homeHero.chip.adCreativeNext');
+    case 'repurpose': return t('homeHero.chip.repurposeNext');
+    case 'hook-engine': return t('homeHero.chip.hookEngineNext');
     case 'prototype': return t('homeHero.chip.prototypeNext');
     case 'web-clone': return t('homeHero.chip.webCloneNext');
     case 'wireframe': return t('homeHero.chip.wireframeNext');

@@ -47,10 +47,10 @@ describe("resolveMacInstallIdentity", () => {
   it("keeps stable builds on the canonical mac identity", () => {
     expect(resolveMacInstallIdentity(makeConfig("/work", "release-stable"))).toMatchObject({
       appId: "io.open-design.desktop",
-      installerTitle: "Open Design",
-      productName: "Open Design",
-      publicAppBundleName: "Open Design.app",
-      systemAppBundleName: "Open Design.app",
+      installerTitle: "Artifact OS",
+      productName: "Artifact OS",
+      publicAppBundleName: "Artifact OS.app",
+      systemAppBundleName: "Artifact OS.app",
     });
   });
 
@@ -59,13 +59,13 @@ describe("resolveMacInstallIdentity", () => {
 
     expect(resolveMacInstallIdentity(config)).toEqual({
       appId: "io.open-design.desktop.beta",
-      executableName: "Open Design Beta",
-      installerTitle: "Open Design Beta",
-      productName: "Open Design Beta",
-      publicAppBundleName: "Open Design Beta.app",
-      systemAppBundleName: "Open Design Beta.app",
+      executableName: "Artifact OS Beta",
+      installerTitle: "Artifact OS Beta",
+      productName: "Artifact OS Beta",
+      publicAppBundleName: "Artifact OS Beta.app",
+      systemAppBundleName: "Artifact OS Beta.app",
     });
-    expect(resolveMacPaths(config).appPath).toMatch(/Open Design Beta\.app$/);
+    expect(resolveMacPaths(config).appPath).toMatch(/Artifact OS Beta\.app$/);
   });
 
   it("uses first-class preview app identity for preview release namespaces", () => {
@@ -73,13 +73,13 @@ describe("resolveMacInstallIdentity", () => {
 
     expect(resolveMacInstallIdentity(config)).toEqual({
       appId: "io.open-design.desktop.preview",
-      executableName: "Open Design Preview",
-      installerTitle: "Open Design Preview",
-      productName: "Open Design Preview",
-      publicAppBundleName: "Open Design Preview.app",
-      systemAppBundleName: "Open Design Preview.app",
+      executableName: "Artifact OS Preview",
+      installerTitle: "Artifact OS Preview",
+      productName: "Artifact OS Preview",
+      publicAppBundleName: "Artifact OS Preview.app",
+      systemAppBundleName: "Artifact OS Preview.app",
     });
-    expect(resolveMacPaths(config).appPath).toMatch(/Open Design Preview\.app$/);
+    expect(resolveMacPaths(config).appPath).toMatch(/Artifact OS Preview\.app$/);
   });
 
   it("uses first-class prerelease app identity for prerelease release versions and namespaces", () => {
@@ -91,16 +91,16 @@ describe("resolveMacInstallIdentity", () => {
 
     expect(resolveMacInstallIdentity(prereleaseVersionConfig)).toEqual({
       appId: "io.open-design.desktop.prerelease",
-      executableName: "Open Design Prerelease",
-      installerTitle: "Open Design Prerelease",
-      productName: "Open Design Prerelease",
-      publicAppBundleName: "Open Design Prerelease.app",
-      systemAppBundleName: "Open Design Prerelease.app",
+      executableName: "Artifact OS Prerelease",
+      installerTitle: "Artifact OS Prerelease",
+      productName: "Artifact OS Prerelease",
+      publicAppBundleName: "Artifact OS Prerelease.app",
+      systemAppBundleName: "Artifact OS Prerelease.app",
     });
-    expect(resolveMacPaths(prereleaseVersionConfig).appPath).toMatch(/Open Design Prerelease\.app$/);
+    expect(resolveMacPaths(prereleaseVersionConfig).appPath).toMatch(/Artifact OS Prerelease\.app$/);
     expect(resolveMacInstallIdentity(prereleaseNamespaceConfig)).toMatchObject({
-      productName: "Open Design Prerelease",
-      publicAppBundleName: "Open Design Prerelease.app",
+      productName: "Artifact OS Prerelease",
+      publicAppBundleName: "Artifact OS Prerelease.app",
     });
   });
 });

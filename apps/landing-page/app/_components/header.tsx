@@ -24,7 +24,7 @@ const REPO_DISCUSSIONS = `${REPO}/discussions`;
 const DISCORD = 'https://discord.gg/mHAjSMV6gz';
 const X_PROFILE = 'https://x.com/OpenDesignHQ';
 
-// Open Design Cloud endpoints for the header account module.
+// Artifact OS Cloud endpoints for the header account module.
 // Production defaults; overridable at build time via PUBLIC_* env so a
 // preview/staging build can point at a non-prod cloud. These are surfaced to
 // the runtime via `data-*` on `.nav-account` because the auth logic lives in
@@ -182,7 +182,7 @@ export function Header({
           <img
             className='brand-logo'
             src='/logo-lockup.svg'
-            alt='Open Design'
+            alt='Artifact OS'
             width={225}
             height={83}
           />
@@ -207,7 +207,7 @@ export function Header({
         <nav id='primary-nav' data-nav-primary>
           <ul className='nav-links'>
             {/* Product — a mega menu whose columns are top-level categories:
-                the Open Design product family and the Agent catalog today,
+                the Artifact OS product family and the Agent catalog today,
                 with room to add more (e.g. Feature) as its own column later.
                 The trigger is a <button> (not a link) so it never navigates —
                 Product used to bounce to the homepage — but its panel is
@@ -237,7 +237,7 @@ export function Header({
                 className='nav-dropdown nav-dropdown-mega'
                 aria-label={productMenuCopy.product}
               >
-                {/* Products column — the Open Design product family. Names
+                {/* Products column — the Artifact OS product family. Names
                     only (no blurbs): keeps the column compact and aligned
                     with the Agent column, and avoids per-locale width blowups
                     from long descriptions. */}
@@ -582,7 +582,7 @@ export function Header({
             {headerCopy.download}
           </a>
           {/*
-            Open Design Cloud account entry. Signed-out visitors only see the
+            Artifact OS Cloud account entry. Signed-out visitors only see the
             download CTA above; the avatar menu stays `hidden` until the
             enhancer confirms a live cloud session via
             `GET {api}/api/auth/get-session`. Config flows through `data-*`

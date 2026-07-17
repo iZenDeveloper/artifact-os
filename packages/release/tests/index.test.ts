@@ -51,12 +51,12 @@ describe("@open-design/release", () => {
   });
 
   it("centralizes release identity and namespace derivation", () => {
-    expect(releaseChannelDescriptor("prerelease").productName).toBe("Open Design Prerelease");
-    expect(releaseChannelDescriptor("betas").productName).toBe("Open Design Betas");
+    expect(releaseChannelDescriptor("prerelease").productName).toBe("Artifact OS Prerelease");
+    expect(releaseChannelDescriptor("betas").productName).toBe("Artifact OS Betas");
     expect(releaseInstallIdentity("prerelease")).toEqual({
       appId: "io.open-design.desktop.prerelease",
-      executableName: "Open Design Prerelease",
-      productName: "Open Design Prerelease",
+      executableName: "Artifact OS Prerelease",
+      productName: "Artifact OS Prerelease",
     });
     expect(releaseNamespace("prerelease")).toBe("release-prerelease");
     expect(releaseNamespace("prerelease", "win")).toBe("release-prerelease-win");

@@ -20,6 +20,7 @@ import { HomeHero, homeHeroExamplePluginsForChip } from '../../src/components/Ho
 import {
   HOME_HERO_CHIPS,
   findChip,
+  isCreatorQuickStartId,
 } from '../../src/components/home-hero/chips';
 
 afterEach(() => {
@@ -106,12 +107,18 @@ describe('HomeHero intent rail', () => {
   it('renders creation chips as composer tabs and collapses shortcuts behind More', () => {
     renderHero();
     const tabs = screen.getByTestId('home-hero-type-tabs');
+    const creatorGrid = screen.getByTestId('home-hero-creator-quick');
     for (const chip of HOME_HERO_CHIPS) {
-      if (chip.group === 'create') {
+      if (chip.group === 'create' && isCreatorQuickStartId(chip.id)) {
+        // Creator outcomes use the large Quick Start tiles, not the secondary rail.
+        const node = screen.getByTestId(`home-hero-creator-${chip.id}`);
+        expect(node).toBeTruthy();
+        expect(creatorGrid.contains(node)).toBe(true);
+      } else if (chip.group === 'create' && chip.action.kind !== 'create-brand-kit') {
         const node = screen.getByTestId(`home-hero-rail-${chip.id}`);
         expect(node).toBeTruthy();
         expect(tabs.contains(node)).toBe(true);
-      } else {
+      } else if (chip.group !== 'create') {
         expect(screen.queryByTestId(`home-hero-rail-${chip.id}`)).toBeNull();
       }
     }
@@ -482,6 +489,12 @@ describe('HomeHero intent rail', () => {
   it('disables every visible chip while a plugin apply is in flight', () => {
     renderHero({ pendingPluginId: 'od-figma-migration', pendingChipId: 'figma' });
     for (const chip of HOME_HERO_CHIPS.filter((item) => item.group === 'create')) {
+      if (isCreatorQuickStartId(chip.id)) {
+        const node = screen.getByTestId(`home-hero-creator-${chip.id}`);
+        expect((node as HTMLButtonElement).disabled).toBe(true);
+        continue;
+      }
+      if (chip.action.kind === 'create-brand-kit') continue;
       const node = screen.getByTestId(`home-hero-rail-${chip.id}`);
       expect((node as HTMLButtonElement).disabled).toBe(true);
     }
@@ -521,7 +534,12 @@ describe('HomeHero intent rail', () => {
 
   it('leads the create group with the Brand Kit chip and its own action discriminator', () => {
     const createChips = HOME_HERO_CHIPS.filter((chip) => chip.group === 'create');
-    expect(createChips[0]?.id).toBe('create-brand-kit');
+    // Vertical Content OS leads the catalog with creator outcomes.
+    expect(createChips[0]?.id).toBe('content-pack');
+    expect(findChip('content-pack')?.action).toMatchObject({
+      kind: 'apply-skill',
+      skillId: 'content-repurposer',
+    });
     expect(findChip('create-brand-kit')?.action).toMatchObject({ kind: 'create-brand-kit' });
     expect(findChip('create-brand-kit')?.icon).toBe('swatchbook');
   });

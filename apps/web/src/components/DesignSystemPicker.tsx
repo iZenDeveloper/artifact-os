@@ -1,13 +1,13 @@
-// Shared design-system picker — the two-column popover (searchable list +
-// live preview) used in BOTH the project chrome header and the home composer
-// footer. It binds to a single design-system id: changing the selection calls
-// `onChange(id | null)` where `null` means "不指定 / No design system".
+// Shared Brand picker (storage: design-systems/<slug>/DESIGN.md). Two-column
+// popover (searchable list + live preview) used in the project chrome header
+// and the home composer. Binds to a design-system id: `onChange(id | null)`
+// where `null` means "No brand". UI copy says Brand; API paths stay design-systems.
 //
 // `variant` only swaps the trigger pill styling:
 //   - 'project' (default): the chrome-header pill (`project-ds-picker-*`).
-//   - 'footer': the home composer footer pill (`home-hero__footer-*`), so it
-//     sits flush with the other footer options.
-// The popover body is identical for both variants.
+//   - 'footer': the home composer footer pill (`home-hero__footer-*`).
+//   - 'home': borderless home row trigger next to brand mode.
+// The popover body is identical across variants.
 //
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
