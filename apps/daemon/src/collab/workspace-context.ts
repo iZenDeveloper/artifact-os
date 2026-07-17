@@ -159,7 +159,14 @@ export function parseWorkspaceCollabContext(input: unknown): WorkspaceCollabCont
     seatSummary: buildWorkspaceSeatSummary({ seatLimit, usedSeats }),
     permissions: buildWorkspacePermissions({ role, lifecycleState, memberStatus }),
   };
-  if (teamId) context.teamId = teamId;
+  if (teamId) {
+    context.teamId = teamId;
+  } else if (workspaceType === 'team') {
+    // Invariant (matches the vela provider): a team context always carries
+    // teamId — the workspace IS the team scope. Collab gates on `teamId`, so
+    // a dev PUT that omits it must not silently disable the collab plane.
+    context.teamId = workspaceId;
+  }
   if (workspaceType === 'team') {
     const settingsUrl = resolveWorkspaceSettingsUrl(workspaceId, raw.workspaceSettingsUrl);
     if (settingsUrl) context.workspaceSettingsUrl = settingsUrl;

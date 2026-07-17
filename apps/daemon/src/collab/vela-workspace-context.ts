@@ -32,6 +32,9 @@ import {
 
 const WORKSPACE_CURRENT_PATH = '/api/v1/workspaces/current';
 const DEFAULT_TIMEOUT_MS = 8_000;
+// After a FAILED default-workspace bootstrap (empty directory, PUT rejected),
+// don't re-list on every poller tick — B is asked again after this window.
+const BOOTSTRAP_FAILURE_COOLDOWN_MS = 60_000;
 
 const WORKSPACE_TYPES = new Set<WorkspaceType>(['personal', 'team']);
 const ROLES = new Set<CollabMemberRole>(['owner', 'admin', 'member']);
@@ -179,46 +182,108 @@ export function createVelaWorkspaceContextProvider(
   const fetchImpl = options.fetch ?? fetch;
   const readSession = options.readSession ?? readVelaControlApiContext;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  type VelaSession = NonNullable<ReturnType<typeof readVelaControlApiContext>>;
+  let lastBootstrapFailureAt = 0;
+
+  async function putCurrentWorkspace(
+    session: VelaSession,
+    workspaceId: string,
+  ): Promise<boolean> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetchImpl(new URL(WORKSPACE_CURRENT_PATH, session.apiUrl), {
+        method: 'PUT',
+        headers: {
+          authorization: `Bearer ${session.controlKey}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ workspaceId }),
+        signal: controller.signal,
+      });
+      return response.ok;
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async function fetchCurrent(
+    session: VelaSession,
+    activeWorkspaceId: string | undefined,
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const url = new URL(WORKSPACE_CURRENT_PATH, session.apiUrl);
+      if (activeWorkspaceId) url.searchParams.set('workspaceId', activeWorkspaceId);
+      return await fetchImpl(url, {
+        method: 'GET',
+        headers: { authorization: `Bearer ${session.controlKey}` },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  /**
+   * New-user self-heal. B's workspace selection is server-side state: a fresh
+   * account has NO current workspace until something PUTs one, and until then
+   * every workspace-scoped call fails `403 missing_principal` — the client
+   * would be dead on arrival. When the current-context read reports exactly
+   * that, list the account's workspaces and select a default (the OD-active
+   * selection when it exists in the directory, else the personal workspace,
+   * else the first active membership), then let the caller re-read once.
+   */
+  async function bootstrapDefaultWorkspace(session: VelaSession): Promise<boolean> {
+    if (Date.now() - lastBootstrapFailureAt < BOOTSTRAP_FAILURE_COOLDOWN_MS) return false;
+    const items = await listVelaWorkspaceDirectory({
+      fetch: fetchImpl,
+      readSession: () => session,
+      timeoutMs,
+    });
+    const candidates = items.filter(
+      (item) => item.memberStatus === 'active' && item.lifecycleState === 'active',
+    );
+    const preferredId = options.getActiveWorkspaceId?.()?.trim();
+    const pick =
+      (preferredId ? candidates.find((item) => item.workspaceId === preferredId) : undefined) ??
+      candidates.find((item) => item.workspaceType === 'personal') ??
+      candidates[0];
+    if (!pick) {
+      lastBootstrapFailureAt = Date.now();
+      return false;
+    }
+    const ok = await putCurrentWorkspace(session, pick.workspaceId);
+    if (!ok) lastBootstrapFailureAt = Date.now();
+    return ok;
+  }
 
   return {
     async selectWorkspace(workspaceId: string): Promise<boolean> {
       const session = readSession();
       if (!session || !session.controlKey || !session.apiUrl) return false;
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), timeoutMs);
-      try {
-        const response = await fetchImpl(new URL(WORKSPACE_CURRENT_PATH, session.apiUrl), {
-          method: 'PUT',
-          headers: {
-            authorization: `Bearer ${session.controlKey}`,
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({ workspaceId }),
-          signal: controller.signal,
-        });
-        return response.ok;
-      } catch {
-        return false;
-      } finally {
-        clearTimeout(timeout);
-      }
+      return putCurrentWorkspace(session, workspaceId);
     },
     async current(_req: WorkspaceContextRequest): Promise<WorkspaceCollabContext | null> {
       const session = readSession();
       if (!session || !session.controlKey || !session.apiUrl) return null;
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const url = new URL(WORKSPACE_CURRENT_PATH, session.apiUrl);
-        const workspaceId = options.getActiveWorkspaceId?.()?.trim();
-        if (workspaceId) url.searchParams.set('workspaceId', workspaceId);
-        const response = await fetchImpl(url, {
-          method: 'GET',
-          headers: { authorization: `Bearer ${session.controlKey}` },
-          signal: controller.signal,
-        });
-        // 401 = signed out at the vela layer; anything non-2xx → single-player.
-        if (!response.ok) return null;
+        const activeWorkspaceId = options.getActiveWorkspaceId?.()?.trim() || undefined;
+        let response = await fetchCurrent(session, activeWorkspaceId);
+        if (!response.ok) {
+          // 401 = signed out at the vela layer → single-player, never bootstrap.
+          // 403 missing_principal = authenticated but no current workspace on
+          // B (fresh account) → self-heal once, then re-read.
+          if (response.status === 403 && (await responseIsMissingPrincipal(response))) {
+            if (await bootstrapDefaultWorkspace(session)) {
+              response = await fetchCurrent(session, activeWorkspaceId);
+            }
+          }
+          if (!response.ok) return null;
+        }
         const body: unknown = await response.json();
         const context = mapVelaWorkspaceContext(body);
         if (context && !context.displayName) {
@@ -230,11 +295,18 @@ export function createVelaWorkspaceContextProvider(
         // Never let a workspace-context failure throw into collab — degrade to
         // single-player. A transient B outage must not break the local editor.
         return null;
-      } finally {
-        clearTimeout(timeout);
       }
     },
   };
+}
+
+async function responseIsMissingPrincipal(response: Response): Promise<boolean> {
+  try {
+    const body: unknown = await response.json();
+    return JSON.stringify(body).includes('missing_principal');
+  } catch {
+    return false;
+  }
 }
 
 function velaUserDisplayName(user: VelaUser | null): string {

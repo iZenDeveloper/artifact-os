@@ -128,3 +128,103 @@ describe('createVelaWorkspaceContextProvider', () => {
     expect(await broken.current({})).toBeNull();
   });
 });
+
+// New-user red line: B's server-side workspace selection means a fresh account
+// has NO current workspace until something PUTs one — every workspace-scoped
+// call then 403s with `missing_principal` and the client is dead on arrival.
+// The provider must self-heal: list the directory, select a default (personal
+// first), and re-read.
+describe('createVelaWorkspaceContextProvider missing_principal bootstrap', () => {
+  const B_PERSONAL_CONTEXT = {
+    ...B_TEAM_CONTEXT,
+    workspaceId: 'ws-personal-1',
+    workspaceType: 'personal',
+    workspaceMemberId: 'wm-p1',
+    role: 'owner',
+  };
+  const DIRECTORY = {
+    items: [
+      {
+        workspaceId: 'ws-team-1',
+        workspaceName: 'Team',
+        workspaceType: 'team',
+        workspaceMemberId: 'wm-1',
+        role: 'member',
+        memberStatus: 'active',
+        lifecycleState: 'active',
+      },
+      {
+        workspaceId: 'ws-personal-1',
+        workspaceName: 'Personal',
+        workspaceType: 'personal',
+        workspaceMemberId: 'wm-p1',
+        role: 'owner',
+        memberStatus: 'active',
+        lifecycleState: 'active',
+      },
+    ],
+  };
+
+  it('selects a default workspace (personal first) and retries when B has no current workspace', async () => {
+    const calls: Array<{ url: string; method: string; body?: unknown }> = [];
+    const fetchImpl = vi.fn(async (url: URL | string, init?: RequestInit) => {
+      const method = init?.method ?? 'GET';
+      calls.push({ url: String(url), method, body: init?.body ? JSON.parse(String(init.body)) : undefined });
+      const u = String(url);
+      if (u.includes('/workspaces/current') && method === 'GET') {
+        // First read: no principal yet; after the PUT the retry succeeds.
+        const putHappened = calls.some((c) => c.method === 'PUT');
+        return putHappened
+          ? jsonResponse(200, B_PERSONAL_CONTEXT)
+          : jsonResponse(403, { error: 'missing_principal' });
+      }
+      if (u.endsWith('/api/v1/workspaces') && method === 'GET') {
+        return jsonResponse(200, DIRECTORY);
+      }
+      if (u.includes('/workspaces/current') && method === 'PUT') {
+        return jsonResponse(200, {});
+      }
+      throw new Error(`unexpected fetch ${method} ${u}`);
+    }) as unknown as typeof fetch;
+
+    const provider = createVelaWorkspaceContextProvider({
+      fetch: fetchImpl,
+      readSession: () => SESSION,
+    });
+    const context = await provider.current({});
+    expect(context?.workspaceId).toBe('ws-personal-1');
+    // Personal wins over the team entry even though the team is listed first.
+    const put = calls.find((c) => c.method === 'PUT');
+    expect(put?.body).toEqual({ workspaceId: 'ws-personal-1' });
+  });
+
+  it('does not bootstrap on 401 (signed out is not a missing principal)', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(401, { error: 'unauthenticated' })) as unknown as typeof fetch;
+    const provider = createVelaWorkspaceContextProvider({ fetch: fetchImpl, readSession: () => SESSION });
+    expect(await provider.current({})).toBeNull();
+    expect((fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(1);
+  });
+
+  it('cools down after a failed bootstrap instead of hammering the directory', async () => {
+    const fetchImpl = vi.fn(async (url: URL | string, init?: RequestInit) => {
+      const method = init?.method ?? 'GET';
+      const u = String(url);
+      if (u.includes('/workspaces/current') && method === 'GET') {
+        return jsonResponse(403, { error: 'missing_principal' });
+      }
+      // Empty directory → bootstrap cannot pick anything.
+      if (u.endsWith('/api/v1/workspaces')) return jsonResponse(200, { items: [] });
+      throw new Error(`unexpected fetch ${method} ${u}`);
+    }) as unknown as typeof fetch;
+    const provider = createVelaWorkspaceContextProvider({
+      fetch: fetchImpl,
+      readSession: () => SESSION,
+    });
+    expect(await provider.current({})).toBeNull();
+    expect(await provider.current({})).toBeNull();
+    const mock = fetchImpl as unknown as ReturnType<typeof vi.fn>;
+    const directoryCalls = mock.mock.calls.filter(([u]) => String(u).endsWith('/api/v1/workspaces'));
+    // Second current() within the cooldown must not re-list.
+    expect(directoryCalls.length).toBe(1);
+  });
+});

@@ -144,10 +144,15 @@ export function createCollabCloudService(deps: CollabCloudServiceDeps): CollabCl
     displayName: string;
   } | null> {
     const context = await deps.workspaceContext.current({});
-    const workspaceResourceScope = context?.teamId ?? context?.workspaceId;
-    if (!context || !workspaceResourceScope) return null;
+    // B's resources/collab plane is team-only: a personal-workspace principal
+    // is rejected with 403 `missing_principal` BY DESIGN (resources/auth.ts on
+    // B refuses non-team contexts). Only a team context — which carries
+    // `teamId` — yields a collab identity; a personal workspace keeps the
+    // whole collab-cloud surface dormant instead of hammering B with doomed
+    // CLI calls on every poll tick.
+    if (!context?.teamId) return null;
     return {
-      teamId: workspaceResourceScope,
+      teamId: context.teamId,
       memberId: context.workspaceMemberId,
       role: context.role,
       displayName: context.displayName?.trim() || context.workspaceMemberId,

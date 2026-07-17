@@ -329,6 +329,42 @@ describe('createCollabCloudService', () => {
     service.dispose();
   });
 
+  it('stays fully dormant in a personal workspace (team-only resources plane)', async () => {
+    // B's resources/collab plane rejects personal-workspace principals with
+    // 403 missing_principal BY DESIGN. A personal context must therefore
+    // yield no collab identity at all — no register, no pulls — instead of
+    // hammering B with doomed CLI calls on every poll tick (observed as an
+    // infinite `vela collab member register` 403 loop for fresh users).
+    const { client, registered } = fakeClient();
+    let pulls = 0;
+    const wrapped = {
+      ...(client as unknown as Record<string, unknown>),
+      pullComments: async (...args: unknown[]) => {
+        pulls += 1;
+        return (client as unknown as { pullComments: (...a: unknown[]) => unknown }).pullComments(...args);
+      },
+    } as unknown as CollabCloudClient;
+    const personal = teamContext({
+      workspaceType: 'personal',
+      workspaceId: 'ws-personal',
+      teamId: undefined,
+      teamName: undefined,
+    });
+    delete (personal as Partial<WorkspaceCollabContext>).teamId;
+    const service = createCollabCloudService({
+      client: wrapped,
+      workspaceContext: fixedContextProvider(personal),
+      listProjectIds: () => ['p1'],
+      resolveLocalConversationId: () => 'conv-local',
+      mergeComment: () => false,
+    });
+    await service.pollOnce();
+    await service.pollOnce();
+    expect(registered.length).toBe(0);
+    expect(pulls).toBe(0);
+    service.dispose();
+  });
+
   it('registers the member once across polls, not on every cycle', async () => {
     const { client, registered } = fakeClient();
     const service = createCollabCloudService({
