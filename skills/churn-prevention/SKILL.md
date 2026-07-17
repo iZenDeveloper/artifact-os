@@ -219,7 +219,7 @@ Full: `dunning-playbook.md`. Recovery benchmarks in refs are **industry ranges o
 | Time from first risk signal → cancel | Trend |
 
 Cohorts: channel · plan · tenure · reason · offer type.  
-A/B one variable at a time → hand off experiment design if ab-test installed.
+A/B one variable at a time → hand off experiment design to `ab-testing`.
 
 ---
 
@@ -306,5 +306,5 @@ Sample microcopy must pass DESIGN.md §8 when brand linked.
 
 ## Vertical metadata
 
-- **Related:** `emails`, `pricing`, `analytics`, `product-marketing`, `paywall-upgrade-cro`, `cro`, `revops`  
+- **Related:** `emails`, `pricing`, `analytics`, `ab-testing`, `product-marketing`, `paywall-upgrade-cro`, `cro`, `revops`  
 - **Upstream:** [marketingskills/churn-prevention](https://github.com/coreyhaines31/marketingskills/tree/main/skills/churn-prevention)  

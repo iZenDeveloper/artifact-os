@@ -174,7 +174,7 @@ Headline / Sub / CTA — 2–3 options each with rationale
 - Hooks for ads/social: hook-engine
 - Multi-platform pack: content-repurposer
 - Measurement / events: analytics
-- Experiment design: ab-testing (if installed)
+- Experiment design: ab-testing
 ```
 
 HTML: cover + scorecard table + top 5 recommendations + CTA/headline options.  
@@ -221,5 +221,5 @@ Use brand colors only when DESIGN.md palette is available.
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `pricing` (packaging before pricing-page CRO), `ads` (paid traffic message match), `analytics` (measure first), `copywriting`, `seo-audit`, `ai-seo`, `hook-engine`, `content-repurposer`, `marketing-psychology`, `ad-creative`  
+- **Related:** `product-marketing`, `pricing` (packaging before pricing-page CRO), `ads` (paid traffic message match), `analytics` (measure first), `ab-testing`, `copywriting`, `seo-audit`, `ai-seo`, `hook-engine`, `content-repurposer`, `marketing-psychology`, `ad-creative`  
 - **Upstream:** [marketingskills/cro](https://github.com/coreyhaines31/marketingskills/tree/main/skills/cro)  

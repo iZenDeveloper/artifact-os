@@ -297,5 +297,5 @@ HTML: platform cards · structure tree · audience table · checklist · sample 
 
 ## Vertical metadata
 
-- **Related:** `ad-variants-generator`, `ad-creative`, `hook-engine`, `product-marketing`, `analytics`, `cro`, `copywriting`, `revops`, `launch`, `content-repurposer`, `marketing-psychology`  
+- **Related:** `ad-variants-generator`, `ad-creative`, `hook-engine`, `product-marketing`, `analytics`, `ab-testing`, `cro`, `copywriting`, `revops`, `launch`, `content-repurposer`, `marketing-psychology`  
 - **Upstream:** [marketingskills/ads](https://github.com/coreyhaines31/marketingskills/tree/main/skills/ads)  
