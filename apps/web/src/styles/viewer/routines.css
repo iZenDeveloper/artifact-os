@@ -2890,46 +2890,63 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .composer-send:disabled {
   letter-spacing: 0.02em;
   padding: 3px 6px;
   border-radius: var(--radius-pill);
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
-  background: color-mix(in srgb, var(--accent) 12%, var(--bg-panel));
+  border: 0;
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-panel));
   color: var(--text-strong, var(--text));
   white-space: nowrap;
 }
 .brand-switcher-badge--client {
-  border-color: color-mix(in srgb, var(--text) 22%, var(--border));
-  background: color-mix(in srgb, var(--text) 6%, var(--bg-panel));
+  background: color-mix(in srgb, var(--text) 8%, var(--bg-panel));
 }
+/* Segmented control: one track, no per-button borders/outlines — active = fill color only. */
 .brand-switcher-modes {
   display: flex;
-  gap: 4px;
-  padding: 8px 10px 0;
+  gap: 2px;
+  margin: 8px 10px 0;
+  padding: 3px;
   flex: 0 0 auto;
+  border-radius: var(--radius, 8px);
+  background: var(--bg-subtle, var(--bg-muted));
 }
 .brand-switcher-mode {
   flex: 1 1 0;
   min-width: 0;
   padding: 6px 8px;
-  border-radius: var(--radius-sm, 6px);
-  border: 1px solid var(--border);
-  background: var(--bg-subtle, var(--bg-panel));
+  border: 0;
+  outline: none;
+  border-radius: calc(var(--radius-sm, 6px) - 1px);
+  background: transparent;
   color: var(--text-muted);
   font: inherit;
   font-size: 11.5px;
   font-weight: 550;
   line-height: 1;
   cursor: pointer;
+  box-shadow: none;
   transition: background 160ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
     color 160ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 .brand-switcher-mode:hover {
   color: var(--text);
-  border-color: var(--border-strong, var(--border));
+  background: color-mix(in srgb, var(--bg-panel) 55%, transparent);
+}
+.brand-switcher-mode:focus,
+.brand-switcher-mode:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 .brand-switcher-mode.active {
   color: var(--text-strong, var(--text));
-  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
-  background: color-mix(in srgb, var(--accent) 12%, var(--bg-panel));
+  background: var(--bg-panel);
+  border: 0;
+  outline: none;
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.06));
+  font-weight: 600;
+}
+.brand-switcher-mode.active:focus,
+.brand-switcher-mode.active:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.06));
 }
 .brand-switcher-quick {
   display: flex;
@@ -3020,6 +3037,17 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .composer-send:disabled {
   font-size: 12.5px;
   line-height: 1.2;
   color: var(--text);
+}
+/* Keep search placeholder visible while empty (including focus / after mode
+   or system select). Global focus rings must not restyle placeholder away. */
+.project-ds-picker-search input::placeholder {
+  color: var(--text-faint, var(--text-muted));
+  opacity: 1;
+}
+.project-ds-picker-search input:focus::placeholder,
+.project-ds-picker-search input:focus-visible::placeholder {
+  color: var(--text-faint, var(--text-muted));
+  opacity: 1;
 }
 /* The borderless search field sits inside a framed popover row, so it does
    not need the global `input:focus` blue selected-halo (box-shadow) from

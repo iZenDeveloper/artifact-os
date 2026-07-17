@@ -94,10 +94,25 @@ export function DesignSystemPicker({
   const [hoveredNone, setHoveredNone] = useState(false);
   const [previewModalSystem, setPreviewModalSystem] = useState<DesignSystemSummary | null>(null);
 
-  const selected = useMemo(
-    () => designSystems.find((d) => d.id === selectedId) ?? null,
-    [designSystems, selectedId],
-  );
+  const selected = useMemo(() => {
+    if (selectedId == null) return null;
+    const bare = (id: string) => {
+      const lower = id.toLowerCase();
+      return lower.includes(':') ? lower.slice(lower.lastIndexOf(':') + 1) : lower;
+    };
+    const target = bare(selectedId);
+    return (
+      designSystems.find((d) => d.id === selectedId) ??
+      designSystems.find((d) => bare(d.id) === target) ??
+      null
+    );
+  }, [designSystems, selectedId]);
+
+  // Prefer resolved title; if id is set but catalog hasn't caught up yet, still
+  // show the id so the trigger never looks "empty placeholder" after a select.
+  const selectedLabel =
+    selected?.title ??
+    (selectedId != null && selectedId.length > 0 ? selectedId : null);
 
   // Map each `user:<id>` design system to its backing brand so a selected /
   // hovered brand previews the rich Brand Kit card instead of the thin
@@ -184,7 +199,7 @@ export function DesignSystemPicker({
   if (open) {
     if (hovered) previewSystem = hovered;
     else if (hoveredNone) previewNone = true;
-    else if (selectedId != null) previewSystem = selected;
+    else if (selected) previewSystem = selected;
     else previewNone = true;
   }
 
@@ -209,7 +224,11 @@ export function DesignSystemPicker({
     [designSystems],
   );
 
-  const selectedBrandMode = selected ? classifyVerticalBrand(selected) : 'other';
+  const selectedBrandMode = selected
+    ? classifyVerticalBrand(selected)
+    : selectedId
+      ? classifyVerticalBrand({ id: selectedId })
+      : 'other';
 
   // Split the filtered list into the same two groups the Design Systems tab
   // uses, so the picker reads as "your systems" then "official presets".
@@ -553,7 +572,7 @@ export function DesignSystemPicker({
           <span className="home-hero__ds-row-trigger-label">
             {loading
               ? t('designSystemPicker.loading')
-              : selected?.title ?? t('designSystemPicker.noneTitle')}
+              : selectedLabel ?? t('designSystemPicker.noneTitle')}
           </span>
           {selectedBrandMode === 'personal' || selectedBrandMode === 'client' ? (
             <span
@@ -595,7 +614,7 @@ export function DesignSystemPicker({
           <span className="home-hero__footer-select-label">
             {loading
               ? t('designSystemPicker.loading')
-              : selected?.title ?? t('designSystemPicker.noneTitle')}
+              : selectedLabel ?? t('designSystemPicker.noneTitle')}
           </span>
           {selectedBrandMode === 'personal' || selectedBrandMode === 'client' ? (
             <span
@@ -624,19 +643,19 @@ export function DesignSystemPicker({
       <button
         ref={triggerRef}
         type="button"
-        className={`project-ds-picker-trigger${selected ? ' picked' : ''}`}
+        className={`project-ds-picker-trigger${selectedLabel ? ' picked' : ''}`}
         data-testid="project-ds-picker-trigger"
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         disabled={loading}
-        title={selected?.title ?? t('designSystemPicker.select')}
+        title={selectedLabel ?? t('designSystemPicker.select')}
       >
         {triggerSwatches}
         <span className="project-ds-picker-label">
           {loading
             ? t('designSystemPicker.loading')
-            : selected?.title ?? t('designSystemPicker.select')}
+            : selectedLabel ?? t('designSystemPicker.select')}
         </span>
         {selectedBrandMode === 'personal' || selectedBrandMode === 'client' ? (
           <span
