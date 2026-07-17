@@ -211,5 +211,5 @@ HTML: cover + severity summary + top findings table + quick wins.
 
 ## Vertical metadata
 
-- **Related:** `schema`, `ai-seo`, `product-marketing`, `content-strategy`, `cro`, `copywriting`, `content-repurposer`  
+- **Related:** `schema`, `ai-seo`, `product-marketing`, `content-strategy`, `competitors`, `cro`, `copywriting`, `content-repurposer`  
 - **Upstream:** [marketingskills/seo-audit](https://github.com/coreyhaines31/marketingskills/tree/main/skills/seo-audit)  

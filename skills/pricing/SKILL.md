@@ -266,5 +266,5 @@ HTML: value-metric card + tier comparison table + research checklist + page outl
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `cro`, `copywriting`, `revops`, `sales-enablement`, `launch`, `schema`, `marketing-psychology`, `paywall-upgrade-cro`  
+- **Related:** `product-marketing`, `competitors`, `cro`, `copywriting`, `revops`, `sales-enablement`, `launch`, `schema`, `marketing-psychology`, `paywall-upgrade-cro`  
 - **Upstream:** [marketingskills/pricing](https://github.com/coreyhaines31/marketingskills/tree/main/skills/pricing)  

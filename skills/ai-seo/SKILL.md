@@ -206,5 +206,5 @@ HTML: cover + query table + scorecard + top recommendations.
 
 ## Vertical metadata
 
-- **Related:** `seo-audit`, `schema`, `product-marketing`, `copywriting`, `content-strategy`, `cro`  
+- **Related:** `seo-audit`, `schema`, `product-marketing`, `copywriting`, `content-strategy`, `competitors`, `cro`  
 - **Upstream:** [marketingskills/ai-seo](https://github.com/coreyhaines31/marketingskills/tree/main/skills/ai-seo)  

@@ -207,5 +207,5 @@ HTML: render hero + major sections with readable type; apply brand tokens if DES
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `content-strategy`, `pricing`, `cro`, `emails`, `hook-engine`, `marketing-psychology`, `content-repurposer`, `ad-creative`  
+- **Related:** `product-marketing`, `content-strategy`, `pricing`, `competitors`, `cro`, `emails`, `hook-engine`, `marketing-psychology`, `content-repurposer`, `ad-creative`  
 - **Upstream:** [marketingskills/copywriting](https://github.com/coreyhaines31/marketingskills/tree/main/skills/copywriting)  

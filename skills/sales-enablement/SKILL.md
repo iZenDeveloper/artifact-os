@@ -190,7 +190,7 @@ Types: economic · technical · end user · champion · blocker.
 | Landing / pricing page copy | `copywriting` / `cro` |
 | Launch sales kit timing | `launch` |
 | Content pillars that feed case studies | `content-strategy` |
-| Public SEO “vs” pages | competitors / `seo-audit` (if installed) |
+| Public SEO “vs” / alternative pages | `competitors` |
 | Visual deck polish in-app | deck / slides skills if linked |
 
 ---
@@ -264,5 +264,5 @@ HTML: cover strip + section cards matching the asset (slide list, table, script 
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `pricing`, `revops`, `cold-email`, `emails`, `copywriting`, `cro`, `launch`, `content-strategy`, `marketing-psychology`  
+- **Related:** `product-marketing`, `pricing`, `competitors`, `revops`, `cold-email`, `emails`, `copywriting`, `cro`, `launch`, `content-strategy`, `marketing-psychology`  
 - **Upstream:** [marketingskills/sales-enablement](https://github.com/coreyhaines31/marketingskills/tree/main/skills/sales-enablement)  

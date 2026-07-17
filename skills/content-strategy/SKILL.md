@@ -280,5 +280,5 @@ Sample titles must respect DESIGN.md §8 when brand linked.
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `copywriting`, `content-repurposer`, `social-content-factory`, `hook-engine`, `seo-audit`, `ai-seo`, `schema`, `launch`, `emails`, `cro`  
+- **Related:** `product-marketing`, `copywriting`, `competitors`, `content-repurposer`, `social-content-factory`, `hook-engine`, `seo-audit`, `ai-seo`, `schema`, `launch`, `emails`, `cro`  
 - **Upstream:** [marketingskills/content-strategy](https://github.com/coreyhaines31/marketingskills/tree/main/skills/content-strategy)  

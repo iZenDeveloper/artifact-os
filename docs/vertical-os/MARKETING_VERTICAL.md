@@ -72,6 +72,7 @@ Cập nhật: 2026-07 · Aligns with Content Pro **v2.2** + MVP output scope (te
 | 0l | `revops` | **Pilot** | Lead lifecycle, scoring, routing, pipeline SLAs (marketingskills) |
 | 0m | `pricing` | **Pilot** | Packaging, value metric, tiers, monetization (marketingskills) |
 | 0n | `ads` | **Pilot** | Paid media strategy/ops (Google/Meta/LinkedIn…; marketingskills) |
+| 0o | `competitors` | **Pilot** | Comparison / alternative pages + competitor SSOT (marketingskills) |
 | 1 | `content-repurposer` | **Done** | Core; strategy + ready-to-post; MVP scope locked |
 | 2 | `social-content-factory` | **Done** | Original batch / week |
 | 3 | `hook-engine` | **Done** | Hooks-only lab |
