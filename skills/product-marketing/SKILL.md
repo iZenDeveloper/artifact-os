@@ -168,6 +168,7 @@ Tell the user which skill to run next:
 | Full page copy rewrite | `copywriting` |
 | Technical SEO audit | `seo-audit` |
 | AI search / citations (AEO/GEO) | `ai-seo` |
+| Lifecycle email sequence | `emails` |
 | Psychology pass on copy | `marketing-psychology` |
 
 ---
