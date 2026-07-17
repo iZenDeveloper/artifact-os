@@ -21,6 +21,15 @@ import {
 import { navigate } from '../router';
 import { setPendingDesignSystemCreateEntry } from '../analytics/ds-create-entry';
 import { useBrandsByDesignSystemId } from '../runtime/brands';
+import {
+  type BrandSwitcherFilter,
+  classifyVerticalBrand,
+  filterByBrandMode,
+  pinVerticalOsSystems,
+  seedBrandFilter,
+  verticalOsQuickSwitchSystems,
+  writeStoredBrandFilter,
+} from '../runtime/vertical-brand';
 import { DesignSystemKitPreview } from './DesignSystemKitPreview';
 import { DesignSystemPreviewModal } from './DesignSystemPreviewModal';
 import { Icon } from './Icon';
@@ -73,6 +82,7 @@ export function DesignSystemPicker({
   const { locale, t } = useI18n();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [brandMode, setBrandMode] = useState<BrandSwitcherFilter>('all');
   const [anchor, setAnchor] = useState<PopoverAnchor | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -157,13 +167,14 @@ export function DesignSystemPicker({
 
   useEffect(() => {
     if (open) {
+      setBrandMode(seedBrandFilter(selected));
       window.setTimeout(() => inputRef.current?.focus(), 0);
     } else {
       setQuery('');
       setHovered(null);
       setHoveredNone(false);
     }
-  }, [open]);
+  }, [open, selected]);
 
   // Resolve what the right pane previews. Priority: a hovered system, the
   // hovered "不指定" row, the selected system, then "不指定" when nothing is
@@ -179,23 +190,49 @@ export function DesignSystemPicker({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (q.length === 0) return designSystems;
-    return designSystems.filter((d) => {
-      const localizedSummary = localizeDesignSystemSummary(locale, d);
-      const localizedCategory = localizeDesignSystemCategory(locale, d.category);
-      const haystack = `${d.title} ${d.category} ${d.summary} ${localizedCategory} ${localizedSummary}`.toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [query, designSystems, locale]);
+    const searched =
+      q.length === 0
+        ? designSystems
+        : designSystems.filter((d) => {
+            const localizedSummary = localizeDesignSystemSummary(locale, d);
+            const localizedCategory = localizeDesignSystemCategory(locale, d.category);
+            const haystack =
+              `${d.title} ${d.category} ${d.summary} ${localizedCategory} ${localizedSummary}`.toLowerCase();
+            return haystack.includes(q);
+          });
+    // Brand mode filter (Personal / Client / All), then pin Vertical OS systems.
+    return pinVerticalOsSystems(filterByBrandMode(searched, brandMode));
+  }, [query, designSystems, locale, brandMode]);
+
+  const quickSwitchSystems = useMemo(
+    () => verticalOsQuickSwitchSystems(designSystems),
+    [designSystems],
+  );
+
+  const selectedBrandMode = selected ? classifyVerticalBrand(selected) : 'other';
 
   // Split the filtered list into the same two groups the Design Systems tab
   // uses, so the picker reads as "your systems" then "official presets".
-  const { userSystems, officialSystems } = useMemo(() => {
+  // Under Personal/Client mode, also surface a Vertical OS group first.
+  const { verticalOsSystems, userSystems, officialSystems } = useMemo(() => {
+    const vos: DesignSystemSummary[] = [];
     const mine: DesignSystemSummary[] = [];
     const official: DesignSystemSummary[] = [];
-    for (const d of filtered) (isUserSystem(d) ? mine : official).push(d);
-    return { userSystems: mine, officialSystems: official };
+    for (const d of filtered) {
+      const mode = classifyVerticalBrand(d);
+      if (mode === 'personal' || mode === 'client') {
+        vos.push(d);
+        continue;
+      }
+      (isUserSystem(d) ? mine : official).push(d);
+    }
+    return { verticalOsSystems: vos, userSystems: mine, officialSystems: official };
   }, [filtered]);
+
+  const setBrandModeAndPersist = (mode: BrandSwitcherFilter) => {
+    setBrandMode(mode);
+    writeStoredBrandFilter(mode);
+  };
 
   const selectDesignSystem = (id: string | null) => {
     onChange(id);
@@ -288,6 +325,57 @@ export function DesignSystemPicker({
               maxHeight: anchor.maxHeight,
             }}
           >
+            <div
+              className="brand-switcher-modes"
+              role="tablist"
+              aria-label="Brand mode"
+              data-testid="brand-switcher-mode"
+            >
+              {(
+                [
+                  ['personal', t('brandSwitcher.personal')],
+                  ['client', t('brandSwitcher.client')],
+                  ['all', t('brandSwitcher.all')],
+                ] as const
+              ).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  role="tab"
+                  aria-selected={brandMode === mode}
+                  className={`brand-switcher-mode${brandMode === mode ? ' active' : ''}`}
+                  data-testid={`brand-switcher-mode-${mode}`}
+                  onClick={() => setBrandModeAndPersist(mode)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {quickSwitchSystems.length >= 2 ? (
+              <div className="brand-switcher-quick" data-testid="brand-switcher-quick">
+                <span className="brand-switcher-quick-label">{t('brandSwitcher.quickSwitch')}</span>
+                <div className="brand-switcher-quick-chips">
+                  {quickSwitchSystems.map((ds) => {
+                    const active = ds.id === selectedId;
+                    return (
+                      <button
+                        key={ds.id}
+                        type="button"
+                        className={`brand-switcher-chip${active ? ' active' : ''}`}
+                        data-testid={`brand-switcher-chip-${ds.id}`}
+                        title={ds.title}
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          selectDesignSystem(ds.id);
+                        }}
+                      >
+                        {ds.title}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             <div className="project-ds-picker-search">
               <Icon name="search" size={12} />
               <input
@@ -320,37 +408,51 @@ export function DesignSystemPicker({
             </div>
             <div className="project-ds-picker-body">
               <div className="project-ds-picker-list" role="listbox">
-                <button
-                  type="button"
-                  className={`project-ds-picker-option${selectedId == null ? ' active' : ''}`}
-                  role="option"
-                  aria-selected={selectedId == null}
-                  onMouseEnter={() => {
-                    setHovered(null);
-                    setHoveredNone(true);
-                  }}
-                  onFocus={() => {
-                    setHovered(null);
-                    setHoveredNone(true);
-                  }}
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    selectDesignSystem(null);
-                  }}
-                  onKeyDown={(event) => selectDesignSystemOnKeyDown(event, null)}
-                >
-                  <div className="project-ds-picker-option-head">
-                    <span className="project-ds-picker-option-title">{t('designSystemPicker.noneTitle')}</span>
-                    {selectedId == null ? (
-                      <span
-                        className="project-ds-picker-option-check"
-                        data-testid="project-ds-picker-option-none-check"
-                      >
-                        <Icon name="check" size={13} strokeWidth={2} />
+                {brandMode === 'all' ? (
+                  <button
+                    type="button"
+                    className={`project-ds-picker-option${selectedId == null ? ' active' : ''}`}
+                    role="option"
+                    aria-selected={selectedId == null}
+                    onMouseEnter={() => {
+                      setHovered(null);
+                      setHoveredNone(true);
+                    }}
+                    onFocus={() => {
+                      setHovered(null);
+                      setHoveredNone(true);
+                    }}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      selectDesignSystem(null);
+                    }}
+                    onKeyDown={(event) => selectDesignSystemOnKeyDown(event, null)}
+                  >
+                    <div className="project-ds-picker-option-head">
+                      <span className="project-ds-picker-option-title">
+                        {t('designSystemPicker.noneTitle')}
                       </span>
-                    ) : null}
+                      {selectedId == null ? (
+                        <span
+                          className="project-ds-picker-option-check"
+                          data-testid="project-ds-picker-option-none-check"
+                        >
+                          <Icon name="check" size={13} strokeWidth={2} />
+                        </span>
+                      ) : null}
+                    </div>
+                  </button>
+                ) : null}
+                {verticalOsSystems.length > 0 ? (
+                  <div
+                    className="project-ds-picker-group-label"
+                    role="presentation"
+                    data-testid="project-ds-picker-group-vertical-os"
+                  >
+                    {t('brandSwitcher.sectionVerticalOs')}
                   </div>
-                </button>
+                ) : null}
+                {verticalOsSystems.map(renderOption)}
                 {userSystems.length > 0 ? (
                   <div
                     className="project-ds-picker-group-label"
@@ -453,6 +555,16 @@ export function DesignSystemPicker({
               ? t('designSystemPicker.loading')
               : selected?.title ?? t('designSystemPicker.noneTitle')}
           </span>
+          {selectedBrandMode === 'personal' || selectedBrandMode === 'client' ? (
+            <span
+              className={`brand-switcher-badge brand-switcher-badge--${selectedBrandMode}`}
+              data-testid="brand-switcher-badge"
+            >
+              {selectedBrandMode === 'personal'
+                ? t('brandSwitcher.badgePersonal')
+                : t('brandSwitcher.badgeClient')}
+            </span>
+          ) : null}
           <Icon name="chevron-down" size={11} className="home-hero__ds-row-trigger-chevron" />
         </button>
         {popover}
@@ -485,6 +597,16 @@ export function DesignSystemPicker({
               ? t('designSystemPicker.loading')
               : selected?.title ?? t('designSystemPicker.noneTitle')}
           </span>
+          {selectedBrandMode === 'personal' || selectedBrandMode === 'client' ? (
+            <span
+              className={`brand-switcher-badge brand-switcher-badge--${selectedBrandMode}`}
+              data-testid="brand-switcher-badge"
+            >
+              {selectedBrandMode === 'personal'
+                ? t('brandSwitcher.badgePersonal')
+                : t('brandSwitcher.badgeClient')}
+            </span>
+          ) : null}
           <Icon name="chevron-down" size={12} aria-hidden />
         </button>
         {popover}
@@ -516,6 +638,16 @@ export function DesignSystemPicker({
             ? t('designSystemPicker.loading')
             : selected?.title ?? t('designSystemPicker.select')}
         </span>
+        {selectedBrandMode === 'personal' || selectedBrandMode === 'client' ? (
+          <span
+            className={`brand-switcher-badge brand-switcher-badge--${selectedBrandMode}`}
+            data-testid="brand-switcher-badge"
+          >
+            {selectedBrandMode === 'personal'
+              ? t('brandSwitcher.badgePersonal')
+              : t('brandSwitcher.badgeClient')}
+          </span>
+        ) : null}
         <Icon name="chevron-down" size={11} />
       </button>
       {popover}

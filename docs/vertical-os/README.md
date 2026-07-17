@@ -34,8 +34,11 @@ Open the URL printed by the dev server (typically `http://localhost:3000`).
 
 ### Marketing vertical — try first
 
-1. Design system: **Personal Minimal**, **Personal Bold**, or **Professional Clean**
-2. Skill: **content-repurposer**
+1. Open the **design system picker** (home or project header)  
+   - Use **Brand Switcher** tabs: **Personal | Client | All**  
+   - Quick chips: Personal Minimal · Personal Bold · Professional Clean  
+   - Trigger shows a **Personal** / **Client** badge when a Vertical OS pack is active  
+2. Skill: **content-repurposer** (Content Pro v2.1)  
 3. Prompt: paste a blog/outline and ask for a multi-platform pack (XHS + TikTok + LinkedIn + Threads + Email)
 
 ## Extension layout (Open Design compatible)

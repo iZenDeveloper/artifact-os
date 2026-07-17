@@ -1225,6 +1225,13 @@ export interface Dict {
   'designSystemPicker.closeEsc': string;
   'designSystemPicker.previewFrameTitle': string;
   'designSystemPicker.fullscreenFrameTitle': string;
+  'brandSwitcher.personal': string;
+  'brandSwitcher.client': string;
+  'brandSwitcher.all': string;
+  'brandSwitcher.badgePersonal': string;
+  'brandSwitcher.badgeClient': string;
+  'brandSwitcher.sectionVerticalOs': string;
+  'brandSwitcher.quickSwitch': string;
   'recentProjects.title': string;
   'recentProjects.viewAll': string;
   'recentProjects.empty': string;
