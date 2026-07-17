@@ -168,6 +168,7 @@ Tell the user which skill to run next:
 | Full page copy rewrite | `copywriting` |
 | Technical SEO audit | `seo-audit` |
 | AI search / citations (AEO/GEO) | `ai-seo` |
+| JSON-LD / rich results schema | `schema` |
 | Lifecycle email sequence | `emails` |
 | Product / feature launch GTM | `launch` |
 | Psychology pass on copy | `marketing-psychology` |

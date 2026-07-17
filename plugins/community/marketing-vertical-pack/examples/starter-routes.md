@@ -9,6 +9,7 @@
 | **AI search / AEO** | **ai-seo** | ai-seo.md + HTML; extractable structure + query map |
 | **Email sequence** | **emails** | email-sequence.md + HTML; welcome/nurture/re-engage full copy |
 | **Product / feature launch** | **launch** | launch-plan.md + HTML; ORB + 5 phases + asset checklist |
+| **Schema / JSON-LD** | **schema** | schema-plan.md + HTML; complete JSON-LD + validate checklist |
 | Multi-platform pack | content-repurposer | Content Pro v2.2 pack + strategy + ready-to-post. Source: … |
 | Hooks only | hook-engine | Hook lab weak→strong; surfaces XHS/TT/LI/email/ads. Topic: … |
 | Week of posts | social-content-factory | v2.2 batch 5–7 pieces, pillars ≤3, ready-to-post. Brief: … |
