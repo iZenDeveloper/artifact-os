@@ -1,6 +1,6 @@
 # Personal Bold
 
-> Category: Vertical OS · Personal Brand
+> Category: Artifact OS · Personal Brand
 > High-energy personal brand for creators who lead with personality — strong hooks, big type, high contrast. Built for XHS, TikTok covers, Threads, and short-form carousels.
 
 ## Brand Overview

@@ -979,7 +979,7 @@ export const th: Dict = {
   'brandSwitcher.all': 'All',
   'brandSwitcher.badgePersonal': 'Personal',
   'brandSwitcher.badgeClient': 'Client',
-  'brandSwitcher.sectionVerticalOs': 'Vertical OS',
+  'brandSwitcher.sectionVerticalOs': 'Artifact OS',
   'brandSwitcher.quickSwitch': 'Quick switch',
   'recentProjects.title': 'โปรเจกต์ล่าสุด',
   'recentProjects.viewAll': 'ดูทั้งหมด',

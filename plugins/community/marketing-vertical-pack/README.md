@@ -1,6 +1,6 @@
 # Marketing Vertical Pack
 
-**Vertical Content OS** installable bundle for marketers and content creators.
+**Artifact OS** installable bundle for marketers and content creators.
 
 | | |
 |--|--|
@@ -51,7 +51,7 @@ od plugin info marketing-vertical-pack --json
 ```
 
 **Use in product:** Marketplace / Plugins → **Marketing Vertical Pack** → Use,  
-or Home chips already bound to the same skills in this Vertical OS fork.
+or Home chips already bound to the same skills in this Artifact OS fork.
 
 ## Develop in-monorepo
 

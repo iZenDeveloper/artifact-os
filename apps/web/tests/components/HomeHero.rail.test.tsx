@@ -534,7 +534,7 @@ describe('HomeHero intent rail', () => {
 
   it('leads the create group with the Brand Kit chip and its own action discriminator', () => {
     const createChips = HOME_HERO_CHIPS.filter((chip) => chip.group === 'create');
-    // Vertical Content OS leads the catalog with creator outcomes.
+    // Artifact OS leads the catalog with creator outcomes.
     expect(createChips[0]?.id).toBe('content-pack');
     expect(findChip('content-pack')?.action).toMatchObject({
       kind: 'apply-skill',

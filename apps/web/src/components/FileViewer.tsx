@@ -225,7 +225,7 @@ export type ManualEditPendingStyleSave = {
   version: number;
 };
 // desktop / tablet / mobile = device chrome; xhs / tiktok / linkedin /
-// facebook / youtube = Vertical OS Platform Preview (Content Pro canvas ratios).
+// facebook / youtube = Artifact OS Platform Preview (Content Pro canvas ratios).
 type PreviewViewportId =
   | 'desktop'
   | 'tablet'

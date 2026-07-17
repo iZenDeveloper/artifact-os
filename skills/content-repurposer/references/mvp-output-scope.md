@@ -1,6 +1,6 @@
 # MVP output scope — Content Repurposer
 
-**Canonical product decision (Vertical Content OS · Giai đoạn 1).**
+**Canonical product decision (Artifact OS · Giai đoạn 1).**
 
 ## One-line rule
 

@@ -1,6 +1,6 @@
 # Marketing Vertical — Product strategy (canonical)
 
-**Vertical đầu tiên** của Vertical Content OS.  
+**Vertical đầu tiên** của Artifact OS.  
 Tài liệu này khóa **đối tượng · pain · workflow · skill · brand · moat · MVP metrics**, và map **đã ship / còn thiếu**.
 
 Cập nhật: 2026-07 · Aligns with Content Pro **v2.2** + MVP output scope (text + visual direction + script).

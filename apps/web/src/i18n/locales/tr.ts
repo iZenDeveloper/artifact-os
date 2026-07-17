@@ -979,7 +979,7 @@ export const tr: Dict = {
   'brandSwitcher.all': 'All',
   'brandSwitcher.badgePersonal': 'Personal',
   'brandSwitcher.badgeClient': 'Client',
-  'brandSwitcher.sectionVerticalOs': 'Vertical OS',
+  'brandSwitcher.sectionVerticalOs': 'Artifact OS',
   'brandSwitcher.quickSwitch': 'Quick switch',
   'recentProjects.title': 'Son projeler',
   'recentProjects.viewAll': 'Tümünü gör',

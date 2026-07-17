@@ -1,6 +1,6 @@
 # Brands (UI) · design-systems/ (storage)
 
-Vertical Content OS keeps the Open Design **storage layout** and renames the **product concept** for creators.
+Artifact OS keeps the Open Design **storage layout** and renames the **product concept** for creators.
 
 | Layer | Name | Path / API |
 |-------|------|------------|
@@ -31,7 +31,7 @@ Do **not** require the full Open Design kit tree (multi-page HTML previews, larg
 ## Selecting a brand
 
 1. Home / project composer → **Choose brand**
-2. Filter **Personal · Client · All** (Vertical OS modes)
+2. Filter **Personal · Client · All** (Artifact OS modes)
 3. Quick-switch chips for Vertical presets when installed
 4. Selection is stored as `designSystemId` on the project (unchanged contract)
 
@@ -63,7 +63,7 @@ Keep Open Design’s **9 numbered sections** (`## 1.` … `## 9.`) for schema co
 
 **Template:** [DESIGN_MD_MARKETING_TEMPLATE.md](./DESIGN_MD_MARKETING_TEMPLATE.md)
 
-## Vertical OS presets
+## Artifact OS presets
 
 | Slug | Mode | Notes |
 |------|------|--------|

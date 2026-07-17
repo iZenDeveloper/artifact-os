@@ -1,4 +1,4 @@
-// Locale-aware prompt seeds for Vertical Content OS apply-skill chips.
+// Locale-aware prompt seeds for Artifact OS apply-skill chips.
 // Prefer Dict keys so Vietnamese (and other locales) get native scaffolds;
 // chips.ts keeps English `promptSeed` as fallback when a key is missing.
 

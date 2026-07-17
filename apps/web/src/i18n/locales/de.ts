@@ -979,7 +979,7 @@ export const de: Dict = {
   'brandSwitcher.all': 'All',
   'brandSwitcher.badgePersonal': 'Personal',
   'brandSwitcher.badgeClient': 'Client',
-  'brandSwitcher.sectionVerticalOs': 'Vertical OS',
+  'brandSwitcher.sectionVerticalOs': 'Artifact OS',
   'brandSwitcher.quickSwitch': 'Quick switch',
   'recentProjects.title': 'Zuletzt verwendete Projekte',
   'recentProjects.viewAll': 'Alle anzeigen',

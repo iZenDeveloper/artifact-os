@@ -12,7 +12,7 @@ Do not remove the numbered headings — the schema parser keys on `## [digit].`.
 ```markdown
 # <Brand Display Name>
 
-> Category: Vertical OS · Personal Brand   <!-- or: Client Brand -->
+> Category: Artifact OS · Personal Brand   <!-- or: Client Brand -->
 > <One-line picker summary: who it’s for + primary jobs.>
 
 ## Brand Overview

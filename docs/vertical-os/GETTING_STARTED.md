@@ -1,6 +1,6 @@
-# Vertical Content OS - Getting Started Guide
+# Artifact OS - Getting Started Guide
 
-Hướng dẫn fork Open Design và bắt đầu xây dựng Vertical Content OS.
+Hướng dẫn fork Open Design và bắt đầu xây dựng Artifact OS.
 
 ## 1. Yêu cầu hệ thống
 
@@ -75,7 +75,7 @@ open-design/
 5. Artifact được preview trong sandboxed iframe
 6. User export hoặc chỉnh sửa tiếp
 
-## 7. Bắt đầu customize cho Vertical Content OS
+## 7. Bắt đầu customize cho Artifact OS
 
 ### 7.1 Tạo cấu trúc cho multi-vertical (Khuyến nghị làm sớm)
 

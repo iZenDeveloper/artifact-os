@@ -979,7 +979,7 @@ export const ptBR: Dict = {
   'brandSwitcher.all': 'All',
   'brandSwitcher.badgePersonal': 'Personal',
   'brandSwitcher.badgeClient': 'Client',
-  'brandSwitcher.sectionVerticalOs': 'Vertical OS',
+  'brandSwitcher.sectionVerticalOs': 'Artifact OS',
   'brandSwitcher.quickSwitch': 'Quick switch',
   'recentProjects.title': 'Projetos recentes',
   'recentProjects.viewAll': 'Ver tudo',

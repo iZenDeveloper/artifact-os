@@ -1,6 +1,6 @@
 # Personal Minimal
 
-> Category: Vertical OS · Personal Brand
+> Category: Artifact OS · Personal Brand
 > Clean personal brand for creators who want calm authority, high readability, and zero visual noise. Default for long-form, carousels, and client-safe personal content.
 
 ## Brand Overview

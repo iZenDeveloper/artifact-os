@@ -114,7 +114,7 @@ export interface ProjectMetadata {
     | 'document'
     | 'webgl-experience'
     | 'worker-visualizer'
-    // Vertical Content OS creator outcomes (Home rail + analytics split).
+    // Artifact OS creator outcomes (Home rail + analytics split).
     | 'content-pack'
     | 'social-content'
     | 'carousel'

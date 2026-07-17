@@ -224,7 +224,7 @@ export function DesignSystemPicker({
               `${d.title} ${d.category} ${d.summary} ${localizedCategory} ${localizedSummary}`.toLowerCase();
             return haystack.includes(q);
           });
-    // Brand mode filter (Personal / Client / All), then pin Vertical OS systems.
+    // Brand mode filter (Personal / Client / All), then pin Artifact OS systems.
     return pinVerticalOsSystems(filterByBrandMode(searched, brandMode));
   }, [query, designSystems, locale, brandMode]);
 
@@ -241,7 +241,7 @@ export function DesignSystemPicker({
 
   // Split the filtered list into the same two groups the Design Systems tab
   // uses, so the picker reads as "your systems" then "official presets".
-  // Under Personal/Client mode, also surface a Vertical OS group first.
+  // Under Personal/Client mode, also surface a Artifact OS group first.
   const { verticalOsSystems, userSystems, officialSystems } = useMemo(() => {
     const vos: DesignSystemSummary[] = [];
     const mine: DesignSystemSummary[] = [];

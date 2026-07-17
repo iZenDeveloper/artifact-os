@@ -1,6 +1,6 @@
 # Professional Clean
 
-> Category: Vertical OS · Client Brand
+> Category: Artifact OS · Client Brand
 > Client-safe agency system: structured, trustworthy, and adaptable. Use when shipping content for B2B clients, professional services, or any brand that must look polished without personal-creator energy.
 
 ## Brand Overview

@@ -11,7 +11,7 @@ Visual tokens without voice = **pack fail** for Content Pro flagship work.
 3. **§9 Anti-patterns** — visual + voice  
 4. Only then apply Color / Type / Layout  
 
-If DESIGN.md §8 is thin (legacy brand), still obey what exists + Content Pro flat-hook ban; prefer Vertical OS presets when possible.
+If DESIGN.md §8 is thin (legacy brand), still obey what exists + Content Pro flat-hook ban; prefer Artifact OS presets when possible.
 
 ## §8 structure (Marketing Vertical standard)
 

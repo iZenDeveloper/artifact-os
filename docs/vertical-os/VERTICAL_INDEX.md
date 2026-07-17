@@ -1,6 +1,6 @@
 # Vertical Index
 
-Registry of Vertical Content OS extensions on top of Open Design.
+Registry of Artifact OS extensions on top of Open Design.
 
 ## Marketing (MVP — active)
 

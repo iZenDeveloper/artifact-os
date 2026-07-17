@@ -1,6 +1,6 @@
 # Marketing knowledge base (shared)
 
-**Canonical home for Vertical Content OS · Marketing vertical.**  
+**Canonical home for Artifact OS · Marketing vertical.**  
 Path from this skill: `references/marketing/`  
 Path from sibling marketing skills: `../content-repurposer/references/marketing/`
 

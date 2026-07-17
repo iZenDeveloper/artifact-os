@@ -48,7 +48,7 @@ od:
     vi: "Pack Content Pro MVP (text + visual direction + script — không render video): strategy, carousel XHS, script+shot list TikTok, LinkedIn/Threads/Facebook/YouTube/Email ready-to-post; hook lab; score ≥9.0."
 ---
 
-# Content Repurposer (Vertical Content OS) — Content Pro **v2.2** · **MVP scope**
+# Content Repurposer (Artifact OS) — Content Pro **v2.2** · **MVP scope**
 
 You are the Marketing vertical **repurposing + strategy** specialist.
 

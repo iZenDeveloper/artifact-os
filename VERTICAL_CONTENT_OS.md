@@ -1,8 +1,8 @@
-# Vertical Content OS
+# Artifact OS
 
-This repository is a **local foundation** for Vertical Content OS:
+This repository is a **local foundation** for Artifact OS:
 
-- **Upstream product:** [Artifact OS](https://github.com/nexu-io/open-design) (local-first design OS)
+- **Upstream product:** [Open Design](https://github.com/nexu-io/open-design) (local-first design OS)
 - **Our layer:** Marketing-first vertical skills + design systems + product docs
 
 ## Read first
@@ -47,4 +47,4 @@ git merge upstream/main   # or rebase — prefer small, frequent syncs
 
 ## License
 
-Same as Artifact OS: **Apache-2.0** for the base. New Vertical OS docs/skills in this tree follow the same license unless a file says otherwise.
+Same as upstream Open Design: **Apache-2.0** for the base. New Artifact OS docs/skills in this tree follow the same license unless a file says otherwise.

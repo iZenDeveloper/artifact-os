@@ -979,7 +979,7 @@ export const ko: Dict = {
   'brandSwitcher.all': 'All',
   'brandSwitcher.badgePersonal': 'Personal',
   'brandSwitcher.badgeClient': 'Client',
-  'brandSwitcher.sectionVerticalOs': 'Vertical OS',
+  'brandSwitcher.sectionVerticalOs': 'Artifact OS',
   'brandSwitcher.quickSwitch': 'Quick switch',
   'recentProjects.title': '최근 프로젝트',
   'recentProjects.viewAll': '모두 보기',

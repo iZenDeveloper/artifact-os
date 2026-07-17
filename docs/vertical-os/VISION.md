@@ -1,10 +1,10 @@
-# Vertical Content OS - Project Vision
+# Artifact OS - Project Vision
 
 ## 1. Tên dự án
-**Vertical Content OS** (tên tạm thời)
+**Artifact OS** (tên tạm thời)
 
 ## 2. Mục tiêu tổng quát
-Xây dựng một nền tảng **Vertical Content Operating System** dựa trên việc fork và mở rộng **Open Design**, cho phép tạo nội dung chuyên biệt theo ngành (vertical) với chất lượng cao, nhất quán về brand voice, và có khả năng mở rộng theo thời gian.
+Xây dựng một nền tảng **Artifact OS** dựa trên việc fork và mở rộng **Open Design**, cho phép tạo nội dung chuyên biệt theo ngành (vertical) với chất lượng cao, nhất quán về brand voice, và có khả năng mở rộng theo thời gian.
 
 Nền tảng tập trung vào việc biến agent (Claude, Cursor, Grok, v.v.) thành một **content team chuyên biệt theo ngành**.
 
@@ -59,7 +59,7 @@ Còn: Plugin pack Marketing · shared marketing knowledge · hook lab · ad vari
 1. **Modular First** — Mọi thứ được thiết kế để dễ mở rộng theo vertical.
 2. **Separation of Concerns** — Tách rõ:
    - Gateway / Model Routing (OmniRoute)
-   - Vertical Content Logic (Skills + Design Systems)
+   - Artifact OS content logic (Skills + Design Systems)
    - Presentation & Workflow (UI/UX)
 3. **Quality over Quantity** — Ưu tiên chất lượng nội dung theo ngành thay vì số lượng tính năng.
 4. **Local-first** — Giữ tinh thần local-first của Open Design.

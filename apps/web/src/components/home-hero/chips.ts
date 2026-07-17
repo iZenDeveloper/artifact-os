@@ -56,7 +56,7 @@ export type ChipAction =
       inputs?: Record<string, unknown>;
       projectMetadata?: ProjectMetadata;
     }
-  // Content-creator outcomes bind a Vertical OS skill (content-repurposer,
+  // Content-creator outcomes bind a Artifact OS skill (content-repurposer,
   // social-content-factory, ad-creative, card-xiaohongshu, …) rather than a
   // scenario plugin. `promptSeed` is the empty-composer scaffold; when the
   // skill is missing the chip still arms projectKind + metadata so submit
@@ -97,7 +97,7 @@ export interface HomeHeroChip {
 }
 
 export const HOME_HERO_CHIPS: ReadonlyArray<HomeHeroChip> = [
-  // ── Content Creator outcomes (Vertical Content OS primary rail) ─────────
+  // ── Content Creator outcomes (Artifact OS primary rail) ─────────
   {
     id: 'content-pack',
     label: 'Content Pack',
@@ -621,7 +621,7 @@ export function chipsForGroup(group: ChipGroup): HomeHeroChip[] {
   return HOME_HERO_CHIPS.filter((c) => c.group === group);
 }
 
-// Display order for the inline `create` scenario rail. Vertical Content OS
+// Display order for the inline `create` scenario rail. Artifact OS
 // leads with creator outcomes (Content Pack / Social / Carousel / …), then
 // keeps the classic design surfaces (deck / prototype / …) so Website / Slide
 // are no longer the only visible path. Brand Kit is intentionally omitted

@@ -1,4 +1,4 @@
-// Vertical Content OS brand classification for Personal ↔ Client switching.
+// Artifact OS brand classification for Personal ↔ Client switching.
 // Pure helpers — safe to unit-test without React.
 
 export type VerticalBrandMode = 'personal' | 'client' | 'other';
@@ -10,7 +10,7 @@ export type BrandClassifiable = {
   title?: string;
 };
 
-/** Built-in Vertical OS design-system ids (pinned order for quick switch). */
+/** Built-in Artifact OS design-system ids (pinned order for quick switch). */
 export const VERTICAL_OS_PERSONAL_IDS = ['personal-minimal', 'personal-bold'] as const;
 export const VERTICAL_OS_CLIENT_IDS = ['professional-clean'] as const;
 export const VERTICAL_OS_QUICK_IDS = [
@@ -67,7 +67,7 @@ export function filterByBrandMode<T extends BrandClassifiable>(
   return systems.filter((ds) => classifyVerticalBrand(ds) === mode);
 }
 
-/** Pin known Vertical OS systems first (stable order), preserve relative order of the rest. */
+/** Pin known Artifact OS systems first (stable order), preserve relative order of the rest. */
 export function pinVerticalOsSystems<T extends BrandClassifiable>(systems: readonly T[]): T[] {
   const pinRank = new Map<string, number>();
   VERTICAL_OS_QUICK_IDS.forEach((id, index) => {
@@ -91,7 +91,7 @@ export function pinVerticalOsSystems<T extends BrandClassifiable>(systems: reado
   });
 }
 
-/** Quick-switch chips: Vertical OS systems present in the catalog, pinned order. */
+/** Quick-switch chips: Artifact OS systems present in the catalog, pinned order. */
 export function verticalOsQuickSwitchSystems<T extends BrandClassifiable>(
   systems: readonly T[],
 ): T[] {

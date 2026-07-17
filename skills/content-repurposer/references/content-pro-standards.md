@@ -1,4 +1,4 @@
-# Tiêu chuẩn Content Pro v2.1 — Vertical Content OS
+# Tiêu chuẩn Content Pro v2.1 — Artifact OS
 
 Canonical **craft** quality bar for Marketing vertical skills.  
 **Target score: 9+/10 consistently** across packs (not one strong pack, one “khá” pack).

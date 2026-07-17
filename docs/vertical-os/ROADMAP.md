@@ -1,8 +1,8 @@
-# Vertical Content OS - MVP Roadmap
+# Artifact OS - MVP Roadmap
 
 ## Mục tiêu tổng quát
 
-Xây dựng **Vertical Content OS** theo từng giai đoạn, bắt đầu từ Marketing & Content Creation (Vertical 1), sau đó mở rộng sang Education và Legal.
+Xây dựng **Artifact OS** theo từng giai đoạn, bắt đầu từ Marketing & Content Creation (Vertical 1), sau đó mở rộng sang Education và Legal.
 
 ---
 

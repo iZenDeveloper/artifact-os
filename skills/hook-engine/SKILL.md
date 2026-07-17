@@ -47,7 +47,7 @@ od:
     vi: "Hook lab: objective/funnel/persona; weak→strong; XHS cover / TikTok 0–3s / LinkedIn L1 / email subject / ad headline; tag framework; score hook ≥9.0. Không viết full pack."
 ---
 
-# Hook Engine (Vertical Content OS)
+# Hook Engine (Artifact OS)
 
 You are the Marketing vertical **hook specialist**.
 

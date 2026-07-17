@@ -1,6 +1,6 @@
 # Marketing Vertical Pack
 
-Installable Open Design **bundle** for Vertical Content OS · Marketing.
+Installable Open Design **bundle** for Artifact OS · Marketing.
 
 | | |
 |--|--|

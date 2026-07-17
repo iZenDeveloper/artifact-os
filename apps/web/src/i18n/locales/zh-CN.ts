@@ -1008,7 +1008,7 @@ export const zhCN: Dict = {
   "brandSwitcher.all": "All",
   "brandSwitcher.badgePersonal": "Personal",
   "brandSwitcher.badgeClient": "Client",
-  "brandSwitcher.sectionVerticalOs": "Vertical OS",
+  "brandSwitcher.sectionVerticalOs": "Artifact OS",
   "brandSwitcher.quickSwitch": "Quick switch",
   "recentProjects.title": "最近项目",
   "recentProjects.viewAll": "查看全部",

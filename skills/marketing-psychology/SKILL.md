@@ -4,7 +4,7 @@ zh_name: "营销心理"
 en_name: "Marketing Psychology"
 emoji: "🧠"
 description: |
-  Apply honest behavioral levers to hooks, offers, and CTAs. Prefer Vertical OS shared
+  Apply honest behavioral levers to hooks, offers, and CTAs. Prefer Artifact OS shared
   marketing knowledge (psychology.md + frameworks) over generic persuasion spam.
 triggers:
   - "marketing psychology"
@@ -29,7 +29,7 @@ od:
     and reciprocity. No fake scarcity. Align with Content Pro personal-stakes rules.
 ---
 
-# Marketing Psychology (Vertical Content OS)
+# Marketing Psychology (Artifact OS)
 
 Tighten **hooks, framing, and CTAs** with behavioral science — **without deception**.
 

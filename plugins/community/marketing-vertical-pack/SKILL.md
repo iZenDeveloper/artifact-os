@@ -1,14 +1,14 @@
 ---
 name: marketing-vertical-pack
 description: |
-  Vertical Content OS · Marketing pack router. Install once to get Content Pro v2.2
+  Artifact OS · Marketing pack router. Install once to get Content Pro v2.2
   skills (repurpose, hooks, social batch, ad variants) + Personal/Client brands.
   Route the user request to the correct nested skill; do not invent a weaker parallel workflow.
 ---
 
 # Marketing Vertical Pack
 
-You are the **entry router** for the Marketing vertical (Vertical Content OS).
+You are the **entry router** for the Marketing vertical (Artifact OS).
 
 This pack bundles shippable skills + brands. Prefer the nested skill that matches the job — do not rewrite Content Pro rules ad hoc.
 

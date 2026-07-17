@@ -1,4 +1,4 @@
-# Vertical Content OS
+# Artifact OS
 
 Fork foundation of [nexu-io/open-design](https://github.com/nexu-io/open-design) for **vertical-specialized content workflows**.
 
@@ -70,9 +70,9 @@ skills/
   card-xiaohongshu/            # upstream (keep)
 
 design-systems/                # UI: Brands (DESIGN.md + assets/ only required)
-  personal-minimal/            # Vertical OS · Personal
-  personal-bold/               # Vertical OS · Personal
-  professional-clean/          # Vertical OS
+  personal-minimal/            # Artifact OS · Personal
+  personal-bold/               # Artifact OS · Personal
+  professional-clean/          # Artifact OS
   …                            # upstream brand systems
 
 plugins/community/
