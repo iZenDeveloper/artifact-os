@@ -164,7 +164,8 @@ Tell the user which skill to run next:
 | Content pillars / editorial roadmap | `content-strategy` |
 | Multi-platform content pack | `content-repurposer` |
 | Batch social calendar | `social-content-factory` |
-| Paid variants | `ad-variants-generator` / `ad-creative` |
+| Paid campaign strategy / ops | `ads` |
+| Paid creative matrix | `ad-variants-generator` / `ad-creative` |
 | Landing CRO / page structure | `cro` |
 | Full page copy rewrite | `copywriting` |
 | Technical SEO audit | `seo-audit` |
@@ -221,6 +222,6 @@ Ship only if:
 
 - **Vertical:** marketing  
 - **Layer:** strategy / context (before Content Pro packs)  
-- **Related:** `content-strategy`, `sales-enablement`, `revops`, `pricing`, `cro`, `copywriting`, `emails`, `cold-email`, `launch`, `seo-audit`, `ai-seo`, `schema`, `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `marketing-psychology`  
+- **Related:** `content-strategy`, `sales-enablement`, `revops`, `pricing`, `ads`, `cro`, `copywriting`, `emails`, `cold-email`, `launch`, `seo-audit`, `ai-seo`, `schema`, `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `marketing-psychology`  
 - **Upstream:** [marketingskills/product-marketing](https://github.com/coreyhaines31/marketingskills/tree/main/skills/product-marketing)  
 - **Bridge:** `references/design-md-bridge.md`  

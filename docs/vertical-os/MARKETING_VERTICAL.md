@@ -71,10 +71,11 @@ Cập nhật: 2026-07 · Aligns with Content Pro **v2.2** + MVP output scope (te
 | 0k | `sales-enablement` | **Pilot** | Decks, one-pagers, objections, demo scripts, playbooks (marketingskills) |
 | 0l | `revops` | **Pilot** | Lead lifecycle, scoring, routing, pipeline SLAs (marketingskills) |
 | 0m | `pricing` | **Pilot** | Packaging, value metric, tiers, monetization (marketingskills) |
+| 0n | `ads` | **Pilot** | Paid media strategy/ops (Google/Meta/LinkedIn…; marketingskills) |
 | 1 | `content-repurposer` | **Done** | Core; strategy + ready-to-post; MVP scope locked |
 | 2 | `social-content-factory` | **Done** | Original batch / week |
 | 3 | `hook-engine` | **Done** | Hooks-only lab |
-| 4 | `ad-variants-generator` | **Done** | Paid matrix |
+| 4 | `ad-variants-generator` | **Done** | Paid creative matrix (pairs with `ads` for campaign ops) |
 | 5 | *brand-aware content* | **Embedded** | Not a separate skill: active Brand + `brand-voice.md` + DESIGN.md §8 in all marketing skills |
 
 Supporting (shipped light): `marketing-psychology`.

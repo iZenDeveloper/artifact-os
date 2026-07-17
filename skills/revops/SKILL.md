@@ -208,6 +208,7 @@ Benchmarks in tables are **industry reference only** — never invent historical
 | Nurture for recycled MQLs | `emails` |
 | Outbound for net-new | `cold-email` |
 | Talk tracks / decks for SQLs | `sales-enablement` |
+| Paid acquisition + offline conversion loop | `ads` |
 | Launch volume spike ops | `launch` |
 | Pricing packaging | `pricing` |
 
@@ -252,7 +253,7 @@ Marketing / Sales / Exec views · data sources · target notes (Assumed vs real)
 Week 1–N checklist
 
 ## Handoff
-emails · cold-email · sales-enablement · open CRM admin tasks
+emails · cold-email · sales-enablement · ads · open CRM admin tasks
 ```
 
 HTML: funnel diagram-ish stage strip + scoring table + routing tree summary + metrics cards.
@@ -287,5 +288,5 @@ HTML: funnel diagram-ish stage strip + scoring table + routing tree summary + me
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `pricing`, `emails`, `cold-email`, `sales-enablement`, `launch`, `content-strategy`  
+- **Related:** `product-marketing`, `pricing`, `ads`, `emails`, `cold-email`, `sales-enablement`, `launch`, `content-strategy`  
 - **Upstream:** [marketingskills/revops](https://github.com/coreyhaines31/marketingskills/tree/main/skills/revops)  

@@ -165,7 +165,7 @@ Never invent PH rankings or “guaranteed PotD.”
 | Pricing / packaging launch | `pricing` |
 | Multi-platform social pack | `content-repurposer` / `social-content-factory` |
 | Hooks for teasers | `hook-engine` |
-| Paid amplification | `ad-variants-generator` / `ads` |
+| Paid amplification | `ads` (structure) + `ad-variants-generator` (creative matrix) |
 | SEO of launch article | `seo-audit` / `ai-seo` |
 
 ---
@@ -237,5 +237,5 @@ Voice on all sample copy must pass DESIGN.md §8 when brand linked.
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `emails`, `cold-email`, `sales-enablement`, `revops`, `pricing`, `copywriting`, `cro`, `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`  
+- **Related:** `product-marketing`, `emails`, `cold-email`, `sales-enablement`, `revops`, `pricing`, `ads`, `copywriting`, `cro`, `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`  
 - **Upstream:** [marketingskills/launch](https://github.com/coreyhaines31/marketingskills/tree/main/skills/launch)  
