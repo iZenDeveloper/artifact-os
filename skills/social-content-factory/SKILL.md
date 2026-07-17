@@ -4,8 +4,8 @@ zh_name: "社媒内容工厂"
 en_name: "Social Content Factory"
 emoji: "🏭"
 description: |
-  Batch original social posts (XHS, TikTok, LinkedIn, Threads) under Content Pro v2:
-  paradox hooks, story not fact dumps, viral TikTok shot lists, CTAs with real offers. Target 9+/10.
+  Batch original social posts under Content Pro v2.1: paradox hooks, personal stakes,
+  TikTok peak 10/10, no soft middle cards, offer CTAs, calibrated scores. Consistent 9+/10.
 triggers:
   - "social content factory"
   - "batch social posts"
@@ -38,17 +38,19 @@ od:
 Batch **original** posts from a brief.  
 Long-form source → use `content-repurposer`.
 
-**Mandatory:** `../content-repurposer/references/content-pro-standards.md` (v2).
+**Mandatory:** `../content-repurposer/references/content-pro-standards.md` (v2.1).
 
 ---
 
 ## Bar
 
-- Target **9+/10** per piece  
-- **7.x clean copy fails** — rewrite hooks + offers  
+- Target **consistent 9+/10** per piece  
+- **7.x clean copy fails**; **8.5–8.9 science-interesting fails** flagship bar  
+- Personal stakes (*you/body/home*), not only spectacle  
 - Flat fact hooks banned  
 - CTA = keyword **+ offer**  
-- TikTok pieces need concrete B-roll notes  
+- TikTok: energy map + peak 10/10 cinematic frame  
+- Calibrated self-score (no optimism)  
 
 ---
 

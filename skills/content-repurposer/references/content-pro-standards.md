@@ -1,12 +1,15 @@
-# Tiêu chuẩn Content Pro v2 — Vertical Content OS
+# Tiêu chuẩn Content Pro v2.1 — Vertical Content OS
 
 Canonical quality bar for Marketing vertical skills.  
-**Target score: 9+/10.** A pack that is only “đủ publish / clean / structured” **fails** this bar.
+**Target score: 9+/10 consistently** across packs (not one strong pack, one “khá” pack).
 
 **Fail any deliverable that violates these rules** unless the user explicitly overrides.
 
-Learned from production reviews: clean HTML + spine is necessary but **not sufficient**.  
-Viewers must **remember, share, or act** — not just understand the fact.
+Learned from production reviews:
+
+- Clean HTML + spine is necessary but **not sufficient**.  
+- Viewers must **remember, share, or act** — not just understand the fact.  
+- **Consistency:** drama + emotional pull must match the best pack quality every time (e.g. “bạch tuộc” 9.1 vs “Trái Đất 5 giây” 8.7 — the gap is personal stakes + TikTok peak + middle-card punch).
 
 ---
 
@@ -15,11 +18,25 @@ Viewers must **remember, share, or act** — not just understand the fact.
 | Grade | Meaning | Ship? |
 |-------|---------|-------|
 | ≤6.5 | Generic / flat / fact dump | **No** — rewrite |
-| 7–8 | Usable, structured, still “khá” | **No for Vertical OS flagship** — push to 9+ |
-| **9+** | Wow, punchy, memorable, conversion-ready | **Yes** |
+| 7–8.4 | Usable / “interesting science” / structured | **No** for flagship — rewrite drama |
+| 8.5–8.9 | Strong but uneven (cover great, middle soft) | **Tighten** middle + peak before ship |
+| **9+** | Wow, personal stakes, memorable, conversion-ready | **Yes** |
 
-Before export, self-score each platform (XHS / TikTok / LinkedIn / Threads / Email).  
-If **any** core surface (esp. XHS cover or TikTok 0–3s) is **&lt; 8.5**, rewrite that surface before finishing.
+### Self-score calibration (anti-optimism)
+
+Self-scores tend to run **0.3–0.6 high**. Before shipping:
+
+1. Score as a **hostile reviewer**, not the author.  
+2. Cap any platform at **8.4** if: middle cards softer than cover, TikTok peak is “described not felt”, or LinkedIn feels lecture-y.  
+3. Only claim **≥ 9.0** if you would bet a stranger **remembers one line tomorrow**.  
+4. Show scores as: `Self (calibrated)` — never inflate to match marketing pride.
+
+Minimum ship gates (calibrated):
+
+- XHS cover **and** weakest middle/end card ≥ **8.5**  
+- TikTok 0–3s **and** drama peak ≥ **8.5**  
+- LinkedIn first line + last question ≥ **8.5**  
+- Overall intent **≥ 9.0**
 
 ---
 
@@ -66,6 +83,28 @@ Every pack must answer:
 
 If the copy is only “list of facts → neat conclusion”, rewrite with **scene + stakes + turn**.
 
+### Personal stakes mandate (consistency critical)
+
+**Scientific spectacle alone scores ~8.5–8.7.**  
+**Personal body / survival / identity stakes scores ~9.0+.**
+
+| Layer | Fail (interesting science) | Pass (emotional pull) |
+|-------|----------------------------|------------------------|
+| Frame | “Here’s what would happen to the planet” | “Here’s what happens **to you / your body / your life** in second 1” |
+| Language | Abstract forces (inertia, atmosphere) | **You** fly, **your** bones, **your** house, **your** lungs |
+| Peak | List disasters | One visceral second the viewer **feels** |
+| Bill | Clever metaphor only | **Hóa đơn / survival invoice** the audience pays |
+
+**Anchor test:** Can the viewer point to *their body or home* in the first 8 seconds?  
+If no → rewrite stakes (this is the main gap between 9.1 and 8.7 packs).
+
+Examples:
+
+| Topic | Too abstract | Personal stakes |
+|-------|--------------|-----------------|
+| Earth stops 5s | Superstorms and tsunamis listed | “Bạn vẫn bay 1.670 km/h — ghế, nhà, phổi chưa kịp” |
+| Octopus hearts | Three hearts explained | One heart **gần như chết** every swim — survival bill |
+
 ### Insight with drama
 
 Insight must:
@@ -73,9 +112,11 @@ Insight must:
 - Name a **trade-off** (nature/business accepts a weakness to survive)  
 - Feel **non-obvious**  
 - Be **portable** to human decisions (leadership, product, life)  
+- Prefer **“hóa đơn / bill / invisible infrastructure”** framing when it fits (stronger than pure “lesson”)  
 
-Weak: “Everything has trade-offs.”  
-Strong: “Nature accepts ‘bad at swimming’ so the organism can **survive the harshest zone** — your product can ship a weakness if it wins the only environment that matters.”
+Weak: “Everything has trade-offs.” / “Stability matters.”  
+Strong: “Nature accepts ‘bad at swimming’ so the organism can **survive the harshest zone**.”  
+Strong: “**Ổn định vô hình** là hạ tầng — bạn chỉ thấy hóa đơn khi nó biến mất 5 giây.”
 
 ### CTA & conversion
 
@@ -109,22 +150,30 @@ Vague CTAs fail: “Follow for more”, “Like if you agree” (as sole CTA).
 
 ---
 
-## 2. Xiaohongshu (XHS) — target ≥ 8.5
+## 2. Xiaohongshu (XHS) — target ≥ 8.5 (every card)
 
 | Spec | Pro standard |
 |------|----------------|
 | Format | Carousel **5–7 cards**, **1080×1440**, **3:4** |
 | Cover hook | **Number + paradox/cost + emotion** — must pass flat-hook ban |
-| Structure | **C1** Hook + drama visual · **C2–5** Story beats (not fact bullets only) · **Last** Insight + **offer CTA** |
+| Structure | **C1** Hook · **C2–4** escalate personal stakes · **C5 Twist** must punch · **Last** Insight + offer CTA |
+| Card energy | Cover peak open · **middle/end cannot sag** · twist ≥ cover − 0.5 |
 | On-image text | **Max 8–12 words**; large type |
 | Caption | Story + bullets + offer CTA; strong line breaks |
 | Tags | **5–8**, hot + niche |
 | North star | Save + comment + **share-worthy cover** |
 
+### XHS middle/end punch rule
+
+If C1 is 9.0 and C5/C6 feel like “more facts”, pack fails consistency.
+
+Each card after cover needs **one of:** new personal cost · escalation · twist reframe · standalone screenshot line.
+
 ### XHS anti-patterns
 
 - Flat cover fact (“X has 3 hearts”)  
 - Cards that only restate encyclopedia points  
+- **Strong cover + soft twist/final cards**  
 - Safe layout with no focal drama  
 - CTA without offer  
 
@@ -135,44 +184,72 @@ Vague CTAs fail: “Follow for more”, “Like if you agree” (as sole CTA).
 | Spec | Pro standard |
 |------|----------------|
 | Length | **15–25s** ideal; max ~40s |
-| Hook 0–3s | **Spoken + on-screen** must cause stop-scroll; include the **cost/paradox** in the same breath |
-| Drama peak | Mid-script must hit the **visceral moment** (e.g. heart almost off) with matching visual |
-| Rhythm | Change shot **or** text every **3–5s**; no static lecture |
-| On-screen | **≤8 words/line**, bold, high contrast, timed to punch words |
-| Visual | **Concrete** B-roll/animation notes (not “cinematic b-roll”) |
+| Hook 0–3s | Stop-scroll; cost/paradox/**you** in one breath |
+| Drama peak | One **wow moment** mid-script — not even energy throughout |
+| Peak visual | **Cinematic + specific** (VFX/CGI/speed-ramp), not “show storm” |
+| Rhythm | Uneven: hold hook · accelerate · **freeze peak** · land insight |
+| On-screen | **≤8 words/line**, bold, high contrast |
 | CTA | Mid + end; keyword **+ offer** |
 | Silent-friendly | Full story readable muted |
 | North star | Watch time + share + save |
 
+### TikTok energy map (required)
+
+| Time | Energy | Job |
+|------|--------|-----|
+| 0–3s | **10/10** | Kill hook |
+| 3–8s | 6–7 | Personal stakes setup |
+| **Peak ~8–15s** | **10/10** | Wow visual + visceral line |
+| Post-peak | 5–6 | Insight one sentence |
+| End | 7 | Offer CTA |
+
+Even pacing (all 6–7) **fails** even with good facts.
+
 ### TikTok shot list (required fields)
 
-For each beat (0–3 / 3–8 / 8–15 / 15–22 / end):
+For each beat:
 
 1. Spoken line  
-2. On-screen text (punch words **bolded in notes**)  
-3. **Visual:** exact action (e.g. “CGI heart rate line flatlines 80% while tentacles push water”)  
-4. Audio/energy note (silence / hit / whoosh)  
+2. On-screen text  
+3. **Visual:** exact action + camera  
+4. Audio/energy note  
+5. **Energy score 1–10** (peak must be 10)  
+
+### Peak visual pass vs fail
+
+| Pass | Fail |
+|------|------|
+| Heart CGI → near flatline | Generic octopus stock |
+| Body still flying 1670 km/h while ground locks | “Show superstorm and tsunami” |
+| Speed-ramp debris freeze-frame | Same energy as setup shots |
 
 ### TikTok anti-patterns
 
-- Hook states fact without cost  
-- Generic “underwater shot of octopus” with no drama peak  
-- Soft narration, even pacing, no freeze on the kill line  
-- CTA keyword only, no value exchange  
+- Hook without cost  
+- Peak **described** but visual still generic  
+- Soft even pacing  
+- CTA keyword only  
 
 ---
 
-## 4. LinkedIn — target ≥ 8.0
+## 4. LinkedIn — target ≥ 8.5 (tight, not lecture)
 
 | Spec | Pro standard |
 |------|----------------|
 | Format | Text + optional **4–6** slides @ 1080×1080 |
-| Hook | First line = paradox or costly reframe (not dry fact) |
-| Length | **1200–2200 characters** |
-| Structure | Hook → Scene/story → Proof → Leadership/business insight → Open question → Soft offer CTA |
+| Hook | Paradox / costly reframe first line |
+| Length | Prefer **900–1600** chars; hard max **2200** |
+| Structure | Hook → **1 short scene** → **2–3 proofs** → Insight → **sharp question** → Soft offer |
+| Middle ban | No multi-paragraph explainer dump |
 | Tone | Human-professional; punch without hype spam |
 | Hashtags | **3–5** |
 | North star | Quality comments + saves |
+
+### LinkedIn anti-patterns
+
+- Lecture middle  
+- Weak “What do you think?” only  
+- Insight buried after dense paragraphs
 
 ---
 
@@ -203,15 +280,17 @@ For each beat (0–3 / 3–8 / 8–15 / 15–22 / end):
 
 When generating `index.html`, include:
 
-1. **Hook lab** — weak vs strong alternatives for cover + TikTok 0–3s (show the chosen strong version as primary)  
-2. **Spine** with explicit **stakes + trade-off + portable lesson**  
-3. Platform sections with **copy + timed beats + visual direction**  
-4. **B-roll / collage board** (bullet list, production-ready)  
-5. **CTA offer matrix** (keyword → what user gets)  
-6. **Self-score** per platform (must be ≥ 8.5 on XHS + TikTok before ship)  
-7. QA checklist (section 8)  
+1. **Hook lab** — weak vs strong (primary = strong)  
+2. **Spine** with **personal stakes** + trade-off + portable lesson  
+3. Platform sections + timed beats + visual direction  
+4. TikTok **energy map** + **peak frame** callout  
+5. XHS note: punch line on **each** card (esp. C5/C6)  
+6. **B-roll / collage board**  
+7. **CTA offer matrix**  
+8. **Calibrated self-scores** + consistency checklist vs best pack  
+9. QA checklist (section 8)  
 
-UX polish (tabs, copy buttons) is good — **never substitute for punch**.
+UX polish is good — **never substitute for drama consistency**.
 
 ---
 
@@ -223,16 +302,19 @@ UX polish (tabs, copy buttons) is good — **never substitute for punch**.
 - [ ] Contains **paradox, cost, or almost-loss** — not bare fact  
 - [ ] Passes flat-hook ban  
 
-### B. Story & insight
+### B. Story & personal stakes
 
 - [ ] Not a fact list wearing a caption  
+- [ ] **Personal body/home stakes** in first 8s (not only planetary spectacle)  
 - [ ] Clear stakes + turn  
 - [ ] Insight is dramatic **and** applicable  
 
 ### C. Platform craft
 
-- [ ] XHS cover punch ≥ 8.5  
-- [ ] TikTok 0–3s + drama peak + concrete shot list  
+- [ ] XHS cover ≥ 8.5 **and** weakest of C5/C6 ≥ 8.5  
+- [ ] TikTok 0–3s + **peak energy 10/10** + cinematic peak visual  
+- [ ] Energy map is uneven (not flat 6–7 throughout)  
+- [ ] LinkedIn tight (no lecture middle); strong closing question  
 - [ ] Length bands respected  
 - [ ] Native rewrite (no clones)  
 
@@ -245,19 +327,48 @@ UX polish (tabs, copy buttons) is good — **never substitute for punch**.
 
 - [ ] One focal accent (not only safe neutrals)  
 - [ ] B-roll/collage notes are **specific and filmable**  
+- [ ] Peak shot could not be replaced by stock “disaster reel”  
 - [ ] DS followed without killing drama  
 
-### F. Integrity
+### F. Consistency & scoring
+
+- [ ] Calibrated self-score (hostile reviewer; no +0.5 optimism)  
+- [ ] Drama/emotion level matches prior 9.0+ packs, not “interesting science” tier  
+- [ ] Would a stranger remember **one line** tomorrow?  
+
+### G. Integrity
 
 - [ ] No lorem / fake metrics  
 - [ ] Sensitive claims flagged if needed  
 
 ---
 
-## 9. Rewrite protocol (when review says “7.x / khá”)
+## 9. Rewrite protocol
 
-1. **Rewrite hooks first** (XHS C1 + TikTok 0–3s) using weak→strong table  
-2. **Inject stakes** into insight (trade-off + environment that matters)  
-3. **Rebuild TikTok** around the drama peak + shot list  
+### When review says “7.x / khá”
+
+1. **Rewrite hooks first** (XHS C1 + TikTok 0–3s)  
+2. **Inject personal stakes** (body/home/you)  
+3. **Rebuild TikTok** around peak + cinematic visual  
 4. **Upgrade CTA** with offer  
-5. **Re-score**; only ship at 9+ intent  
+5. **Re-score calibrated**; ship only at 9+ intent  
+
+### When review says “8.5–8.9 / good but below best pack”
+
+1. Keep cover hook if strong  
+2. **Personalize stakes** — move from spectacle → *you*  
+3. **Punch XHS twist + final cards** (no sag)  
+4. **Amplify TikTok peak visual** (one unforgettable frame)  
+5. **Cut LinkedIn lecture middle**; sharpen closing question  
+6. **Recalibrate scores down 0.3** then re-raise only with rewrites  
+
+### Consistency checklist (run every pack)
+
+| Criterion | Must match best-pack level |
+|-----------|----------------------------|
+| Hook strength | Paradox + number + cost |
+| Stakes & drama | Personal, not only abstract |
+| Insight portable | Bill / infrastructure / trade-off with teeth |
+| TikTok readiness | Peak 10/10 + filmable wow |
+| CTA & offer | Keyword + series/magnet |
+| Visual direction | Specific, not generic |

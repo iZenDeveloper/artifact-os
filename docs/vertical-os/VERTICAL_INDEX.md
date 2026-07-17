@@ -9,9 +9,9 @@ Registry of Vertical Content OS extensions on top of Open Design.
 | Design System | personal-minimal | `design-systems/personal-minimal/` | Calm personal brand |
 | Design System | personal-bold | `design-systems/personal-bold/` | High-energy creator |
 | Design System | professional-clean | `design-systems/professional-clean/` | Client / B2B safe |
-| Skill | content-repurposer | `skills/content-repurposer/` | **Priority #1** multi-platform pack · **Content Pro v2** (9+/10 bar) |
-| Skill | social-content-factory | `skills/social-content-factory/` | Batch original social · Content Pro v2 |
-| Standard | Content Pro v2 | `skills/content-repurposer/references/content-pro-standards.md` | Punch hooks, story drama, viral TikTok, offer CTAs |
+| Skill | content-repurposer | `skills/content-repurposer/` | **Priority #1** · **Content Pro v2.1** (consistent 9+/10) |
+| Skill | social-content-factory | `skills/social-content-factory/` | Batch original · Content Pro v2.1 |
+| Standard | Content Pro v2.1 | `skills/content-repurposer/references/content-pro-standards.md` | Personal stakes, peak drama, no middle sag, calibrated scores |
 | Skill | ad-variants-generator | `skills/ad-variants-generator/` | Paid creative matrix |
 | Skill (upstream) | card-xiaohongshu | `skills/card-xiaohongshu/` | Keep; XHS native cards |
 | Skill (upstream) | ad-creative | `skills/ad-creative/` | Catalogue / related |
