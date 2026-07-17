@@ -251,5 +251,5 @@ HTML: recommendation card · outline · funnel (gate→LP→nurture) · checklis
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `customer-research`, `content-strategy`, `copywriting`, `emails`, `cro`, `popups`, `ads`, `analytics`, `ab-testing`  
+- **Related:** `product-marketing`, `customer-research`, `content-strategy`, `copywriting`, `emails`, `cro`, `popups`, `free-tools`, `ads`, `analytics`, `ab-testing`  
 - **Upstream:** [marketingskills/lead-magnets](https://github.com/coreyhaines31/marketingskills/tree/main/skills/lead-magnets)  

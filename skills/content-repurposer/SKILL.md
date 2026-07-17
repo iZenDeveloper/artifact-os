@@ -377,5 +377,5 @@ Ship only if:
 - **Standard:** Content Pro **v2.2** (craft + strategy + ready-to-post)  
 - **MVP scope:** text + visual direction + script — **not** rendered video (`mvp-output-scope.md`)  
 - **Quality freeze:** `docs/vertical-os/REGRESSION_BASELINE.md` · suite `references/regression-suite.md`  
-- **Related:** `content-strategy` (pillars / roadmap first), `hook-engine` (hooks-only lab), `social-content-factory`, `ad-variants-generator`, `ad-creative`, `card-xiaohongshu`  
+- **Related:** `content-strategy` (pillars / roadmap first), `social` (platform strategy), `hook-engine` (hooks-only lab), `social-content-factory`, `ad-variants-generator`, `ad-creative`, `card-xiaohongshu`  
 - **Later:** video motion handoff skill (Giai đoạn 3)  

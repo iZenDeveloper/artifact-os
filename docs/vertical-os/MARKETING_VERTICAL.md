@@ -88,13 +88,22 @@ Cập nhật: 2026-07 · Aligns with Content Pro **v2.2** + MVP output scope (te
 | 0ab | `popups` | **Pilot** | Popup/overlay CRO + triggers (marketingskills P0) |
 | 0ac | `prospecting` | **Pilot** | Qualified prospect lists pre-outbound (marketingskills P0) |
 | 0ad | `marketing-plan` | **Pilot** | AARRR fCMO plan + ops stack (marketingskills P0) |
+| 0ae | `free-tools` | **Pilot** | Free interactive tools for lead gen/SEO (P1) |
+| 0af | `referrals` | **Pilot** | Referral + affiliate program design (P1) |
+| 0ag | `marketing-loops` | **Pilot** | Recurring agent marketing workflows (P1) |
+| 0ah | `marketing-ideas` | **Pilot** | Tactic catalog shortlist by stage (P1) |
+| 0ai | `copy-editing` | **Pilot** | Seven-sweep marketing copy edit (P1) |
+| 0aj | `social` | **Pilot** | Social strategy/systems (≠ content factory packs) |
+| 0ak | `co-marketing` | **Pilot** | Partner joint campaigns (P1) |
+| 0al | `community-marketing` | **Pilot** | Community-led growth strategy (P1) |
+| 0am | `marketing-psychology` | **Pilot** | Full behavioral models (upgraded from light) |
 | 1 | `content-repurposer` | **Done** | Core; strategy + ready-to-post; MVP scope locked |
 | 2 | `social-content-factory` | **Done** | Original batch / week |
 | 3 | `hook-engine` | **Done** | Hooks-only lab |
 | 4 | `ad-variants-generator` | **Done** | Paid creative matrix (pairs with `ads` for campaign ops) |
 | 5 | *brand-aware content* | **Embedded** | Not a separate skill: active Brand + `brand-voice.md` + DESIGN.md §8 in all marketing skills |
 
-Supporting (shipped light): `marketing-psychology`.
+Supporting: `marketing-psychology` upgraded to full pilot **0am**.
 
 ### Later (not MVP)
 

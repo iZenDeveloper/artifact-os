@@ -193,7 +193,15 @@ Tell the user which skill to run next:
 | Popups / capture overlays | `popups` |
 | Prospect list building | `prospecting` |
 | Full marketing plan (AARRR) | `marketing-plan` |
+| Marketing idea shortlist | `marketing-ideas` |
+| Free interactive tools | `free-tools` |
+| Referral / affiliate program | `referrals` |
+| Social strategy (systems) | `social` |
+| Co-marketing partners | `co-marketing` |
+| Community strategy | `community-marketing` |
+| Recurring marketing loops | `marketing-loops` |
 | Psychology pass on copy | `marketing-psychology` |
+| Copy polish / refresh | `copy-editing` |
 
 ---
 
@@ -238,6 +246,6 @@ Ship only if:
 
 - **Vertical:** marketing  
 - **Layer:** strategy / context (before Content Pro packs)  
-- **Related:** `marketing-plan`, `content-strategy`, `sales-enablement`, `revops`, `pricing`, `offers`, `ads`, `competitor-profiling`, `competitors`, `programmatic-seo`, `analytics`, `churn-prevention`, `onboarding`, `signup`, `paywalls`, `popups`, `prospecting`, `site-architecture`, `ab-testing`, `customer-research`, `lead-magnets`, `cro`, `copywriting`, `emails`, `cold-email`, `launch`, `seo-audit`, `ai-seo`, `schema`, `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `marketing-psychology`  
+- **Related:** `marketing-plan`, `marketing-ideas`, `marketing-loops`, `content-strategy`, `sales-enablement`, `revops`, `pricing`, `offers`, `ads`, `competitor-profiling`, `competitors`, `programmatic-seo`, `analytics`, `churn-prevention`, `onboarding`, `signup`, `paywalls`, `popups`, `prospecting`, `site-architecture`, `ab-testing`, `customer-research`, `lead-magnets`, `free-tools`, `referrals`, `social`, `co-marketing`, `community-marketing`, `cro`, `copywriting`, `copy-editing`, `emails`, `cold-email`, `launch`, `seo-audit`, `ai-seo`, `schema`, `hook-engine`, `content-repurposer`, `social-content-factory`, `ad-variants-generator`, `marketing-psychology`  
 - **Upstream:** [marketingskills/product-marketing](https://github.com/coreyhaines31/marketingskills/tree/main/skills/product-marketing)  
 - **Bridge:** `references/design-md-bridge.md`  

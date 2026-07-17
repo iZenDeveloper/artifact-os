@@ -155,5 +155,5 @@ don’t ignore prior work · open decisions explicit · tone: sharp colleague, n
 
 ## Vertical metadata
 
-- **Related:** `product-marketing`, `customer-research`, all AARRR execution skills  
+- **Related:** `product-marketing`, `customer-research`, `marketing-ideas`, `marketing-loops`, `referrals`, `free-tools`, `social`, `co-marketing`, `community-marketing`, all AARRR execution skills  
 - **Upstream:** [marketingskills/marketing-plan](https://github.com/coreyhaines31/marketingskills/tree/main/skills/marketing-plan)  
