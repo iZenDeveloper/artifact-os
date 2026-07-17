@@ -1353,6 +1353,14 @@
   right: auto;
   left: 0;
 }
+.viewer-viewport-menu-section {
+  padding: 8px 8px 4px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
 .viewer-viewport-menu-item {
   width: 100%;
   min-height: 34px;
@@ -3249,6 +3257,13 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
   border-radius: 9px;
   background: var(--bg-subtle);
 }
+.file-version-viewport-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 3px;
+  background: var(--border);
+  flex: 0 0 auto;
+}
 .file-version-viewport-button {
   display: inline-flex;
   align-items: center;
@@ -3273,6 +3288,12 @@ button.ghost.mcp-copy-btn:hover:not(:disabled) {
   background: var(--bg-panel);
   color: var(--text);
   box-shadow: var(--shadow-xs);
+}
+.file-version-viewport-button--platform.active {
+  color: var(--text-strong, var(--text));
+  box-shadow: var(--shadow-xs);
+  border: 0;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-panel));
 }
 .file-version-preview {
   position: relative;

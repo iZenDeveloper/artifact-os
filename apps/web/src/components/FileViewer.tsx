@@ -224,7 +224,15 @@ export type ManualEditPendingStyleSave = {
   label: string;
   version: number;
 };
-type PreviewViewportId = 'desktop' | 'tablet' | 'mobile';
+// desktop / tablet / mobile = device chrome; xhs / tiktok / linkedin =
+// Vertical OS Platform Preview (Content Pro canvas ratios).
+type PreviewViewportId =
+  | 'desktop'
+  | 'tablet'
+  | 'mobile'
+  | 'xhs'
+  | 'tiktok'
+  | 'linkedin';
 type PreviewCanvasSize = { width: number; height: number; scrollLeft?: number; scrollTop?: number };
 type CommentPreviewCanvasOptions = {
   boardMode: boolean;
@@ -240,6 +248,8 @@ type PreviewViewportPreset = {
   height: number | null;
   labelKey: keyof Dict;
   titleKey: keyof Dict;
+  /** Device vs social platform frame (for grouping in the switcher UI). */
+  group?: 'device' | 'platform';
 };
 const IMAGE_EXPORT_FORMAT_OPTIONS: Array<{
   value: ImageExportFormat;
@@ -312,6 +322,7 @@ const PREVIEW_VIEWPORT_PRESETS: PreviewViewportPreset[] = [
     height: null,
     labelKey: 'fileViewer.viewportDesktop',
     titleKey: 'fileViewer.viewportDesktopTitle',
+    group: 'device',
   },
   {
     id: 'tablet',
@@ -319,6 +330,7 @@ const PREVIEW_VIEWPORT_PRESETS: PreviewViewportPreset[] = [
     height: 1180,
     labelKey: 'fileViewer.viewportTablet',
     titleKey: 'fileViewer.viewportTabletTitle',
+    group: 'device',
   },
   {
     id: 'mobile',
@@ -326,13 +338,47 @@ const PREVIEW_VIEWPORT_PRESETS: PreviewViewportPreset[] = [
     height: 844,
     labelKey: 'fileViewer.viewportMobile',
     titleKey: 'fileViewer.viewportMobileTitle',
+    group: 'device',
+  },
+  // Platform Preview — scaled Content Pro canvases (not full 1080 CSS px so
+  // the stage can fit; ratio matches export targets).
+  {
+    id: 'xhs',
+    width: 390,
+    height: 520, // 3:4 · XHS / 小红书 card
+    labelKey: 'fileViewer.viewportXhs',
+    titleKey: 'fileViewer.viewportXhsTitle',
+    group: 'platform',
+  },
+  {
+    id: 'tiktok',
+    width: 360,
+    height: 640, // 9:16 · TikTok / Reels (exact ratio)
+    labelKey: 'fileViewer.viewportTiktok',
+    titleKey: 'fileViewer.viewportTiktokTitle',
+    group: 'platform',
+  },
+  {
+    id: 'linkedin',
+    width: 420,
+    height: 420, // 1:1 · LinkedIn carousel
+    labelKey: 'fileViewer.viewportLinkedin',
+    titleKey: 'fileViewer.viewportLinkedinTitle',
+    group: 'platform',
   },
 ];
 
 function previewViewportIcon(viewport: PreviewViewportId): string {
   if (viewport === 'tablet') return 'tablet-line';
   if (viewport === 'mobile') return 'smartphone-line';
+  if (viewport === 'xhs') return 'image-line';
+  if (viewport === 'tiktok') return 'video-line';
+  if (viewport === 'linkedin') return 'layout-grid-line';
   return 'computer-line';
+}
+
+function isFixedPreviewViewport(viewport: PreviewViewportId): boolean {
+  return viewport !== 'desktop';
 }
 
 const EXPORT_READY_NUDGE_STORAGE_PREFIX = 'open-design:export-ready-nudge:';
@@ -790,27 +836,37 @@ function PreviewViewportControls({
       </button>
       {open ? (
         <div className="viewer-viewport-menu" id={listboxId} role="listbox" aria-label={t('fileViewer.viewportAria')}>
-          {PREVIEW_VIEWPORT_PRESETS.map((preset) => {
+          {PREVIEW_VIEWPORT_PRESETS.map((preset, index) => {
             const selected = viewport === preset.id;
+            const prev = PREVIEW_VIEWPORT_PRESETS[index - 1];
+            const showPlatformHeader =
+              preset.group === 'platform' && prev?.group !== 'platform';
             return (
-              <button
-                key={preset.id}
-                type="button"
-                className={`viewer-viewport-menu-item${selected ? ' active' : ''}`}
-                role="option"
-                aria-selected={selected}
-                title={t(preset.titleKey)}
-                onClick={() => {
-                  onViewport(preset.id);
-                  setOpen(false);
-                }}
-              >
-                <span className="viewer-viewport-menu-label">
-                  <RemixIcon name={previewViewportIcon(preset.id)} size={14} />
-                  <span>{t(preset.labelKey)}</span>
-                </span>
-                {selected ? <Icon name="check" size={13} /> : null}
-              </button>
+              <div key={preset.id}>
+                {showPlatformHeader ? (
+                  <div className="viewer-viewport-menu-section" role="presentation">
+                    {t('fileViewer.viewportPlatformSection')}
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  className={`viewer-viewport-menu-item${selected ? ' active' : ''}`}
+                  role="option"
+                  aria-selected={selected}
+                  title={t(preset.titleKey)}
+                  data-testid={`viewport-menu-${preset.id}`}
+                  onClick={() => {
+                    onViewport(preset.id);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="viewer-viewport-menu-label">
+                    <RemixIcon name={previewViewportIcon(preset.id)} size={14} />
+                    <span>{t(preset.labelKey)}</span>
+                  </span>
+                  {selected ? <Icon name="check" size={13} /> : null}
+                </button>
+              </div>
             );
           })}
         </div>
@@ -828,9 +884,16 @@ function FileVersionViewportControls({
   onViewport: (viewport: PreviewViewportId) => void;
   t: TranslateFn;
 }) {
+  const devicePresets = PREVIEW_VIEWPORT_PRESETS.filter((p) => p.group !== 'platform');
+  const platformPresets = PREVIEW_VIEWPORT_PRESETS.filter((p) => p.group === 'platform');
   return (
-    <div className="file-version-viewport-toggle" role="group" aria-label={t('fileViewer.viewportAria')}>
-      {PREVIEW_VIEWPORT_PRESETS.map((preset) => {
+    <div
+      className="file-version-viewport-toggle"
+      role="group"
+      aria-label={t('fileViewer.viewportAria')}
+      data-testid="platform-preview-viewport-toggle"
+    >
+      {devicePresets.map((preset) => {
         const selected = viewport === preset.id;
         const label = t(preset.titleKey);
         return (
@@ -843,6 +906,30 @@ function FileVersionViewportControls({
             title={label}
             data-tooltip={label}
             data-tooltip-placement="bottom"
+            data-testid={`viewport-preset-${preset.id}`}
+            onClick={() => onViewport(preset.id)}
+          >
+            <RemixIcon name={previewViewportIcon(preset.id)} size={14} />
+          </button>
+        );
+      })}
+      {platformPresets.length > 0 ? (
+        <span className="file-version-viewport-divider" aria-hidden />
+      ) : null}
+      {platformPresets.map((preset) => {
+        const selected = viewport === preset.id;
+        const label = t(preset.titleKey);
+        return (
+          <button
+            key={preset.id}
+            type="button"
+            className={`file-version-viewport-button file-version-viewport-button--platform od-tooltip${selected ? ' active' : ''}`}
+            aria-label={label}
+            aria-pressed={selected}
+            title={label}
+            data-tooltip={label}
+            data-tooltip-placement="bottom"
+            data-testid={`viewport-preset-${preset.id}`}
             onClick={() => onViewport(preset.id)}
           >
             <RemixIcon name={previewViewportIcon(preset.id)} size={14} />
@@ -875,7 +962,7 @@ export function commentPreviewCanvasSize(
   options: CommentPreviewCanvasOptions,
 ): PreviewCanvasSize | undefined {
   if (!canvasSize || !options.boardMode) return canvasSize;
-  const dockPadding = options.viewport && options.viewport !== 'desktop'
+  const dockPadding = options.viewport && isFixedPreviewViewport(options.viewport)
     ? COMMENT_SIDE_DOCK_NON_DESKTOP_PADDING
     : COMMENT_SIDE_DOCK_PADDING;
   const sideDockWidth = options.sidePanelCollapsed ? COMMENT_SIDE_DOCK_RAIL_WIDTH : COMMENT_SIDE_DOCK_WIDTH;
@@ -900,7 +987,7 @@ function usesStackedCommentSideDock(
   options: CommentPreviewCanvasOptions,
 ) {
   if (!canvasSize || !options.boardMode) return false;
-  const dockPadding = options.viewport && options.viewport !== 'desktop'
+  const dockPadding = options.viewport && isFixedPreviewViewport(options.viewport)
     ? COMMENT_SIDE_DOCK_NON_DESKTOP_PADDING
     : COMMENT_SIDE_DOCK_PADDING;
   const sideDockWidth = options.sidePanelCollapsed ? COMMENT_SIDE_DOCK_RAIL_WIDTH : COMMENT_SIDE_DOCK_WIDTH;
@@ -914,7 +1001,7 @@ export function effectivePreviewScale(
   canvasSize?: PreviewCanvasSize,
   options?: PreviewScaleOptions,
 ) {
-  if (viewport === 'desktop') return previewScale;
+  if (!isFixedPreviewViewport(viewport)) return previewScale;
   const preset = PREVIEW_VIEWPORT_PRESETS.find((item) => item.id === viewport);
   if (!preset?.width || !preset.height || !canvasSize?.width || !canvasSize.height) return previewScale;
   const canvasPadding = options?.canvasPadding ?? 48;
@@ -932,7 +1019,7 @@ export function previewOverlayTransform(
   canvasSize?: PreviewCanvasSize,
 ): PreviewOverlayTransform {
   const scale = effectivePreviewScale(viewport, previewScale, canvasSize);
-  if (viewport === 'desktop') return { scale, offsetX: 0, offsetY: 0 };
+  if (!isFixedPreviewViewport(viewport)) return { scale, offsetX: 0, offsetY: 0 };
   const preset = PREVIEW_VIEWPORT_PRESETS.find((item) => item.id === viewport);
   const pad = 24;
   if (!preset?.width || !preset.height) return { scale, offsetX: pad, offsetY: pad };
@@ -949,7 +1036,7 @@ function previewScaleShellStyle(
   viewport: PreviewViewportId,
   previewScale: number,
 ): CSSProperties & Record<string, string | number> {
-  if (viewport === 'desktop') {
+  if (!isFixedPreviewViewport(viewport)) {
     return {
       width: `${100 / previewScale}%`,
       height: `${100 / previewScale}%`,

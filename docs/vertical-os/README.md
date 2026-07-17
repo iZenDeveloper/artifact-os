@@ -39,7 +39,9 @@ Open the URL printed by the dev server (typically `http://localhost:3000`).
    - Quick chips: Personal Minimal · Personal Bold · Professional Clean  
    - Trigger shows a **Personal** / **Client** badge when a Vertical OS pack is active  
 2. Skill: **content-repurposer** (Content Pro v2.1)  
-3. Prompt: paste a blog/outline and ask for a multi-platform pack (XHS + TikTok + LinkedIn + Threads + Email)
+3. Prompt: paste a blog/outline and ask for a multi-platform pack (XHS + TikTok + LinkedIn + Threads + Email)  
+4. After an artifact opens in preview, use the viewport toolbar:  
+   **Desktop / Tablet / Mobile** | **XHS · TikTok · LinkedIn** (Platform Preview) to frame Content Pro ratios (3:4 / 9:16 / 1:1)
 
 ## Extension layout (Open Design compatible)
 

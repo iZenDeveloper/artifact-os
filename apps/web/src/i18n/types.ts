@@ -3564,6 +3564,13 @@ export interface Dict {
   'fileViewer.viewportTabletTitle': string;
   'fileViewer.viewportMobile': string;
   'fileViewer.viewportMobileTitle': string;
+  'fileViewer.viewportXhs': string;
+  'fileViewer.viewportXhsTitle': string;
+  'fileViewer.viewportTiktok': string;
+  'fileViewer.viewportTiktokTitle': string;
+  'fileViewer.viewportLinkedin': string;
+  'fileViewer.viewportLinkedinTitle': string;
+  'fileViewer.viewportPlatformSection': string;
   'fileViewer.reloadAria': string;
   'fileViewer.previousSlide': string;
   'fileViewer.nextSlide': string;
