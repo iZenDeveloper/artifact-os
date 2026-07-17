@@ -347,10 +347,9 @@ describe('createCollabCloudService', () => {
     const personal = teamContext({
       workspaceType: 'personal',
       workspaceId: 'ws-personal',
-      teamId: undefined,
-      teamName: undefined,
     });
     delete (personal as Partial<WorkspaceCollabContext>).teamId;
+    delete (personal as Partial<WorkspaceCollabContext>).teamName;
     const service = createCollabCloudService({
       client: wrapped,
       workspaceContext: fixedContextProvider(personal),

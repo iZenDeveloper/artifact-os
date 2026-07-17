@@ -772,7 +772,7 @@ export function ComposerPlusMenu({
             <div className="plus-menu__plugin-pane">
               <div className="plus-menu__plugin-main">
                 <div className="plus-menu__search">
-                  <Icon name="search" size={13} />
+                  <Icon name="search" size={14} />
                   <input
                     value={query}
                     onChange={(event) => handleQueryChange(event.target.value)}
@@ -845,7 +845,7 @@ export function ComposerPlusMenu({
               <div className="plus-menu__skill-pane">
                 <div className="plus-menu__skill-main">
                   <div className="plus-menu__search">
-                    <Icon name="search" size={13} />
+                    <Icon name="search" size={14} />
                     <input
                       value={query}
                       onChange={(event) => handleQueryChange(event.target.value)}
@@ -899,7 +899,7 @@ export function ComposerPlusMenu({
             flyoutStyle={flyoutStyle}
           >
             <div className="plus-menu__search">
-              <Icon name="search" size={13} />
+              <Icon name="search" size={14} />
               <input
                 value={query}
                 onChange={(event) => handleQueryChange(event.target.value)}
@@ -1067,7 +1067,7 @@ function PlusSubmenuRow({
       >
         <Icon name={icon} size={14} className="plus-menu__item-icon" />
         <span>{label}</span>
-        <Icon name="chevron-right" size={13} className="plus-menu__chevron" />
+        <Icon name="chevron-right" size={14} className="plus-menu__chevron" />
       </button>
       {open ? (
         <div

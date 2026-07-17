@@ -3692,9 +3692,6 @@ export function SettingsDialog({
               </div>
             </div>
           </label>
-          <p className="hint agent-model-row-hint">
-            {t('settings.modelPickerLiveHint')}
-          </p>
         </div>
       );
     }
@@ -3756,12 +3753,6 @@ export function SettingsDialog({
       modelSource === 'live'
         ? t('settings.modelSourceLive')
         : t('settings.modelSourceFallback');
-    const modelSourceHint =
-      modelSource === 'live'
-        ? selected.supportsCustomModel === false
-          ? t('settings.modelPickerLiveCatalogOnlyHint')
-          : t('settings.modelPickerLiveHint')
-        : t('settings.modelPickerFallbackHint');
     return (
       <div className="agent-card-config">
         {hasModels ? (
@@ -3779,6 +3770,7 @@ export function SettingsDialog({
               <div className="agent-model-select-wrap">
                 <SearchableModelSelect
                   className="inline-switcher__select settings-model-select"
+                  popoverClassName="settings-model-popover"
                   value={selectValue}
                   aria-label={t('settings.modelPicker')}
                   searchPlaceholder={t('designs.searchPlaceholder')}
@@ -3837,9 +3829,6 @@ export function SettingsDialog({
                 />
               </div>
             </label>
-            <p className="hint agent-model-row-hint">
-              {modelSourceHint}
-            </p>
           </>
         ) : null}
         {customActive ? (
@@ -4062,7 +4051,7 @@ export function SettingsDialog({
               className={`settings-nav-item${activeSection === 'memory' ? ' active' : ''}`}
               onClick={() => setActiveSection('memory')}
             >
-              <Icon name="history" size={18} />
+              <Icon name="brain" size={18} />
               <span>
                 <strong>{t('settings.memory')}</strong>
                 <small>{t('settings.memoryHint')}</small>
@@ -4107,7 +4096,7 @@ export function SettingsDialog({
               className={`settings-nav-item${activeSection === 'integrations' ? ' active' : ''}`}
               onClick={() => setActiveSection('integrations')}
             >
-              <Icon name="link" size={18} />
+              <Icon name="puzzle" size={18} />
               <span>
                 <strong>{t('settings.mcpServerTitle')}</strong>
                 <small>{t('settings.mcpServerHint')}</small>
@@ -4790,7 +4779,6 @@ export function SettingsDialog({
                         {unavailableAgents.map((a) => {
                           const installUrl = sanitizeHttpsUrl(a.installUrl);
                           const docsUrl = sanitizeHttpsUrl(a.docsUrl);
-                          const hasLinks = Boolean(installUrl || docsUrl);
                           const description = AGENT_SHORT_DESCRIPTIONS[a.id];
                           const agentName = displayAgentName(a);
                           const diagnosticHandlers = diagnosticHandlersForAgent(a);
@@ -4814,56 +4802,67 @@ export function SettingsDialog({
                                     </div>
                                   ) : null}
                                 </div>
-                                {hasLinks ? (
-                                  <div className="agent-card-actions agent-card-actions--inline">
-                                    {docsUrl ? (
-                                      <a
-                                        href={docsUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="agent-card-link agent-card-link--muted agent-card-link--icon"
-                                        onClick={markAgentInstallIntent}
-                                        title={t('settings.agentInstall.docs')}
-                                        aria-label={t('settings.agentInstall.docs')}
-                                      >
-                                        <Icon name="file" size={15} />
-                                      </a>
-                                    ) : null}
-                                    {installUrl ? (
-                                      <a
-                                        href={installUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="agent-card-link agent-card-link--ghost"
-                                        onClick={(event) => {
-                                          markAgentInstallIntent();
-                                          if (a.id === 'amr') {
-                                            event.currentTarget.href = attributedAmrSettingsUrl(
-                                              installUrl,
-                                              'settings_amr_install',
-                                            );
-                                          }
-                                        }}
-                                      >
-                                        {t('settings.agentInstall.install')}
-                                      </a>
-                                    ) : null}
-                                  </div>
-                                ) : null}
                               </div>
                               {/* Why is it unavailable? not-on-path vs a broken
                                   shim vs a bad *_BIN override each get a
-                                  distinct, actionable line. It spans the full
-                                  card width on its own row below the
-                                  logo/name/links so it never crowds the inline
-                                  Docs/Install actions. */}
+                                  distinct, actionable line, full-width below the
+                                  logo/name. Rendered message-only: the fix
+                                  actions are hoisted into the shared footer bar
+                                  so every control lives on one row. */}
                               {(a.diagnostics ?? []).map((diagnostic, i) => (
                                 <AgentDiagnosticRow
                                   key={`${diagnostic.reason}-${i}`}
                                   diagnostic={diagnostic}
-                                  handlers={diagnosticHandlers}
                                 />
                               ))}
+                              {/* Every action for the card collapses into one
+                                  horizontal bar at the foot, fenced from the
+                                  content above by a hair divider: Docs + Rescan
+                                  as quiet icon buttons, Install as the primary
+                                  labelled CTA holding the right edge. */}
+                              <div className="agent-card-footer">
+                                {docsUrl ? (
+                                  <a
+                                    href={docsUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="agent-card-link agent-card-link--muted agent-card-link--icon"
+                                    onClick={markAgentInstallIntent}
+                                    title={t('settings.agentInstall.docs')}
+                                    aria-label={t('settings.agentInstall.docs')}
+                                  >
+                                    <Icon name="file" size={15} />
+                                  </a>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  className="agent-card-link agent-card-link--muted agent-card-link--icon"
+                                  onClick={() => diagnosticHandlers.onRescan?.()}
+                                  title={t('settings.rescan')}
+                                  aria-label={t('settings.rescan')}
+                                >
+                                  <Icon name="reload" size={15} />
+                                </button>
+                                {installUrl ? (
+                                  <a
+                                    href={installUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="agent-card-link agent-card-link--ghost"
+                                    onClick={(event) => {
+                                      markAgentInstallIntent();
+                                      if (a.id === 'amr') {
+                                        event.currentTarget.href = attributedAmrSettingsUrl(
+                                          installUrl,
+                                          'settings_amr_install',
+                                        );
+                                      }
+                                    }}
+                                  >
+                                    {t('settings.agentInstall.install')}
+                                  </a>
+                                ) : null}
+                              </div>
                             </div>
                           );
                         })}

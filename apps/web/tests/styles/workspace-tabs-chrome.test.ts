@@ -295,7 +295,8 @@ describe('workspace tabs chrome styles', () => {
 
     expect(ruleValue(projectTab, 'height')).toBe('32px');
     expect(ruleValue(projectTab, 'align-self')).toBe('center');
-    expect(ruleValue(projectTab, 'border-radius')).toBe('var(--radius-large, 8px)');
+    // Round-4 skin: tabs are 12px rounded rects, not the old --radius-large.
+    expect(ruleValue(projectTab, 'border-radius')).toBe('12px');
     // Tabs auto-shrink: flex-grow 0 (never balloon), flex-shrink 1 (squeeze to
     // fit) down to --workspace-tab-min-width before the strip scrolls.
     expect(ruleValue(projectTab, 'flex')).toBe('0 1 156px');
@@ -325,7 +326,8 @@ describe('workspace tabs chrome styles', () => {
 
     // Home never shrinks (flex-shrink 0) in either chrome…
     expect(ruleValue(pinnedShared, 'flex')).toBe('0 0 52px');
-    expect(ruleValue(pinnedProject, 'flex')).toBe('0 0 104px');
+    // Round-4 skin: the pinned tab is a single-icon pill (~half a project tab).
+    expect(ruleValue(pinnedProject, 'flex')).toBe('0 0 78px');
     // …and stays stuck to the left edge with an opaque background so scrolled
     // project tabs pass behind it instead of squeezing it.
     expect(ruleValue(pinnedShared, 'position')).toBe('sticky');
@@ -338,10 +340,13 @@ describe('workspace tabs chrome styles', () => {
   it('uses a rounded highlight for inactive workspace tab hover', () => {
     const hoverTab = cssDeclarations(routinesCss, '.workspace-shell .workspace-tab:not(.is-active):hover');
 
-    expect(ruleValue(hoverTab, 'border-radius')).toBe('var(--radius-pill, 999px)');
+    // Round-4 skin: 12px rounded-rect hover with a soft fill only — no inset
+    // stroke ring; a whisper of drop shadow keeps the slight lift.
+    expect(ruleValue(hoverTab, 'border-radius')).toBe('12px');
     expect(ruleValue(hoverTab, 'background')).toContain('color-mix(in srgb, var(--bg-panel) 78%, transparent)');
     expect(ruleValue(hoverTab, 'border-color')).toBe('transparent');
-    expect(ruleValue(hoverTab, 'box-shadow')).toContain('inset 0 0 0 1px');
+    expect(ruleValue(hoverTab, 'box-shadow')).toContain('0 1px 2px');
+    expect(ruleValue(hoverTab, 'box-shadow')).not.toContain('inset');
   });
 
   it('keeps the pinned Home tab opaque on hover/focus so crowded tabs cannot bleed through (#4446)', () => {
