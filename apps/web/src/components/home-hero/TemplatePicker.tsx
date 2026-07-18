@@ -117,7 +117,7 @@ export function TemplatePicker({
       >
         {shown ? (
           <span className="home-hero__template-trigger-thumb" aria-hidden>
-            <ScenarioArt chipId={shown.id} fallbackIcon={shown.icon} />
+            <ScenarioArt chipId={shown.id} fallbackIcon={shown.icon} size={16} />
           </span>
         ) : (
           <span

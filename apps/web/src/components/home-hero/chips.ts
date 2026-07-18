@@ -645,6 +645,35 @@ export const CREATOR_QUICK_START_IDS = [
 
 export type CreatorQuickStartId = (typeof CREATOR_QUICK_START_IDS)[number];
 
+/** Hierarchical workflow launcher groups (mockup 6). Featured is always content-pack. */
+export const CREATOR_WORKFLOW_FEATURED_ID = 'content-pack' as const satisfies CreatorQuickStartId;
+
+export const CREATOR_WORKFLOW_QUICK_IDS = [
+  'hook-engine',
+  'carousel',
+  'short-video',
+  'linkedin-post',
+  'email',
+  'threads',
+] as const satisfies ReadonlyArray<CreatorQuickStartId>;
+
+export const CREATOR_WORKFLOW_PUBLISH_IDS = [
+  'youtube',
+  'facebook-post',
+  'ad-creative',
+  'repurpose',
+] as const satisfies ReadonlyArray<CreatorQuickStartId>;
+
+/** Badge overlay on workflow cards (meta chip). */
+export type CreatorWorkflowBadge = 'featured' | 'popular' | 'aiRecommended' | 'new';
+
+export const CREATOR_WORKFLOW_BADGE: Partial<Record<CreatorQuickStartId, CreatorWorkflowBadge>> = {
+  'content-pack': 'featured',
+  'hook-engine': 'popular',
+  'linkedin-post': 'aiRecommended',
+  email: 'new',
+};
+
 export const CREATE_RAIL_ORDER = [
   ...CREATOR_QUICK_START_IDS,
   'social-content',

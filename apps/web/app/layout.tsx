@@ -9,13 +9,66 @@ import '../src/styles/home/index.css';
 export const metadata: Metadata = {
   title: 'Artifact OS',
   icons: {
-    icon: '/app-icon.png',
-    apple: '/app-icon.png',
+    // Theme-aware favicon:
+    // - SVG uses prefers-color-scheme (ink / white)
+    // - PNG+ICO pairs use media queries for browsers that ignore SVG color
+    // - /favicon.ico remains the default light probe fallback
+    icon: [
+      { url: '/app-icon.svg?v=artifact-os-3', type: 'image/svg+xml' },
+      {
+        url: '/favicon-32x32.png?v=artifact-os-3',
+        type: 'image/png',
+        sizes: '32x32',
+        media: '(prefers-color-scheme: light)',
+      },
+      {
+        url: '/favicon-16x16.png?v=artifact-os-3',
+        type: 'image/png',
+        sizes: '16x16',
+        media: '(prefers-color-scheme: light)',
+      },
+      {
+        url: '/app-icon.png?v=artifact-os-3',
+        type: 'image/png',
+        sizes: '512x512',
+        media: '(prefers-color-scheme: light)',
+      },
+      {
+        url: '/favicon-32x32-dark.png?v=artifact-os-3',
+        type: 'image/png',
+        sizes: '32x32',
+        media: '(prefers-color-scheme: dark)',
+      },
+      {
+        url: '/favicon-16x16-dark.png?v=artifact-os-3',
+        type: 'image/png',
+        sizes: '16x16',
+        media: '(prefers-color-scheme: dark)',
+      },
+      {
+        url: '/app-icon-dark.png?v=artifact-os-3',
+        type: 'image/png',
+        sizes: '512x512',
+        media: '(prefers-color-scheme: dark)',
+      },
+      { url: '/favicon.ico?v=artifact-os-3', sizes: 'any' },
+      {
+        url: '/favicon-dark.ico?v=artifact-os-3',
+        sizes: 'any',
+        media: '(prefers-color-scheme: dark)',
+      },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    shortcut: '/favicon.ico',
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#F4EFE6',
+  // Light default; browsers with dark preference often ignore theme-color anyway.
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#F4EFE6' },
+    { media: '(prefers-color-scheme: dark)', color: '#1A1915' },
+  ],
 };
 
 /**

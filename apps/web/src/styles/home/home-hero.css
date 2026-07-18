@@ -440,8 +440,9 @@
 .home-hero__input-card:has(.inline-switcher__popover),
 .home-hero__input-card:has(.session-mode-toggle__popover),
 .home-hero__input-card:has(.home-hero__plugin-picker),
-.home-hero__input-card:has(.home-hero__template-menu) {
-  z-index: 9;
+.home-hero__input-card:has(.home-hero__template-menu),
+.home-hero__input-card:has(.home-hero__footer-select-menu) {
+  z-index: 40;
   overflow: visible;
 }
 .home-hero__input-card--compact-authoring {
@@ -2889,6 +2890,139 @@
   color: var(--text);
 }
 
+/* ============================================================
+   Workflow launcher cards — hard surface (must beat cascade)
+   Attribute selector + !important so cards never vanish on #090809
+   ============================================================ */
+[data-workflow-card] {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-radius: 18px !important;
+  border: 1px solid rgba(242, 237, 228, 0.16) !important;
+  background: linear-gradient(165deg, #322c28 0%, #1e1a17 50%, #161310 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 246, 234, 0.08),
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.35) !important;
+  overflow: hidden !important;
+}
+[data-workflow-card='featured'] {
+  min-height: 280px !important;
+  border-radius: 20px !important;
+  border-color: rgba(232, 149, 90, 0.45) !important;
+  background-color: #120f0c !important;
+  background-image: url('/feature_card_bg.png') !important;
+  background-size: cover !important;
+  background-position: center right !important;
+  background-repeat: no-repeat !important;
+  box-shadow:
+    inset 0 1px 0 rgba(232, 149, 90, 0.24),
+    0 18px 48px rgba(0, 0, 0, 0.55),
+    0 0 40px rgba(232, 149, 90, 0.16) !important;
+}
+[data-workflow-card='featured'] .home-hero__creator-tile-main {
+  justify-content: flex-end !important;
+  gap: 12px !important;
+  padding: 20px 22px !important;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    transparent 30%,
+    rgba(12, 10, 8, 0.5) 60%,
+    rgba(12, 10, 8, 0.88) 100%
+  ) !important;
+}
+[data-workflow-card='featured'] .home-hero__creator-tile-art {
+  width: 52px !important;
+  height: 36px !important;
+  min-width: 52px !important;
+  min-height: 36px !important;
+  margin: 0 0 2px !important;
+  order: 1 !important;
+}
+[data-workflow-card='featured'] .home-hero__creator-tile-copy {
+  order: 2 !important;
+  max-width: 52% !important;
+  margin-top: 0 !important;
+}
+[data-workflow-card]:hover {
+  transform: translateY(-3px);
+  border-color: rgba(232, 149, 90, 0.4) !important;
+}
+[data-workflow-card] .home-hero__creator-tile-main {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-sizing: border-box !important;
+}
+/* Icon: no plate / box — just the glyph */
+[data-workflow-card] .home-hero__creator-tile-art {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  color: #e8955a !important;
+  overflow: visible !important;
+}
+[data-workflow-card='compact'] .home-hero__creator-tile-art,
+[data-workflow-card='publish'] .home-hero__creator-tile-art {
+  width: 44px !important;
+  height: 31px !important;
+  min-width: 44px !important;
+  min-height: 31px !important;
+}
+
+/* More formats grid shares publish card surface */
+.home-hero__workflow-grid--more {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 960px) {
+  .home-hero__workflow-grid--more {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .home-hero__workflow-grid--more {
+    grid-template-columns: 1fr;
+  }
+}
+[data-workflow-card] .home-hero__scenario-art-wrap,
+[data-workflow-card] .home-hero__scenario-art-svg {
+  width: 100% !important;
+  height: 100% !important;
+}
+[data-workflow-card] .home-hero__creator-tile-art svg {
+  width: 100% !important;
+  height: 100% !important;
+  overflow: visible !important;
+}
+[data-workflow-card] .home-hero__creator-tile-copy {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  width: 100% !important;
+  gap: 6px !important;
+}
+[data-workflow-card] .home-hero__creator-tile-title {
+  display: flex !important;
+  color: #f7f3ec !important;
+}
+[data-workflow-card] .home-hero__creator-tile-desc {
+  display: block !important;
+  color: rgba(232, 228, 220, 0.62) !important;
+}
+
 /* Large creator Quick Start tiles */
 .home-hero__creator-quick {
   width: 100%;
@@ -3041,9 +3175,10 @@
 .home-hero__popular-head {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 3px;
-  text-align: center;
+  text-align: left;
+  width: 100%;
 }
 .home-hero__popular-title {
   margin: 0;
@@ -3392,6 +3527,8 @@
 .home-hero__template-trigger {
   flex: 1 1 auto;
   max-width: 188px;
+  gap: 6px;
+  min-width: 0;
 }
 /* Small "Template" caption inside the trigger so the field is self-labeling
    (the field's sr-only <span> pattern is not used here). */
@@ -3401,6 +3538,15 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0;
+  white-space: nowrap;
+}
+/* Value next to kicker — never share the same visual weight as the caption */
+.home-hero__template-trigger .home-hero__footer-select-label {
+  flex: 0 1 auto;
+  min-width: 2.5em;
+  max-width: 8.5em;
+  font-weight: 560;
+  color: var(--text-strong);
 }
 /* Mini ScenarioArt thumbnail in the trigger so the pill's leading glyph matches
    the dropdown's illustrative cards (instead of a flat line icon). */
@@ -3409,15 +3555,21 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 18px;
+  width: 20px;
+  height: 16px;
   overflow: hidden;
   border-radius: var(--radius-xs, 4px);
   color: var(--accent);
 }
+.home-hero__template-trigger-thumb .home-hero__scenario-art-wrap {
+  width: 20px !important;
+  height: 14px !important;
+}
 .home-hero__template-trigger-thumb .home-hero__scenario-art-svg {
-  width: 24px;
-  height: auto;
+  width: 100%;
+  height: 100%;
+  max-width: 20px;
+  max-height: 14px;
 }
 .home-hero__template-option.has-selection .home-hero__template-kicker {
   color: color-mix(in srgb, var(--accent) 52%, var(--text-faint));
@@ -3465,9 +3617,10 @@
   position: absolute;
   left: 0;
   top: calc(100% + 7px);
-  z-index: 140;
+  z-index: 200;
   width: min(380px, calc(100vw - 32px));
   max-height: min(440px, calc(100vh - 200px));
+  overflow-x: hidden;
   overflow-y: auto;
   padding: 10px;
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
@@ -3477,6 +3630,13 @@
     0 16px 38px rgba(15, 23, 42, 0.14),
     0 2px 6px rgba(15, 23, 42, 0.08);
   isolation: isolate;
+}
+
+/* Escape overflow:hidden ancestors (banner clip) when open */
+.home-hero__footer-option:has(.home-hero__template-menu),
+.home-hero__footer-option:has(.home-hero__footer-select-menu) {
+  overflow: visible;
+  z-index: 50;
 }
 .home-hero__template-menu-head {
   display: flex;

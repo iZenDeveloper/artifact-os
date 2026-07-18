@@ -1024,6 +1024,19 @@ export interface Dict {
 
   // Entry home
   'homeHero.title': string;
+  'homeHero.badge': string;
+  'homeHero.meta.featured': string;
+  'homeHero.meta.popular': string;
+  'homeHero.meta.aiRecommended': string;
+  'homeHero.meta.new': string;
+  'homeHero.workflow.featured': string;
+  'homeHero.workflow.quickCreate': string;
+  'homeHero.workflow.publishScale': string;
+  'homeHero.featured.templatesCount': string;
+  'entry.nav.workspace': string;
+  'entry.nav.recent': string;
+  'entry.nav.settings': string;
+  'entry.nav.help': string;
   'homeHero.startWithTemplate': string;
   'homeHero.startBlankProject': string;
   'homeHero.templatePicker.label': string;

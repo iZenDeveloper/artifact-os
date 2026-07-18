@@ -132,80 +132,90 @@ export function EntryNavRail({
           </button>
         </div>
         <div className="entry-nav-rail__logo-divider" role="separator" aria-hidden="true" />
-        <NavButton
-          ariaLabel={t('entry.navNewProject')}
-          tooltip={t('entry.navNewProject')}
-          onClick={onNewProject}
-          disabled={newProjectDisabled}
-          testId="entry-nav-new-project"
-        >
-          <Icon name="plus" size={18} />
-        </NavButton>
-        <NavButton
-          active={isHome}
-          ariaLabel={homeLabel}
-          tooltip={homeLabel}
-          onClick={() => selectView('home')}
-          testId="entry-nav-home"
-        >
-          <Icon name="home" size={18} />
-        </NavButton>
-        <NavButton
-          active={view === 'projects'}
-          ariaLabel={t('entry.navProjects')}
-          tooltip={t('entry.navProjects')}
-          onClick={() => selectView('projects')}
-          testId="entry-nav-projects"
-        >
-          <Icon name="folder" size={18} />
-        </NavButton>
-        <NavButton
-          active={view === 'design-systems'}
-          ariaLabel={t('entry.navDesignSystems')}
-          tooltip={t('entry.navDesignSystems')}
-          onClick={() => selectView('design-systems')}
-          testId="entry-nav-design-systems"
-        >
-          <Icon name="palette" size={18} />
-        </NavButton>
-        {LIBRARY_UI_VISIBLE ? (
+        <div className="entry-nav-rail__section" role="group" aria-label={t('entry.nav.workspace')}>
+          <span className="entry-nav-rail__section-label" aria-hidden="true">
+            {t('entry.nav.workspace')}
+          </span>
           <NavButton
-            active={view === 'library'}
-            ariaLabel="Library"
-            tooltip="Library"
-            onClick={() => selectView('library')}
-            testId="entry-nav-library"
+            ariaLabel={t('entry.navNewProject')}
+            tooltip={t('entry.navNewProject')}
+            onClick={onNewProject}
+            disabled={newProjectDisabled}
+            testId="entry-nav-new-project"
           >
-            <Icon name="layers-filled" size={18} />
+            <Icon name="plus" size={18} />
           </NavButton>
-        ) : null}
-        <NavButton
-          active={view === 'tasks'}
-          ariaLabel={t('entry.navTasks')}
-          tooltip={t('entry.navTasks')}
-          onClick={() => selectView('tasks')}
-          testId="entry-nav-tasks"
-        >
-          <Icon name="kanban" size={18} />
-        </NavButton>
-        <NavButton
-          active={view === 'plugins'}
-          ariaLabel={t('entry.navPlugins')}
-          tooltip={t('entry.navPlugins')}
-          onClick={() => selectView('plugins')}
-          testId="entry-nav-plugins"
-        >
-          <Icon name="grid" size={18} />
-        </NavButton>
-        <NavButton
-          active={view === 'integrations'}
-          ariaLabel={t('entry.navIntegrations')}
-          tooltip={t('entry.navIntegrations')}
-          onClick={() => selectView('integrations')}
-          testId="entry-nav-integrations"
-        >
-          <Icon name="link" size={18} />
-        </NavButton>
+          <NavButton
+            active={isHome}
+            ariaLabel={homeLabel}
+            tooltip={homeLabel}
+            onClick={() => selectView('home')}
+            testId="entry-nav-home"
+          >
+            <Icon name="home" size={18} />
+          </NavButton>
+          <NavButton
+            active={view === 'projects'}
+            ariaLabel={t('entry.navProjects')}
+            tooltip={t('entry.navProjects')}
+            onClick={() => selectView('projects')}
+            testId="entry-nav-projects"
+          >
+            <Icon name="folder" size={18} />
+          </NavButton>
+          <NavButton
+            active={view === 'design-systems'}
+            ariaLabel={t('entry.navDesignSystems')}
+            tooltip={t('entry.navDesignSystems')}
+            onClick={() => selectView('design-systems')}
+            testId="entry-nav-design-systems"
+          >
+            <Icon name="palette" size={18} />
+          </NavButton>
+        </div>
+        <div className="entry-nav-rail__section" role="group" aria-label={t('entry.nav.recent')}>
+          <span className="entry-nav-rail__section-label" aria-hidden="true">
+            {t('entry.nav.recent')}
+          </span>
+          {LIBRARY_UI_VISIBLE ? (
+            <NavButton
+              active={view === 'library'}
+              ariaLabel="Library"
+              tooltip="Library"
+              onClick={() => selectView('library')}
+              testId="entry-nav-library"
+            >
+              <Icon name="layers-filled" size={18} />
+            </NavButton>
+          ) : null}
+          <NavButton
+            active={view === 'tasks'}
+            ariaLabel={t('entry.navTasks')}
+            tooltip={t('entry.navTasks')}
+            onClick={() => selectView('tasks')}
+            testId="entry-nav-tasks"
+          >
+            <Icon name="kanban" size={18} />
+          </NavButton>
+          <NavButton
+            active={view === 'plugins'}
+            ariaLabel={t('entry.navPlugins')}
+            tooltip={t('entry.navPlugins')}
+            onClick={() => selectView('plugins')}
+            testId="entry-nav-plugins"
+          >
+            <Icon name="grid" size={18} />
+          </NavButton>
+          <NavButton
+            active={view === 'integrations'}
+            ariaLabel={t('entry.navIntegrations')}
+            tooltip={t('entry.navIntegrations')}
+            onClick={() => selectView('integrations')}
+            testId="entry-nav-integrations"
+          >
+            <Icon name="link" size={18} />
+          </NavButton>
+        </div>
       </div>
       <div className="entry-nav-rail__footer">
         <div className="entry-nav-rail__divider" role="separator" />

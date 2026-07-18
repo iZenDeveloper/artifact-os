@@ -971,7 +971,9 @@ export function EntryShell({
           onClose={() => setRailOpen(false)}
         />
         <main className="entry-main entry-main--scroll" ref={entryMainScrollRef}>
-          <div className="entry-main__topbar">
+          <div
+            className={`entry-main__topbar${view === 'home' ? ' entry-main__topbar--over-banner' : ''}`}
+          >
             <button
               type="button"
               className="entry-rail-toggle"
@@ -1043,7 +1045,7 @@ export function EntryShell({
           </div>
           <div
             className={`entry-main__inner${
-              view === 'home' ? '' : ' entry-main__inner--wide'
+              view === 'home' ? ' entry-main__inner--home' : ' entry-main__inner--wide'
             }`}
           >
             <div data-testid="entry-view-home" data-active={view === 'home' ? 'true' : 'false'} {...inactiveViewProps(view === 'home')}>

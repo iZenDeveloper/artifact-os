@@ -20,16 +20,20 @@ const ACCENT = 'var(--accent)';
 const SURFACE = 'var(--bg-panel)';
 
 function Frame({ children }: { children: ReactNode }) {
+  // Prefer filling a sized parent (workflow cards); fall back to intrinsic
+  // 60×42 so compact uses (template thumb, rails) don't collapse.
   return (
     <svg
       className="home-hero__scenario-art-svg"
       viewBox="0 0 60 42"
-      width={60}
-      height={42}
+      width="100%"
+      height="100%"
       fill="none"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
+      preserveAspectRatio="xMidYMid meet"
+      style={{ display: 'block', overflow: 'visible', minWidth: 0, minHeight: 0 }}
     >
       {children}
     </svg>
@@ -336,10 +340,28 @@ interface ScenarioArtProps {
   // Rendered when a chip has no bespoke illustration yet, so new chips keep a
   // sensible glyph instead of an empty art slot.
   fallbackIcon: IconName;
+  /** Fallback icon size when no bespoke art exists (default 24). */
+  size?: number;
 }
 
-export function ScenarioArt({ chipId, fallbackIcon }: ScenarioArtProps) {
+export function ScenarioArt({ chipId, fallbackIcon, size = 24 }: ScenarioArtProps) {
   const Art = ART_BY_CHIP[chipId];
-  if (Art) return <Art />;
-  return <Icon name={fallbackIcon} size={24} aria-hidden />;
+  if (Art) {
+    const h = Math.round((size * 42) / 60);
+    return (
+      <span
+        className="home-hero__scenario-art-wrap"
+        style={{
+          display: 'inline-flex',
+          width: size,
+          height: h,
+          color: 'var(--accent, #e8955a)',
+          flexShrink: 0,
+        }}
+      >
+        <Art />
+      </span>
+    );
+  }
+  return <Icon name={fallbackIcon} size={size} aria-hidden />;
 }

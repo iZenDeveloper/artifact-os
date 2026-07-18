@@ -4,38 +4,47 @@ import { describe, expect, it } from 'vitest';
 const read = (relative: string) =>
   readFileSync(new URL(relative, import.meta.url), 'utf8');
 
-const homeHeroSource = read('../../src/components/HomeHero.tsx');
 const entryNavRailSource = read('../../src/components/EntryNavRail.tsx');
+const entryShellSource = read('../../src/components/EntryShell.tsx');
 const logoSvg = read('../../public/logo.svg');
 const brandIconSvg = read('../../public/brand-icon.svg');
 
-// The current Artifact OS brand glyph is the ink superellipse tile introduced
-// with the landing-page rebrand (landing PR #3444): its outline starts with
-// this path command in every export of the mark.
-const CURRENT_GLYPH_PATH_PREFIX = 'M41 0.726562';
-// The retired glyph was a 444x444 dark tile (#202020) whose cursor arrow was
-// drawn as a separate path starting at this command.
-const RETIRED_GLYPH_MARKERS = ['#202020', 'M212.059', 'width="444"'];
+// Artifact OS mark (vectorized brand glyph from Downloads/Artifact OS logo.svg).
+// Paths use absolute coordinates in the 1706×1394 artboard.
+const ARTIFACT_GLYPH_MARKERS = ['viewBox="0 0 1706 1394"', 'M1440 1344', 'M260.3 1343.3'];
+// Retired Open Design superellipse + cursor glyph.
+const RETIRED_OD_GLYPH_MARKERS = [
+  'M41 0.726562',
+  '#202020',
+  'M212.059',
+  'width="444"',
+];
 
 describe('Home logo assets', () => {
-  it('ships the current brand glyph in the public logo assets', () => {
-    expect(logoSvg).toContain(CURRENT_GLYPH_PATH_PREFIX);
-    expect(brandIconSvg).toContain(CURRENT_GLYPH_PATH_PREFIX);
-    for (const marker of RETIRED_GLYPH_MARKERS) {
+  it('ships the Artifact OS brand glyph in the public logo assets', () => {
+    for (const marker of ARTIFACT_GLYPH_MARKERS) {
+      expect(logoSvg).toContain(marker);
+      expect(brandIconSvg).toContain(marker);
+    }
+    for (const marker of RETIRED_OD_GLYPH_MARKERS) {
       expect(logoSvg).not.toContain(marker);
       expect(brandIconSvg).not.toContain(marker);
     }
+    expect(logoSvg).toContain('Artifact OS');
+    expect(brandIconSvg).toContain('Artifact OS');
   });
 
   it('keeps brand-icon.svg maskable (theme color comes from CSS)', () => {
     expect(brandIconSvg).toContain('currentColor');
   });
 
-  it('renders the brand glyph on both Home entry surfaces', () => {
-    expect(homeHeroSource).toContain('od-brand-glyph');
-    expect(homeHeroSource).not.toContain('src="/app-icon.svg"');
-
+  it('renders the brand glyph on entry chrome surfaces', () => {
+    // Nav rail + onboarding shell mask /brand-icon.svg via .od-brand-glyph.
+    // HomeHero no longer mounts a separate logo mark (brand mode chips only).
     expect(entryNavRailSource).toContain('od-brand-glyph');
     expect(entryNavRailSource).not.toContain('src="/app-icon.svg"');
+
+    expect(entryShellSource).toContain('od-brand-glyph');
+    expect(entryShellSource).not.toContain('src="/app-icon.svg"');
   });
 });
