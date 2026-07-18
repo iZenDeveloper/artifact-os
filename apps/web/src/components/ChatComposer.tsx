@@ -68,6 +68,10 @@ import {
 } from './ProjectReferenceModal';
 import { assetTitle, elementMetaOf } from './LibraryAssetMeta';
 import { SessionModeToggle } from './SessionModeToggle';
+import {
+  ExpertPicker,
+  type ExpertCatalogEntry,
+} from './home-hero/ExpertPicker';
 import type { LibraryAsset, LibraryElementMeta } from '@open-design/contracts';
 import {
   DESIGN_TOOLBOX_ACTIONS,
@@ -369,6 +373,12 @@ export interface ChatSendMeta {
   // for this run only is composed with the extra skill bodies, without
   // touching the project's persistent `skillId`.
   skillIds?: string[];
+  /**
+   * Expert persona/methodology for this turn. Usually mirrors
+   * project.metadata.expertId; included so the send path can forward it
+   * without re-reading parent state after a picker change.
+   */
+  expertId?: string | null;
   /** Overrides the run_created / run_finished `entry_from` analytics prop for
    *  this send (e.g. 'mark' when the turn is sent from the Mark draw overlay).
    *  Behavior never depends on it; it only shapes PostHog props. */
@@ -739,6 +749,56 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     // Skills now come from the parent (App.tsx → ProjectView → ChatPane → ChatComposer)
     // pre-filtered by enabled/disabled state. We no longer fetch a fresh list
     // here to avoid showing skills the user has disabled via Settings.
+
+    // Expert catalog for the in-composer Expert switcher (persona/methodology).
+    const [experts, setExperts] = useState<ExpertCatalogEntry[]>([]);
+    const [expertsLoading, setExpertsLoading] = useState(false);
+    const [expertBusy, setExpertBusy] = useState(false);
+    useEffect(() => {
+      if (!composerEngaged && !projectId) return;
+      let cancelled = false;
+      setExpertsLoading(true);
+      void fetch('/api/experts')
+        .then(async (resp) => {
+          if (!resp.ok) throw new Error(`experts ${resp.status}`);
+          return (await resp.json()) as { experts?: ExpertCatalogEntry[] };
+        })
+        .then((body) => {
+          if (cancelled) return;
+          setExperts(Array.isArray(body.experts) ? body.experts : []);
+        })
+        .catch(() => {
+          if (!cancelled) setExperts([]);
+        })
+        .finally(() => {
+          if (!cancelled) setExpertsLoading(false);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [composerEngaged, projectId]);
+
+    async function handleExpertChange(nextExpertId: string | null) {
+      if (!projectId || expertBusy) return;
+      const base: ProjectMetadata = projectMetadata ?? { kind: 'prototype' };
+      const nextMetadata: ProjectMetadata = { ...base };
+      if (nextExpertId) {
+        nextMetadata.expertId = nextExpertId;
+      } else {
+        delete nextMetadata.expertId;
+      }
+      setExpertBusy(true);
+      try {
+        const result = await patchProject(projectId, { metadata: nextMetadata });
+        if (!result?.metadata) {
+          onShowToast?.(t('homeWorkingDir.applyFailed'));
+          return;
+        }
+        onProjectMetadataChange?.(result.metadata);
+      } finally {
+        setExpertBusy(false);
+      }
+    }
 
     // Lazy-fetch installed plugins once on mount; the tools-menu Plugins
     // tab and the @-mention picker both consume this list.
@@ -1151,8 +1211,13 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         ...(connectorIds.length > 0 ? { connectorIds } : {}),
         ...(workspaceItems.length > 0 ? { workspaceItems } : {}),
       };
+      const expertIdForRun =
+        typeof projectMetadata?.expertId === 'string' && projectMetadata.expertId.trim()
+          ? projectMetadata.expertId.trim()
+          : null;
       const meta: ChatSendMeta = {
         ...(skillIds.length > 0 ? { skillIds } : {}),
+        ...(expertIdForRun ? { expertId: expertIdForRun } : { expertId: null }),
         ...(activeAppliedPlugin
           ? {
               appliedPluginSnapshot: activeAppliedPlugin,
@@ -3041,6 +3106,21 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
             {leadingAccessory}
             <span className="composer-spacer" />
             {footerAccessory}
+            <div className="composer-expert-picker" data-testid="chat-composer-expert-picker">
+              <ExpertPicker
+                experts={experts}
+                selectedExpertId={
+                  typeof projectMetadata?.expertId === 'string'
+                    ? projectMetadata.expertId
+                    : null
+                }
+                disabled={!projectId || expertBusy}
+                loading={expertsLoading}
+                onChange={(id) => {
+                  void handleExpertChange(id);
+                }}
+              />
+            </div>
             <SessionModeToggle
               mode={sessionMode}
               onChange={(next) => {

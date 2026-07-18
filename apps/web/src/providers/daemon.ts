@@ -293,6 +293,8 @@ export interface DaemonStreamOptions {
   // are layered onto the system prompt for this run only and do not
   // change the project's persistent `skillId`.
   skillIds?: string[];
+  /** Expert persona/methodology id for this run (project metadata fallback on daemon). */
+  expertId?: string | null;
   designSystemId?: string | null;
   // Project-relative paths the user has staged for this turn. The
   // daemon resolves them inside the project folder, validates they
@@ -638,6 +640,7 @@ export async function streamViaDaemon({
   clientRequestId,
   skillId,
   skillIds,
+  expertId,
   designSystemId,
   attachments,
   commentAttachments,
@@ -676,6 +679,9 @@ export async function streamViaDaemon({
     clientRequestId: clientRequestId ?? null,
     skillId: skillId ?? null,
     skillIds: Array.isArray(skillIds) ? skillIds : [],
+    ...(typeof expertId === 'string' || expertId === null
+      ? { expertId }
+      : {}),
     designSystemId: designSystemId ?? null,
     attachments: attachments ?? [],
     commentAttachments: commentAttachments ?? [],

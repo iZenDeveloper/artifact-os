@@ -5918,6 +5918,12 @@ export function ProjectView({
           clientRequestId: randomUUID(),
           skillId: project.skillId ?? null,
           skillIds: Array.isArray(meta?.skillIds) ? meta.skillIds : [],
+          expertId:
+            typeof meta?.expertId === 'string' || meta?.expertId === null
+              ? meta.expertId
+              : typeof project.metadata?.expertId === 'string'
+                ? project.metadata.expertId
+                : null,
           context: runContext,
           designSystemId: projectDesignSystemId ?? null,
           attachments: runAttachments.map((a) => a.path),
@@ -6076,6 +6082,12 @@ export function ProjectView({
           clientRequestId: randomUUID(),
           skillId: project.skillId ?? null,
           skillIds: Array.isArray(meta?.skillIds) ? meta.skillIds : [],
+          expertId:
+            typeof meta?.expertId === 'string' || meta?.expertId === null
+              ? meta.expertId
+              : typeof project.metadata?.expertId === 'string'
+                ? project.metadata.expertId
+                : null,
           context: runContext,
           designSystemId: projectDesignSystemId ?? null,
           attachments: runAttachments.map((a) => a.path),
