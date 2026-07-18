@@ -3738,6 +3738,8 @@ export interface Dict {
   'fileViewer.exportPptxHint': string;
   'fileViewer.exportPptxNa': string;
   'fileViewer.exportZip': string;
+  'fileViewer.exportClientPackage': string;
+  'fileViewer.exportClientPackageEmpty': string;
   'fileViewer.exportHtml': string;
   'fileViewer.exportMd': string;
   'fileViewer.exportImage': string;

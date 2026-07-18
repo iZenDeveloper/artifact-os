@@ -20,6 +20,18 @@ import {
   printHostPdf,
 } from '@open-design/host';
 
+// Client Package (agency captions + brand zip) — re-export public API.
+export {
+  buildClientPackageEntries,
+  exportClientPackageZip,
+  extractCaptionsFromHtml,
+  extractNotesFromHtml,
+  inferPlatformFromHeading,
+  type ClientPackageCaption,
+  type ClientPackageInput,
+  type ClientPackagePlatform,
+} from './client-package';
+
 // Re-exported so app components can gate desktop-only export paths without
 // importing the host package directly.
 export { isOpenDesignHostAvailable } from '@open-design/host';

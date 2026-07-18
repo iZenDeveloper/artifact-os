@@ -56,7 +56,7 @@ Xây dựng **Artifact OS** theo từng giai đoạn, bắt đầu từ Marketin
 - Hoàn thiện **Repurpose Flow** (dedicated flow)
 - Variants Comparison View — **partial** · skill `variants-comparison` + HTML board (not full app UI yet)
 - Content Library cơ bản (lọc theo client/vertical)
-- Cải thiện Export (Client Package)
+- Cải thiện Export (Client Package) — **partial** · skill `client-package` + Download menu zip
 - Tối ưu hiệu năng và ổn định daemon
 - Viết test cho các skill quan trọng
 - Cải thiện onboarding cho người dùng mới

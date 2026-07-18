@@ -29,7 +29,7 @@ Cập nhật: 2026-07 · Aligns with Content Pro **v2.2** + MVP output scope (te
 | Thiếu hook mạnh | Cao | `hook-engine` + hook lab trong pack |
 | Ad variants tốn thời gian | Cao | `ad-variants-generator` |
 | Output chưa ready-to-post | Cao | ready-to-post fields (v2.2) |
-| Quản lý theo client | Trung–Cao | **Gap** (library / client package — Giai đoạn 2) |
+| Quản lý theo client | Trung–Cao | **Partial** · Client Package export; full library later (Giai đoạn 2) |
 | Đẹp + chuyển đổi | Cao | Strategy inputs + psychology + Content Pro craft |
 
 ---
@@ -48,7 +48,7 @@ Cập nhật: 2026-07 · Aligns with Content Pro **v2.2** + MVP output scope (te
 | Landing / Sales page | P2 | **Not in MVP** |
 | Competitor analysis | P3 | **Not in MVP** |
 | Variants Comparison UI | P2 | **Shipped (lightweight)** · skill `variants-comparison` + embed `#variants-comparison` in packs |
-| Client Package export | P2 | **Gap** |
+| Client Package export | P2 | **Shipped** · skill `client-package` + Download → Export Client Package zip |
 
 ---
 
@@ -165,8 +165,8 @@ Shared by: content-repurposer, hook-engine, social-content-factory, ad-variants,
 | Platform Preview (XHS / TikTok / LinkedIn / Facebook / YouTube) | **Done** |
 | Strategy inputs (objective, funnel, persona…) | **Done** · skill + Home prompt seeds |
 | Ready-to-post export fields | **Done** · in HTML pack |
-| Variants Comparison view | **Gap** · Giai đoạn 2 |
-| Client Package export | **Gap** · Giai đoạn 2 |
+| Variants Comparison view | **Shipped (lightweight)** · skill + HTML board |
+| Client Package export | **Shipped** · skill + Download → Export Client Package |
 | Brand Voice preview in picker | **Gap** · nice-to-have |
 
 ---
@@ -223,7 +223,7 @@ Shared by: content-repurposer, hook-engine, social-content-factory, ad-variants,
 |---|------|-----|
 | 1 | **Use & harden** repurposer packs against regression baseline | **Done** · polish P1–P3 freeze + suite + pre-ship QA + lint script |
 | 2 | **Variants Comparison** lightweight UI or HTML section | **Done** · `skills/variants-comparison` + board embed in hook/ad/repurposer |
-| 3 | **Client Package export** (zip: captions + notes + brand slug) | Agency path · **next** |
+| 3 | **Client Package export** (zip: captions + notes + brand slug) | **Done** · skill + app zip (`captions/`, `brand.json`, notes) |
 | 4 | More **client** brand examples (template filled) | Freelancer multi-client |
 | 5 | Giai đoạn 2: calendar depth / email sequence | After MVP feedback |
 | 1b | **Re-run** 3 regression briefs with agent (record scores) | Confirm freeze after harden |

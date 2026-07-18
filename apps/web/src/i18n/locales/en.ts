@@ -2991,6 +2991,9 @@ export const en: Dict = {
   'fileViewer.exportPptxHint': 'Send a request to the agent to convert this design to PPTX.',
   'fileViewer.exportPptxNa': 'PPTX export is not available here.',
   'fileViewer.exportZip': 'Download as .zip',
+  'fileViewer.exportClientPackage': 'Export Client Package',
+  'fileViewer.exportClientPackageEmpty':
+    'No captions or HTML to package. Open a Content Pro pack first.',
   'fileViewer.exportHtml': 'Export as standalone HTML',
   'fileViewer.exportMd': 'Export as Markdown',
   'fileViewer.exportImage': 'Export as image',

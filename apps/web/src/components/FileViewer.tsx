@@ -92,6 +92,7 @@ import {
   exportAsMd,
   exportAsPdf,
   exportAsZip,
+  exportClientPackageZip,
   exportProjectAsHtml,
   exportProjectAsPdf,
   exportProjectAsPptx,
@@ -6013,7 +6014,8 @@ function HtmlViewer({
       | 'markdown'
       | 'template'
       | 'share_link'
-      | 'share_page',
+      | 'share_page'
+      | 'client-package',
     fn: () => Promise<unknown> | unknown,
   ) => {
     const requestId = analytics.newRequestId();
@@ -10288,6 +10290,38 @@ function HtmlViewer({
     }));
   }
 
+  async function triggerClientPackageExport(context?: HtmlVersionExportContext) {
+    const html = context?.content ?? source ?? '';
+    const title = context?.title ?? exportTitle;
+    fireShareExport('client-package', async () => {
+      let brandSlug: string | null = null;
+      try {
+        const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}`);
+        if (resp.ok) {
+          const body = (await resp.json()) as {
+            designSystemId?: string | null;
+            project?: { designSystemId?: string | null };
+          };
+          brandSlug = body.designSystemId ?? body.project?.designSystemId ?? null;
+        }
+      } catch {
+        // Brand is optional — package still ships with captions.
+      }
+      const ok = exportClientPackageZip({
+        title,
+        brandSlug,
+        projectId,
+        sourceHtml: html,
+      });
+      if (!ok) {
+        throw new Error(
+          t('fileViewer.exportClientPackageEmpty') ||
+            'No captions or HTML to package. Open a Content Pro pack first.',
+        );
+      }
+    });
+  }
+
   useEffect(() => {
     const nudgeKey = `${projectId}\n${file.name}`;
     if (!canShare || exportReadyNudgeSeenRef.current.has(nudgeKey)) return;
@@ -11981,6 +12015,18 @@ function HtmlViewer({
                   >
                     <span className="share-menu-icon"><RemixIcon name="file-zip-line" size={15} /></span>
                     <span>{t('fileViewer.exportZip')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="share-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setDownloadMenuOpen(false);
+                      void triggerClientPackageExport();
+                    }}
+                  >
+                    <span className="share-menu-icon"><RemixIcon name="folder-zip-line" size={15} /></span>
+                    <span>{t('fileViewer.exportClientPackage')}</span>
                   </button>
                   <button
                     type="button"

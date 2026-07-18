@@ -2991,6 +2991,9 @@ export const vi: Dict = {
   'fileViewer.exportPptxHint': 'Send a request to the agent to convert this design to PPTX.',
   'fileViewer.exportPptxNa': 'PPTX export is not available here.',
   'fileViewer.exportZip': 'Download as .zip',
+  'fileViewer.exportClientPackage': 'Xuất Client Package',
+  'fileViewer.exportClientPackageEmpty':
+    'Không có caption hoặc HTML để đóng gói. Mở pack Content Pro trước.',
   'fileViewer.exportHtml': 'Export as standalone HTML',
   'fileViewer.exportMd': 'Export as Markdown',
   'fileViewer.exportImage': 'Export as image',
