@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   formatFormAnswers,
+  sanitizeQuestionFormJson,
   splitOnQuestionForms,
   parsePartialQuestionForm,
 } from '../../src/artifacts/question-form';
@@ -76,6 +77,55 @@ describe('form content language (lang)', () => {
       '<question-form id="discovery" title="快速确认">\n{ "lang": "zh-CN", "questions": [',
     );
     expect(complete?.lang).toBe('zh-CN');
+  });
+});
+
+describe('sanitizeQuestionFormJson (error 25)', () => {
+  it('strips JS .replace chains after string literals', () => {
+    const dirty = `{ "lang": "zh-CN".replace("zh-CN","vi"), "questions": [] }`;
+    const clean = sanitizeQuestionFormJson(dirty);
+    expect(clean).toBe(`{ "lang": "zh-CN", "questions": [] }`);
+    expect(() => JSON.parse(clean)).not.toThrow();
+  });
+
+  it('parses the production Brand Voice form that used .replace for lang', () => {
+    const body = `{
+  "lang": "zh-CN".replace("zh-CN","vi"),
+  "description": "Đã prefill theo brief — gửi luôn được, hoặc chỉnh trước khi gửi.",
+  "questions": [
+    { "id": "output", "label": "Bạn muốn nhận gì?", "type": "radio", "required": true, "default": "voice_guide",
+      "options": [
+        { "label": "Báo cáo phân tích", "value": "analysis_page" },
+        { "label": "Brand voice guide", "value": "voice_guide" }
+      ]
+    },
+    { "id": "lang", "label": "Ngôn ngữ deliverable", "type": "radio", "default": "vi",
+      "options": [
+        { "label": "Tiếng Việt", "value": "vi" },
+        { "label": "English", "value": "en" }
+      ]
+    }
+  ]
+}`;
+    const input = `<question-form id="discovery" title="Xác nhận nhanh · 30 giây">\n${body}\n</question-form>`;
+    const segments = splitOnQuestionForms(input);
+    expect(segments).toHaveLength(1);
+    expect(segments[0]?.kind).toBe('form');
+    if (segments[0]?.kind !== 'form') return;
+    expect(segments[0].form.lang).toBe('zh-CN');
+    expect(segments[0].form.questions).toHaveLength(2);
+    expect(segments[0].form.questions[0]?.id).toBe('output');
+  });
+
+  it('does not dump raw markup when JSON is irreparable', () => {
+    const input =
+      '<question-form id="broken" title="Broken">{ not json at all }</question-form>';
+    const segments = splitOnQuestionForms(input);
+    expect(segments).toHaveLength(1);
+    expect(segments[0]?.kind).toBe('text');
+    if (segments[0]?.kind !== 'text') return;
+    expect(segments[0].text).not.toContain('<question-form');
+    expect(segments[0].text).toMatch(/could not be rendered/i);
   });
 });
 

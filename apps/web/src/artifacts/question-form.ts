@@ -196,7 +196,14 @@ export function splitOnQuestionForms(input: string): FormSegment[] {
         out.push({ kind: 'text', text: input.slice(openStart, resumeAt) });
         cursor = resumeAt;
       } else {
-        out.push({ kind: 'text', text: input.slice(openStart, blockEnd) });
+        // Never dump raw form JSON into chat — it blows up the layout
+        // (error 25). Prefer a short recovery note; the prose before the
+        // form (if any) already carries the agent's explanation.
+        out.push({
+          kind: 'text',
+          text:
+            '\n\n_(A structured question form was produced but could not be rendered. Reply with your preferences in chat — e.g. deliverable type, scope, language.)_\n\n',
+        });
         cursor = blockEnd;
       }
     }
@@ -268,6 +275,41 @@ function parseAttrs(raw: string): Record<string, string> {
   return out;
 }
 
+/**
+ * Models sometimes emit near-JSON with small JS-isms that break JSON.parse.
+ * Recover common patterns so the structured card still renders instead of
+ * dumping raw `<question-form>{…}</question-form>` into the chat (error 25).
+ *
+ * Examples seen in production:
+ *   "lang": "zh-CN".replace("zh-CN","vi")
+ *   "lang": 'en'.toLowerCase()
+ *   trailing commas before } or ]
+ */
+export function sanitizeQuestionFormJson(source: string): string {
+  let out = source;
+  // `"literal".method(...)` / `'literal'.method(...)` → `"literal"`
+  // Covers .replace(...), .toLowerCase(), .trim(), chained calls.
+  out = out.replace(
+    /(["'])((?:\\.|(?!\1)[^\\])*)\1(\s*(?:\.\s*[A-Za-z_$][\w$]*\s*\((?:[^()]|\([^()]*\))*\))+)/g,
+    '$1$2$1',
+  );
+  // Trailing commas in objects/arrays (also common model drift).
+  out = out.replace(/,\s*([}\]])/g, '$1');
+  return out;
+}
+
+function parseQuestionFormJson(source: string): unknown {
+  const attempts = [source, sanitizeQuestionFormJson(source)];
+  for (const candidate of attempts) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      // try next
+    }
+  }
+  return null;
+}
+
 function tryParseForm(body: string, attrs: Record<string, string>): QuestionForm | null {
   const trimmed = body.trim();
   if (!trimmed) return null;
@@ -277,12 +319,7 @@ function tryParseForm(body: string, attrs: Record<string, string>): QuestionForm
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/```\s*$/i, '')
     .trim();
-  let data: unknown;
-  try {
-    data = JSON.parse(stripped);
-  } catch {
-    return null;
-  }
+  const data = parseQuestionFormJson(stripped);
   if (!data || typeof data !== 'object') return null;
   const obj = data as Record<string, unknown>;
   const rawQuestions = Array.isArray(obj.questions) ? obj.questions : null;
