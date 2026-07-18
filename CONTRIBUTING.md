@@ -1,4 +1,4 @@
-# Contributing to Open Design
+# Contributing to Artifact OS
 
 Thanks for thinking about contributing. OD is small on purpose — most of the value lives in **files** (skills, design systems, prompt fragments) rather than framework code. That means the highest-leverage contributions are usually one folder, one Markdown file, or one PR-sized adapter.
 
@@ -40,7 +40,7 @@ Node `~24` and pnpm `10.33.x` are required. `nvm` / `fnm` are optional; use `nvm
 
 ## Docker Setup
 
-Run Open Design without installing Node.js or pnpm.
+Run Artifact OS without installing Node.js or pnpm.
 
 ### Prerequisites
 
@@ -50,7 +50,7 @@ Make sure Docker Desktop with Compose v2 is installed:
 docker compose version
 ```
 
-### Start Open Design
+### Start Artifact OS
 
 ```bash
 cd deploy

@@ -20,16 +20,20 @@ const ACCENT = 'var(--accent)';
 const SURFACE = 'var(--bg-panel)';
 
 function Frame({ children }: { children: ReactNode }) {
+  // Prefer filling a sized parent (workflow cards); fall back to intrinsic
+  // 60×42 so compact uses (template thumb, rails) don't collapse.
   return (
     <svg
       className="home-hero__scenario-art-svg"
       viewBox="0 0 60 42"
-      width={60}
-      height={42}
+      width="100%"
+      height="100%"
       fill="none"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
+      preserveAspectRatio="xMidYMid meet"
+      style={{ display: 'block', overflow: 'visible', minWidth: 0, minHeight: 0 }}
     >
       {children}
     </svg>
@@ -202,7 +206,121 @@ function AudioArt() {
   );
 }
 
+function ContentPackArt() {
+  // Stacked platform cards fanning out — multi-format pack.
+  return (
+    <Frame>
+      <rect x="8" y="10" width="18" height="24" rx="2.5" stroke={INK} strokeWidth="2" strokeOpacity="0.45" />
+      <rect x="18" y="8" width="18" height="24" rx="2.5" fill={SURFACE} stroke={INK} strokeWidth="2" strokeOpacity="0.7" />
+      <rect x="28" y="6" width="20" height="26" rx="2.5" fill={SURFACE} stroke={INK} strokeWidth="2" />
+      <rect x="32" y="11" width="12" height="4" rx="1" fill={ACCENT} />
+      <line x1="32" y1="19" x2="44" y2="19" stroke={INK} strokeWidth="2" />
+      <line x1="32" y1="24" x2="40" y2="24" stroke={INK} strokeWidth="2" />
+    </Frame>
+  );
+}
+
+function SocialContentArt() {
+  // Feed tiles + accent heart/engagement mark.
+  return (
+    <Frame>
+      <rect x="7" y="8" width="20" height="26" rx="3" stroke={INK} strokeWidth="2" />
+      <rect x="31" y="8" width="20" height="12" rx="2.5" stroke={INK} strokeWidth="2" />
+      <rect x="31" y="23" width="20" height="11" rx="2.5" fill={SURFACE} stroke={INK} strokeWidth="2" />
+      <circle cx="17" cy="16" r="3" fill={ACCENT} />
+      <line x1="11" y1="24" x2="23" y2="24" stroke={INK} strokeWidth="2" />
+      <line x1="11" y1="29" x2="20" y2="29" stroke={INK} strokeWidth="2" />
+    </Frame>
+  );
+}
+
+function CarouselArt() {
+  // Portrait multi-card stack (XHS / IG carousel).
+  return (
+    <Frame>
+      <rect x="22" y="5" width="20" height="28" rx="3" stroke={INK} strokeWidth="2" strokeOpacity="0.4" />
+      <rect x="16" y="7" width="20" height="28" rx="3" stroke={INK} strokeWidth="2" strokeOpacity="0.65" />
+      <rect x="10" y="9" width="20" height="28" rx="3" fill={SURFACE} stroke={INK} strokeWidth="2" />
+      <rect x="14" y="14" width="12" height="5" rx="1.5" fill={ACCENT} />
+      <line x1="14" y1="24" x2="26" y2="24" stroke={INK} strokeWidth="2" />
+      <line x1="14" y1="29" x2="22" y2="29" stroke={INK} strokeWidth="2" />
+    </Frame>
+  );
+}
+
+function ShortVideoArt() {
+  // Vertical phone frame with play + energy bars.
+  return (
+    <Frame>
+      <rect x="20" y="4" width="20" height="34" rx="3.5" stroke={INK} strokeWidth="2" />
+      <path d="M27 16 V26 L36 21 Z" fill={ACCENT} />
+      <line x1="24" y1="32" x2="36" y2="32" stroke={INK} strokeWidth="2" />
+    </Frame>
+  );
+}
+
+function LinkedInPostArt() {
+  // Feed card with avatar + text lines.
+  return (
+    <Frame>
+      <rect x="6" y="8" width="48" height="26" rx="4" stroke={INK} strokeWidth="2" />
+      <circle cx="15" cy="16" r="4" fill={ACCENT} />
+      <line x1="22" y1="14" x2="46" y2="14" stroke={INK} strokeWidth="2" />
+      <line x1="22" y1="19" x2="40" y2="19" stroke={INK} strokeWidth="2" />
+      <line x1="11" y1="26" x2="46" y2="26" stroke={INK} strokeWidth="2" />
+      <line x1="11" y1="30" x2="36" y2="30" stroke={INK} strokeWidth="2" />
+    </Frame>
+  );
+}
+
+function EmailArt() {
+  // Envelope with accent open flap.
+  return (
+    <Frame>
+      <rect x="8" y="12" width="44" height="22" rx="3" stroke={INK} strokeWidth="2" />
+      <path d="M8 14 L30 26 L52 14" stroke={ACCENT} strokeWidth="2.2" />
+    </Frame>
+  );
+}
+
+function AdCreativeArt() {
+  // Ad unit: media frame + CTA bar.
+  return (
+    <Frame>
+      <rect x="8" y="6" width="44" height="22" rx="3" stroke={INK} strokeWidth="2" />
+      <circle cx="18" cy="14" r="3" fill={ACCENT} />
+      <path d="M12 24 L22 16 L30 21 L40 12 L48 24" stroke={INK} strokeWidth="2" />
+      <rect x="8" y="30" width="44" height="6" rx="2" fill={ACCENT} fillOpacity="0.85" />
+    </Frame>
+  );
+}
+
+function HookEngineArt() {
+  // Hook lab: big first line + weak/strong stack.
+  return (
+    <Frame>
+      <rect x="8" y="7" width="44" height="10" rx="2" fill={ACCENT} fillOpacity="0.9" />
+      <path d="M12 20 H48" stroke={INK} strokeWidth="2" strokeLinecap="round" opacity="0.35" />
+      <path d="M12 25 H40" stroke={INK} strokeWidth="2" strokeLinecap="round" />
+      <path d="M12 30 H44" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" />
+      <circle cx="48" cy="30" r="3" fill={ACCENT} />
+    </Frame>
+  );
+}
+
 const ART_BY_CHIP: Record<string, () => ReactElement> = {
+  'content-pack': ContentPackArt,
+  'social-content': SocialContentArt,
+  carousel: CarouselArt,
+  'short-video': ShortVideoArt,
+  'linkedin-post': LinkedInPostArt,
+  'facebook-post': SocialContentArt,
+  youtube: ShortVideoArt,
+  email: EmailArt,
+  'ad-creative': AdCreativeArt,
+  'hook-engine': HookEngineArt,
+  threads: SocialContentArt,
+  repurpose: ContentPackArt,
   prototype: PrototypeArt,
   'web-clone': WebCloneArt,
   wireframe: WireframeArt,
@@ -222,10 +340,28 @@ interface ScenarioArtProps {
   // Rendered when a chip has no bespoke illustration yet, so new chips keep a
   // sensible glyph instead of an empty art slot.
   fallbackIcon: IconName;
+  /** Fallback icon size when no bespoke art exists (default 24). */
+  size?: number;
 }
 
-export function ScenarioArt({ chipId, fallbackIcon }: ScenarioArtProps) {
+export function ScenarioArt({ chipId, fallbackIcon, size = 24 }: ScenarioArtProps) {
   const Art = ART_BY_CHIP[chipId];
-  if (Art) return <Art />;
-  return <Icon name={fallbackIcon} size={24} aria-hidden />;
+  if (Art) {
+    const h = Math.round((size * 42) / 60);
+    return (
+      <span
+        className="home-hero__scenario-art-wrap"
+        style={{
+          display: 'inline-flex',
+          width: size,
+          height: h,
+          color: 'var(--accent, #e8955a)',
+          flexShrink: 0,
+        }}
+      >
+        <Art />
+      </span>
+    );
+  }
+  return <Icon name={fallbackIcon} size={size} aria-hidden />;
 }

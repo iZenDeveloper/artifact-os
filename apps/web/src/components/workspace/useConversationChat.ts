@@ -7,6 +7,7 @@ import { randomUUID } from '../../utils/uuid';
 import { effectiveAgentModelChoice } from '../agentModelSelection';
 import {
   createBufferedTextUpdates,
+  createRunEventIdBinder,
   finalizeActiveAssistantMessagesOnStop,
   resolveRetryTarget,
   resolveSucceededRunStatus,
@@ -134,7 +135,17 @@ export function useConversationChat(
 
   const updateAssistant = useCallback(
     (assistantId: string, updater: (prev: ChatMessage) => ChatMessage) => {
-      setMessages((curr) => curr.map((m) => (m.id === assistantId ? updater(m) : m)));
+      setMessages((curr) => {
+        let changed = false;
+        const next = curr.map((m) => {
+          if (m.id !== assistantId) return m;
+          const updated = updater(m);
+          if (Object.is(updated, m)) return m;
+          changed = true;
+          return updated;
+        });
+        return changed ? next : curr;
+      });
     },
     [],
   );
@@ -221,12 +232,21 @@ export function useConversationChat(
         persistSoon: () => {},
       });
       textBufferRef.current = textBuffer;
+      const eventIdBinder = createRunEventIdBinder({
+        apply: (lastRunEventId) => {
+          updateAssistant(assistantId, (prev) =>
+            prev.lastRunEventId === lastRunEventId ? prev : { ...prev, lastRunEventId },
+          );
+        },
+      });
 
       const clearRefs = () => {
         if (abortRef.current === controller) abortRef.current = null;
         if (cancelRef.current === cancelController) cancelRef.current = null;
         textBufferRef.current?.flush();
+        eventIdBinder.flush();
         textBufferRef.current?.cancel();
+        eventIdBinder.cancel();
         textBufferRef.current = null;
         setStreaming(false);
       };
@@ -240,6 +260,7 @@ export function useConversationChat(
         },
         onDone: () => {
           textBuffer.flush();
+          eventIdBinder.flush();
           const endedAt = Date.now();
           setMessages((curr) => {
             const next = curr.map((m) =>
@@ -255,6 +276,7 @@ export function useConversationChat(
         },
         onError: (err: Error) => {
           textBuffer.flush();
+          eventIdBinder.flush();
           const endedAt = Date.now();
           const code = (err as Error & { code?: string }).code;
           const resumable = (err as Error & { resumable?: boolean }).resumable === true;
@@ -311,6 +333,7 @@ export function useConversationChat(
           });
         },
         onRunStatus: (runStatus) => {
+          if (isTerminalRunStatus(runStatus)) eventIdBinder.flush();
           updateAssistant(assistantId, (prev) => ({
             ...prev,
             runStatus,
@@ -318,9 +341,7 @@ export function useConversationChat(
           }));
           if (isTerminalRunStatus(runStatus)) clearRefs();
         },
-        onRunEventId: (lastRunEventId) => {
-          updateAssistant(assistantId, (prev) => ({ ...prev, lastRunEventId }));
-        },
+        onRunEventId: eventIdBinder.onRunEventId,
       });
     },
     [projectId, conversationId, persist, updateAssistant],

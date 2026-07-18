@@ -41,6 +41,8 @@
   border-color: var(--border);
   color: var(--text-muted);
   box-shadow: var(--shadow-xs);
+  /* Match Template picker (12px / --radius-lg); icon-btn defaults to radius-sm */
+  border-radius: var(--radius-lg, 12px);
 }
 .home-hero__input-card .plus-menu__trigger:hover:not(:disabled),
 .home-hero__input-card .plus-menu__trigger:focus-visible,

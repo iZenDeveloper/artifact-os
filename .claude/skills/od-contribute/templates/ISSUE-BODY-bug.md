@@ -10,7 +10,7 @@
 
 {{EXPECTED}}
 
-### Open Design version
+### Artifact OS version
 
 {{OD_VERSION}}
 

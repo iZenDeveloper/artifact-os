@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { trackPreviewRunStatusSurfaceView } from '../analytics/events';
 import { useAnalytics } from '../analytics/provider';
 import { useI18n } from '../i18n';
+import type { Dict } from '../i18n/types';
 import {
   formatPreviewRunElapsed,
   latestPreviewRunStatus,
@@ -10,17 +11,26 @@ import {
   previewRunStatusCompletedAt,
   previewRunStatusVisibleAt,
   type PreviewRunStatus,
+  type PreviewRunStatusStage,
 } from '../runtime/preview-run-status';
 import type { ChatMessage } from '../types';
 import styles from './PreviewRunStatusBar.module.css';
 
 const SUCCESS_EXIT_MS = 140;
+/** After this, surface a soft reassurance that long runs are normal. */
+const HINT_SOFT_MS = 30_000;
+/** After this, surface a stronger "still working" reassurance. */
+const HINT_LONG_MS = 90_000;
 
 interface Props {
   projectId: string;
   conversationId?: string | null;
   messages: readonly ChatMessage[];
 }
+
+type StageStepId = 'analyze' | 'build' | 'verify';
+
+const STAGE_STEPS: StageStepId[] = ['analyze', 'build', 'verify'];
 
 function statusLabelKey(status: PreviewRunStatus):
   | 'previewRunStatus.analyzing'
@@ -40,6 +50,38 @@ function statusLabelKey(status: PreviewRunStatus):
     case 'failed':
       return 'previewRunStatus.failed';
   }
+}
+
+function activeStepIndex(stage: PreviewRunStatusStage, phase: PreviewRunStatus['phase']): number {
+  if (phase === 'succeeded') return STAGE_STEPS.length;
+  if (phase === 'failed') {
+    // Keep the last meaningful step so failure does not reset the pipeline.
+    if (stage === 'verifying') return 2;
+    if (stage === 'generating') return 1;
+    return 0;
+  }
+  if (stage === 'analyzing') return 0;
+  if (stage === 'generating') return 1;
+  if (stage === 'verifying') return 2;
+  return 0;
+}
+
+function stepLabelKey(step: StageStepId): keyof Dict {
+  switch (step) {
+    case 'analyze':
+      return 'previewRunStatus.stageAnalyze';
+    case 'build':
+      return 'previewRunStatus.stageBuild';
+    case 'verify':
+      return 'previewRunStatus.stageVerify';
+  }
+}
+
+function hintKeyForElapsed(elapsedMs: number, active: boolean): keyof Dict | null {
+  if (!active) return null;
+  if (elapsedMs >= HINT_LONG_MS) return 'previewRunStatus.hintLong';
+  if (elapsedMs >= HINT_SOFT_MS) return 'previewRunStatus.hint';
+  return 'previewRunStatus.hintShort';
 }
 
 /** Lightweight run feedback embedded directly in the preview canvas. */
@@ -129,27 +171,90 @@ export function PreviewRunStatusBar({
 
   const elapsed = formatPreviewRunElapsed(displayed.elapsedMs);
   const isFailure = displayed.phase === 'failed';
+  const isSuccess = displayed.phase === 'succeeded';
+  const isActive = displayed.phase === 'generating' || displayed.phase === 'verifying';
   const label = t(statusLabelKey(displayed));
+  const stepIndex = activeStepIndex(displayed.stage, displayed.phase);
+  const hintKey = hintKeyForElapsed(displayed.elapsedMs, isActive);
+  const hint = hintKey ? t(hintKey) : null;
 
   return (
     <div
       className={`${styles.root}${leaving ? ` ${styles.leaving}` : ''}`}
       data-testid="preview-run-status"
+      data-phase={displayed.phase}
+      data-stage={displayed.stage}
     >
-      <div className={`${styles.card}${displayed.phase === 'failed' ? ` ${styles.failed}` : ''}`}>
-        <span
-          key={`${displayed.message.id}:${displayed.stage}`}
-          className={styles.label}
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          {label}
-        </span>
-        {isFailure ? null : (
-          <span className={styles.elapsed} aria-hidden="true">
-            {t('previewRunStatus.elapsed', { time: elapsed })}
+      <div
+        className={[
+          styles.card,
+          isFailure ? styles.failed : '',
+          isSuccess ? styles.succeeded : '',
+          isActive ? styles.active : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-busy={isActive || undefined}
+      >
+        <div className={styles.headline}>
+          {isActive ? (
+            <span className={styles.spinner} aria-hidden data-testid="preview-run-status-spinner" />
+          ) : isSuccess ? (
+            <span className={styles.doneMark} aria-hidden>
+              ✓
+            </span>
+          ) : isFailure ? (
+            <span className={styles.failMark} aria-hidden>
+              !
+            </span>
+          ) : null}
+          <span
+            key={`${displayed.message.id}:${displayed.stage}`}
+            className={styles.label}
+          >
+            {label}
           </span>
+        </div>
+
+        <ol className={styles.stages} aria-label={t('previewRunStatus.stagesAria')}>
+          {STAGE_STEPS.map((step, index) => {
+            const done = stepIndex > index || isSuccess;
+            const currentStep = !isSuccess && stepIndex === index;
+            return (
+              <li
+                key={step}
+                className={[
+                  styles.stage,
+                  done ? styles.stageDone : '',
+                  currentStep ? styles.stageCurrent : '',
+                  isFailure && currentStep ? styles.stageFailed : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                data-testid={`preview-run-status-stage-${step}`}
+                aria-current={currentStep ? 'step' : undefined}
+              >
+                <span className={styles.stageDot} aria-hidden />
+                <span className={styles.stageLabel}>{t(stepLabelKey(step))}</span>
+              </li>
+            );
+          })}
+        </ol>
+
+        {isFailure ? null : (
+          <div className={styles.meta}>
+            <span className={styles.elapsed} data-testid="preview-run-status-elapsed">
+              {t('previewRunStatus.elapsed', { time: elapsed })}
+            </span>
+            {hint ? (
+              <span className={styles.hint} data-testid="preview-run-status-hint">
+                {hint}
+              </span>
+            ) : null}
+          </div>
         )}
       </div>
     </div>

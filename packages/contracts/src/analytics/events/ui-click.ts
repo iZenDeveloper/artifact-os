@@ -73,7 +73,7 @@ export interface ExecutionSettingsPopoverClickProps {
 
 // Items inside the header gear settings popover (EntrySettingsMenu): the
 // interface-language select, the appearance (system/light/dark) radio row,
-// the "Share Open Design" social grid, the Discord / social follow links and
+// the "Share Artifact OS" social grid, the Discord / social follow links and
 // the Settings → details entry. The same popover is mounted both on the home
 // header and the in-project artifact header, hence the two-value page_name.
 export interface SettingsPopoverClickProps {
@@ -1212,7 +1212,7 @@ export interface HandoffClickProps {
     | 'open_editor'
     // Copy the hand-off prompt for a specific CLI agent.
     | 'copy_cli_prompt'
-    // Open the Open Design AMR website link.
+    // Open the Artifact OS AMR website link.
     | 'amr_website';
   // Bounded enum id of the editor / CLI target, present for `open_editor`,
   // `copy_cli_prompt`, and for `trigger` when it directly launches the

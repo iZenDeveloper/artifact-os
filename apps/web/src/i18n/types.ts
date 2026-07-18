@@ -1,8 +1,8 @@
 // Supported UI locales. Adding a new locale requires creating a new
 // dictionary in `./locales/` and registering it in `./index.tsx`.
-export type Locale = 'en' | 'id' | 'de' | 'zh-CN' | 'zh-TW' | 'pt-BR' | 'es-ES' | 'ru' | 'fa' | 'ar' | 'ja' | 'ko' | 'pl' | 'hu' | 'fr' | 'uk' | 'tr' | 'th' | 'it';
+export type Locale = 'en' | 'id' | 'de' | 'zh-CN' | 'zh-TW' | 'pt-BR' | 'es-ES' | 'ru' | 'fa' | 'ar' | 'ja' | 'ko' | 'pl' | 'hu' | 'fr' | 'uk' | 'tr' | 'th' | 'it' | 'vi';
 
-export const LOCALES: Locale[] = ['en', 'id', 'de', 'zh-CN', 'zh-TW', 'pt-BR', 'es-ES', 'ru', 'fa', 'ar', 'ja', 'ko', 'pl', 'hu', 'fr', 'uk', 'tr', 'th', 'it'];
+export const LOCALES: Locale[] = ['en', 'id', 'de', 'zh-CN', 'zh-TW', 'pt-BR', 'es-ES', 'ru', 'fa', 'ar', 'ja', 'ko', 'pl', 'hu', 'fr', 'uk', 'tr', 'th', 'it', 'vi'];
 
 export const LOCALE_LABEL: Record<Locale, string> = {
   'en': 'English',
@@ -23,7 +23,8 @@ export const LOCALE_LABEL: Record<Locale, string> = {
   'uk': 'Українська',
   'tr': 'Türkçe',
   'th': 'ภาษาไทย',
-  'it': 'Italiano'
+  'it': 'Italiano',
+  'vi': 'Tiếng Việt',
 };
 
 // Translation dictionary shape — flat keys, dot-namespaced. We keep it
@@ -1023,6 +1024,19 @@ export interface Dict {
 
   // Entry home
   'homeHero.title': string;
+  'homeHero.badge': string;
+  'homeHero.meta.featured': string;
+  'homeHero.meta.popular': string;
+  'homeHero.meta.aiRecommended': string;
+  'homeHero.meta.new': string;
+  'homeHero.workflow.featured': string;
+  'homeHero.workflow.quickCreate': string;
+  'homeHero.workflow.publishScale': string;
+  'homeHero.featured.templatesCount': string;
+  'entry.nav.workspace': string;
+  'entry.nav.recent': string;
+  'entry.nav.settings': string;
+  'entry.nav.help': string;
   'homeHero.startWithTemplate': string;
   'homeHero.startBlankProject': string;
   'homeHero.templatePicker.label': string;
@@ -1118,6 +1132,15 @@ export interface Dict {
   'homeHero.chip.wireframe': string;
   'homeHero.chip.mobile': string;
   'homeHero.chip.document': string;
+  'homeHero.chip.contentPack': string;
+  'homeHero.chip.socialContent': string;
+  'homeHero.chip.carousel': string;
+  'homeHero.chip.shortVideo': string;
+  'homeHero.chip.linkedinPost': string;
+  'homeHero.chip.facebookPost': string;
+  'homeHero.chip.youtube': string;
+  'homeHero.chip.email': string;
+  'homeHero.chip.adCreative': string;
   'homeHero.chip.prototypeDesc': string;
   'homeHero.chip.webCloneDesc': string;
   'homeHero.chip.wireframeDesc': string;
@@ -1134,6 +1157,15 @@ export interface Dict {
   'homeHero.chip.workerDesc': string;
   'homeHero.chip.liveArtifactDesc': string;
   'homeHero.chip.createBrandKitDesc': string;
+  'homeHero.chip.contentPackDesc': string;
+  'homeHero.chip.socialContentDesc': string;
+  'homeHero.chip.carouselDesc': string;
+  'homeHero.chip.shortVideoDesc': string;
+  'homeHero.chip.linkedinPostDesc': string;
+  'homeHero.chip.facebookPostDesc': string;
+  'homeHero.chip.youtubeDesc': string;
+  'homeHero.chip.emailDesc': string;
+  'homeHero.chip.adCreativeDesc': string;
   'homeHero.chip.prototypeNext': string;
   'homeHero.chip.webCloneNext': string;
   'homeHero.chip.wireframeNext': string;
@@ -1143,7 +1175,86 @@ export interface Dict {
   'homeHero.chip.imageNext': string;
   'homeHero.chip.videoNext': string;
   'homeHero.chip.audioNext': string;
+  'homeHero.chip.contentPackNext': string;
+  'homeHero.chip.socialContentNext': string;
+  'homeHero.chip.carouselNext': string;
+  'homeHero.chip.shortVideoNext': string;
+  'homeHero.chip.linkedinPostNext': string;
+  'homeHero.chip.facebookPostNext': string;
+  'homeHero.chip.youtubeNext': string;
+  'homeHero.chip.emailNext': string;
+  'homeHero.chip.adCreativeNext': string;
   'homeHero.chip.webClonePromptSeed': string;
+  'homeHero.outcomesHeading': string;
+  'homeHero.outcome.multiPlatformPack': string;
+  'homeHero.outcome.multiPlatformPackPrompt': string;
+  'homeHero.outcome.repurposeFive': string;
+  'homeHero.outcome.repurposeFivePrompt': string;
+  'homeHero.outcome.socialBatch': string;
+  'homeHero.outcome.socialBatchPrompt': string;
+  'homeHero.outcome.xhsCarousel': string;
+  'homeHero.outcome.xhsCarouselPrompt': string;
+  'homeHero.outcome.shortVideo': string;
+  'homeHero.outcome.shortVideoPrompt': string;
+  'homeHero.outcome.facebookPost': string;
+  'homeHero.outcome.facebookPostPrompt': string;
+  'homeHero.outcome.youtube': string;
+  'homeHero.outcome.youtubePrompt': string;
+  'homeHero.outcome.adVariants': string;
+  'homeHero.outcome.adVariantsPrompt': string;
+  'homeHero.outcome.hookLab': string;
+  'homeHero.outcome.hookLabPrompt': string;
+  'homeHero.moreFormats': string;
+  'homeHero.linkSkillsPlugins': string;
+  'homeHero.linkDesignSystems': string;
+  'homeHero.usingContext': string;
+  'homeHero.noDesignSystem': string;
+  'homeHero.brandMode.label': string;
+  'homeHero.brandMode.personal': string;
+  'homeHero.brandMode.client': string;
+  'homeHero.quickStartHeading': string;
+  'homeHero.quickStartHint': string;
+  'homeHero.pinCategory': string;
+  'homeHero.unpinCategory': string;
+  'homeHero.popularHeading': string;
+  'homeHero.popularHint': string;
+  'homeHero.pack.pmfFailTitle': string;
+  'homeHero.pack.pmfFailDesc': string;
+  'homeHero.pack.pmfFailPrompt': string;
+  'homeHero.pack.mythBustTitle': string;
+  'homeHero.pack.mythBustDesc': string;
+  'homeHero.pack.mythBustPrompt': string;
+  'homeHero.pack.personalBrandTitle': string;
+  'homeHero.pack.personalBrandDesc': string;
+  'homeHero.pack.personalBrandPrompt': string;
+  'homeHero.pack.launchWeekTitle': string;
+  'homeHero.pack.launchWeekDesc': string;
+  'homeHero.pack.launchWeekPrompt': string;
+  'homeHero.pack.xhsHooksTitle': string;
+  'homeHero.pack.xhsHooksDesc': string;
+  'homeHero.pack.xhsHooksPrompt': string;
+  'homeHero.pack.adTestTitle': string;
+  'homeHero.pack.adTestDesc': string;
+  'homeHero.pack.adTestPrompt': string;
+  'homeHero.chip.threads': string;
+  'homeHero.chip.repurpose': string;
+  'homeHero.chip.hookEngine': string;
+  'homeHero.chip.threadsDesc': string;
+  'homeHero.chip.repurposeDesc': string;
+  'homeHero.chip.hookEngineDesc': string;
+  'homeHero.chip.threadsNext': string;
+  'homeHero.chip.repurposeNext': string;
+  'homeHero.chip.hookEngineNext': string;
+  'homeHero.chipSeed.linkedinPost': string;
+  'homeHero.chipSeed.facebookPost': string;
+  'homeHero.chipSeed.youtube': string;
+  'homeHero.chipSeed.email': string;
+  'homeHero.chipSeed.threads': string;
+  'homeHero.pack.hookLabTitle': string;
+  'homeHero.pack.hookLabDesc': string;
+  'homeHero.pack.hookLabPrompt': string;
+  'recentProjects.continue': string;
+  'recentProjects.duplicate': string;
   'homeWorkingDir.trigger': string;
   'homeWorkingDir.pick': string;
   'homeWorkingDir.replace': string;
@@ -1225,6 +1336,13 @@ export interface Dict {
   'designSystemPicker.closeEsc': string;
   'designSystemPicker.previewFrameTitle': string;
   'designSystemPicker.fullscreenFrameTitle': string;
+  'brandSwitcher.personal': string;
+  'brandSwitcher.client': string;
+  'brandSwitcher.all': string;
+  'brandSwitcher.badgePersonal': string;
+  'brandSwitcher.badgeClient': string;
+  'brandSwitcher.sectionVerticalOs': string;
+  'brandSwitcher.quickSwitch': string;
   'recentProjects.title': string;
   'recentProjects.viewAll': string;
   'recentProjects.empty': string;
@@ -2097,6 +2215,8 @@ export interface Dict {
   'designs.deleteTitle': string;
   'designs.deleteConfirm': string;
   'designs.cardFreeform': string;
+  'designs.cardNoBrand': string;
+  'designs.cardBrandLinked': string;
   'designs.badgeLive': string;
   'designs.liveArtifactBadgesAria': string;
   'designs.liveCount': string;
@@ -2136,6 +2256,18 @@ export interface Dict {
   'designs.tagLiveArtifact': string;
   'designs.tagSlide': string;
   'designs.tagMedia': string;
+  'designs.tagBrand': string;
+  'designs.tagContentPack': string;
+  'designs.tagSocial': string;
+  'designs.tagCarousel': string;
+  'designs.tagShortVideo': string;
+  'designs.tagLinkedin': string;
+  'designs.tagFacebook': string;
+  'designs.tagYoutube': string;
+  'designs.tagEmail': string;
+  'designs.tagAd': string;
+  'designs.tagHookEngine': string;
+  'designs.tagDesignSystem': string;
   'designs.renameTitle': string;
   'designs.renameSave': string;
   'designs.renameCancel': string;
@@ -3230,6 +3362,13 @@ export interface Dict {
   'previewRunStatus.succeeded': string;
   'previewRunStatus.failed': string;
   'previewRunStatus.elapsed': string;
+  'previewRunStatus.stagesAria': string;
+  'previewRunStatus.stageAnalyze': string;
+  'previewRunStatus.stageBuild': string;
+  'previewRunStatus.stageVerify': string;
+  'previewRunStatus.hintShort': string;
+  'previewRunStatus.hint': string;
+  'previewRunStatus.hintLong': string;
   'designFiles.title': string;
   'designFiles.upload': string;
   'designFiles.pasteText': string;
@@ -3557,6 +3696,17 @@ export interface Dict {
   'fileViewer.viewportTabletTitle': string;
   'fileViewer.viewportMobile': string;
   'fileViewer.viewportMobileTitle': string;
+  'fileViewer.viewportXhs': string;
+  'fileViewer.viewportXhsTitle': string;
+  'fileViewer.viewportTiktok': string;
+  'fileViewer.viewportTiktokTitle': string;
+  'fileViewer.viewportLinkedin': string;
+  'fileViewer.viewportLinkedinTitle': string;
+  'fileViewer.viewportFacebook': string;
+  'fileViewer.viewportFacebookTitle': string;
+  'fileViewer.viewportYoutube': string;
+  'fileViewer.viewportYoutubeTitle': string;
+  'fileViewer.viewportPlatformSection': string;
   'fileViewer.reloadAria': string;
   'fileViewer.previousSlide': string;
   'fileViewer.nextSlide': string;
@@ -3601,6 +3751,8 @@ export interface Dict {
   'fileViewer.exportPptxHint': string;
   'fileViewer.exportPptxNa': string;
   'fileViewer.exportZip': string;
+  'fileViewer.exportClientPackage': string;
+  'fileViewer.exportClientPackageEmpty': string;
   'fileViewer.exportHtml': string;
   'fileViewer.exportMd': string;
   'fileViewer.exportImage': string;
@@ -3858,7 +4010,9 @@ export interface Dict {
   'assistant.openFile': string;
   'assistant.downloadFile': string;
   'nextStep.title': string;
+  'nextStep.subtitle': string;
   'nextStep.more': string;
+  'nextStep.moreBody': string;
   'nextStep.share': string;
   'nextStep.download': string;
   'nextStep.createDesignSystemTitle': string;
@@ -3879,9 +4033,13 @@ export interface Dict {
   'nextStep.planMergePrompt': string;
 
   'nextStep.projectContinueTitle': string;
+  'nextStep.projectContinueBody': string;
   'nextStep.projectGenerateArtifactTitle': string;
+  'nextStep.projectGenerateArtifactBody': string;
   'nextStep.designSystemAiRefineTitle': string;
+  'nextStep.designSystemAiRefineBody': string;
   'nextStep.designSystemAuditKitTitle': string;
+  'nextStep.designSystemAuditKitBody': string;
 
   'nextStep.brandAiOptimizeTitle': string;
   'nextStep.brandAiOptimizeBody': string;

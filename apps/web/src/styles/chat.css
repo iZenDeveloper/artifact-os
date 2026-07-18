@@ -1595,7 +1595,8 @@
   min-width: 168px;
   padding: 4px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  /* Match trigger button radius (12px / --radius-lg) */
+  border-radius: var(--radius-lg, 12px);
   background: var(--bg-panel);
   box-shadow: var(--shadow-md);
 }
@@ -1699,7 +1700,8 @@
 .session-mode-card {
   padding: 10px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  /* Match Design mode trigger + menu (12px) */
+  border-radius: var(--radius-lg, 12px);
   background: var(--bg-panel);
   color: var(--text);
   box-shadow: var(--shadow-md);

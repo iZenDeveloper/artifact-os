@@ -89,7 +89,7 @@ export interface AmrEntryAttribution {
   sourceProduct: 'open_design';
   sourceDetail: TrackingAmrEntrySource;
   occurredAt: string;
-  // Open Design install/device id forwarded only on consent-gated AMR handoffs.
+  // Artifact OS install/device id forwarded only on consent-gated AMR handoffs.
   odDeviceId?: string;
   // Self-reported onboarding profile, forwarded to AMR (anchored to entryId) so
   // AMR can segment paid conversion by who the visitor is. Open strings, not a

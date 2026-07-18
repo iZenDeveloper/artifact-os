@@ -1,13 +1,13 @@
-// Shared design-system picker — the two-column popover (searchable list +
-// live preview) used in BOTH the project chrome header and the home composer
-// footer. It binds to a single design-system id: changing the selection calls
-// `onChange(id | null)` where `null` means "不指定 / No design system".
+// Shared Brand picker (storage: design-systems/<slug>/DESIGN.md). Two-column
+// popover (searchable list + live preview) used in the project chrome header
+// and the home composer. Binds to a design-system id: `onChange(id | null)`
+// where `null` means "No brand". UI copy says Brand; API paths stay design-systems.
 //
 // `variant` only swaps the trigger pill styling:
 //   - 'project' (default): the chrome-header pill (`project-ds-picker-*`).
-//   - 'footer': the home composer footer pill (`home-hero__footer-*`), so it
-//     sits flush with the other footer options.
-// The popover body is identical for both variants.
+//   - 'footer': the home composer footer pill (`home-hero__footer-*`).
+//   - 'home': borderless home row trigger next to brand mode.
+// The popover body is identical across variants.
 //
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
@@ -21,6 +21,15 @@ import {
 import { navigate } from '../router';
 import { setPendingDesignSystemCreateEntry } from '../analytics/ds-create-entry';
 import { useBrandsByDesignSystemId } from '../runtime/brands';
+import {
+  type BrandSwitcherFilter,
+  classifyVerticalBrand,
+  filterByBrandMode,
+  pinVerticalOsSystems,
+  seedBrandFilter,
+  verticalOsQuickSwitchSystems,
+  writeStoredBrandFilter,
+} from '../runtime/vertical-brand';
 import { DesignSystemKitPreview } from './DesignSystemKitPreview';
 import { DesignSystemPreviewModal } from './DesignSystemPreviewModal';
 import { Icon } from './Icon';
@@ -31,10 +40,15 @@ function isUserSystem(system: DesignSystemSummary): boolean {
   return system.source === 'user' || system.isEditable === true;
 }
 
+/** Fixed popover box so hovering/selecting Personal Minimal ↔ Bold does not reflow. */
+const DS_PICKER_POPOVER_WIDTH = 560;
+const DS_PICKER_POPOVER_HEIGHT = 400;
+
 interface PopoverAnchor {
   left: number;
   width: number;
-  maxHeight: number;
+  /** Fixed height (not max-height) so preview content changes do not resize the shell. */
+  height: number;
   // Vertical placement: when the trigger sits near the bottom of the
   // viewport (e.g. the composer-top picker) the popover opens upward,
   // anchored by `bottom`; otherwise it opens downward, anchored by `top`.
@@ -73,6 +87,7 @@ export function DesignSystemPicker({
   const { locale, t } = useI18n();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [brandMode, setBrandMode] = useState<BrandSwitcherFilter>('all');
   const [anchor, setAnchor] = useState<PopoverAnchor | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -84,10 +99,25 @@ export function DesignSystemPicker({
   const [hoveredNone, setHoveredNone] = useState(false);
   const [previewModalSystem, setPreviewModalSystem] = useState<DesignSystemSummary | null>(null);
 
-  const selected = useMemo(
-    () => designSystems.find((d) => d.id === selectedId) ?? null,
-    [designSystems, selectedId],
-  );
+  const selected = useMemo(() => {
+    if (selectedId == null) return null;
+    const bare = (id: string) => {
+      const lower = id.toLowerCase();
+      return lower.includes(':') ? lower.slice(lower.lastIndexOf(':') + 1) : lower;
+    };
+    const target = bare(selectedId);
+    return (
+      designSystems.find((d) => d.id === selectedId) ??
+      designSystems.find((d) => bare(d.id) === target) ??
+      null
+    );
+  }, [designSystems, selectedId]);
+
+  // Prefer resolved title; if id is set but catalog hasn't caught up yet, still
+  // show the id so the trigger never looks "empty placeholder" after a select.
+  const selectedLabel =
+    selected?.title ??
+    (selectedId != null && selectedId.length > 0 ? selectedId : null);
 
   // Map each `user:<id>` design system to its backing brand so a selected /
   // hovered brand previews the rich Brand Kit card instead of the thin
@@ -121,7 +151,8 @@ export function DesignSystemPicker({
       if (!trigger) return;
       const rect = trigger.getBoundingClientRect();
       const viewport = window.innerWidth;
-      const popoverWidth = Math.min(640, Math.max(320, viewport - 24));
+      // Prefer fixed width; only shrink on very narrow viewports.
+      const popoverWidth = Math.min(DS_PICKER_POPOVER_WIDTH, Math.max(320, viewport - 24));
       const left = Math.max(8, Math.min(viewport - popoverWidth - 8, rect.left));
       const gap = 6;
       const margin = 12;
@@ -129,20 +160,23 @@ export function DesignSystemPicker({
       const spaceAbove = rect.top - gap - margin;
       // Open upward when there isn't enough room below (the composer-top
       // picker is near the viewport bottom) but there is more room above.
-      const openUp = spaceBelow < 320 && spaceAbove > spaceBelow;
+      const openUp = spaceBelow < DS_PICKER_POPOVER_HEIGHT && spaceAbove > spaceBelow;
+      const available = openUp ? spaceAbove : spaceBelow;
+      // Fixed height clamped once to viewport — content swaps must not change it.
+      const height = Math.max(280, Math.min(DS_PICKER_POPOVER_HEIGHT, available));
       if (openUp) {
         setAnchor({
           bottom: window.innerHeight - rect.top + gap,
           left,
           width: popoverWidth,
-          maxHeight: Math.max(220, Math.min(420, spaceAbove)),
+          height,
         });
       } else {
         setAnchor({
           top: rect.bottom + gap,
           left,
           width: popoverWidth,
-          maxHeight: Math.max(220, Math.min(420, spaceBelow)),
+          height,
         });
       }
     }
@@ -157,13 +191,14 @@ export function DesignSystemPicker({
 
   useEffect(() => {
     if (open) {
+      setBrandMode(seedBrandFilter(selected));
       window.setTimeout(() => inputRef.current?.focus(), 0);
     } else {
       setQuery('');
       setHovered(null);
       setHoveredNone(false);
     }
-  }, [open]);
+  }, [open, selected]);
 
   // Resolve what the right pane previews. Priority: a hovered system, the
   // hovered "不指定" row, the selected system, then "不指定" when nothing is
@@ -173,29 +208,59 @@ export function DesignSystemPicker({
   if (open) {
     if (hovered) previewSystem = hovered;
     else if (hoveredNone) previewNone = true;
-    else if (selectedId != null) previewSystem = selected;
+    else if (selected) previewSystem = selected;
     else previewNone = true;
   }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (q.length === 0) return designSystems;
-    return designSystems.filter((d) => {
-      const localizedSummary = localizeDesignSystemSummary(locale, d);
-      const localizedCategory = localizeDesignSystemCategory(locale, d.category);
-      const haystack = `${d.title} ${d.category} ${d.summary} ${localizedCategory} ${localizedSummary}`.toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [query, designSystems, locale]);
+    const searched =
+      q.length === 0
+        ? designSystems
+        : designSystems.filter((d) => {
+            const localizedSummary = localizeDesignSystemSummary(locale, d);
+            const localizedCategory = localizeDesignSystemCategory(locale, d.category);
+            const haystack =
+              `${d.title} ${d.category} ${d.summary} ${localizedCategory} ${localizedSummary}`.toLowerCase();
+            return haystack.includes(q);
+          });
+    // Brand mode filter (Personal / Client / All), then pin Artifact OS systems.
+    return pinVerticalOsSystems(filterByBrandMode(searched, brandMode));
+  }, [query, designSystems, locale, brandMode]);
+
+  const quickSwitchSystems = useMemo(
+    () => verticalOsQuickSwitchSystems(designSystems),
+    [designSystems],
+  );
+
+  const selectedBrandMode = selected
+    ? classifyVerticalBrand(selected)
+    : selectedId
+      ? classifyVerticalBrand({ id: selectedId })
+      : 'other';
 
   // Split the filtered list into the same two groups the Design Systems tab
   // uses, so the picker reads as "your systems" then "official presets".
-  const { userSystems, officialSystems } = useMemo(() => {
+  // Under Personal/Client mode, also surface a Artifact OS group first.
+  const { verticalOsSystems, userSystems, officialSystems } = useMemo(() => {
+    const vos: DesignSystemSummary[] = [];
     const mine: DesignSystemSummary[] = [];
     const official: DesignSystemSummary[] = [];
-    for (const d of filtered) (isUserSystem(d) ? mine : official).push(d);
-    return { userSystems: mine, officialSystems: official };
+    for (const d of filtered) {
+      const mode = classifyVerticalBrand(d);
+      if (mode === 'personal' || mode === 'client') {
+        vos.push(d);
+        continue;
+      }
+      (isUserSystem(d) ? mine : official).push(d);
+    }
+    return { verticalOsSystems: vos, userSystems: mine, officialSystems: official };
   }, [filtered]);
+
+  const setBrandModeAndPersist = (mode: BrandSwitcherFilter) => {
+    setBrandMode(mode);
+    writeStoredBrandFilter(mode);
+  };
 
   const selectDesignSystem = (id: string | null) => {
     onChange(id);
@@ -285,9 +350,60 @@ export function DesignSystemPicker({
               bottom: anchor.bottom,
               left: anchor.left,
               width: anchor.width,
-              maxHeight: anchor.maxHeight,
+              height: anchor.height,
             }}
           >
+            <div
+              className="brand-switcher-modes"
+              role="tablist"
+              aria-label="Brand mode"
+              data-testid="brand-switcher-mode"
+            >
+              {(
+                [
+                  ['personal', t('brandSwitcher.personal')],
+                  ['client', t('brandSwitcher.client')],
+                  ['all', t('brandSwitcher.all')],
+                ] as const
+              ).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  role="tab"
+                  aria-selected={brandMode === mode}
+                  className={`brand-switcher-mode${brandMode === mode ? ' active' : ''}`}
+                  data-testid={`brand-switcher-mode-${mode}`}
+                  onClick={() => setBrandModeAndPersist(mode)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {quickSwitchSystems.length >= 2 ? (
+              <div className="brand-switcher-quick" data-testid="brand-switcher-quick">
+                <span className="brand-switcher-quick-label">{t('brandSwitcher.quickSwitch')}</span>
+                <div className="brand-switcher-quick-chips">
+                  {quickSwitchSystems.map((ds) => {
+                    const active = ds.id === selectedId;
+                    return (
+                      <button
+                        key={ds.id}
+                        type="button"
+                        className={`brand-switcher-chip${active ? ' active' : ''}`}
+                        data-testid={`brand-switcher-chip-${ds.id}`}
+                        title={ds.title}
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          selectDesignSystem(ds.id);
+                        }}
+                      >
+                        {ds.title}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             <div className="project-ds-picker-search">
               <Icon name="search" size={12} />
               <input
@@ -320,37 +436,51 @@ export function DesignSystemPicker({
             </div>
             <div className="project-ds-picker-body">
               <div className="project-ds-picker-list" role="listbox">
-                <button
-                  type="button"
-                  className={`project-ds-picker-option${selectedId == null ? ' active' : ''}`}
-                  role="option"
-                  aria-selected={selectedId == null}
-                  onMouseEnter={() => {
-                    setHovered(null);
-                    setHoveredNone(true);
-                  }}
-                  onFocus={() => {
-                    setHovered(null);
-                    setHoveredNone(true);
-                  }}
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    selectDesignSystem(null);
-                  }}
-                  onKeyDown={(event) => selectDesignSystemOnKeyDown(event, null)}
-                >
-                  <div className="project-ds-picker-option-head">
-                    <span className="project-ds-picker-option-title">{t('designSystemPicker.noneTitle')}</span>
-                    {selectedId == null ? (
-                      <span
-                        className="project-ds-picker-option-check"
-                        data-testid="project-ds-picker-option-none-check"
-                      >
-                        <Icon name="check" size={13} strokeWidth={2} />
+                {brandMode === 'all' ? (
+                  <button
+                    type="button"
+                    className={`project-ds-picker-option${selectedId == null ? ' active' : ''}`}
+                    role="option"
+                    aria-selected={selectedId == null}
+                    onMouseEnter={() => {
+                      setHovered(null);
+                      setHoveredNone(true);
+                    }}
+                    onFocus={() => {
+                      setHovered(null);
+                      setHoveredNone(true);
+                    }}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      selectDesignSystem(null);
+                    }}
+                    onKeyDown={(event) => selectDesignSystemOnKeyDown(event, null)}
+                  >
+                    <div className="project-ds-picker-option-head">
+                      <span className="project-ds-picker-option-title">
+                        {t('designSystemPicker.noneTitle')}
                       </span>
-                    ) : null}
+                      {selectedId == null ? (
+                        <span
+                          className="project-ds-picker-option-check"
+                          data-testid="project-ds-picker-option-none-check"
+                        >
+                          <Icon name="check" size={13} strokeWidth={2} />
+                        </span>
+                      ) : null}
+                    </div>
+                  </button>
+                ) : null}
+                {verticalOsSystems.length > 0 ? (
+                  <div
+                    className="project-ds-picker-group-label"
+                    role="presentation"
+                    data-testid="project-ds-picker-group-vertical-os"
+                  >
+                    {t('brandSwitcher.sectionVerticalOs')}
                   </div>
-                </button>
+                ) : null}
+                {verticalOsSystems.map(renderOption)}
                 {userSystems.length > 0 ? (
                   <div
                     className="project-ds-picker-group-label"
@@ -451,8 +581,18 @@ export function DesignSystemPicker({
           <span className="home-hero__ds-row-trigger-label">
             {loading
               ? t('designSystemPicker.loading')
-              : selected?.title ?? t('designSystemPicker.noneTitle')}
+              : selectedLabel ?? t('designSystemPicker.noneTitle')}
           </span>
+          {selectedBrandMode === 'personal' || selectedBrandMode === 'client' ? (
+            <span
+              className={`brand-switcher-badge brand-switcher-badge--${selectedBrandMode}`}
+              data-testid="brand-switcher-badge"
+            >
+              {selectedBrandMode === 'personal'
+                ? t('brandSwitcher.badgePersonal')
+                : t('brandSwitcher.badgeClient')}
+            </span>
+          ) : null}
           <Icon name="chevron-down" size={11} className="home-hero__ds-row-trigger-chevron" />
         </button>
         {popover}
@@ -483,8 +623,18 @@ export function DesignSystemPicker({
           <span className="home-hero__footer-select-label">
             {loading
               ? t('designSystemPicker.loading')
-              : selected?.title ?? t('designSystemPicker.noneTitle')}
+              : selectedLabel ?? t('designSystemPicker.noneTitle')}
           </span>
+          {selectedBrandMode === 'personal' || selectedBrandMode === 'client' ? (
+            <span
+              className={`brand-switcher-badge brand-switcher-badge--${selectedBrandMode}`}
+              data-testid="brand-switcher-badge"
+            >
+              {selectedBrandMode === 'personal'
+                ? t('brandSwitcher.badgePersonal')
+                : t('brandSwitcher.badgeClient')}
+            </span>
+          ) : null}
           <Icon name="chevron-down" size={12} aria-hidden />
         </button>
         {popover}
@@ -502,20 +652,30 @@ export function DesignSystemPicker({
       <button
         ref={triggerRef}
         type="button"
-        className={`project-ds-picker-trigger${selected ? ' picked' : ''}`}
+        className={`project-ds-picker-trigger${selectedLabel ? ' picked' : ''}`}
         data-testid="project-ds-picker-trigger"
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         disabled={loading}
-        title={selected?.title ?? t('designSystemPicker.select')}
+        title={selectedLabel ?? t('designSystemPicker.select')}
       >
         {triggerSwatches}
         <span className="project-ds-picker-label">
           {loading
             ? t('designSystemPicker.loading')
-            : selected?.title ?? t('designSystemPicker.select')}
+            : selectedLabel ?? t('designSystemPicker.select')}
         </span>
+        {selectedBrandMode === 'personal' || selectedBrandMode === 'client' ? (
+          <span
+            className={`brand-switcher-badge brand-switcher-badge--${selectedBrandMode}`}
+            data-testid="brand-switcher-badge"
+          >
+            {selectedBrandMode === 'personal'
+              ? t('brandSwitcher.badgePersonal')
+              : t('brandSwitcher.badgeClient')}
+          </span>
+        ) : null}
         <Icon name="chevron-down" size={11} />
       </button>
       {popover}

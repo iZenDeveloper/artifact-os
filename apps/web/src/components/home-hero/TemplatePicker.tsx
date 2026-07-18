@@ -117,14 +117,14 @@ export function TemplatePicker({
       >
         {shown ? (
           <span className="home-hero__template-trigger-thumb" aria-hidden>
-            <ScenarioArt chipId={shown.id} fallbackIcon={shown.icon} />
+            <ScenarioArt chipId={shown.id} fallbackIcon={shown.icon} size={22} />
           </span>
         ) : (
           <span
             className="home-hero__footer-option-icon home-hero__footer-option-icon--compact"
             aria-hidden
           >
-            <Icon name="grid" size={13} />
+            <Icon name="grid" size={16} />
           </span>
         )}
         <span className="home-hero__template-kicker">{t('homeHero.templatePicker.label')}</span>
@@ -211,7 +211,7 @@ export function TemplatePicker({
                     }}
                   >
                     <span className="home-hero__template-card-art" aria-hidden>
-                      <ScenarioArt chipId={chip.id} fallbackIcon={chip.icon} />
+                      <ScenarioArt chipId={chip.id} fallbackIcon={chip.icon} size={48} />
                     </span>
                     <span className="home-hero__template-card-copy">
                       <span className="home-hero__template-card-label">{labelFor(chip.id)}</span>

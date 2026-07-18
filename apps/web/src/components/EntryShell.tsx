@@ -69,7 +69,7 @@ import type {
   TrackingCliProviderId,
 } from '@open-design/contracts/analytics';
 import { agentIdToTracking } from '@open-design/contracts/analytics';
-import { useT, useI18n } from '../i18n';
+import { useT } from '../i18n';
 import { navigate, useRoute } from '../router';
 import { setPendingDesignSystemCreateEntry } from '../analytics/ds-create-entry';
 import type {
@@ -101,11 +101,6 @@ import { AmrBalanceDialog } from './AmrBalanceDialog';
 import { AmrLowBalanceDialog, type AmrLowBalanceDecision } from './AmrLowBalanceDialog';
 import { checkAmrBalanceGate } from '../runtime/amr-balance-gate';
 import { isPaidAmrPlan, resolveAmrPlan } from '../runtime/amr-low-balance-plan';
-import { GithubStarBadge } from './GithubStarBadge';
-import {
-  formatDiscordPresenceCount,
-  useDiscordPresence,
-} from './useDiscordPresence';
 import { HomeView } from './HomeView';
 import {
   createPluginAuthoringHandoff,
@@ -133,7 +128,6 @@ import {
 import { LanguageMenu } from './LanguageMenu';
 import { IntegrationsView, type IntegrationTab } from './IntegrationsView';
 import { InlineModelSwitcher } from './InlineModelSwitcher';
-import { enterpriseUrl } from './enterpriseUrl';
 import {
   EntrySettingsMenu,
   type EntrySettingsSection,
@@ -202,8 +196,6 @@ function writeStoredRailOpen(open: boolean): void {
   }
 }
 
-const DISCORD_URL = 'https://discord.gg/mHAjSMV6gz';
-const X_URL = 'https://x.com/OpenDesignHQ';
 const ONBOARDING_DROPDOWN_OPEN_EVENT = 'open-design:onboarding-dropdown-open';
 
 type OnboardingAgentTestState =
@@ -211,7 +203,7 @@ type OnboardingAgentTestState =
   | { status: 'running'; inputKey: string }
   | { status: 'done'; inputKey: string; result: ConnectionTestResponse };
 
-// The topbar chips (GitHub star, model switcher, Use everywhere)
+// The topbar chips (model switcher, Use everywhere)
 // collapse into the settings dropdown when the viewport gets
 // narrow. The transition is driven entirely by CSS @media queries
 // in `entry-layout.css` so server and client render identical
@@ -262,7 +254,7 @@ type EntryCreateProjectInput = Omit<CreateInput, 'metadata'> & {
   initialRunContext?: RunContextSelection | null;
   conversationMode?: ChatSessionMode;
   autoSendFirstMessage?: boolean;
-  /** The home submit already ran the Open Design Cloud balance gate; the
+  /** The home submit already ran the Artifact OS Cloud balance gate; the
    *  project's first auto-send must not re-gate. */
   amrGatePrechecked?: boolean;
   requestId?: string;
@@ -535,8 +527,6 @@ export function EntryShell({
   artifactUpgradeSlot,
 }: Props) {
   const t = useT();
-  const { locale: uiLocale } = useI18n();
-  const discordPresence = useDiscordPresence();
   // Each entry sub-view (home / projects / design-systems) is its own
   // URL now, so the browser back/forward buttons work and a deep link
   // to /design-systems lands on that section. We derive the active
@@ -609,15 +599,28 @@ export function EntryShell({
     if (!scrollContainer) return;
     scrollContainer.scrollTop = 0;
   }, [view]);
+
+  // Pause expensive home animations (glow orbit) while the main column scrolls.
+  useEffect(() => {
+    const scrollContainer = entryMainScrollRef.current;
+    if (!scrollContainer) return;
+    let idleTimer = 0;
+    const onScroll = () => {
+      scrollContainer.classList.add('is-scrolling');
+      window.clearTimeout(idleTimer);
+      idleTimer = window.setTimeout(() => {
+        scrollContainer.classList.remove('is-scrolling');
+      }, 140);
+    };
+    scrollContainer.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      scrollContainer.removeEventListener('scroll', onScroll);
+      window.clearTimeout(idleTimer);
+      scrollContainer.classList.remove('is-scrolling');
+    };
+  }, []);
+
   const analytics = useAnalytics();
-  const discordOnlineLabel = discordPresence
-    ? t('entry.discordOnlineLabel', {
-        count: formatDiscordPresenceCount(discordPresence.onlineCount),
-      })
-    : null;
-  const discordAriaLabel = discordOnlineLabel
-    ? t('entry.discordAriaWithOnline', { online: discordOnlineLabel })
-    : t('entry.discordAria');
   function changeView(next: EntryViewKind) {
     const navElement = navElementForView(next);
     if (navElement) {
@@ -718,7 +721,7 @@ export function EntryShell({
   // projectKind='other', so the agent asks for the exact task type
   // before continuing.
   async function handlePluginLoopSubmit(payload: PluginLoopSubmit) {
-    // Open Design Cloud pre-run balance gate: hard blocks (empty wallet or
+    // Artifact OS Cloud pre-run balance gate: hard blocks (empty wallet or
     // signed out) and the soft low-balance reminder both fire BEFORE the
     // project is created, so the dialog appears right here on the home page
     // and the composer keeps its draft. In-project sends are gated separately
@@ -989,7 +992,9 @@ export function EntryShell({
           onClose={() => setRailOpen(false)}
         />
         <main className="entry-main entry-main--scroll" ref={entryMainScrollRef}>
-          <div className="entry-main__topbar">
+          <div
+            className={`entry-main__topbar${view === 'home' ? ' entry-main__topbar--over-banner' : ''}`}
+          >
             <button
               type="button"
               className="entry-rail-toggle"
@@ -1001,54 +1006,6 @@ export function EntryShell({
               <Icon name="panel-left" size={20} />
             </button>
             <div className="entry-main__topbar-chips entry-main__topbar-chips--icon-only">
-              <GithubStarBadge />
-              <a
-                className="entry-workspace-chip od-tooltip"
-                href={enterpriseUrl(uiLocale)}
-                target="_blank"
-                rel="noreferrer noopener"
-                onClick={() => {
-                  trackHomeToolbarClick(analytics.track, {
-                    page_name: 'home',
-                    area: 'toolbar',
-                    element: 'workspace_teams',
-                  });
-                }}
-                data-tooltip={t('entry.workspaceTeamsTitle')}
-                data-tooltip-placement="bottom"
-                aria-label={t('entry.workspaceTeamsAria')}
-                data-testid="entry-workspace-teams"
-              >
-                <Icon
-                  name="sparkles"
-                  size={14}
-                  className="entry-workspace-chip__icon"
-                />
-                <span className="entry-workspace-chip__label">
-                  {t('entry.workspaceTeamsLabel')}
-                </span>
-              </a>
-              <a
-                className="entry-discord-badge od-tooltip"
-                href={DISCORD_URL}
-                aria-label={discordAriaLabel}
-                data-tooltip={discordAriaLabel}
-                data-tooltip-placement="bottom"
-                data-testid="entry-discord-badge"
-              >
-                <Icon name="discord" size={14} className="entry-discord-badge__icon" />
-                <span className="entry-discord-badge__label">{t('entry.discordLabel')}</span>
-                {discordOnlineLabel ? (
-                  <>
-                    <span className="entry-discord-badge__sep" aria-hidden>
-                      ·
-                    </span>
-                    <span className="entry-discord-badge__online">
-                      {discordOnlineLabel}
-                    </span>
-                  </>
-                ) : null}
-              </a>
               {view === 'home' ? null : executionSwitcher}
               <button
                 type="button"
@@ -1109,7 +1066,7 @@ export function EntryShell({
           </div>
           <div
             className={`entry-main__inner${
-              view === 'home' ? '' : ' entry-main__inner--wide'
+              view === 'home' ? ' entry-main__inner--home' : ' entry-main__inner--wide'
             }`}
           >
             <div data-testid="entry-view-home" data-active={view === 'home' ? 'true' : 'false'} {...inactiveViewProps(view === 'home')}>
@@ -2067,7 +2024,7 @@ function OnboardingView({
   }
 
   // Cloud-landing primary CTA: pick the AMR cloud runtime and kick off the
-  // Open Design Cloud sign-in in one gesture. Mirrors the old AMR card's
+  // Artifact OS Cloud sign-in in one gesture. Mirrors the old AMR card's
   // selection side effects (mode/agent) followed by the sign-in path, so a
   // successful login advances to the next onboarding step exactly the same way.
   async function handleCloudSignIn() {
@@ -2545,7 +2502,7 @@ function OnboardingView({
       ? t('settings.onboardingFinish')
       : t('settings.onboardingContinue');
 
-  // Connect step, default face: a minimal, centered Open Design Cloud sign-in
+  // Connect step, default face: a minimal, centered Artifact OS Cloud sign-in
   // landing. No stepper, no runtime cards — just the cloud CTA, a secondary
   // link into the full runtime chooser, and a top-left language/theme bar.
   if (step === 0 && connectExpanded === null) {
@@ -2580,7 +2537,7 @@ function OnboardingView({
           <span
             className="onboarding-cloud__logo od-brand-glyph"
             role="img"
-            aria-label="Open Design"
+            aria-label="Artifact OS"
           />
           <h1 className="onboarding-cloud__title">{t('settings.onboardingCloudTitle')}</h1>
           <p className="onboarding-cloud__body">{t('settings.onboardingCloudBody')}</p>
@@ -2674,7 +2631,7 @@ function OnboardingView({
           )}
         </div>
         <footer className="onboarding-cloud__footer">
-          © {new Date().getFullYear()} Open Design · {t('settings.onboardingCloudRights')}
+          © {new Date().getFullYear()} Artifact OS · {t('settings.onboardingCloudRights')}
         </footer>
       </section>
     );

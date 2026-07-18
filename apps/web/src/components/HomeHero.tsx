@@ -21,6 +21,7 @@ import { createPortal } from 'react-dom';
 import type {
   CSSProperties,
   DragEvent as ReactDragEvent,
+  MouseEvent as ReactMouseEvent,
   ReactNode,
   RefObject,
 } from 'react';
@@ -47,12 +48,22 @@ import {
 import { sessionModeToTracking } from '@open-design/contracts/analytics';
 import {
   chipsForGroup,
+  findChip,
+  isCreatorQuickStartId,
+  CREATOR_WORKFLOW_FEATURED_ID,
+  CREATOR_WORKFLOW_QUICK_IDS,
+  CREATOR_WORKFLOW_PUBLISH_IDS,
+  CREATOR_WORKFLOW_BADGE,
+  type CreatorQuickStartId,
+  type CreatorWorkflowBadge,
   orderedCreateChips,
+  orderedCreatorQuickStarts,
   type ChipGroup,
   type HomeHeroChip,
 } from './home-hero/chips';
 import { homeHeroChipLabel } from './home-hero/chip-labels';
 import { ScenarioArt } from './home-hero/ScenarioArt';
+import { GlowingEffect } from './home-hero/GlowingEffect';
 import { useEdgeAutoScroll, EdgeScrollZones } from './home-hero/EdgeAutoScroll';
 import {
   isSubChipParent,
@@ -97,7 +108,6 @@ import { SessionModeToggle } from './SessionModeToggle';
 import { assetTitle } from './LibraryAssetMeta';
 import { libraryAssetRawUrl } from '../providers/registry';
 import type { LibraryAsset } from '@open-design/contracts';
-import { WorkingDirPicker } from './WorkingDirPicker';
 import {
   ProjectReferenceModal,
   type ProjectReferenceSelection,
@@ -114,6 +124,14 @@ import {
   PLACEHOLDER_BASE_HINT_KEY,
   type PlaceholderScenario,
 } from './home-hero/placeholderScenarios';
+import {
+  orderWithPins,
+  readPinnedCreatorChips,
+  togglePinnedCreatorChip,
+  writePinnedCreatorChips,
+} from './home-hero/creator-pins';
+import { CREATOR_POPULAR_PACKS } from './home-hero/creator-popular-packs';
+
 
 export interface HomeHeroSubmitHandler {
   (): void;
@@ -358,12 +376,15 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     contextItemCount,
     error,
     showActivePluginChip = true,
-    workingDir = null,
-    recentDirs = [],
-    onPickWorkingDir,
+    // Working-directory picker is intentionally not rendered on Home (lives
+    // in Settings → Project locations / in-project composer). Props remain for
+    // HomeView compatibility and plus-menu "local code" flows.
+    workingDir: _workingDir = null,
+    recentDirs: _recentDirs = [],
+    onPickWorkingDir: _onPickWorkingDir,
     onPickLocalCodeDir,
-    onSelectRecentWorkingDir,
-    onClearWorkingDir,
+    onSelectRecentWorkingDir: _onSelectRecentWorkingDir,
+    onClearWorkingDir: _onClearWorkingDir,
     onExamplePromptStatusChange,
     onStartBlankProject,
     executionSwitcher,
@@ -381,7 +402,24 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   const [projectReferenceOpen, setProjectReferenceOpen] = useState(false);
   const [figmaHelpOpen, setFigmaHelpOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  // Brand mode is a Home-level intent signal for creators (Personal vs Client
+  // deliverables). Persisted locally; shown in the context strip under the
+  // prompt so users always know what the next project inherits.
+  const [brandMode, setBrandMode] = useState<'personal' | 'client'>(() => {
+    if (typeof localStorage === 'undefined') return 'personal';
+    try {
+      const stored = localStorage.getItem('od:home-brand-mode');
+      return stored === 'client' ? 'client' : 'personal';
+    } catch {
+      return 'personal';
+    }
+  });
+  const [pinnedCreatorIds, setPinnedCreatorIds] = useState<string[]>(() => readPinnedCreatorChips());
   const homeHeroRef = useRef<HTMLElement | null>(null);
+  const creatorQuickStarts = useMemo(
+    () => orderWithPins(orderedCreatorQuickStarts(), pinnedCreatorIds),
+    [pinnedCreatorIds],
+  );
   // Two-flash attention pulse on the send button; armed via the
   // imperative `pulseSend()` handle, cleared when the animation ends.
   const [sendAttention, setSendAttention] = useState(false);
@@ -415,6 +453,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   const [carouselScenario, setCarouselScenario] = useState<PlaceholderScenario | null>(null);
   const editorRef = useRef<LexicalComposerInputHandle | null>(null);
   const promptEditorRef = useRef<HTMLDivElement | null>(null);
+  const inputCardRef = useRef<HTMLDivElement | null>(null);
   const mentionPickerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const shortcutsMenuRef = useRef<HTMLDivElement>(null);
@@ -667,7 +706,9 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   // Excludes action chips (Brand Kit / Figma) that navigate away instead of
   // seeding a template, so the dropdown matches the rail's template set.
   const templateChips = useMemo(
-    () => orderedCreateChips().filter((chip) => chip.action.kind === 'apply-scenario'),
+    () => orderedCreateChips().filter(
+      (chip) => chip.action.kind === 'apply-scenario' || chip.action.kind === 'apply-skill',
+    ),
     [],
   );
   const activeExamplePlugins = useMemo(
@@ -867,6 +908,23 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     requestAnimationFrame(() => setSendAttention(true));
   }
 
+  /** After a format card pick, bring the prompt composer into view and focus it. */
+  function scrollPromptIntoView() {
+    const scroll = () => {
+      inputCardRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      });
+      editorRef.current?.focus();
+      triggerSendAttention();
+    };
+    // Double rAF: wait for chip selection / layout before scrolling.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(scroll);
+    });
+  }
+
   useImperativeHandle(
     ref,
     (): HomeHeroHandle => ({
@@ -920,6 +978,50 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
       token,
     });
     onPickSkill(skill, next);
+  }
+
+  function pickCreatorCategory(chip: HomeHeroChip) {
+    onPickChip(chip);
+    trackHomeChatComposerClick(analytics.track, {
+      page_name: 'home',
+      area: 'chat_composer',
+      element: 'plugin_chip',
+      chip_id: chip.id,
+    });
+    scrollPromptIntoView();
+  }
+
+  function handleTogglePin(chipId: string, event: { stopPropagation: () => void }) {
+    event.stopPropagation();
+    setPinnedCreatorIds((current) => {
+      const next = togglePinnedCreatorChip(chipId, current);
+      writePinnedCreatorChips(next);
+      return next;
+    });
+  }
+
+  function setBrandModePersist(mode: 'personal' | 'client') {
+    setBrandMode(mode);
+    try {
+      localStorage.setItem('od:home-brand-mode', mode);
+    } catch {
+      // ignore
+    }
+  }
+
+  function pickPopularPack(packId: string) {
+    const pack = CREATOR_POPULAR_PACKS.find((item) => item.id === packId);
+    if (!pack) return;
+    const chip = findChip(pack.chipId);
+    if (chip) onPickChip(chip);
+    onPromptChange(t(pack.promptKey));
+    trackHomeChatComposerClick(analytics.track, {
+      page_name: 'home',
+      area: 'chat_composer',
+      element: 'action_chip',
+      chip_id: pack.chipId,
+    });
+    scrollPromptIntoView();
   }
 
   function pickMcp(server: McpServerConfig) {
@@ -1178,6 +1280,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
       setGuidePulseChipId(null);
     }
     onPickChip(chip);
+    scrollPromptIntoView();
   }
 
   function handleDrop(event: ReactDragEvent<HTMLDivElement>) {
@@ -1208,32 +1311,37 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     contextOnlyMcpServers.length > 0 ||
     contextOnlyConnectors.length > 0 ||
     contextWorkspaceItems.length > 0;
-  const blankProjectEntry = onStartBlankProject ? (
-    <button
-      type="button"
-      className="home-hero__blank-project"
-      data-testid="home-hero-blank-project"
-      onClick={onStartBlankProject}
-    >
-      {t('homeHero.startBlankProject')}
-      <Icon name="chevron-right" size={13} aria-hidden />
-    </button>
-  ) : null;
-
   let optionRenderIndex = 0;
 
   return (
-    <section ref={homeHeroRef} className="home-hero" data-testid="home-hero">
-      <div className="home-hero__brand" aria-hidden>
-        <span className="home-hero__brand-mark od-brand-glyph" />
-        <span className="home-hero__brand-name">Open Design</span>
+    <section ref={homeHeroRef} className="home-hero home-hero--premium-stage" data-testid="home-hero">
+      {/* Banner zone (mockup): bg covers title → prompt → brand switch only */}
+      <div className="home-hero__banner">
+      <div className="home-hero__stage" aria-hidden="true">
+        <img
+          className="home-hero__stage-img"
+          src="/artifact-bg.png"
+          alt=""
+          width={1774}
+          height={887}
+          decoding="async"
+          fetchPriority="high"
+          draggable={false}
+        />
+        <span className="home-hero__stage-glow home-hero__stage-glow--a" />
+        <span className="home-hero__stage-glow home-hero__stage-glow--b" />
+        <span className="home-hero__stage-spotlight" />
+        <span className="home-hero__stage-vignette" />
+        <span className="home-hero__stage-grain" />
       </div>
-      <h1 className="home-hero__title">{t('homeHero.title')}</h1>
-      <p className="home-hero__subtitle">
-        {t('homeHero.subtitlePrefix')}
-      </p>
+      <div className="home-hero__stage-copy">
+        <span className="home-hero__badge">{t('homeHero.badge')}</span>
+        <h1 className="home-hero__title">{t('homeHero.title')}</h1>
+        <p className="home-hero__subtitle">{t('homeHero.subtitlePrefix')}</p>
+      </div>
 
       <div
+        ref={inputCardRef}
         className={`home-hero__input-card${
           authoringLayoutActive ? ' home-hero__input-card--compact-authoring' : ''
         }${dragActive ? ' is-drag-active' : ''}`}
@@ -1253,6 +1361,16 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
         }}
         onDrop={handleDrop}
       >
+        {/* Aceternity-style border glow — auto orbit, warm accent palette */}
+        <GlowingEffect
+          auto
+          disabled={false}
+          glow
+          spread={52}
+          borderWidth={1}
+          movementDuration={12}
+          blur={0}
+        />
         {showActiveContextRow ? (
           <div
             className="home-hero__active"
@@ -1994,86 +2112,272 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
         </div>
       </div>
 
-      {onDesignSystemChange || onPickWorkingDir ? (
-        <div className="home-hero__workdir-row">
-          {onDesignSystemChange ? (
-            <DesignSystemPicker
-              variant="home"
-              designSystems={designSystems}
-              selectedId={selectedDesignSystemId}
-              onChange={onDesignSystemChange}
-            />
-          ) : null}
-          {onDesignSystemChange && onPickWorkingDir ? (
-            <span className="home-hero__workdir-divider" aria-hidden />
-          ) : null}
-          {onPickWorkingDir ? (
-            <WorkingDirPicker
-              workingDir={workingDir}
-              recentDirs={recentDirs}
-              onPickDirectory={() => {
-                trackHomeChatComposerClick(analytics.track, {
-                  page_name: 'home',
-                  area: 'chat_composer',
-                  element: 'working_dir',
-                });
-                void onPickWorkingDir();
-              }}
-              onSelectRecent={(dir) => {
-                trackHomeChatComposerClick(analytics.track, {
-                  page_name: 'home',
-                  area: 'chat_composer',
-                  element: 'working_dir_recent',
-                });
-                onSelectRecentWorkingDir?.(dir);
-              }}
-              onClear={() => {
-                trackHomeChatComposerClick(analytics.track, {
-                  page_name: 'home',
-                  area: 'chat_composer',
-                  element: 'working_dir_clear',
-                });
-                onClearWorkingDir?.();
-              }}
-            />
-          ) : null}
+      {onDesignSystemChange ? (
+        <div className="home-hero__workdir-row home-hero__workdir-row--creator">
+          <DesignSystemPicker
+            variant="home"
+            designSystems={designSystems}
+            selectedId={selectedDesignSystemId}
+            onChange={onDesignSystemChange}
+          />
+          <div className="home-hero__brand-mode" data-testid="home-hero-brand-mode" role="group" aria-label={t('homeHero.brandMode.label')}>
+            <button
+              type="button"
+              className={`home-hero__brand-mode-btn${brandMode === 'personal' ? ' is-active' : ''}`}
+              aria-pressed={brandMode === 'personal'}
+              onClick={() => setBrandModePersist('personal')}
+            >
+              {t('homeHero.brandMode.personal')}
+            </button>
+            <button
+              type="button"
+              className={`home-hero__brand-mode-btn${brandMode === 'client' ? ' is-active' : ''}`}
+              aria-pressed={brandMode === 'client'}
+              onClick={() => setBrandModePersist('client')}
+            >
+              {t('homeHero.brandMode.client')}
+            </button>
+          </div>
         </div>
       ) : null}
+      </div>{/* /.home-hero__banner */}
 
       {recommendationSlot}
 
-      {activeCreateChip ? null : (
-        <div className="home-hero__template-section" data-testid="home-hero-template-section">
-          <div className="home-hero__template-heading">
-            {t('homeHero.startWithTemplate')}
+      {!activeCreateChip || isCreatorQuickStartId(activeCreateChip.id) ? (
+        <div
+          className="home-hero__creator-quick home-hero__workflow-launcher"
+          data-testid="home-hero-creator-quick"
+        >
+          <div className="home-hero__creator-quick-head">
+            <h2 className="home-hero__creator-quick-title">{t('homeHero.outcomesHeading')}</h2>
+            <p className="home-hero__creator-quick-hint">{t('homeHero.quickStartHint')}</p>
           </div>
-          <RailGroup
-            group="create"
-            activeChipId={activeChipId}
-            pendingChipId={pendingChipId}
-            pendingPluginId={pendingPluginId}
-            pluginsLoading={pluginsLoading}
-            onPickChip={handlePickTaskChip}
-            variant="tabs"
-            pulseChipId={guidePulseChipId}
-            onHoverChip={setPreviewTemplateId}
+
+          <div className="home-hero__workflow-top">
+            {/* FEATURED — large Content Pack card */}
+            <section
+              className="home-hero__workflow-group home-hero__workflow-group--featured"
+              aria-labelledby="home-workflow-featured"
+            >
+              <h3 id="home-workflow-featured" className="home-hero__workflow-label">
+                <Icon name="sparkles" size={12} aria-hidden />
+                <span>{t('homeHero.workflow.featured')}</span>
+              </h3>
+              <div className="home-hero__workflow-featured-slot" role="list">
+                {(() => {
+                  const featured =
+                    creatorQuickStarts.find((c) => c.id === CREATOR_WORKFLOW_FEATURED_ID) ??
+                    findChip(CREATOR_WORKFLOW_FEATURED_ID);
+                  if (!featured) return null;
+                  return (
+                    <WorkflowCard
+                      chip={featured}
+                      variant="featured"
+                      badge={CREATOR_WORKFLOW_BADGE[featured.id as CreatorQuickStartId]}
+                      isActive={activeChipId === featured.id}
+                      isPinned={pinnedCreatorIds.includes(featured.id)}
+                      disabled={pluginsLoading || pendingChipId !== null || pendingPluginId !== null}
+                      pulse={guidePulseChipId === featured.id}
+                      onPick={() => pickCreatorCategory(featured)}
+                      onTogglePin={(event) => handleTogglePin(featured.id, event)}
+                      pinLabel={
+                        pinnedCreatorIds.includes(featured.id)
+                          ? t('homeHero.unpinCategory')
+                          : t('homeHero.pinCategory')
+                      }
+                      title={homeHeroChipTitle(featured, t)}
+                      label={homeHeroChipLabel(featured.id, t)}
+                      desc={homeHeroChipDescription(featured.id, t)}
+                      badgeText={workflowBadgeText(
+                        CREATOR_WORKFLOW_BADGE[featured.id as CreatorQuickStartId],
+                        t,
+                      )}
+                      templatesMeta={t('homeHero.featured.templatesCount')}
+                    />
+                  );
+                })()}
+              </div>
+            </section>
+
+            {/* QUICK CREATE — 2×3 compact grid */}
+            <section
+              className="home-hero__workflow-group home-hero__workflow-group--quick"
+              aria-labelledby="home-workflow-quick"
+            >
+              <h3 id="home-workflow-quick" className="home-hero__workflow-label">
+                <span>{t('homeHero.workflow.quickCreate')}</span>
+              </h3>
+              <div className="home-hero__workflow-grid home-hero__workflow-grid--quick" role="list">
+                {CREATOR_WORKFLOW_QUICK_IDS.map((id) => {
+                  const chip =
+                    creatorQuickStarts.find((c) => c.id === id) ?? findChip(id);
+                  if (!chip) return null;
+                  return (
+                    <WorkflowCard
+                      key={chip.id}
+                      chip={chip}
+                      variant="compact"
+                      badge={CREATOR_WORKFLOW_BADGE[chip.id as CreatorQuickStartId]}
+                      isActive={activeChipId === chip.id}
+                      isPinned={pinnedCreatorIds.includes(chip.id)}
+                      disabled={pluginsLoading || pendingChipId !== null || pendingPluginId !== null}
+                      pulse={guidePulseChipId === chip.id}
+                      onPick={() => pickCreatorCategory(chip)}
+                      onTogglePin={(event) => handleTogglePin(chip.id, event)}
+                      pinLabel={
+                        pinnedCreatorIds.includes(chip.id)
+                          ? t('homeHero.unpinCategory')
+                          : t('homeHero.pinCategory')
+                      }
+                      title={homeHeroChipTitle(chip, t)}
+                      label={homeHeroChipLabel(chip.id, t)}
+                      desc={homeHeroChipDescription(chip.id, t)}
+                      badgeText={workflowBadgeText(
+                        CREATOR_WORKFLOW_BADGE[chip.id as CreatorQuickStartId],
+                        t,
+                      )}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+
+          {/* PUBLISH & SCALE — 4-up row */}
+          <section
+            className="home-hero__workflow-group home-hero__workflow-group--publish"
+            aria-labelledby="home-workflow-publish"
           >
-            <ShortcutsMenu
-              activeChipId={activeChipId}
-              pendingChipId={pendingChipId}
-              pendingPluginId={pendingPluginId}
-              pluginsLoading={pluginsLoading}
-              open={shortcutsOpen}
-              refNode={shortcutsMenuRef}
-              onOpenChange={setShortcutsOpen}
-              onPickChip={(chip) => {
-                setShortcutsOpen(false);
-                handlePickTaskChip(chip);
-              }}
-            />
-          </RailGroup>
+            <h3 id="home-workflow-publish" className="home-hero__workflow-label">
+              <Icon name="layers-filled" size={12} aria-hidden />
+              <span>{t('homeHero.workflow.publishScale')}</span>
+            </h3>
+            <div className="home-hero__workflow-grid home-hero__workflow-grid--publish" role="list">
+              {CREATOR_WORKFLOW_PUBLISH_IDS.map((id) => {
+                const chip =
+                  creatorQuickStarts.find((c) => c.id === id) ?? findChip(id);
+                if (!chip) return null;
+                return (
+                  <WorkflowCard
+                    key={chip.id}
+                    chip={chip}
+                    variant="publish"
+                    badge={CREATOR_WORKFLOW_BADGE[chip.id as CreatorQuickStartId]}
+                    isActive={activeChipId === chip.id}
+                    isPinned={pinnedCreatorIds.includes(chip.id)}
+                    disabled={pluginsLoading || pendingChipId !== null || pendingPluginId !== null}
+                    pulse={guidePulseChipId === chip.id}
+                    onPick={() => pickCreatorCategory(chip)}
+                    onTogglePin={(event) => handleTogglePin(chip.id, event)}
+                    pinLabel={
+                      pinnedCreatorIds.includes(chip.id)
+                        ? t('homeHero.unpinCategory')
+                        : t('homeHero.pinCategory')
+                    }
+                    title={homeHeroChipTitle(chip, t)}
+                    label={homeHeroChipLabel(chip.id, t)}
+                    desc={homeHeroChipDescription(chip.id, t)}
+                    badgeText={workflowBadgeText(
+                      CREATOR_WORKFLOW_BADGE[chip.id as CreatorQuickStartId],
+                      t,
+                    )}
+                  />
+                );
+              })}
+            </div>
+          </section>
         </div>
-      )}
+      ) : null}
+
+      {!activeCreateChip ? (
+        <div className="home-hero__popular" data-testid="home-hero-popular">
+          <div className="home-hero__popular-head">
+            <h2 className="home-hero__popular-title">{t('homeHero.popularHeading')}</h2>
+            <p className="home-hero__popular-hint">{t('homeHero.popularHint')}</p>
+          </div>
+          <div className="home-hero__popular-grid" role="list">
+            {CREATOR_POPULAR_PACKS.map((pack, packIndex) => (
+              <button
+                key={pack.id}
+                type="button"
+                role="listitem"
+                className={`home-hero__popular-card${packIndex === 0 ? ' is-popular' : ''}`}
+                data-testid={`home-hero-pack-${pack.id}`}
+                style={{ '--pack-accent': pack.accent } as CSSProperties}
+                disabled={pluginsLoading || pendingChipId !== null || pendingPluginId !== null}
+                onClick={() => pickPopularPack(pack.id)}
+              >
+                {packIndex === 0 ? (
+                  <span className="home-hero__tile-meta home-hero__tile-meta--popular">
+                    {t('homeHero.meta.popular')}
+                  </span>
+                ) : null}
+                {/* Vertical stack matches Quick Create compact cards */}
+                <span className="home-hero__popular-thumb" aria-hidden>
+                  <ScenarioArt chipId={pack.chipId} fallbackIcon={pack.icon} size={44} />
+                </span>
+                <span className="home-hero__popular-body">
+                  <span className="home-hero__popular-card-title">
+                    <span className="home-hero__popular-card-title-text">{t(pack.titleKey)}</span>
+                  </span>
+                  <span className="home-hero__popular-card-desc">{t(pack.descKey)}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {!activeCreateChip ? (
+        <section
+          className="home-hero__workflow-group home-hero__workflow-group--more"
+          data-testid="home-hero-template-section"
+          aria-labelledby="home-workflow-more"
+        >
+          <h3 id="home-workflow-more" className="home-hero__workflow-label">
+            <Icon name="layers-filled" size={12} aria-hidden />
+            <span>{t('homeHero.moreFormats')}</span>
+          </h3>
+          <div className="home-hero__workflow-grid home-hero__workflow-grid--more" role="list">
+            {orderedCreateChips()
+              .filter(
+                (chip) =>
+                  !isCreatorQuickStartId(chip.id) && chip.action.kind !== 'create-brand-kit',
+              )
+              .map((chip) => (
+                <WorkflowCard
+                  key={chip.id}
+                  chip={chip}
+                  variant="publish"
+                  isActive={activeChipId === chip.id}
+                  isPinned={pinnedCreatorIds.includes(chip.id)}
+                  disabled={
+                    pluginsLoading || pendingChipId !== null || pendingPluginId !== null
+                  }
+                  pulse={guidePulseChipId === chip.id}
+                  onPick={() => {
+                    setPreviewTemplateId(null);
+                    handlePickTaskChip(chip);
+                  }}
+                  onTogglePin={(event) => handleTogglePin(chip.id, event)}
+                  pinLabel={
+                    pinnedCreatorIds.includes(chip.id)
+                      ? t('homeHero.unpinCategory')
+                      : t('homeHero.pinCategory')
+                  }
+                  title={homeHeroChipTitle(chip, t)}
+                  label={homeHeroChipLabel(chip.id, t)}
+                  desc={homeHeroChipDescription(chip.id, t)}
+                  badgeText={null}
+                  testId={`home-hero-rail-${chip.id}`}
+                  onHover={() => setPreviewTemplateId(chip.id)}
+                  onHoverEnd={() => setPreviewTemplateId(null)}
+                />
+              ))}
+          </div>
+        </section>
+      ) : null}
 
       {activeSubChips.length > 0 && isSubChipParent(activeChipId) ? (
         <SubTypeRow
@@ -2151,8 +2455,6 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
         </div>
       ) : null}
 
-      {blankProjectEntry}
-
       {error ? (
         <div role="alert" className="home-hero__error">
           {error}
@@ -2190,6 +2492,333 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     </section>
   );
 });
+
+function workflowBadgeText(
+  badge: CreatorWorkflowBadge | undefined,
+  t: ReturnType<typeof useT>,
+): string | null {
+  if (!badge) return null;
+  switch (badge) {
+    case 'featured':
+      return t('homeHero.meta.featured');
+    case 'popular':
+      return t('homeHero.meta.popular');
+    case 'aiRecommended':
+      return t('homeHero.meta.aiRecommended');
+    case 'new':
+      return t('homeHero.meta.new');
+    default:
+      return null;
+  }
+}
+
+function WorkflowCard({
+  chip,
+  variant,
+  badge,
+  isActive,
+  isPinned,
+  disabled,
+  pulse,
+  onPick,
+  onTogglePin,
+  pinLabel,
+  title,
+  label,
+  desc,
+  badgeText,
+  templatesMeta,
+  testId,
+  onHover,
+  onHoverEnd,
+}: {
+  chip: HomeHeroChip;
+  variant: 'featured' | 'compact' | 'publish';
+  badge?: CreatorWorkflowBadge;
+  isActive: boolean;
+  isPinned: boolean;
+  disabled: boolean;
+  pulse: boolean;
+  onPick: () => void;
+  onTogglePin: (event: ReactMouseEvent) => void;
+  pinLabel: string;
+  title: string;
+  label: string;
+  desc: string;
+  badgeText: string | null;
+  templatesMeta?: string;
+  testId?: string;
+  onHover?: () => void;
+  onHoverEnd?: () => void;
+}) {
+  // Larger free-standing icons (no rounded box) — see Desktop/error 3.png
+  const isFeatured = variant === 'featured';
+  const iconSize = isFeatured ? 52 : 44;
+  // Inline surface styles guarantee elevation even if CSS cascade fails
+  // (see Desktop/error 1–2.png — cards were invisible on #090809).
+  // Featured uses feature_card_bg.png (floating content cards art).
+  const surfaceStyle: CSSProperties = isFeatured
+    ? {
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        minHeight: 280,
+        borderRadius: 20,
+        border: '1px solid rgba(232, 149, 90, 0.42)',
+        backgroundColor: '#120f0c',
+        backgroundImage: 'url(/feature_card_bg.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center right',
+        backgroundRepeat: 'no-repeat',
+        boxShadow:
+          'inset 0 1px 0 rgba(232,149,90,0.22), 0 18px 48px rgba(0,0,0,0.55), 0 0 40px rgba(232,149,90,0.16)',
+        overflow: 'hidden',
+      }
+    : {
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: variant === 'publish' ? 140 : 158,
+        height: '100%',
+        borderRadius: 18,
+        border: '1px solid rgba(242, 237, 228, 0.14)',
+        background: 'linear-gradient(165deg, #2e2824 0%, #1c1916 48%, #151310 100%)',
+        boxShadow:
+          'inset 0 1px 0 rgba(255,246,234,0.07), 0 10px 28px rgba(0,0,0,0.48), 0 2px 8px rgba(0,0,0,0.32)',
+        overflow: 'hidden',
+      };
+
+  const mainStyle: CSSProperties = isFeatured
+    ? {
+        // Featured: push icon + copy to bottom (error 4.png)
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        justifyContent: 'flex-end',
+        gap: 12,
+        width: '100%',
+        height: '100%',
+        minHeight: 280,
+        padding: '20px 22px 20px',
+        border: 0,
+        background:
+          'linear-gradient(180deg, transparent 0%, transparent 28%, rgba(12,10,8,0.55) 62%, rgba(12,10,8,0.88) 100%)',
+        textAlign: 'left',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        boxSizing: 'border-box',
+      }
+    : {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        gap: 14,
+        width: '100%',
+        height: '100%',
+        minHeight: variant === 'publish' ? 140 : 158,
+        padding: badgeText ? '34px 16px 16px' : '18px 16px 16px',
+        border: 0,
+        background: 'transparent',
+        textAlign: 'left',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        boxSizing: 'border-box',
+      };
+
+  // Icon freestanding — no rounded box / plate behind glyph
+  const artStyle: CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    width: iconSize,
+    height: Math.round((iconSize * 42) / 60),
+    minWidth: iconSize,
+    minHeight: Math.round((iconSize * 42) / 60),
+    // Featured: sit just above title at bottom; compact: top of card
+    marginBottom: isFeatured ? 4 : 2,
+    marginTop: isFeatured ? 0 : 0,
+    padding: 0,
+    border: 0,
+    borderRadius: 0,
+    background: 'transparent',
+    boxShadow: 'none',
+    color: '#e8955a',
+    flexShrink: 0,
+    overflow: 'visible',
+    order: isFeatured ? 1 : 0,
+  };
+
+  const badgeStyle: CSSProperties = {
+    position: 'absolute',
+    zIndex: 3,
+    top: isFeatured ? 16 : 10,
+    ...(isFeatured || !badgeText
+      ? { left: isFeatured ? 16 : 12 }
+      : { right: 10, left: 'auto' }),
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '3px 9px',
+    borderRadius: 999,
+    fontSize: 10,
+    fontWeight: 650,
+    letterSpacing: '0.02em',
+    lineHeight: 1.2,
+    pointerEvents: 'none',
+    ...(badge === 'featured'
+      ? { color: '#1a1008', background: '#e8955a', boxShadow: '0 2px 10px rgba(232,149,90,0.4)' }
+      : badge === 'popular'
+        ? {
+            color: '#f0c4a0',
+            background: 'rgba(40,28,20,0.95)',
+            border: '1px solid rgba(232,149,90,0.45)',
+          }
+        : badge === 'aiRecommended'
+          ? {
+              color: '#d4c4ff',
+              background: 'rgba(46,31,74,0.95)',
+              border: '1px solid rgba(167,139,250,0.5)',
+            }
+          : badge === 'new'
+            ? {
+                color: '#a7f3c0',
+                background: 'rgba(20,60,40,0.95)',
+                border: '1px solid rgba(74,222,128,0.45)',
+              }
+            : {}),
+  };
+
+  return (
+    <div
+      role="listitem"
+      className={[
+        'home-hero__creator-tile',
+        'home-hero__workflow-card',
+        `home-hero__workflow-card--${variant}`,
+        isActive ? 'is-active' : '',
+        isPinned ? 'is-pinned' : '',
+        isFeatured ? 'is-featured' : '',
+        pulse ? 'home-hero__attention-sheen' : '',
+        badge ? `home-hero__workflow-card--badge-${badge}` : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      style={surfaceStyle}
+      data-workflow-card={variant}
+    >
+      {badgeText ? (
+        <span className="home-hero__tile-meta" style={badgeStyle}>
+          {badgeText}
+        </span>
+      ) : null}
+      <button
+        type="button"
+        className="home-hero__creator-tile-main"
+        style={mainStyle}
+        data-testid={testId ?? `home-hero-creator-${chip.id}`}
+        data-chip-id={chip.id}
+        disabled={disabled}
+        onClick={onPick}
+        onMouseEnter={onHover}
+        onMouseLeave={onHoverEnd}
+        title={title}
+      >
+        {/* Featured: icon sits low above title (error 4.png). Compact: icon on top. */}
+        <div
+          className="home-hero__creator-tile-art"
+          style={{ ...artStyle, order: isFeatured ? 1 : 0 }}
+          aria-hidden
+        >
+          <ScenarioArt chipId={chip.id} fallbackIcon={chip.icon} size={iconSize} />
+        </div>
+        <div
+          className="home-hero__creator-tile-copy"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: isFeatured ? 8 : 6,
+            width: '100%',
+            minWidth: 0,
+            maxWidth: isFeatured ? '52%' : undefined,
+            marginTop: 0,
+            order: isFeatured ? 2 : 1,
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
+          <div
+            className="home-hero__creator-tile-title"
+            style={{
+              display: 'block',
+              width: '100%',
+              fontSize: isFeatured ? 26 : 14.5,
+              fontWeight: isFeatured ? 600 : 620,
+              letterSpacing: isFeatured ? '-0.03em' : '-0.015em',
+              color: '#f7f3ec',
+              lineHeight: 1.2,
+            }}
+          >
+            <span className="home-hero__creator-tile-title-text">{label}</span>
+          </div>
+          <div
+            className="home-hero__creator-tile-desc"
+            style={{
+              display: 'block',
+              width: '100%',
+              fontSize: isFeatured ? 14.5 : 12.5,
+              lineHeight: 1.4,
+              color: 'rgba(232, 228, 220, 0.62)',
+            }}
+          >
+            {desc}
+          </div>
+          {isFeatured && templatesMeta ? (
+            <div
+              className="home-hero__workflow-card-meta"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                marginTop: 4,
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'rgba(232, 228, 220, 0.48)',
+              }}
+            >
+              <Icon name="layout" size={13} aria-hidden />
+              {templatesMeta}
+            </div>
+          ) : null}
+        </div>
+      </button>
+      <button
+        type="button"
+        className={`home-hero__creator-pin${isPinned ? ' is-pinned' : ''}`}
+        aria-label={pinLabel}
+        aria-pressed={isPinned}
+        title={pinLabel}
+        onClick={onTogglePin}
+        style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          zIndex: 4,
+          width: 26,
+          height: 26,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 999,
+          border: '1px solid rgba(242,237,228,0.12)',
+          background: 'rgba(26,22,18,0.9)',
+          color: 'rgba(232,228,220,0.65)',
+          cursor: 'pointer',
+        }}
+      >
+        <Icon name="star" size={12} />
+      </button>
+    </div>
+  );
+}
 
 function PluginPromptPresets({
   activePluginId,
@@ -3278,15 +3907,18 @@ function RailGroup({
   variant = 'rail',
   pulseChipId = null,
   onHoverChip,
+  chips: chipsOverride,
   children,
-}: RailGroupProps) {
+}: RailGroupProps & { chips?: HomeHeroChip[] }) {
   const t = useT();
   // The inline create rail leads with the slide deck and runs through the core
   // build scenarios in a fixed order (see `orderedCreateChips`); every other
-  // group renders in catalog order.
+  // group renders in catalog order. Callers can pass `chips` to show a subset
+  // (e.g. design formats only, after creator Quick Start tiles).
   const chips = useMemo(
-    () => (group === 'create' ? orderedCreateChips() : chipsForGroup(group)),
-    [group],
+    () => chipsOverride
+      ?? (group === 'create' ? orderedCreateChips() : chipsForGroup(group)),
+    [chipsOverride, group],
   );
   const isTabs = variant === 'tabs';
 
@@ -3750,6 +4382,18 @@ function ShortcutsMenu({
 // Scenario subtitle shown under the title on the illustrated card rail.
 function homeHeroChipDescription(chipId: string, t: ReturnType<typeof useT>): string {
   switch (chipId) {
+    case 'content-pack': return t('homeHero.chip.contentPackDesc');
+    case 'social-content': return t('homeHero.chip.socialContentDesc');
+    case 'carousel': return t('homeHero.chip.carouselDesc');
+    case 'short-video': return t('homeHero.chip.shortVideoDesc');
+    case 'linkedin-post': return t('homeHero.chip.linkedinPostDesc');
+    case 'facebook-post': return t('homeHero.chip.facebookPostDesc');
+    case 'youtube': return t('homeHero.chip.youtubeDesc');
+    case 'threads': return t('homeHero.chip.threadsDesc');
+    case 'email': return t('homeHero.chip.emailDesc');
+    case 'ad-creative': return t('homeHero.chip.adCreativeDesc');
+    case 'repurpose': return t('homeHero.chip.repurposeDesc');
+    case 'hook-engine': return t('homeHero.chip.hookEngineDesc');
     case 'prototype': return t('homeHero.chip.prototypeDesc');
     case 'web-clone': return t('homeHero.chip.webCloneDesc');
     case 'wireframe': return t('homeHero.chip.wireframeDesc');
@@ -3791,6 +4435,18 @@ function fallbackPlaceholderScenarioText(
 // consumed once picked (e.g. "Open a chat that builds a clickable prototype").
 function homeHeroChipTitle(chip: HomeHeroChip, t: ReturnType<typeof useT>): string {
   switch (chip.id) {
+    case 'content-pack': return t('homeHero.chip.contentPackNext');
+    case 'social-content': return t('homeHero.chip.socialContentNext');
+    case 'carousel': return t('homeHero.chip.carouselNext');
+    case 'short-video': return t('homeHero.chip.shortVideoNext');
+    case 'linkedin-post': return t('homeHero.chip.linkedinPostNext');
+    case 'facebook-post': return t('homeHero.chip.facebookPostNext');
+    case 'youtube': return t('homeHero.chip.youtubeNext');
+    case 'threads': return t('homeHero.chip.threadsNext');
+    case 'email': return t('homeHero.chip.emailNext');
+    case 'ad-creative': return t('homeHero.chip.adCreativeNext');
+    case 'repurpose': return t('homeHero.chip.repurposeNext');
+    case 'hook-engine': return t('homeHero.chip.hookEngineNext');
     case 'prototype': return t('homeHero.chip.prototypeNext');
     case 'web-clone': return t('homeHero.chip.webCloneNext');
     case 'wireframe': return t('homeHero.chip.wireframeNext');

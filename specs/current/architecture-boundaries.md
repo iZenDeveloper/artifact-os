@@ -2,11 +2,11 @@
 
 ## Purpose
 
-This document defines the architectural boundaries for the local Open Design app. These boundaries are architectural constraints; some enforcement details can be implemented later through the relevant roadmap workstreams.
+This document defines the architectural boundaries for the local Artifact OS app. These boundaries are architectural constraints; some enforcement details can be implemented later through the relevant roadmap workstreams.
 
 ## Product Shape
 
-Open Design is a local-first application. The near-term Electron version is a shell around the same `apps/web` and `apps/daemon` architecture.
+Artifact OS is a local-first application. The near-term Electron version is a shell around the same `apps/web` and `apps/daemon` architecture.
 
 Electron does not introduce a separate privileged application layer. The web layer and daemon keep the same responsibilities in browser and Electron modes.
 

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Client Package · layout preview</title>
+  <style>
+    :root {
+      --canvas: #fafaf8; --surface: #fff; --muted: #f2f1ee; --border: #e6e4df;
+      --ink: #1a1a1a; --sec: #5c5c5c; --accent: #1f4b99;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: var(--canvas); color: var(--ink); line-height: 1.55; }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { font-family: "Source Serif 4", Georgia, serif; font-size: 1.55rem; margin: 0 0 8px; }
+    .badge { display: inline-block; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); padding: 3px 8px; border-radius: 999px; margin: 0 6px 8px 0; }
+    .sub { color: var(--sec); margin: 0 0 20px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-bottom: 12px; }
+    pre { background: var(--muted); border-radius: 8px; padding: 12px 14px; font-size: 0.82rem; overflow: auto; }
+    code { font-size: 0.9em; }
+    ul { margin: 8px 0 0; padding-left: 1.2rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <span class="badge">Client Package</span>
+    <span class="badge">agency deliverable</span>
+    <h1>What the client receives</h1>
+    <p class="sub">Zip layout for captions + brand + notes. App: <strong>Download → Export Client Package</strong>.</p>
+
+    <div class="card">
+      <strong>Tree</strong>
+      <pre>{package-slug}/
+  PACKAGE.md
+  brand.json
+  notes/delivery.md
+  captions/
+    linkedin.txt
+    tiktok.txt
+    …
+  source/index.html</pre>
+    </div>
+
+    <div class="card">
+      <strong>QA</strong>
+      <ul>
+        <li>Brand slug present</li>
+        <li>Platform-native captions (not clones)</li>
+        <li>No invented metrics</li>
+        <li>Client can paste without design tools</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <strong>Handoff</strong>
+      <p class="sub" style="margin:0">Build pack with <code>content-repurposer</code> → export Client Package → send zip.</p>
+    </div>
+  </div>
+</body>
+</html>

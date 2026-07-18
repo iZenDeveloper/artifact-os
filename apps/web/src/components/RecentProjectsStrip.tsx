@@ -13,8 +13,16 @@ import { useT } from '../i18n';
 import { fetchProjectFiles, fetchProjectFileText, projectFileUrl } from '../providers/registry';
 import type { DesignSystemSummary, Project, ProjectDisplayStatus, ProjectFile } from '../types';
 import { Icon } from './Icon';
-import { STATUS_LABEL_KEYS } from './DesignsTab';
 import { isDesignSystemProject, isPublishedDesignSystemProject } from './design-system-project';
+import {
+  projectCardBrandLabel,
+  projectCardCategory,
+  projectCardStatusBucket,
+  projectCardStatusIsActive,
+  projectCardStatusLabel,
+  projectCardTypeLabel,
+  type ProjectCardCategory,
+} from './project-card-meta';
 
 interface Props {
   projects: Project[];
@@ -124,37 +132,23 @@ export function RecentProjectsStrip({
     void Promise.all(
       recent.map(async (project) => {
         const designSystemProject = isDesignSystemProject(project);
-        if (project.metadata?.entryFile && !designSystemProject) return [project.id, null] as const;
-        let files: Awaited<ReturnType<typeof fetchProjectFiles>>;
+        // Always list files so we can prefer a real image/video cover (or
+        // index.html preview) instead of only the metadata entryFile — which
+        // often points at a non-visual file or leaves cards as empty glyphs.
+        let files: Awaited<ReturnType<typeof fetchProjectFiles>> = [];
         try {
           files = await fetchProjectFiles(project.id);
         } catch {
-          return [project.id, null] as const;
+          files = [];
         }
         if (designSystemProject) {
           const cover = await findDesignSystemCover(project.id, files);
-          if (cover) {
-            return [
-              project.id,
-              cover,
-            ] as const;
-          }
+          if (cover) return [project.id, cover] as const;
           return [project.id, null] as const;
         }
-        const html =
-          files.find((file) => (file.path ?? file.name) === 'index.html') ??
-          files
-            .filter((file) => file.kind === 'html')
-            .sort((a, b) => b.mtime - a.mtime)[0];
-        if (html) {
-          return [
-            project.id,
-            { kind: 'html' as const, name: html.path ?? html.name },
-          ] as const;
-        }
-        const image = files
-          .filter((file) => file.kind === 'image')
-          .sort((a, b) => b.mtime - a.mtime)[0];
+        // Prefer real media covers first (XHS card exports, TikTok frames,
+        // posters) so content packs don't fall back to a blank HTML glyph.
+        const image = pickBestImageCover(files);
         if (image) {
           return [
             project.id,
@@ -168,6 +162,13 @@ export function RecentProjectsStrip({
           return [
             project.id,
             { kind: 'video' as const, name: video.path ?? video.name },
+          ] as const;
+        }
+        const html = pickBestHtmlCover(files, project.metadata?.entryFile);
+        if (html) {
+          return [
+            project.id,
+            { kind: 'html' as const, name: html },
           ] as const;
         }
         return [project.id, null] as const;
@@ -255,14 +256,12 @@ export function RecentProjectsStrip({
           const designSystemProject = isDesignSystemProject(project);
           const status: ProjectDisplayStatus = project.status?.value ?? 'not_started';
           const publishedDesignSystem = isPublishedDesignSystemProject(project, designSystems);
-          const isActive =
-            !publishedDesignSystem &&
-            (status === 'running' ||
-              status === 'queued' ||
-              status === 'awaiting_input' ||
-              // Incomplete is terminal but needs attention; show the status dot so
-              // it reads as "not done", not a static success pill (#1247 / #1060).
-              status === 'incomplete');
+          const typeCategory: ProjectCardCategory = designSystemProject
+            ? 'design-system'
+            : projectCardCategory(project);
+          const statusBucket = projectCardStatusBucket(status, { published: publishedDesignSystem });
+          const isActive = projectCardStatusIsActive(statusBucket);
+          const brandLabel = projectCardBrandLabel(project, designSystems, t);
           return (
             <div
               key={project.id}
@@ -277,7 +276,10 @@ export function RecentProjectsStrip({
                 title={project.name}
               >
                 <div
-                  className={`recent-projects__card-thumb recent-projects__card-thumb-${cover.kind}`}
+                  className={[
+                    'recent-projects__card-thumb',
+                    `recent-projects__card-thumb-${cover.kind}`,
+                  ].join(' ')}
                   style={cover.style}
                   aria-hidden
                 >
@@ -296,32 +298,44 @@ export function RecentProjectsStrip({
                       preload="metadata"
                       playsInline
                     />
-                  ) : cover.kind === 'html' ? (
-                    <span className="recent-projects__card-glyph">{cover.initial}</span>
+                  ) : cover.kind === 'html' && cover.src ? (
+                    <iframe
+                      className="recent-projects__thumb-iframe"
+                      src={cover.src}
+                      title=""
+                      loading="lazy"
+                      // Match live-artifact thumbs: scripts must run so generated
+                      // HTML packs (XHS cards, decks) paint something visible.
+                      sandbox="allow-scripts"
+                      tabIndex={-1}
+                    />
                   ) : (
                     <span className="recent-projects__card-glyph">{cover.initial}</span>
                   )}
+                  {cover.kind === 'html' && cover.src ? (
+                    <span className="recent-projects__thumb-veil" />
+                  ) : null}
                 </div>
                 <div className="recent-projects__card-meta">
                   <div className="design-card-tag-row">
-                    {designSystemProject ? (
-                      <DesignSystemProjectTag />
-                    ) : (
-                      <ProjectTag category={projectCategory(project)} />
-                    )}
+                    <span className={`design-card-tag tag-${typeCategory}`}>
+                      {projectCardTypeLabel(typeCategory, t)}
+                    </span>
                   </div>
                   <div className="recent-projects__card-name">{project.name}</div>
-                  <div className="recent-projects__card-time">
-                    <span
-                      className={`recent-projects__card-status recent-projects__card-status-${publishedDesignSystem ? 'published' : status}`}
-                    >
-                      {isActive ? (
-                        <span className="recent-projects__card-status-dot" aria-hidden />
-                      ) : null}
-                      {publishedDesignSystem ? t('designs.status.published') : statusLabel(status, t)}
-                    </span>
-                    <span className="recent-projects__card-sep" aria-hidden>·</span>
-                    {relativeTime(project.updatedAt, t)}
+                  <div
+                    className={`recent-projects__card-brand${project.designSystemId ? '' : ' is-none'}`}
+                    title={brandLabel}
+                  >
+                    {brandLabel}
+                  </div>
+                  <div
+                    className={`recent-projects__card-status recent-projects__card-status-${statusBucket}`}
+                  >
+                    {isActive ? (
+                      <span className="recent-projects__card-status-dot" aria-hidden />
+                    ) : null}
+                    {projectCardStatusLabel(statusBucket, t)}
                   </div>
                 </div>
               </button>
@@ -358,7 +372,7 @@ export function RecentProjectsStrip({
                       {onDuplicate ? (
                         <button type="button" role="menuitem" onClick={() => requestDuplicate(project)}>
                           <Icon name="copy" size={12} />
-                          <span>{t('designs.menuDuplicate')}</span>
+                          <span>{t('recentProjects.duplicate')}</span>
                         </button>
                       ) : null}
                       {onDelete ? (
@@ -441,24 +455,6 @@ export function RecentProjectsStrip({
   );
 }
 
-function statusLabel(
-  status: ProjectDisplayStatus,
-  t: ReturnType<typeof useT>,
-): string {
-  return t(STATUS_LABEL_KEYS[status]);
-}
-
-function relativeTime(ts: number, t: ReturnType<typeof useT>): string {
-  const diff = Date.now() - ts;
-  const min = 60_000;
-  const hr = 60 * min;
-  const day = 24 * hr;
-  if (diff < min) return t('common.justNow');
-  if (diff < hr) return t('common.minutesAgo', { n: Math.floor(diff / min) });
-  if (diff < day) return t('common.hoursAgo', { n: Math.floor(diff / hr) });
-  if (diff < 7 * day) return t('common.daysAgo', { n: Math.floor(diff / day) });
-  return new Date(ts).toLocaleDateString();
-}
 
 function projectCover(
   project: Project,
@@ -499,39 +495,54 @@ function projectCover(
   return { kind: 'fallback', style, initial };
 }
 
-type ProjectCategory = 'prototype' | 'live-artifact' | 'slide' | 'media' | 'brand';
 
-function projectCategory(project: Project): ProjectCategory {
-  const meta = project.metadata;
-  if (meta?.intent === 'live-artifact' || project.skillId === 'live-artifact') {
-    return 'live-artifact';
+function pickBestImageCover(files: ProjectFile[]): ProjectFile | undefined {
+  const images = files
+    .filter((file) => file.kind === 'image' || /\.(png|jpe?g|webp|gif|svg)$/iu.test(file.path ?? file.name))
+    .filter((file) => file.type !== 'dir');
+  if (images.length === 0) return undefined;
+  const rank = (file: ProjectFile): number => {
+    const name = (file.path ?? file.name).toLowerCase();
+    if (/(cover|hero|thumb|poster|card-?1|c1|frame-?1)/i.test(name)) return 0;
+    if (/(xhs|carousel|tiktok|linkedin|ad)/i.test(name)) return 1;
+    if (/(preview|shot)/i.test(name)) return 2;
+    return 3;
+  };
+  return [...images].sort((a, b) => rank(a) - rank(b) || b.mtime - a.mtime)[0];
+}
+
+function pickBestHtmlCover(
+  files: ProjectFile[],
+  entryFile?: string | null,
+): string | undefined {
+  const htmlPaths = files
+    .filter((file) => file.type !== 'dir')
+    .map((file) => file.path ?? file.name)
+    .filter((name) => /\.html?$/iu.test(name));
+  if (entryFile && /\.html?$/iu.test(entryFile)) {
+    // Prefer the project's declared entry when it is HTML.
+    if (htmlPaths.length === 0 || htmlPaths.includes(entryFile) || files.length === 0) {
+      return entryFile;
+    }
   }
-  if (meta?.kind === 'deck') return 'slide';
-  if (meta?.kind === 'brand') return 'brand';
-  if (meta?.kind === 'image' || meta?.kind === 'video' || meta?.kind === 'audio') {
-    return 'media';
+  if (htmlPaths.length === 0) {
+    return entryFile && /\.html?$/iu.test(entryFile) ? entryFile : undefined;
   }
-  return 'prototype';
+  const preferred = [
+    'index.html',
+    entryFile,
+    ...htmlPaths.filter((name) => /(preview|cover|card|pack)/i.test(name)),
+  ].filter((name): name is string => Boolean(name));
+  for (const name of preferred) {
+    if (htmlPaths.includes(name)) return name;
+  }
+  // Newest HTML file as last resort.
+  const byMtime = [...files]
+    .filter((file) => file.type !== 'dir' && /\.html?$/iu.test(file.path ?? file.name))
+    .sort((a, b) => b.mtime - a.mtime);
+  return byMtime[0] ? (byMtime[0].path ?? byMtime[0].name) : htmlPaths[0];
 }
 
-function ProjectTag({ category }: { category: ProjectCategory }) {
-  const t = useT();
-  const label =
-    category === 'live-artifact'
-      ? t('designs.tagLiveArtifact')
-      : category === 'slide'
-        ? t('designs.tagSlide')
-        : category === 'brand'
-          ? 'Brand'
-        : category === 'media'
-          ? t('designs.tagMedia')
-          : t('designs.tagPrototype');
-  return <span className={`design-card-tag tag-${category}`}>{label}</span>;
-}
-
-function DesignSystemProjectTag() {
-  return <span className="design-card-tag tag-design-system">Design System</span>;
-}
 
 function findDesignSystemLogoFile(files: ProjectFile[]): ProjectFile | null {
   const logoCandidates = files

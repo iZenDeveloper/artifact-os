@@ -93,6 +93,41 @@ describe('buildSrcdoc', () => {
     expect(srcdoc).toContain("reject(new Error('empty-render'))");
   });
 
+  // Incomplete PDF exports: remote <img> blank inside SVG foreignObject, long
+  // pages hit canvas limits, fonts still loading. prepareCapture + tiling fix.
+  it('prepares captures by waiting for fonts, decoding images, and inlining as data URLs', () => {
+    const srcdoc = buildSrcdoc('<main><img src="https://cdn.example/hero.png" alt=""></main>');
+
+    expect(srcdoc).toContain('function waitForFonts()');
+    expect(srcdoc).toContain('document.fonts.ready');
+    expect(srcdoc).toContain('function waitForImages()');
+    expect(srcdoc).toContain('img.decode');
+    expect(srcdoc).toContain('function inlineImagesAsDataUrls()');
+    expect(srcdoc).toContain('function rasterizeImageToDataUrl(img)');
+    expect(srcdoc).toContain('function prepareCapture(opts)');
+    expect(srcdoc).toContain('function measureContentSize()');
+    expect(srcdoc).toContain('function unlockDocumentScroll()');
+    expect(srcdoc).toContain('function prewarmScroll()');
+    expect(srcdoc).toContain('window.__odCaptureSnapshot = function(opts){');
+    expect(srcdoc).toContain('prepareCapture({ full: !!opts.full, prewarm: !!opts.full })');
+  });
+
+  it('tiles long full-page captures and paginates PDF as viewport bands', () => {
+    const srcdoc = buildSrcdoc('<main style="height:20000px">Tall</main>');
+
+    expect(srcdoc).toContain('var MAX_CAPTURE_EDGE = 8192');
+    expect(srcdoc).toContain("reject(new Error('page-too-tall'))");
+    expect(srcdoc).toContain('function captureFullPageTiled()');
+    expect(srcdoc).toContain('function captureViewportBands()');
+    expect(srcdoc).toContain('window.__odCaptureFullPageTiled = function(){');
+    expect(srcdoc).toContain('window.__odCaptureFullPageBands = function(){');
+    // Export-capture bridge: non-deck pages emit multi-band slides.
+    expect(srcdoc).toContain('function capturePageImages()');
+    expect(srcdoc).toContain("if (!deck && !single)");
+    // Cap DPR so multi-tile stitch stays within canvas memory budgets.
+    expect(srcdoc).toContain('var dpr = Math.min(2, window.devicePixelRatio || 1)');
+  });
+
   it('renders snapshot SVGs through data URLs so canvas export stays origin-clean', () => {
     const srcdoc = buildSrcdoc('<main style="color:red">Hero</main>');
 
@@ -121,10 +156,23 @@ describe('buildSrcdoc', () => {
   it('prunes hidden snapshot clone nodes before rasterizing decks', () => {
     const srcdoc = buildSrcdoc(deckHtml, { deck: true });
 
+    // Helper remains available for deck / snapshot paths that still need it.
     expect(srcdoc).toContain('function pruneHiddenSnapshotNodes');
     expect(srcdoc).toContain("computed.display === 'none'");
     expect(srcdoc).toContain("computed.visibility === 'hidden'");
-    expect(srcdoc).toContain('pruneHiddenSnapshotNodes(document.documentElement, clone)');
+  });
+
+  it('serializes FO captures as XHTML (XMLSerializer) with ink-aware blank detection', () => {
+    const srcdoc = buildSrcdoc('<main>Hello &amp; report</main>');
+    // body.innerHTML is not well-formed XML and painted blank on real reports
+    // (vnexpress-ai-seo-audit-2.html). Capture must serialize via XMLSerializer.
+    expect(srcdoc).toContain('new XMLSerializer().serializeToString');
+    expect(srcdoc).toContain('function inlineFoStyles');
+    expect(srcdoc).toContain('var FO_STYLE_PROPS');
+    // Blank detection must count ink, not only first-pixel variance.
+    expect(srcdoc).toContain('darkOrColor');
+    expect(srcdoc).toContain('function scrollToCaptureY');
+    expect(srcdoc).toContain("behavior: 'instant'");
   });
 
   it('injects a deck-stage fallback before the deck bridge for broken runtime decks', () => {

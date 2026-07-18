@@ -31,11 +31,23 @@
   }
 }
 
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .label {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.subtitle {
+  font-size: 12px;
+  line-height: 1.35;
   color: var(--text-muted);
 }
 
@@ -81,25 +93,34 @@
 .toolboxList {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 8px;
 }
 
 .toolboxRowWrap {
   position: relative;
 }
 
-.toolboxRow,
-.moreRow {
+/* `button.` prefix beats global `button` / `button:hover:not(:disabled)` in
+   primitives.css so rows keep transparent chrome + accent hover, not panel cards. */
+button.toolboxRow,
+button.moreRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
+  box-sizing: border-box;
   width: 100%;
-  padding: 6px 8px;
+  min-height: 44px;
+  margin: 0;
+  padding: 9px 10px;
+  font-family: inherit;
   font-size: 13px;
+  font-weight: 400;
+  line-height: 1.3;
   color: var(--text-default);
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
+  box-shadow: none;
   cursor: pointer;
   text-align: left;
   transition:
@@ -107,26 +128,34 @@
     border-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-.toolboxRow:hover,
-.moreRow:hover {
-  background: var(--accent-tint);
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+button.toolboxRow .toolboxRowIcon,
+button.moreRow .toolboxRowIcon,
+button.toolboxRow .toolboxRowArrow,
+button.moreRow .toolboxRowArrow {
+  margin-top: 2px;
 }
 
-.toolboxRow:disabled,
-.moreRow:disabled {
+button.toolboxRow:hover:not(:disabled),
+button.moreRow:hover:not(:disabled) {
+  background: var(--accent-tint);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  color: var(--text-default);
+}
+
+button.toolboxRow:disabled,
+button.moreRow:disabled {
   cursor: wait;
   opacity: 0.72;
 }
 
-.toolboxRow:disabled:hover,
-.moreRow:disabled:hover {
+button.toolboxRow:disabled:hover,
+button.moreRow:disabled:hover {
   background: transparent;
   border-color: transparent;
 }
 
-.toolboxRow:focus-visible,
-.moreRow:focus-visible {
+button.toolboxRow:focus-visible,
+button.moreRow:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
@@ -153,11 +182,13 @@
 }
 
 .toolboxRowDescription {
+  display: -webkit-box;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
   font-size: 11px;
-  line-height: 1.3;
+  line-height: 1.35;
   color: var(--text-muted);
 }
 
@@ -166,7 +197,7 @@
   color: var(--text-muted);
 }
 
-.moreRow .toolboxRowTitle {
+button.moreRow .toolboxRowTitle {
   color: var(--text-muted);
 }
 
@@ -328,33 +359,40 @@
   color: var(--text-muted);
 }
 
-.flyoutRow {
+button.flyoutRow {
   display: flex;
   align-items: center;
   gap: 8px;
+  box-sizing: border-box;
   width: 100%;
+  margin: 0;
   padding: 6px 8px;
+  font-family: inherit;
   font-size: 13px;
+  font-weight: 400;
+  line-height: 1.3;
   color: var(--text-default);
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
+  box-shadow: none;
   cursor: pointer;
   text-align: left;
   transition:
     background 140ms cubic-bezier(0.23, 1, 0.32, 1),
     border-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
 }
-.flyoutRow:hover:not(:disabled),
-.flyoutRow[aria-expanded='true'] {
+button.flyoutRow:hover:not(:disabled),
+button.flyoutRow[aria-expanded='true'] {
   background: var(--accent-tint);
   border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  color: var(--text-default);
 }
-.flyoutRow:focus-visible {
+button.flyoutRow:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
-.flyoutRow:disabled {
+button.flyoutRow:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

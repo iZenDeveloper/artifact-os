@@ -1,5 +1,5 @@
 /*
- * Open Design — Atelier Zero landing page.
+ * Artifact OS — Atelier Zero landing page.
  *
  * Mirrors `design-templates/open-design-landing/example.html` 1:1. When the canonical
  * example.html changes, mirror the diff here and into `app/globals.css`.
@@ -456,7 +456,7 @@ export default function Page({
                 <span className='hero-title-corner bl' aria-hidden='true' />
                 <span className='hero-title-corner br' aria-hidden='true' />
                 <span className='hero-title-brand'>
-                  <BlurText text='Open Design' by='words' start={0} />
+                  <BlurText text='Artifact OS' by='words' start={0} />
                 </span>
                 {/* One-line category positioning (the product's own umbrella
                     term). Kept as the canonical English category label across
@@ -509,7 +509,7 @@ export default function Page({
                   sizes='(max-width: 768px) 100vw, 60vw'
                   width={2508}
                   height={1450}
-                  alt='Open Design desktop — design files & index.html preview'
+                  alt='Artifact OS desktop — design files & index.html preview'
                   decoding='async'
                   fetchPriority='low'
                   className='hero-shot-img'
@@ -525,7 +525,7 @@ export default function Page({
             <div className='about-grid'>
               <div className='about-copy' data-reveal>
                 <p className='about-kicker'>
-                  {locale === 'zh' ? '为什么选择 Open Design？' : 'Why Open Design?'}
+                  {locale === 'zh' ? '为什么选择 Artifact OS？' : 'Why Artifact OS?'}
                 </p>
                 {/*
                   Text Scroll Reveal (Magic UI / Inspira port): a tall track
@@ -769,7 +769,7 @@ export default function Page({
               <div data-reveal>
                 <h2 className='display'>
                   {t.labsPre}
-                  <em>Open Design</em>
+                  <em>Artifact OS</em>
                   {t.labsPost}
                 </h2>
                 {t.labsLead ? (
@@ -955,7 +955,7 @@ export default function Page({
               </div>
               <div className='testimonial-globe' data-reveal='right' data-testimonial-globe>
                 <canvas
-                  aria-label='Open Design global contributor map'
+                  aria-label='Artifact OS global contributor map'
                   className='testimonial-globe-canvas'
                   height={720}
                   width={720}
@@ -1033,7 +1033,7 @@ export default function Page({
         <section className='cta' id='contact' data-od-id='cta'>
           <div className='container'>
             <div className='cta-dance' data-precise-bg>
-              {/* Open Design Home window floating over the mural — sits above the
+              {/* Artifact OS Home window floating over the mural — sits above the
                   painting (::before) but below the CTA copy. Bottom is clipped by
                   the block's overflow:hidden, matching the reference comp.
                   `data-reveal` slides it up from below when the module enters view
@@ -1041,7 +1041,7 @@ export default function Page({
               <img
                 className='cta-window'
                 src='/cta-window.webp'
-                alt='Open Design 桌面端首页'
+                alt='Artifact OS 桌面端首页'
                 width={2996}
                 height={1870}
                 decoding='async'
@@ -1175,7 +1175,7 @@ export default function Page({
               <div className='sub-footer-col'>
                 <h5>{menu.product}</h5>
                 <ul>
-                  <li><a href={href('/')}>Open Design</a></li>
+                  <li><a href={href('/')}>Artifact OS</a></li>
                   <li><a href={href('/html-anything/')}>{ui.footer.htmlAnything}</a></li>
                   <li><a href={href('/html-video/')}>{ui.footer.htmlVideo}</a></li>
                 </ul>
