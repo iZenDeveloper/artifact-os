@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { createHmac, randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { appendFile, mkdir, realpath, stat, writeFile } from "node:fs/promises";
 import { release } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
@@ -1425,7 +1426,11 @@ function resolveDesktopIconPath(): string {
 
 function applyDockIcon(): void {
   if (process.platform !== "darwin" || !app.dock) return;
-  const icon = nativeImage.createFromPath(resolveDesktopIconPath());
+  // Pre-masked full-bleed squircle PNG (see error 13–17).
+  // IMPORTANT: do not add transparent outer padding — dock scales by opaque
+  // bbox and will enlarge padded icons. Do not downscale here either.
+  const iconPath = resolveDesktopIconPath();
+  const icon = nativeImage.createFromBuffer(readFileSync(iconPath));
   if (icon.isEmpty()) return;
   app.dock.setIcon(icon);
 }

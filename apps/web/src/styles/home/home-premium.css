@@ -16,8 +16,9 @@
   --elev-card: 0 1px 2px rgba(38, 37, 30, 0.03), 0 10px 28px rgba(38, 37, 30, 0.045);
   --elev-card-hover: 0 10px 18px rgba(38, 37, 30, 0.05), 0 24px 48px rgba(38, 37, 30, 0.09);
   --radius-composer: 24px;
-  --radius-card: 20px;
-  --radius-control: 14px;
+  /* Match template picker (banner control + menu use 12px / --radius-lg) */
+  --radius-card: 12px;
+  --radius-control: 12px;
   --home-hero-prompt-max-height: 132px;
 }
 
@@ -42,12 +43,18 @@
    non-hero sections re-pad to the readable 1440 column.
    ============================================================ */
 
-/* Home: stretch inner to 100% of .entry-main--scroll (viewport − sidebar) */
-/* Surface #090809 blends banner art into "Start with a format" and below */
-.entry-main--scroll:has(> .entry-main__inner--home) {
-  background: #090809;
+/* Unified dark surface for every entry view (Home, Projects, Brand,
+   Automations, Plugins, Integrations) — same #090809 as Home. */
+.entry-main--scroll {
+  background: #090809 !important;
 }
 
+.entry-main__inner--wide {
+  background: #090809;
+  min-height: 100%;
+}
+
+/* Home: stretch inner to 100% of .entry-main--scroll (viewport − sidebar) */
 .entry-main__inner--home {
   max-width: none !important;
   width: 100%;
@@ -63,6 +70,17 @@
   width: 100%;
   max-width: none;
   background: #090809;
+}
+
+/* Section paint isolation — reduces layout thrash while scrolling past hero */
+.home-view > .home-hero.home-hero--premium-stage {
+  contain: layout style;
+}
+
+.home-view > .recent-projects {
+  contain: layout style;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 420px;
 }
 
 /* Hero = 100% of main column (viewport − rail) */
@@ -89,6 +107,49 @@
   margin-inline: auto;
   padding-inline: 32px;
   box-sizing: border-box;
+}
+
+/* Community: match Recent / workflow column width (error 19 — was 1440) */
+.home-view > .plugins-home {
+  max-width: 1180px;
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: 32px;
+  box-sizing: border-box;
+}
+
+/* Sticky facet tab bar: no solid strip over the page (error 19) */
+.home-view > .plugins-home .plugins-home__facets {
+  background: transparent;
+}
+
+/* Community section: isolate paint from hero while scrolling
+   (no content-visibility — sticky facet bar needs continuous layout) */
+.home-view > .plugins-home {
+  contain: layout style;
+}
+
+/* Community: force 3-up cards in the 1180px home column */
+.home-view > .plugins-home .plugins-home__grid--gallery {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+@media (max-width: 960px) {
+  .home-view > .plugins-home .plugins-home__grid--gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .home-view > .plugins-home .plugins-home__grid--gallery {
+    grid-template-columns: 1fr;
+  }
+}
+
+.home-view > .plugins-home .plugins-home__title {
+  color: #f2ede4;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .home-view > .recent-projects .recent-projects__title {
@@ -437,13 +498,15 @@
   border-radius: var(--composer-radius);
   /* Subtle static 1px border — Aceternity glow rides the perimeter */
   border: 1px solid color-mix(in srgb, #f2ede4 12%, transparent);
-  background: color-mix(in srgb, #1a1612 72%, transparent);
-  backdrop-filter: blur(18px) saturate(1.15);
-  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  /* Solid-ish fill: skip heavy backdrop-filter (was blur 18px — scroll jank) */
+  background: rgba(22, 18, 15, 0.92);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.35),
     0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent),
     inset 0 1px 0 color-mix(in srgb, #fff6ea 8%, transparent);
+  contain: layout style;
   gap: 10px;
   opacity: 1;
   visibility: visible;
@@ -504,13 +567,40 @@
   filter: blur(var(--blur, 0px));
 }
 
-/* Auto orbit: highlight always on, angle driven by JS (motion infinite) */
+/* Auto orbit: CSS @property (no per-frame JS). Paused while scrolling. */
+@property --start {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
 .glowing-effect.is-auto {
   --active: 1;
+  --start: 0;
+}
+
+/* Only animate when on-screen and not during page scroll */
+.glowing-effect.is-auto.is-orbit-live .glowing-effect__glow {
+  animation: glowing-effect-orbit var(--glowing-effect-duration, 12s) linear infinite;
+}
+
+.entry-main--scroll.is-scrolling .glowing-effect.is-auto .glowing-effect__glow,
+.entry-main--scroll.is-scrolling .glowing-effect.is-auto .glowing-effect__glow::before,
+.entry-main--scroll.is-scrolling .glowing-effect.is-auto .glowing-effect__glow::after {
+  animation-play-state: paused !important;
+}
+
+@keyframes glowing-effect-orbit {
+  from {
+    --start: 0;
+  }
+  to {
+    --start: 360;
+  }
 }
 
 /* Soft intensity breathe so the loop feels organic, not mechanical */
-.glowing-effect.is-auto .glowing-effect__glow::after {
+.glowing-effect.is-auto.is-orbit-live .glowing-effect__glow::after {
   animation: glowing-effect-breathe 10s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
 
@@ -524,6 +614,14 @@
   }
   70% {
     opacity: 0.8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glowing-effect.is-auto .glowing-effect__glow,
+  .glowing-effect.is-auto .glowing-effect__glow::before,
+  .glowing-effect.is-auto .glowing-effect__glow::after {
+    animation: none !important;
   }
 }
 
@@ -561,7 +659,8 @@
     transparent calc(var(--spread, 20) * 1.8deg),
     transparent 360deg
   );
-  filter: blur(9px);
+  /* Lighter blur — 9px was a major scroll-time composite cost */
+  filter: blur(5px);
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
@@ -571,9 +670,10 @@
     linear-gradient(#fff 0 0);
   mask-composite: exclude;
   pointer-events: none;
+  will-change: opacity;
 }
 
-.glowing-effect.is-auto .glowing-effect__glow::before {
+.glowing-effect.is-auto.is-orbit-live .glowing-effect__glow::before {
   animation: glowing-effect-bloom-breathe 10s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
 
@@ -697,6 +797,21 @@
   min-height: 34px;
 }
 
+/* Composer foot controls — same corner radius as Template picker (12px) */
+.home-hero--premium-stage .plus-menu__trigger,
+.home-hero--premium-stage .home-hero__input-card .plus-menu__trigger,
+.home-hero--premium-stage .home-hero__mode-switcher .session-mode-toggle__trigger,
+.home-hero--premium-stage .home-hero__execution-switcher .inline-switcher__chip {
+  border-radius: var(--radius-lg, 12px) !important;
+}
+
+/* Dropdown panels match their triggers (error 22) */
+.home-hero--premium-stage .home-hero__mode-switcher .session-mode-toggle__menu,
+.home-hero--premium-stage .home-hero__mode-switcher .session-mode-toggle__popover-card,
+.home-hero--premium-stage .home-hero__execution-switcher .inline-switcher__popover {
+  border-radius: var(--radius-lg, 12px) !important;
+}
+
 .home-hero--premium-stage .home-hero__submit {
   min-width: 78px;
   height: 34px;
@@ -731,8 +846,8 @@
   border: 1px solid color-mix(in srgb, #f2ede4 12%, transparent);
   background: color-mix(in srgb, #14110e 72%, transparent);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .home-hero--premium-stage .home-hero__brand-mode-btn {
@@ -756,13 +871,16 @@
 
 /* Design system / Template pickers on dark banner
    Do NOT set a single `color` on the whole trigger — that collapses
-   kicker ("Template") and value ("None") into one muddled tone (error 5). */
+   kicker ("Template") and value ("None") into one muddled tone (error 5).
+   Radius matches template picker (12px / --radius-lg), not full pill. */
 .home-hero__banner .home-hero__footer-option--select {
   border-color: rgba(242, 237, 228, 0.14) !important;
-  background: rgba(20, 17, 14, 0.72) !important;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(20, 17, 14, 0.88) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  border-radius: var(--radius-lg, 12px) !important;
+  height: 34px;
 }
 
 .home-hero__banner .home-hero__footer-select-trigger,
@@ -805,17 +923,31 @@
 .home-hero__banner .home-hero__template-trigger-thumb {
   color: #e8955a !important;
   flex: 0 0 auto !important;
-  width: 18px !important;
-  height: 18px !important;
-  overflow: hidden;
+  width: 24px !important;
+  height: 22px !important;
+  overflow: visible;
 }
 
 .home-hero__banner .home-hero__template-trigger-thumb .home-hero__scenario-art-wrap,
 .home-hero__banner .home-hero__template-trigger-thumb .home-hero__scenario-art-svg {
-  width: 18px !important;
-  height: 13px !important;
-  max-width: 18px !important;
-  max-height: 13px !important;
+  width: 24px !important;
+  height: 18px !important;
+  max-width: 24px !important;
+  max-height: 18px !important;
+}
+
+/* Default grid glyph when no template selected */
+.home-hero__banner .home-hero__footer-option-icon.home-hero__footer-option-icon--compact {
+  width: 22px !important;
+  height: 22px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-hero__banner .home-hero__footer-option-icon.home-hero__footer-option-icon--compact svg {
+  width: 16px !important;
+  height: 16px !important;
 }
 
 .home-hero__banner .home-hero__footer-select-trigger > svg,
@@ -835,7 +967,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0;
-  border-radius: 12px !important;
+  border-radius: var(--radius-lg, 12px) !important;
 }
 
 .home-hero__banner .home-hero__template-trigger {
@@ -1085,7 +1217,7 @@
 .home-hero.home-hero--premium-stage .home-hero__workflow-card.home-hero__creator-tile {
   position: relative;
   isolation: isolate;
-  border-radius: 18px !important;
+  border-radius: var(--radius-card, 12px) !important;
   border: 1px solid rgba(242, 237, 228, 0.12) !important;
   background:
     linear-gradient(
@@ -1099,11 +1231,20 @@
     0 8px 24px rgba(0, 0, 0, 0.45),
     0 2px 6px rgba(0, 0, 0, 0.3) !important;
   overflow: hidden;
+  /* Skip expensive hover lift while the page is scrolling */
   transition:
     border-color 180ms cubic-bezier(0.23, 1, 0.32, 1),
     box-shadow 220ms cubic-bezier(0.23, 1, 0.32, 1),
     transform 200ms cubic-bezier(0.23, 1, 0.32, 1),
     background 180ms ease;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 160px;
+}
+
+.entry-main--scroll.is-scrolling .home-hero.home-hero--premium-stage .home-hero__workflow-card.home-hero__creator-tile,
+.entry-main--scroll.is-scrolling .home-hero--premium-stage .home-hero__popular-card {
+  transition: none !important;
+  transform: none !important;
 }
 
 .home-hero.home-hero--premium-stage .home-hero__workflow-card.home-hero__creator-tile:hover {
@@ -1126,7 +1267,7 @@
 .home-hero.home-hero--premium-stage .home-hero__workflow-card--featured.home-hero__creator-tile {
   flex: 1;
   min-height: 100%;
-  border-radius: 20px !important;
+  border-radius: var(--radius-card, 12px) !important;
   border: 1px solid rgba(232, 149, 90, 0.38) !important;
   background-color: #120f0c !important;
   background-image: url('/feature_card_bg.png') !important;
@@ -1557,7 +1698,7 @@
   width: 100%;
   padding: 18px 16px 16px !important;
   box-sizing: border-box;
-  border-radius: 18px !important;
+  border-radius: var(--radius-card, 12px) !important;
   border: 1px solid rgba(242, 237, 228, 0.12) !important;
   background:
     linear-gradient(
@@ -1604,7 +1745,8 @@
 
 .home-hero--premium-stage .home-hero__popular-card .home-hero__tile-meta--popular {
   top: 12px;
-  left: 14px;
+  left: auto;
+  right: 14px;
   color: #f2ede4;
   background: rgba(42, 36, 32, 0.92);
   border: 1px solid rgba(242, 237, 228, 0.14);
@@ -1711,9 +1853,16 @@
 /* ============================================================
    SIDEBAR
    ============================================================ */
+/* Match content surface (#090809) — was --bg-panel (lighter than main) */
+.entry-nav-rail,
 .entry-nav-rail.is-open {
-  box-shadow: 1px 0 0 color-mix(in srgb, var(--border) 40%, transparent);
-  background: color-mix(in srgb, var(--bg-panel) 96%, transparent);
+  background: #070707 !important;
+  box-shadow: 1px 0 0 color-mix(in srgb, #f2ede4 6%, transparent);
+}
+
+.entry:has(.entry-main__inner--home) .entry-nav-rail,
+.entry:has(.entry-main__inner--home) .entry-nav-rail.is-open {
+  background: #070707 !important;
 }
 
 .entry-nav-rail__section {
@@ -1731,26 +1880,13 @@
   padding-top: 12px;
 }
 
+/* Hide WORK / RECENT section titles — groups keep aria-label for a11y */
 .entry-nav-rail__section-label {
-  display: block;
-  width: 100%;
-  max-width: 48px;
-  margin: 0 0 4px;
-  font-size: 8px;
-  font-weight: 680;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  text-align: center;
-  color: color-mix(in srgb, var(--text-faint) 85%, var(--text-muted));
-  line-height: 1.15;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  user-select: none;
+  display: none !important;
 }
 
 .entry-nav-rail__btn {
-  border-radius: var(--radius-control);
+  border-radius: 6px !important;
   transition:
     background-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
     color 140ms cubic-bezier(0.23, 1, 0.32, 1),
@@ -1763,9 +1899,17 @@
 }
 
 .entry-nav-rail__btn.is-active {
-  background: color-mix(in srgb, var(--bg-subtle) 72%, transparent);
-  color: var(--text-strong);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent);
+  border-radius: 6px !important;
+  /* Soft amber wash — subtle orange, not a solid fill */
+  background: color-mix(in srgb, var(--accent) 14%, transparent) !important;
+  color: color-mix(in srgb, var(--accent) 88%, #f2ede4) !important;
+  border-color: color-mix(in srgb, var(--accent) 22%, transparent) !important;
+  box-shadow: none;
+}
+
+.entry-nav-rail__btn.is-active:hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent) !important;
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent) !important;
 }
 
 .entry-nav-rail__footer {
@@ -1780,9 +1924,15 @@
   gap: 10px;
   min-height: 52px;
   padding: 8px 16px 0 !important;
-  background: color-mix(in srgb, var(--bg) 78%, transparent) !important;
-  backdrop-filter: blur(10px) saturate(1.05);
-  -webkit-backdrop-filter: blur(10px) saturate(1.05);
+  /* Same dark surface as content (all entry views) */
+  background: #090809 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Section titles on Projects / Brand / … read cleanly on the dark surface */
+.entry-main__inner--wide .entry-section__title {
+  color: #f2ede4;
 }
 
 .entry-main__topbar::before {
@@ -1878,13 +2028,13 @@
 .entry-main__topbar--over-banner .settings-icon-btn {
   width: 34px;
   height: 34px;
-  border-radius: 10px;
+  border-radius: var(--radius-lg, 12px);
 }
 
 .entry-main__topbar--over-banner .entry-main__topbar-chips--icon-only .use-everywhere-chip {
   width: 34px;
   height: 34px;
-  border-radius: 10px;
+  border-radius: var(--radius-lg, 12px);
 }
 
 /* ============================================================
@@ -1915,10 +2065,6 @@
   .home-hero--premium-stage .home-hero__creator-quick,
   .home-hero--premium-stage .home-hero__popular {
     padding-inline: 16px;
-  }
-  .entry-nav-rail__section-label {
-    font-size: 7px;
-    max-width: 40px;
   }
 }
 

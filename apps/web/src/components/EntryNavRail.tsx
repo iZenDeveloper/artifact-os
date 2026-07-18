@@ -133,9 +133,6 @@ export function EntryNavRail({
         </div>
         <div className="entry-nav-rail__logo-divider" role="separator" aria-hidden="true" />
         <div className="entry-nav-rail__section" role="group" aria-label={t('entry.nav.workspace')}>
-          <span className="entry-nav-rail__section-label" aria-hidden="true">
-            {t('entry.nav.workspace')}
-          </span>
           <NavButton
             ariaLabel={t('entry.navNewProject')}
             tooltip={t('entry.navNewProject')}
@@ -174,9 +171,6 @@ export function EntryNavRail({
           </NavButton>
         </div>
         <div className="entry-nav-rail__section" role="group" aria-label={t('entry.nav.recent')}>
-          <span className="entry-nav-rail__section-label" aria-hidden="true">
-            {t('entry.nav.recent')}
-          </span>
           {LIBRARY_UI_VISIBLE ? (
             <NavButton
               active={view === 'library'}

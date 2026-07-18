@@ -599,6 +599,27 @@ export function EntryShell({
     if (!scrollContainer) return;
     scrollContainer.scrollTop = 0;
   }, [view]);
+
+  // Pause expensive home animations (glow orbit) while the main column scrolls.
+  useEffect(() => {
+    const scrollContainer = entryMainScrollRef.current;
+    if (!scrollContainer) return;
+    let idleTimer = 0;
+    const onScroll = () => {
+      scrollContainer.classList.add('is-scrolling');
+      window.clearTimeout(idleTimer);
+      idleTimer = window.setTimeout(() => {
+        scrollContainer.classList.remove('is-scrolling');
+      }, 140);
+    };
+    scrollContainer.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      scrollContainer.removeEventListener('scroll', onScroll);
+      window.clearTimeout(idleTimer);
+      scrollContainer.classList.remove('is-scrolling');
+    };
+  }, []);
+
   const analytics = useAnalytics();
   function changeView(next: EntryViewKind) {
     const navElement = navElementForView(next);

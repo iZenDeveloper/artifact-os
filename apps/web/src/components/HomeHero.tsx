@@ -453,6 +453,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   const [carouselScenario, setCarouselScenario] = useState<PlaceholderScenario | null>(null);
   const editorRef = useRef<LexicalComposerInputHandle | null>(null);
   const promptEditorRef = useRef<HTMLDivElement | null>(null);
+  const inputCardRef = useRef<HTMLDivElement | null>(null);
   const mentionPickerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const shortcutsMenuRef = useRef<HTMLDivElement>(null);
@@ -907,6 +908,23 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     requestAnimationFrame(() => setSendAttention(true));
   }
 
+  /** After a format card pick, bring the prompt composer into view and focus it. */
+  function scrollPromptIntoView() {
+    const scroll = () => {
+      inputCardRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      });
+      editorRef.current?.focus();
+      triggerSendAttention();
+    };
+    // Double rAF: wait for chip selection / layout before scrolling.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(scroll);
+    });
+  }
+
   useImperativeHandle(
     ref,
     (): HomeHeroHandle => ({
@@ -970,10 +988,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
       element: 'plugin_chip',
       chip_id: chip.id,
     });
-    requestAnimationFrame(() => {
-      editorRef.current?.focus();
-      triggerSendAttention();
-    });
+    scrollPromptIntoView();
   }
 
   function handleTogglePin(chipId: string, event: { stopPropagation: () => void }) {
@@ -1006,10 +1021,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
       element: 'action_chip',
       chip_id: pack.chipId,
     });
-    requestAnimationFrame(() => {
-      editorRef.current?.focus();
-      triggerSendAttention();
-    });
+    scrollPromptIntoView();
   }
 
   function pickMcp(server: McpServerConfig) {
@@ -1268,6 +1280,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
       setGuidePulseChipId(null);
     }
     onPickChip(chip);
+    scrollPromptIntoView();
   }
 
   function handleDrop(event: ReactDragEvent<HTMLDivElement>) {
@@ -1328,6 +1341,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
       </div>
 
       <div
+        ref={inputCardRef}
         className={`home-hero__input-card${
           authoringLayoutActive ? ' home-hero__input-card--compact-authoring' : ''
         }${dragActive ? ' is-drag-active' : ''}`}
@@ -2306,12 +2320,6 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                 <span className="home-hero__popular-body">
                   <span className="home-hero__popular-card-title">
                     <span className="home-hero__popular-card-title-text">{t(pack.titleKey)}</span>
-                    <Icon
-                      name="chevron-right"
-                      size={14}
-                      className="home-hero__popular-card-arrow"
-                      aria-hidden
-                    />
                   </span>
                   <span className="home-hero__popular-card-desc">{t(pack.descKey)}</span>
                 </span>
@@ -2732,7 +2740,6 @@ function WorkflowCard({
             minWidth: 0,
             maxWidth: isFeatured ? '52%' : undefined,
             marginTop: 0,
-            paddingRight: isFeatured ? 52 : 0,
             order: isFeatured ? 2 : 1,
             position: 'relative',
             zIndex: 1,
@@ -2741,10 +2748,7 @@ function WorkflowCard({
           <div
             className="home-hero__creator-tile-title"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 8,
+              display: 'block',
               width: '100%',
               fontSize: isFeatured ? 26 : 14.5,
               fontWeight: isFeatured ? 600 : 620,
@@ -2754,14 +2758,6 @@ function WorkflowCard({
             }}
           >
             <span className="home-hero__creator-tile-title-text">{label}</span>
-            {!isFeatured ? (
-              <Icon
-                name="chevron-right"
-                size={14}
-                className="home-hero__creator-tile-arrow"
-                aria-hidden
-              />
-            ) : null}
           </div>
           <div
             className="home-hero__creator-tile-desc"
@@ -2793,29 +2789,6 @@ function WorkflowCard({
             </div>
           ) : null}
         </div>
-        {isFeatured ? (
-          <div
-            className="home-hero__workflow-card-cta"
-            aria-hidden
-            style={{
-              position: 'absolute',
-              right: 20,
-              bottom: 20,
-              width: 40,
-              height: 40,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: 999,
-              background: '#e8955a',
-              color: '#1a1008',
-              boxShadow: '0 4px 16px rgba(232,149,90,0.45), 0 0 0 1px rgba(232,149,90,0.55)',
-              pointerEvents: 'none',
-            }}
-          >
-            <Icon name="chevron-right" size={18} className="home-hero__workflow-card-cta-icon" />
-          </div>
-        ) : null}
       </button>
       <button
         type="button"

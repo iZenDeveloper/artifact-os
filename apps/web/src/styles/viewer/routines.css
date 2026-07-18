@@ -2180,8 +2180,23 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .composer-send:disabled {
   border-right-color: var(--border);
 }
 .app .df-body {
-  padding: 4px 20px 20px;
+  /* Edge-to-edge with the workspace pane (error 24 — was 20px side pad) */
+  padding: 0;
   background: var(--bg-panel);
+}
+.app .df-body > .df-controls-row,
+.app .df-body > .df-section,
+.app .df-body > .df-upload-banner,
+.app .df-body > .df-batch-bar {
+  padding-inline: 12px;
+}
+.app .df-body > .df-footer-info {
+  margin: auto 0 0;
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  padding: 14px 12px;
 }
 .app .df-controls-row {
   margin: 0 0 14px;

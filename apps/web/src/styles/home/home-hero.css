@@ -1035,7 +1035,8 @@
 }
 .home-hero__mode-switcher .session-mode-toggle__trigger {
   max-width: 118px;
-  border-radius: var(--radius-sm);
+  /* Match Template picker (12px / --radius-lg), not radius-sm */
+  border-radius: var(--radius-lg, 12px);
   box-shadow: none;
 }
 .home-hero__mode-switcher .session-mode-toggle__popover {
@@ -1062,7 +1063,8 @@
   justify-content: space-between;
   padding: 0 8px 0 9px;
   gap: 4px;
-  border-radius: var(--radius-sm);
+  /* Match Template picker (12px / --radius-lg) */
+  border-radius: var(--radius-lg, 12px);
 }
 .home-hero__execution-switcher .inline-switcher__chip-icon {
   width: 20px;
@@ -2898,7 +2900,7 @@
   position: relative !important;
   display: flex !important;
   flex-direction: column !important;
-  border-radius: 18px !important;
+  border-radius: var(--radius-lg, 12px) !important;
   border: 1px solid rgba(242, 237, 228, 0.16) !important;
   background: linear-gradient(165deg, #322c28 0%, #1e1a17 50%, #161310 100%) !important;
   box-shadow:
@@ -2909,7 +2911,7 @@
 }
 [data-workflow-card='featured'] {
   min-height: 280px !important;
-  border-radius: 20px !important;
+  border-radius: var(--radius-lg, 12px) !important;
   border-color: rgba(232, 149, 90, 0.45) !important;
   background-color: #120f0c !important;
   background-image: url('/feature_card_bg.png') !important;
@@ -3548,28 +3550,27 @@
   font-weight: 560;
   color: var(--text-strong);
 }
-/* Mini ScenarioArt thumbnail in the trigger so the pill's leading glyph matches
-   the dropdown's illustrative cards (instead of a flat line icon). */
+/* ScenarioArt thumbnail in the trigger — sized for legibility (error 23). */
 .home-hero__template-trigger-thumb {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 16px;
-  overflow: hidden;
+  width: 24px;
+  height: 20px;
+  overflow: visible;
   border-radius: var(--radius-xs, 4px);
   color: var(--accent);
 }
 .home-hero__template-trigger-thumb .home-hero__scenario-art-wrap {
-  width: 20px !important;
-  height: 14px !important;
+  width: 24px !important;
+  height: 18px !important;
 }
 .home-hero__template-trigger-thumb .home-hero__scenario-art-svg {
   width: 100%;
   height: 100%;
-  max-width: 20px;
-  max-height: 14px;
+  max-width: 24px;
+  max-height: 18px;
 }
 .home-hero__template-option.has-selection .home-hero__template-kicker {
   color: color-mix(in srgb, var(--accent) 52%, var(--text-faint));
@@ -3758,7 +3759,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 54px;
+  height: 80px;
   border-radius: var(--radius);
   /* Same illustrative gradient as the rail's scenario-card art, so the
      dropdown thumbnails read as the same template set. */
@@ -3768,6 +3769,25 @@
     var(--bg-subtle)
   );
   color: var(--accent);
+}
+.home-hero__template-card-art .home-hero__scenario-art-wrap {
+  width: 56px !important;
+  height: 40px !important;
+}
+.home-hero__template-card-art .home-hero__scenario-art-svg {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 56px !important;
+  max-height: 40px !important;
+}
+/* Fallback line icons (when no bespoke ScenarioArt) */
+.home-hero__template-card-art .icon,
+.home-hero__template-card-art > svg,
+.home-hero__template-card-art svg:not(.home-hero__scenario-art-svg) {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px;
+  min-height: 48px;
 }
 .home-hero__template-card .home-hero__scenario-art-svg {
   transition: transform 160ms var(--ease-out);

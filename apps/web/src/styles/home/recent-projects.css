@@ -61,7 +61,8 @@
   gap: 0;
   padding: 0;
   border: 1px solid var(--border-strong);
-  border-radius: calc(var(--radius) + 2px);
+  /* Match template picker / home cards (12px) */
+  border-radius: var(--radius-lg, 12px);
   background: var(--bg-panel);
   text-align: left;
   overflow: visible;

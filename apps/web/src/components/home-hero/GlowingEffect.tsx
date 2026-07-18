@@ -1,8 +1,12 @@
 // Aceternity-style border glow (ui.aceternity.com/components/glowing-effect).
 // Supports continuous auto-orbit around the perimeter, or pointer tracking.
 // Warm amber palette aligned with Artifact OS design tokens.
+//
+// Performance: auto orbit uses CSS @property animation (not JS setProperty
+// every frame). Orbit pauses while the page scroll container is scrolling
+// and when the effect is off-screen / document is hidden.
 
-import { memo, useCallback, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { animate } from 'motion/react';
 
@@ -51,6 +55,11 @@ const WHITE_GRADIENT = `conic-gradient(
   transparent 360deg
 )`;
 
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 export const GlowingEffect = memo(function GlowingEffect({
   blur = 0,
   inactiveZone = 0.7,
@@ -67,29 +76,46 @@ export const GlowingEffect = memo(function GlowingEffect({
   const containerRef = useRef<HTMLDivElement>(null);
   const lastPosition = useRef({ x: 0, y: 0 });
   const animationFrameRef = useRef(0);
+  // When false, CSS orbit is paused (off-screen / reduced motion / tab hidden).
+  const [orbitLive, setOrbitLive] = useState(true);
 
-  // Continuous orbit — always active, angle 0→360 loop
+  // Auto orbit: CSS-driven (see .glowing-effect.is-auto). Only gate visibility.
   useEffect(() => {
     if (disabled || !auto) return;
     const element = containerRef.current;
     if (!element) return;
 
-    element.style.setProperty('--active', '1');
-    element.style.setProperty('--start', '0');
+    if (prefersReducedMotion()) {
+      setOrbitLive(false);
+      element.style.setProperty('--active', '1');
+      element.style.setProperty('--start', '40');
+      return;
+    }
 
-    const controls = animate(0, 360, {
-      duration: movementDuration,
-      ease: 'linear',
-      repeat: Infinity,
-      onUpdate: (value) => {
-        element.style.setProperty('--start', String(value));
-      },
-    });
+    element.style.setProperty('--active', '1');
+
+    let io: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver !== 'undefined') {
+      io = new IntersectionObserver(
+        ([entry]) => {
+          const visible = Boolean(entry?.isIntersecting);
+          setOrbitLive(visible && !document.hidden);
+        },
+        { root: null, rootMargin: '80px', threshold: 0 },
+      );
+      io.observe(element);
+    }
+
+    const onVisibility = () => {
+      setOrbitLive(!document.hidden);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
-      controls.stop();
+      io?.disconnect();
+      document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [auto, disabled, movementDuration]);
+  }, [auto, disabled]);
 
   const handleMove = useCallback(
     (e?: MouseEvent | { x: number; y: number }) => {
@@ -199,6 +225,7 @@ export const GlowingEffect = memo(function GlowingEffect({
           'glowing-effect',
           glow ? 'is-glow' : '',
           auto ? 'is-auto' : '',
+          auto && orbitLive ? 'is-orbit-live' : '',
           blur > 0 ? 'is-blurred' : '',
           disabled ? 'is-disabled' : '',
           className ?? '',
