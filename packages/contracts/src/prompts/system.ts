@@ -178,6 +178,9 @@ Active design system exception: the active design system is the visual direction
 export interface ComposeInput {
   skillBody?: string | undefined;
   skillName?: string | undefined;
+  /** Active Expert persona/methodology (experts/<id>/EXPERT.md). Before skill. */
+  expertBody?: string | undefined;
+  expertName?: string | undefined;
   skillMode?:
     | 'prototype'
     | 'deck'
@@ -256,6 +259,8 @@ export interface ComposeInput {
 export function composeSystemPrompt({
   skillBody,
   skillName,
+  expertBody,
+  expertName,
   skillMode,
   designSystemBody,
   designSystemTitle,
@@ -418,6 +423,12 @@ export function composeSystemPrompt({
   if (!isWebCloneRun && activeDesignSystemBody && activeDesignSystemBody.length > 0) {
     parts.push(
       `\n\n## Active design system${designSystemTitle ? ` — ${designSystemTitle}` : ''}\n\nTreat the following DESIGN.md as authoritative for color, typography, spacing, and component rules. Do not invent tokens outside this palette. When you copy the active skill's seed template, bind these tokens into its \`:root\` block before generating any layout.\n\n${activeDesignSystemBody}`,
+    );
+  }
+
+  if (expertBody && expertBody.trim().length > 0) {
+    parts.push(
+      `\n\n## Active expert${expertName ? ` — ${expertName}` : ''}\n\nYou are operating as this specialist for this run. Apply their persona and methodology.\nWhen an Active design system is present, obey its voice, tokens, and constraints.\nWhen an Active skill or plugin is present, follow that workflow for deliverable structure; the expert shapes judgment, prioritization, and quality bar — not file scaffolding.\n\n${expertBody.trim()}`,
     );
   }
 

@@ -80,6 +80,11 @@ export interface ChatRequest {
   // assemble multiple capabilities (e.g. @web-search + @summarize) for
   // a single turn without binding the project to one of them.
   skillIds?: string[];
+  /**
+   * Expert persona/methodology id for this turn. Falls back to
+   * project.metadata.expertId when omitted.
+   */
+  expertId?: string | null;
   designSystemId?: string | null;
   attachments?: string[];
   commentAttachments?: ChatCommentAttachment[];

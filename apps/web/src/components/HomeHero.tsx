@@ -103,6 +103,7 @@ import { ContextChipHoverCard } from './ContextChipHoverCard';
 import { workspaceContextDetailLine, workspaceContextKindLabel } from './workspace-context';
 import { FigmaHelpModal } from './FigmaHelpModal';
 import { TemplatePicker } from './home-hero/TemplatePicker';
+import { ExpertPicker, type ExpertCatalogEntry } from './home-hero/ExpertPicker';
 import { LibraryPicker } from './LibraryPicker';
 import { SessionModeToggle } from './SessionModeToggle';
 import { assetTitle } from './LibraryAssetMeta';
@@ -171,6 +172,11 @@ interface Props {
   onSubmitScenario?: (scenario: PlaceholderScenario) => void;
   sessionMode?: ChatSessionMode;
   onSessionModeChange?: (mode: ChatSessionMode) => void;
+  /** Expert persona/methodology lens (orthogonal to Template + Brand). */
+  experts?: ExpertCatalogEntry[];
+  selectedExpertId?: string | null;
+  expertsLoading?: boolean;
+  onExpertChange?: (expertId: string | null) => void;
   activePluginTitle: string | null;
   // True when the active plugin chip shows a user-picked plugin (Community card
   // or example-prompt preset) rather than a task-type chip's default plugin —
@@ -317,6 +323,10 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     onSubmitScenario = () => undefined,
     sessionMode = 'design',
     onSessionModeChange,
+    experts = [],
+    selectedExpertId = null,
+    expertsLoading = false,
+    onExpertChange,
     firstRunGuide,
     activePluginTitle,
     activePluginIsExplicit = false,
@@ -2049,6 +2059,13 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                 setPreviewTemplateId(null);
                 onClearActiveChip();
               }}
+            />
+            <ExpertPicker
+              experts={experts}
+              selectedExpertId={selectedExpertId}
+              disabled={pluginsLoading}
+              loading={expertsLoading}
+              onChange={(id) => onExpertChange?.(id)}
             />
             {footerInputFields.length > 0 ? (
               <div className="home-hero__footer-options" data-testid="home-hero-footer-options">

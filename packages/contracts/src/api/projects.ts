@@ -125,6 +125,12 @@ export interface ProjectMetadata {
     | 'email'
     | 'ad-creative'
     | 'hook-engine';
+  /**
+   * Active Expert id (experts/<id>/EXPERT.md). Orthogonal to skillId —
+   * persona/methodology lens for the run. Persisted on the project so
+   * subsequent turns keep the same specialist unless the client overrides.
+   */
+  expertId?: string | null;
   fidelity?: 'wireframe' | 'high-fidelity';
   speakerNotes?: boolean;
   slideCount?: string;
@@ -297,6 +303,11 @@ export interface CreateProjectRequest {
   projectLocationId?: string;
   skillId?: string | null;
   designSystemId?: string | null;
+  /**
+   * Expert persona/methodology id. Stored on metadata.expertId and injected
+   * into the system prompt as `## Active expert`.
+   */
+  expertId?: string | null;
   pendingPrompt?: string;
   metadata?: ProjectMetadata;
   pluginId?: string;
@@ -313,6 +324,8 @@ export interface UpdateProjectRequest {
   name?: string;
   skillId?: string | null;
   designSystemId?: string | null;
+  /** When set, merged into metadata.expertId (null clears). */
+  expertId?: string | null;
   pendingPrompt?: string | null;
   metadata?: ProjectMetadata | null;
   customInstructions?: string | null;

@@ -128,6 +128,8 @@ export interface CreateInput {
   name: string;
   skillId: string | null;
   designSystemId: string | null;
+  /** Expert persona/methodology id (optional; Home Expert picker). */
+  expertId?: string | null;
   metadata: ProjectMetadata;
   userWorkingDirToken?: string;
 }

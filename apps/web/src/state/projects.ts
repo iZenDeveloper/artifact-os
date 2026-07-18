@@ -88,6 +88,8 @@ export async function createProject(input: {
   projectLocationId?: string;
   skillId: string | null;
   designSystemId: string | null;
+  /** Expert persona/methodology id → metadata.expertId on the daemon. */
+  expertId?: string | null;
   pendingPrompt?: string;
   metadata?: ProjectMetadata;
   conversationMode?: ChatSessionMode;

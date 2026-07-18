@@ -684,6 +684,12 @@ export interface ComposeInput {
   // (letter-spacing, accent caps, anti-slop) cover everything below.
   craftBody?: string | undefined;
   craftSections?: string[] | undefined;
+  // Active Expert persona/methodology pack (experts/<id>/EXPERT.md).
+  // Orthogonal to skill workflow and design-system brand. Injected after
+  // craft and before skill so brand tokens already apply and skill still
+  // owns deliverable scaffolding.
+  expertBody?: string | undefined;
+  expertName?: string | undefined;
   // Markdown built from the user's auto-memory store
   // (<dataDir>/memory/*.md). Folded in before the active design system so
   // tone/voice/preferences extracted from past chats win over the
@@ -805,6 +811,8 @@ export function composeSystemPrompt({
   designSystemImportMode,
   craftBody,
   craftSections,
+  expertBody,
+  expertName,
   memoryBody,
   memoryHooks,
   metadata,
@@ -1177,6 +1185,12 @@ export function composeSystemPrompt({
         : '';
     parts.push(
       `\n\n## Active craft references${sectionLabel}\n\nThe following craft rules are universal — they apply on top of the active design system above, regardless of brand. The DESIGN.md decides *which* tokens to use; craft rules decide *how* to use them. On any conflict between a craft rule and a brand DESIGN.md, the brand wins for token values; craft rules still apply to anything the brand does not override (letter-spacing, accent overuse caps, anti-slop patterns).\n\n${craftBody.trim()}`,
+    );
+  }
+
+  if (expertBody && expertBody.trim().length > 0) {
+    parts.push(
+      `\n\n## Active expert${expertName ? ` — ${expertName}` : ''}\n\nYou are operating as this specialist for this run. Apply their persona and methodology.\nWhen an Active design system is present, obey its voice, tokens, and constraints.\nWhen an Active skill or plugin is present, follow that workflow for deliverable structure; the expert shapes judgment, prioritization, and quality bar — not file scaffolding.\n\n${expertBody.trim()}`,
     );
   }
 

@@ -32,6 +32,8 @@ export interface PluginLoopSubmit {
   // to attribute project_create_result to a plugin type. Null when no plugin.
   pluginType?: string | null;
   skillId?: string | null;
+  /** Expert persona/methodology id (orthogonal to skill/plugin). */
+  expertId?: string | null;
   appliedPluginSnapshotId: string | null;
   pluginTitle: string | null;
   taskKind: string | null;

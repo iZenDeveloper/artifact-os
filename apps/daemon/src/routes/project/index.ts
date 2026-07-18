@@ -1467,7 +1467,18 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
 
   app.post('/api/projects', async (req, res) => {
     try {
-      const { id, name, projectLocationId, skillId, designSystemId, pendingPrompt, metadata, customInstructions, skipDiscoveryBrief } =
+      const {
+        id,
+        name,
+        projectLocationId,
+        skillId,
+        designSystemId,
+        expertId,
+        pendingPrompt,
+        metadata,
+        customInstructions,
+        skipDiscoveryBrief,
+      } =
         req.body || {};
       if (typeof id !== 'string' || !isSafeId(id)) {
         return sendApiError(res, 400, 'BAD_REQUEST', 'invalid project id');
@@ -1565,10 +1576,20 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
         && (metadata as { intent?: unknown }).intent === 'web-clone'
         && typeof pendingPrompt === 'string'
         && /https?:\/\/\S+/i.test(pendingPrompt);
+      const normalizedExpertId =
+        typeof expertId === 'string' && expertId.trim().length > 0
+          ? expertId.trim()
+          : metadata &&
+              typeof metadata === 'object' &&
+              typeof (metadata as { expertId?: unknown }).expertId === 'string' &&
+              (metadata as { expertId: string }).expertId.trim().length > 0
+            ? (metadata as { expertId: string }).expertId.trim()
+            : null;
       const projectMetadata =
         metadata && typeof metadata === 'object'
           ? {
               ...metadata,
+              ...(normalizedExpertId ? { expertId: normalizedExpertId } : {}),
               ...(skipDiscoveryBrief === true || webCloneUrlSkipsDiscovery
                 ? { skipDiscoveryBrief: true }
                 : {}),
@@ -1586,9 +1607,10 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
                   })()
                 : {}),
             }
-          : skipDiscoveryBrief === true
+          : normalizedExpertId || skipDiscoveryBrief === true
             ? {
-                skipDiscoveryBrief: true,
+                ...(normalizedExpertId ? { expertId: normalizedExpertId } : {}),
+                ...(skipDiscoveryBrief === true ? { skipDiscoveryBrief: true } : {}),
                 ...(externalProjectDir
                   ? {
                       baseDir: externalProjectDir,

@@ -804,8 +804,43 @@
 .home-hero--premium-stage .home-hero__execution-switcher .inline-switcher__chip,
 .home-hero--premium-stage .home-hero__footer-select-trigger,
 .home-hero--premium-stage .home-hero__template-trigger,
+.home-hero--premium-stage .home-hero__expert-trigger,
 .home-hero--premium-stage .home-hero__footer-option--select,
 .home-hero--premium-stage .home-hero__ds-row-trigger {
+  border-radius: var(--radius-lg, 12px) !important;
+}
+
+.home-hero__banner .home-hero__expert-option {
+  max-width: 220px;
+  min-width: 132px;
+  height: 34px;
+  padding: 0 10px 0 8px;
+  border-radius: var(--radius-lg, 12px) !important;
+}
+
+.home-hero__banner .home-hero__expert-kicker {
+  color: rgba(232, 228, 220, 0.42) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  flex: 0 0 auto !important;
+  letter-spacing: 0.01em;
+  margin-right: 2px;
+}
+
+.home-hero__banner .home-hero__expert-trigger {
+  max-width: none !important;
+  flex: 1 1 auto !important;
+  height: 100%;
+  min-width: 0;
+  background: transparent !important;
+  border-color: transparent !important;
+  gap: 7px;
+  border-radius: var(--radius-lg, 12px) !important;
+}
+
+.home-hero__banner .home-hero__expert-menu {
+  min-width: 280px;
+  max-width: min(360px, 90vw);
   border-radius: var(--radius-lg, 12px) !important;
 }
 

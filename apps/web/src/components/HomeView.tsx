@@ -369,6 +369,11 @@ export function HomeView({
     chipId: string | null;
   } | null>(null);
   const [sessionMode, setSessionMode] = useState<ChatSessionMode>('design');
+  const [expertId, setExpertId] = useState<string | null>(null);
+  const [experts, setExperts] = useState<
+    Array<{ id: string; title: string; summary: string; vertical?: string | null; tags?: string[] }>
+  >([]);
+  const [expertsLoading, setExpertsLoading] = useState(true);
   const [activeSkill, setActiveSkill] = useState<SkillSummary | null>(null);
   // When a content-creator chip binds a skill (no scenario plugin), the rail
   // still needs a highlighted chip id. Plugin-bound chips use `active.chipId`;
@@ -421,6 +426,36 @@ export function HomeView({
     void fetchRecentLinkedDirs().then((dirs) => {
       if (!cancelled) setRecentDirs(dirs);
     });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    setExpertsLoading(true);
+    void fetch('/api/experts')
+      .then(async (resp) => {
+        if (!resp.ok) throw new Error(`experts ${resp.status}`);
+        return (await resp.json()) as {
+          experts?: Array<{
+            id: string;
+            title: string;
+            summary: string;
+            vertical?: string | null;
+            tags?: string[];
+          }>;
+        };
+      })
+      .then((body) => {
+        if (cancelled) return;
+        setExperts(Array.isArray(body.experts) ? body.experts : []);
+      })
+      .catch(() => {
+        if (!cancelled) setExperts([]);
+      })
+      .finally(() => {
+        if (!cancelled) setExpertsLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -2065,6 +2100,7 @@ export function HomeView({
         pluginId: routedPluginId,
         pluginType: submittedActive?.record.marketplaceTrust ?? (routedPluginId ? 'official' : null),
         skillId: resolvedSkillId,
+        expertId,
         appliedPluginSnapshotId: submittedActive?.result?.appliedPlugin?.snapshotId ?? null,
         pluginTitle: submittedActive?.record.title ?? null,
         taskKind: submittedActive?.result?.appliedPlugin?.taskKind ?? null,
@@ -2126,6 +2162,10 @@ export function HomeView({
         onSubmitScenario={submitScenario}
         sessionMode={sessionMode}
         onSessionModeChange={setSessionMode}
+        experts={experts}
+        selectedExpertId={expertId}
+        expertsLoading={expertsLoading}
+        onExpertChange={setExpertId}
         submitting={sending}
         activePluginTitle={activeBadgeTitle}
         activePluginIsExplicit={activePluginIsExplicit}

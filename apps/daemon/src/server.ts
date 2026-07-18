@@ -246,6 +246,7 @@ import {
   resolveSkillId,
   splitDerivedSkillId,
 } from './skills.js';
+import { findExpertById, listExperts } from './experts.js';
 import { validateLinkedDirs } from './linked-dirs.js';
 import { installFromTarget, uninstallById, sanitizeRepoName } from './library-install.js';
 import {
@@ -760,6 +761,11 @@ const CRAFT_DIR = resolveDaemonResourceDir(
   DAEMON_RESOURCE_ROOT,
   'craft',
   path.join(PROJECT_ROOT, 'craft'),
+);
+const EXPERTS_DIR = resolveDaemonResourceDir(
+  DAEMON_RESOURCE_ROOT,
+  'experts',
+  path.join(PROJECT_ROOT, 'experts'),
 );
 // User-installed skills and design systems live under the runtime data dir
 // so they respect OD_DATA_DIR overrides (test isolation, packaged runs).
@@ -2613,6 +2619,7 @@ export async function startServer({
     DESIGN_TEMPLATES_DIR,
     USER_DESIGN_TEMPLATES_DIR,
     CRAFT_DIR,
+    EXPERTS_DIR,
     SKILLS_DIR,
     USER_SKILLS_DIR,
     PROMPT_TEMPLATES_DIR,
@@ -3498,6 +3505,7 @@ export async function startServer({
     projectId,
     skillId,
     skillIds,
+    expertId,
     designSystemId,
     streamFormat,
     locale,
@@ -3537,6 +3545,14 @@ export async function startServer({
     const effectiveSkillId =
       typeof skillId === 'string' && skillId ? skillId : project?.skillId;
     const metadata = project?.metadata;
+    const projectExpertId =
+      typeof metadata?.expertId === 'string' && metadata.expertId.trim()
+        ? metadata.expertId.trim()
+        : null;
+    const effectiveExpertId =
+      typeof expertId === 'string' && expertId.trim()
+        ? expertId.trim()
+        : projectExpertId;
     // Website Clone runs reproduce someone else's site: the fidelity target
     // is the original page. Treating a project/app design system as
     // authoritative would overwrite the cloned site's palette/typography
@@ -4025,6 +4041,21 @@ export async function startServer({
       }
     }
 
+    let expertBody: string | undefined;
+    let expertName: string | undefined;
+    if (effectiveExpertId && !isWebCloneRun) {
+      try {
+        const experts = await listExperts(EXPERTS_DIR);
+        const expert = findExpertById(experts, effectiveExpertId);
+        if (expert) {
+          expertBody = expert.body;
+          expertName = expert.title;
+        }
+      } catch (err) {
+        console.warn('[experts] load failed', err);
+      }
+    }
+
     const prompt = composeSystemPrompt({
       agentId,
       includeCodexImagegenOverride: false,
@@ -4042,6 +4073,8 @@ export async function startServer({
       designSystemImportMode,
       craftBody,
       craftSections,
+      expertBody,
+      expertName,
       memoryBody,
       memoryHooks,
       metadata,
@@ -4210,6 +4243,7 @@ export async function startServer({
       clientRequestId,
       skillId,
       skillIds,
+      expertId,
       designSystemId,
       sessionMode,
       attachments = [],
@@ -4594,6 +4628,7 @@ export async function startServer({
         projectId,
         skillId,
         skillIds,
+        expertId,
         designSystemId,
         streamFormat: def?.streamFormat ?? 'plain',
         locale,

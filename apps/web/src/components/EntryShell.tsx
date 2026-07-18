@@ -249,6 +249,7 @@ type EntryCreateProjectInput = Omit<CreateInput, 'metadata'> & {
   pendingPrompt?: string;
   pluginId?: string;
   pluginType?: string;
+  expertId?: string | null;
   appliedPluginSnapshotId?: string;
   pluginInputs?: Record<string, unknown>;
   initialRunContext?: RunContextSelection | null;
@@ -816,6 +817,7 @@ export function EntryShell({
       name,
       skillId: payload.skillId ?? null,
       designSystemId: payload.designSystemId ?? null,
+      expertId: payload.expertId ?? null,
       metadata,
       pendingPrompt: payload.prompt,
       ...(payload.pluginId ? { pluginId: payload.pluginId } : {}),

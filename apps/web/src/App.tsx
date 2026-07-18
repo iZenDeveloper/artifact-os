@@ -1548,6 +1548,7 @@ function AppInner() {
           name: input.name,
           skillId: input.skillId,
           designSystemId: input.designSystemId,
+          expertId: input.expertId ?? null,
           pendingPrompt: derivedPendingPrompt,
           metadata,
           ...(input.conversationMode ? { conversationMode: input.conversationMode } : {}),

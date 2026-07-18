@@ -1042,6 +1042,11 @@ export interface Dict {
   'homeHero.templatePicker.label': string;
   'homeHero.templatePicker.searchPlaceholder': string;
   'homeHero.templatePicker.projectTypes': string;
+  'homeHero.expertPicker.label': string;
+  'homeHero.expertPicker.none': string;
+  'homeHero.expertPicker.noneSummary': string;
+  'homeHero.expertPicker.searchPlaceholder': string;
+  'homeHero.expertPicker.clear': string;
   'homeHero.templatesScrollHint': string;
   'homeHero.templatesCollapse': string;
   'homeHero.subtitlePrefix': string;

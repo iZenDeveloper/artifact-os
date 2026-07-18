@@ -13,6 +13,7 @@ import {
   splitDerivedSkillId,
   updateUserSkill,
 } from '../skills.js';
+import { listExperts, toExpertCatalogEntry } from '../experts.js';
 import { listCodexPets, readCodexPetSpritesheet } from '../codex-pets.js';
 import { syncCommunityPets } from '../community-pets-sync.js';
 import { readDesignSystem } from '../design-systems/index.js';
@@ -79,6 +80,7 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
     USER_DESIGN_TEMPLATES_DIR,
     SKILLS_DIR,
     USER_SKILLS_DIR,
+    EXPERTS_DIR,
     PROMPT_TEMPLATES_DIR,
     BUNDLED_PETS_DIR,
   } = ctx.paths;
@@ -172,6 +174,17 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
           hasBody: typeof body === 'string' && body.length > 0,
         })),
       });
+    } catch (err: any) {
+      res.status(500).json({ error: String(err) });
+    }
+  });
+
+  // Expert persona/methodology catalog (experts/*/EXPERT.md). Catalog only —
+  // bodies are injected by the daemon during prompt composition.
+  app.get('/api/experts', async (_req, res) => {
+    try {
+      const experts = await listExperts(EXPERTS_DIR);
+      res.json({ experts: experts.map(toExpertCatalogEntry) });
     } catch (err: any) {
       res.status(500).json({ error: String(err) });
     }
