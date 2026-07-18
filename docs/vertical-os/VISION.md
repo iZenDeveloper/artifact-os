@@ -1,25 +1,30 @@
-# Vertical Content OS - Project Vision
+# Artifact OS - Project Vision
 
 ## 1. Tên dự án
-**Vertical Content OS** (tên tạm thời)
+**Artifact OS** (tên tạm thời)
 
 ## 2. Mục tiêu tổng quát
-Xây dựng một nền tảng **Vertical Content Operating System** dựa trên việc fork và mở rộng **Open Design**, cho phép tạo nội dung chuyên biệt theo ngành (vertical) với chất lượng cao, nhất quán về brand voice, và có khả năng mở rộng theo thời gian.
+Xây dựng một nền tảng **Artifact OS** dựa trên việc fork và mở rộng **Open Design**, cho phép tạo nội dung chuyên biệt theo ngành (vertical) với chất lượng cao, nhất quán về brand voice, và có khả năng mở rộng theo thời gian.
 
 Nền tảng tập trung vào việc biến agent (Claude, Cursor, Grok, v.v.) thành một **content team chuyên biệt theo ngành**.
 
 ## 3. Đối tượng người dùng mục tiêu
 
-### Giai đoạn 1 (MVP)
-- Content Creator cá nhân
-- Marketer / Agency nhỏ và vừa
-- Freelancer làm nội dung
+### Giai đoạn 1 (MVP) — **P0 only**
+- **Content Creator cá nhân** (personal brand, đa nền)
+- **Marketer / Freelancer** (nhiều client hoặc brand cá nhân)
+
+### Giai đoạn 1 mở rộng → 2
+- Agency nhỏ & vừa (Client Package, multi-brand workflow)
+- In-house marketing team
 
 ### Giai đoạn sau
-- Agency lớn cần làm việc với nhiều client
+- Agency lớn / enterprise content ops
 - Tổ chức giáo dục (Education)
 - Công ty luật / Legal department (Legal)
-- Các ngành có yêu cầu nội dung chuyên biệt cao (Finance, Healthcare, v.v.)
+- Finance, Healthcare, v.v.
+
+Chi tiết segments + pain + moat: **[MARKETING_VERTICAL.md](./MARKETING_VERTICAL.md)**.
 
 ## 4. Giá trị cốt lõi (Core Value)
 
@@ -36,12 +41,14 @@ Nền tảng tập trung vào việc biến agent (Claude, Cursor, Grok, v.v.) t
 
 **Vertical đầu tiên:** Marketing & Content Creation
 
-**Tính năng cốt lõi:**
-- Tạo và repurposing nội dung đa nền tảng (XHS, TikTok, LinkedIn, Threads, Email...)
-- Hỗ trợ nhiều Design System (Personal Brand + Client Brand)
-- Workflow chuyên biệt cho marketer/content creator
-- Export sẵn sàng đăng (caption + visual + format phù hợp)
-- Plugin / Pack dễ cài đặt và chia sẻ
+**Tính năng cốt lõi (3 trụ):**
+1. **Repurposing** — 1 source → multi-platform (**text + visual direction + script**, không render video MVP)
+2. **Brand + Strategy** — Brand Switcher + DESIGN.md Voice & Tone + objective/funnel/persona
+3. **Platform optimization** — XHS/TikTok first-class; LinkedIn/Threads/Email ready-to-post
+
+Còn: Plugin pack Marketing · shared marketing knowledge · hook lab · ad variants.
+
+**Không trong MVP:** email sequence product, full content calendar product, competitor analysis, video render.
 
 **Vertical tiếp theo (dự kiến):**
 1. Education
@@ -52,7 +59,7 @@ Nền tảng tập trung vào việc biến agent (Claude, Cursor, Grok, v.v.) t
 1. **Modular First** — Mọi thứ được thiết kế để dễ mở rộng theo vertical.
 2. **Separation of Concerns** — Tách rõ:
    - Gateway / Model Routing (OmniRoute)
-   - Vertical Content Logic (Skills + Design Systems)
+   - Artifact OS content logic (Skills + Design Systems)
    - Presentation & Workflow (UI/UX)
 3. **Quality over Quantity** — Ưu tiên chất lượng nội dung theo ngành thay vì số lượng tính năng.
 4. **Local-first** — Giữ tinh thần local-first của Open Design.

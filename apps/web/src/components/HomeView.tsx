@@ -79,6 +79,7 @@ import { missingRequiredInputs, pluginInputsAreValid } from '../utils/pluginRequ
 import { HomeHero, type ExamplePromptInfo, type HomeHeroHandle } from './HomeHero';
 import { findChip, HOME_HERO_CHIPS, type HomeHeroChip } from './home-hero/chips';
 import { homeHeroChipLabel } from './home-hero/chip-labels';
+import { resolveApplySkillPromptSeed } from './home-hero/apply-skill-seeds';
 import type { PlaceholderScenario } from './home-hero/placeholderScenarios';
 import { consumePendingHomeChip, HOME_CHIP_INTENT_EVENT } from '../runtime/home-intent';
 import { navigate } from '../router';
@@ -206,9 +207,9 @@ interface PendingPluginUseHandoff {
 }
 
 const AUTHORING_DEFAULT_SCENARIO_INPUTS = {
-  artifactKind: 'Open Design plugin',
-  audience: 'Open Design plugin authors',
-  topic: 'packaging a reusable workflow as an Open Design plugin',
+  artifactKind: 'Artifact OS plugin',
+  audience: 'Artifact OS plugin authors',
+  topic: 'packaging a reusable workflow as an Artifact OS plugin',
 };
 
 
@@ -369,6 +370,10 @@ export function HomeView({
   } | null>(null);
   const [sessionMode, setSessionMode] = useState<ChatSessionMode>('design');
   const [activeSkill, setActiveSkill] = useState<SkillSummary | null>(null);
+  // When a content-creator chip binds a skill (no scenario plugin), the rail
+  // still needs a highlighted chip id. Plugin-bound chips use `active.chipId`;
+  // skill-bound chips use this parallel slot.
+  const [skillChipId, setSkillChipId] = useState<string | null>(null);
   const [selectedPluginContexts, setSelectedPluginContexts] = useState<SelectedPluginContext[]>([]);
   const [selectedMcpContexts, setSelectedMcpContexts] = useState<SelectedMcpContext[]>([]);
   const [selectedConnectorContexts, setSelectedConnectorContexts] = useState<SelectedConnectorContext[]>([]);
@@ -1368,7 +1373,7 @@ export function HomeView({
       // auth gate and surface as a confusing late create-time failure.
       // Surface the host error instead and keep the existing working dir.
       setError(
-        `Couldn't open the folder picker (${'reason' in result ? result.reason : 'host unavailable'}). Please update Open Design and try again.`,
+        `Couldn't open the folder picker (${'reason' in result ? result.reason : 'host unavailable'}). Please update Artifact OS and try again.`,
       );
       return null;
     }
@@ -1393,7 +1398,7 @@ export function HomeView({
       }
       if ('canceled' in result && result.canceled) return null;
       setError(
-        `Couldn't open the folder picker (${'reason' in result ? result.reason : 'host unavailable'}). Please update Open Design and try again.`,
+        `Couldn't open the folder picker (${'reason' in result ? result.reason : 'host unavailable'}). Please update Artifact OS and try again.`,
       );
       return null;
     }
@@ -1532,6 +1537,8 @@ export function HomeView({
   function clearActiveChipSelection() {
     activePluginApplyRequestRef.current += 1;
     setActive(null);
+    setActiveSkill(null);
+    setSkillChipId(null);
     setFallbackProjectKind(null);
     setFallbackProjectMetadata(null);
     setPendingApplyId(null);
@@ -1544,6 +1551,7 @@ export function HomeView({
   function useSkill(skill: SkillSummary, nextPrompt: string | null) {
     activePluginApplyRequestRef.current += 1;
     setActive(null);
+    setSkillChipId(null);
     setPendingChipId(null);
     setPendingApplyId(null);
     setFallbackProjectKind(null);
@@ -1663,7 +1671,9 @@ export function HomeView({
     // shortcuts. Failure paths below still fire because the user did pick
     // the chip — error state belongs in the run lifecycle event.
     const chipElement: 'plugin_chip' | 'action_chip' =
-      chip.action.kind === 'apply-scenario' || chip.action.kind === 'apply-figma-migration'
+      chip.action.kind === 'apply-scenario' ||
+      chip.action.kind === 'apply-figma-migration' ||
+      chip.action.kind === 'apply-skill'
         ? 'plugin_chip'
         : 'action_chip';
     trackHomeChatComposerClick(analytics.track, {
@@ -1673,8 +1683,44 @@ export function HomeView({
       chip_id: chip.id,
     });
     switch (chip.action.kind) {
+      case 'apply-skill': {
+        const action = chip.action;
+        const skill = skills.find((item) => item.id === action.skillId) ?? null;
+        activePluginApplyRequestRef.current += 1;
+        setActive(null);
+        setPendingApplyId(null);
+        setPendingChipId(null);
+        setActiveSkill(skill);
+        setSkillChipId(chip.id);
+        setFallbackProjectKind(action.projectKind);
+        setFallbackProjectMetadata(
+          action.projectMetadata ?? { kind: action.projectKind },
+        );
+        setError(
+          skill
+            ? null
+            : `Skill "${action.skillId}" is not installed. The prompt still seeds a content-shaped project — install the skill for full Content Pro routing.`,
+        );
+        // Format tiles always write that format's starter into the composer so
+        // switching Content Pack → Carousel → Short Video visibly updates the
+        // prompt (Start with a format is a mode switch, not a soft suggestion).
+        // Prefer locale Dict seeds (e.g. Tiếng Việt) over hardcoded English
+        // `promptSeed` on the chip table — see apply-skill-seeds.ts.
+        const seed =
+          resolveApplySkillPromptSeed(chip.id, action.promptSeed, t) ||
+          (skill ? localizeSkillPrompt(locale, skill) : null) ||
+          '';
+        if (seed.trim().length > 0) {
+          setPrompt(seed);
+          setPromptEditedByUser(false);
+        }
+        focusPromptAtEnd();
+        return;
+      }
       case 'apply-scenario':
       case 'apply-figma-migration': {
+        setSkillChipId(null);
+        setActiveSkill(null);
         const targetId = chip.action.pluginId;
         const record = plugins.find((p) => p.id === targetId);
         if (!record) {
@@ -1822,22 +1868,34 @@ export function HomeView({
       action?.kind === 'apply-scenario'
         ? plugins.find((plugin) => plugin.id === action.pluginId) ?? null
         : null;
+    const skillBound =
+      action?.kind === 'apply-skill'
+        ? skills.find((skill) => skill.id === action.skillId) ?? null
+        : null;
     // When the user already picked this template (the carousel-over-a-selected-
     // template case), its binding is live -- reuse it instead of re-applying,
     // which would reset the resolved snapshot and re-fire chip analytics.
-    const alreadyBound = Boolean(chip && active?.chipId === chip.id && !active.explicitPick);
-    if (chip && record && !alreadyBound) {
+    const alreadyBound = Boolean(
+      chip &&
+        ((active?.chipId === chip.id && !active.explicitPick) ||
+          skillChipId === chip.id),
+    );
+    if (chip && (record || action?.kind === 'apply-skill') && !alreadyBound) {
       pickChip(chip);
-    } else if (!chip || !record) {
+    } else if (!chip || (!record && action?.kind !== 'apply-skill')) {
       // Template unavailable (bundle missing / catalog still loading) -- fall
       // back to a free-form create from the line alone rather than dead-ending.
       setActive(null);
+      setSkillChipId(null);
     }
     setPrompt(scenario.text);
     setPromptEditedByUser(true);
     setPendingCarouselSubmit({
       text: scenario.text,
-      chipId: chip && (record || alreadyBound) ? scenario.chipId : null,
+      chipId:
+        chip && (record || skillBound || alreadyBound || action?.kind === 'apply-skill')
+          ? scenario.chipId
+          : null,
     });
   }
 
@@ -2075,11 +2133,14 @@ export function HomeView({
         activeSkillId={activeSkill?.id ?? null}
         activeSkillTitle={activeSkill ? localizeSkillName(locale, activeSkill) : null}
         activeSkillRecord={activeSkill}
-        activeChipId={active?.chipId ?? null}
+        activeChipId={active?.chipId ?? skillChipId ?? null}
         showActivePluginChip={showActivePluginChip}
         onClearActivePlugin={clearActivePlugin}
         onClearActiveChip={clearActiveChipSelection}
-        onClearActiveSkill={() => setActiveSkill(null)}
+        onClearActiveSkill={() => {
+          setActiveSkill(null);
+          setSkillChipId(null);
+        }}
         selectedPluginContexts={selectedPluginContexts.map((item) => item.record)}
         selectedMcpContexts={selectedMcpContexts.map((item) => item.server)}
         selectedConnectorContexts={selectedConnectorContexts.map((item) => item.connector)}

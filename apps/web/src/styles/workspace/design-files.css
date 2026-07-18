@@ -45,7 +45,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  padding: 0 20px 6px;
+  padding: 0 12px 6px;
   font-size: 14px;
   color: var(--text-muted);
   min-width: 0;
@@ -81,7 +81,7 @@
 }
 /* Single-line top toolbar: left = up + refresh + breadcrumbs, right = file actions. */
 .df-topbar {
-  margin: 0 20px 4px;
+  margin: 0 12px 4px;
   /* Vertical padding gives each action button's hover tint room to breathe so
      the rounded box reads as a contained pill instead of bleeding into the tab
      strip above and the file list below. */
@@ -210,7 +210,7 @@
 }
 /* Upload error banner. */
 .df-upload-banner {
-  margin: 0 20px 8px;
+  margin: 0 12px 8px;
   padding: 8px 12px;
   display: flex;
   align-items: center;
@@ -238,7 +238,7 @@
   position: sticky;
   top: 0;
   z-index: 3;
-  margin: 0 20px 8px;
+  margin: 0 12px 8px;
   padding: 7px 12px;
   display: flex;
   align-items: center;
@@ -295,10 +295,12 @@
   text-transform: uppercase;
   color: var(--text-soft);
   font-weight: 600;
-  padding: 8px 20px;
+  padding: 8px 12px;
   background: var(--bg-subtle);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--border-soft) 80%, transparent);
+  border-left: 0;
+  border-right: 0;
+  border-radius: 0;
 }
 .df-section-count {
   margin-left: 8px;
@@ -430,7 +432,7 @@
   flex-wrap: wrap;
 }
 .df-inline-notice {
-  margin: 0 20px 6px;
+  margin: 0 12px 6px;
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -624,7 +626,7 @@
   visibility: hidden;
 }
 .df-section-more {
-  margin: 6px 20px 10px;
+  margin: 6px 12px 10px;
   width: auto;
   display: inline-flex;
   align-items: center;
@@ -748,14 +750,18 @@
 .df-footer-info {
   margin: auto 0 0;
   min-height: 100px;
-  padding: 16px 20px;
+  padding: 14px 12px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 10px;
   background: color-mix(in srgb, var(--accent) 3.5%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  border-radius: var(--radius);
+  /* Flush to pane edges (error 24) — no floating card inset */
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
 }
 .df-drop-hint {
   display: flex;
@@ -916,11 +922,13 @@
   padding: 32px;
 }
 .df-preview-thumb {
-  margin: 16px;
+  margin: 8px 0 0;
   border: 1px solid var(--border-soft);
-  border-radius: var(--radius);
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
   background: var(--bg-panel);
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
   overflow: hidden;
   aspect-ratio: 16/10;
   flex-shrink: 0;

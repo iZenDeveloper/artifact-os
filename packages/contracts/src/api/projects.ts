@@ -108,7 +108,23 @@ export interface ProjectMetadata {
   // `other`. `webgl-experience` and `worker-visualizer`: the powered-preview
   // GPU / off-main-thread scenario cards — analytics-only discriminators for the
   // powered-artifact chips.
-  intent?: 'live-artifact' | 'web-clone' | 'document' | 'webgl-experience' | 'worker-visualizer';
+  intent?:
+    | 'live-artifact'
+    | 'web-clone'
+    | 'document'
+    | 'webgl-experience'
+    | 'worker-visualizer'
+    // Artifact OS creator outcomes (Home rail + analytics split).
+    | 'content-pack'
+    | 'social-content'
+    | 'carousel'
+    | 'short-video'
+    | 'linkedin-post'
+    | 'facebook-post'
+    | 'youtube'
+    | 'email'
+    | 'ad-creative'
+    | 'hook-engine';
   fidelity?: 'wireframe' | 'high-fidelity';
   speakerNotes?: boolean;
   slideCount?: string;

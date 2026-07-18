@@ -444,14 +444,48 @@ describe('buildDesignHandoffContent', () => {
 });
 
 describe('exportProjectAsPdf', () => {
+  beforeEach(() => {
+    // Screenshot success path downloads bytes via triggerDownload.
+    vi.stubGlobal('URL', {
+      createObjectURL: () => 'blob:test',
+      revokeObjectURL: () => {},
+    });
+    vi.stubGlobal('document', {
+      createElement: () => {
+        const anchor = { href: '', click: () => {} } as {
+          href: string;
+          download?: string;
+          click: () => void;
+        };
+        Object.defineProperty(anchor, 'download', {
+          set() {},
+          get() {
+            return '';
+          },
+        });
+        return anchor;
+      },
+      body: { appendChild: () => {}, removeChild: () => {} },
+    });
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
-  it('uses the daemon desktop PDF export API before falling back to browser print', async () => {
+  // Prefer raster screenshot PDF (pdf-image) over vector printToPDF — CJK
+  // glyphs and remote images survive Chromium screenshot better than print.
+  it('prefers the screenshot PDF endpoint before vector printToPDF', async () => {
     const fallback = vi.fn();
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })));
+    const fetchMock = vi.fn(async (input: unknown) => {
+      const url = String(input);
+      if (url.includes('/export/pdf-image')) {
+        return new Response('%PDF-1.4 screenshot', { status: 200 });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
     const result = await exportProjectAsPdf({
       deck: true,
@@ -463,16 +497,27 @@ describe('exportProjectAsPdf', () => {
 
     expect(result).toBe('desktop');
     expect(fallback).not.toHaveBeenCalled();
-    expect(fetch).toHaveBeenCalledWith('/api/projects/proj-1/export/pdf', {
-      body: JSON.stringify({ deck: true, fileName: 'deck/index.html', title: 'Seed Deck' }),
-      headers: { 'content-type': 'application/json' },
-      method: 'POST',
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/projects/proj-1/export/pdf-image',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          fileName: 'deck/index.html',
+          title: 'Seed Deck',
+          deck: true,
+        }),
+      }),
+    );
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/projects/proj-1/export/pdf',
+      expect.anything(),
+    );
   });
 
-  it('passes versionId to the daemon desktop PDF export API', async () => {
+  it('passes versionId on the screenshot PDF request', async () => {
     const fallback = vi.fn();
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })));
+    const fetchMock = vi.fn(async () => new Response('%PDF-1.4', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
 
     const result = await exportProjectAsPdf({
       deck: false,
@@ -485,16 +530,65 @@ describe('exportProjectAsPdf', () => {
 
     expect(result).toBe('desktop');
     expect(fallback).not.toHaveBeenCalled();
-    expect(fetch).toHaveBeenCalledWith('/api/projects/proj-1/export/pdf', {
-      body: JSON.stringify({ deck: false, fileName: 'index.html', title: 'Landing v1', versionId: 'v1' }),
-      headers: { 'content-type': 'application/json' },
-      method: 'POST',
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/projects/proj-1/export/pdf-image',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          fileName: 'index.html',
+          title: 'Landing v1',
+          versionId: 'v1',
+          deck: false,
+        }),
+      }),
+    );
+  });
+
+  it('falls through to vector printToPDF when screenshot renderer is unavailable', async () => {
+    const fallback = vi.fn();
+    const fetchMock = vi.fn(async (input: unknown) => {
+      const url = String(input);
+      if (url.includes('/export/pdf-image')) {
+        return new Response(JSON.stringify({ error: { message: 'desktop only' } }), { status: 501 });
+      }
+      if (url.includes('/export/pdf')) {
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
     });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await exportProjectAsPdf({
+      deck: true,
+      fallbackPdf: fallback,
+      filePath: 'deck/index.html',
+      projectId: 'proj-1',
+      title: 'Seed Deck',
+    });
+
+    expect(result).toBe('desktop');
+    expect(fallback).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/projects/proj-1/export/pdf',
+      {
+        body: JSON.stringify({ deck: true, fileName: 'deck/index.html', title: 'Seed Deck' }),
+        headers: { 'content-type': 'application/json' },
+        method: 'POST',
+      },
+    );
   });
 
   it('treats a canceled desktop PDF save dialog as a silent no-op', async () => {
     const fallback = vi.fn();
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true, canceled: true }), { status: 200 })));
+    // Screenshot unavailable → vector path can surface canceled Save dialog.
+    const fetchMock = vi.fn(async (input: unknown) => {
+      const url = String(input);
+      if (url.includes('/export/pdf-image')) {
+        return new Response(JSON.stringify({ error: { message: 'unavailable' } }), { status: 501 });
+      }
+      return new Response(JSON.stringify({ ok: true, canceled: true }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
     const result = await exportProjectAsPdf({
       deck: true,
@@ -508,10 +602,13 @@ describe('exportProjectAsPdf', () => {
     expect(fallback).not.toHaveBeenCalled();
   });
 
-  it('falls back to browser print when the desktop PDF export API is unavailable', async () => {
+  it('falls back to browser print when both screenshot and vector PDF are unavailable', async () => {
     const fallback = vi.fn();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: { message: 'unavailable' } }), { status: 501 })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ error: { message: 'unavailable' } }), { status: 501 })),
+    );
 
     const result = await exportProjectAsPdf({
       deck: false,

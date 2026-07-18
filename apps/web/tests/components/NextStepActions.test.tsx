@@ -86,6 +86,26 @@ describe('NextStepActions', () => {
     expect(screen.getByTestId('next-step-toolbox-more')).toBeTruthy();
   });
 
+  it('shows subtitle + short descriptions so each next-step option is self-explanatory', () => {
+    renderActions();
+    expect(screen.getByText(en['nextStep.subtitle'])).toBeTruthy();
+    expect(
+      screen.getByText(en['chat.designToolbox.action.auto-match.description']),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(en['chat.designToolbox.action.visual-polish.description']),
+    ).toBeTruthy();
+    expect(screen.getByText(en['nextStep.moreBody'])).toBeTruthy();
+
+    const match = screen.getByTestId('next-step-toolbox-action-auto-match');
+    expect(match.getAttribute('title')).toBe(
+      en['chat.designToolbox.action.auto-match.description'],
+    );
+    expect(match.getAttribute('aria-label')).toContain(
+      en['chat.designToolbox.action.auto-match.description'],
+    );
+  });
+
   it('seeds the composer with the action id (no auto-send) when a featured row is clicked', () => {
     const h = renderActions();
     fireEvent.click(screen.getByTestId('next-step-toolbox-action-visual-polish'));

@@ -8,7 +8,7 @@ import {
 } from '../../src/runtime/vertical-brand';
 
 describe('classifyVerticalBrand', () => {
-  it('maps known Vertical OS ids', () => {
+  it('maps known Artifact OS ids', () => {
     expect(classifyVerticalBrand({ id: 'personal-minimal' })).toBe('personal');
     expect(classifyVerticalBrand({ id: 'personal-bold' })).toBe('personal');
     expect(classifyVerticalBrand({ id: 'professional-clean' })).toBe('client');
@@ -18,17 +18,17 @@ describe('classifyVerticalBrand', () => {
     expect(classifyVerticalBrand({ id: 'user:personal-minimal' })).toBe('personal');
   });
 
-  it('uses category for Vertical OS packs', () => {
+  it('uses category for Artifact OS packs', () => {
     expect(
       classifyVerticalBrand({
         id: 'custom-p',
-        category: 'Vertical OS · Personal Brand',
+        category: 'Artifact OS · Personal Brand',
       }),
     ).toBe('personal');
     expect(
       classifyVerticalBrand({
         id: 'custom-c',
-        category: 'Vertical OS · Client Brand',
+        category: 'Artifact OS · Client Brand',
       }),
     ).toBe('client');
   });
@@ -42,8 +42,8 @@ describe('classifyVerticalBrand', () => {
 
 describe('filterByBrandMode', () => {
   const systems = [
-    { id: 'personal-minimal', category: 'Vertical OS · Personal Brand' },
-    { id: 'professional-clean', category: 'Vertical OS · Client Brand' },
+    { id: 'personal-minimal', category: 'Artifact OS · Personal Brand' },
+    { id: 'professional-clean', category: 'Artifact OS · Client Brand' },
     { id: 'airbnb', category: 'E-Commerce' },
   ];
 
@@ -59,7 +59,7 @@ describe('filterByBrandMode', () => {
 });
 
 describe('pinVerticalOsSystems', () => {
-  it('pins Vertical OS systems first in stable order', () => {
+  it('pins Artifact OS systems first in stable order', () => {
     const systems = [
       { id: 'airbnb' },
       { id: 'professional-clean' },

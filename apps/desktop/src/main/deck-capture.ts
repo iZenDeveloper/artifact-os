@@ -555,10 +555,7 @@ async function capturePage(
   // so the daemon assembles a multi-page PDF (one screen per page) instead of a
   // single giant page. Done before the single-pass/stitch path selection below.
   if (paginate) {
-    const measured = (await window.webContents.executeJavaScript(
-      "Math.ceil(Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0))",
-      true,
-    )) as number;
+    const measured = await measurePageContentHeight(window);
     const totalLogical = Math.max(pageSize.h, Number.isFinite(measured) ? measured : pageSize.h);
     return await paginatePageViewports(window, totalLogical, jpeg, outputDir, pageSize);
   }
@@ -585,10 +582,7 @@ async function capturePage(
       // device px in this Electron, which would double-scale). Clip width to the
       // desktop viewport we laid out at — horizontal overflow is rare and a
       // desktop-width capture is what we want.
-      const measuredH = (await window.webContents.executeJavaScript(
-        "Math.ceil(Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0))",
-        true,
-      )) as number;
+      const measuredH = await measurePageContentHeight(window);
       const docH = Math.max(1, Number.isFinite(measuredH) ? measuredH : pageSize.h);
       const outHpx = docH * dpr;
 
@@ -622,10 +616,7 @@ async function capturePage(
   }
 
   // No debugger available: measure + scroll-segment.
-  const measured = (await window.webContents.executeJavaScript(
-    "Math.ceil(Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0))",
-    true,
-  )) as number;
+  const measured = await measurePageContentHeight(window);
   const totalLogical = Math.max(pageSize.h, Number.isFinite(measured) ? measured : pageSize.h);
   // Same budget guard as the debugger path: refuse rather than truncate. The PDF
   // path uses paginatePageViewports before debugger attach, so reaching this
@@ -657,17 +648,30 @@ async function preparePageForCapture(window: BrowserWindow): Promise<void> {
     // the page actually paints, so we keep the CSS and accept that a genuinely
     // fixed bar may appear in more than one viewport.
     await window.webContents.executeJavaScript(
-      `(function(){try{var s=document.createElement('style');s.setAttribute('data-od-capture','1');s.textContent='*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important;scroll-behavior:auto!important}';(document.head||document.documentElement).appendChild(s);}catch(e){}})()`,
+      `(function(){try{var s=document.createElement('style');s.setAttribute('data-od-capture','1');s.textContent='*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important;scroll-behavior:auto!important}html,body{overflow:visible!important;height:auto!important;max-height:none!important}[data-od-scroll-unlock]{overflow:visible!important;max-height:none!important;height:auto!important}';(document.head||document.documentElement).appendChild(s);try{var all=document.body?document.body.querySelectorAll('*'):[];var n=Math.min(all.length,5000);for(var i=0;i<n;i++){var el=all[i];var st=window.getComputedStyle(el);if(!st)continue;var oy=st.overflowY;if((oy==='auto'||oy==='scroll'||oy==='hidden')&&el.scrollHeight>el.clientHeight+24)el.setAttribute('data-od-scroll-unlock','1');}}catch(e2){}}catch(e){}})()`,
       true,
     );
     await window.webContents.executeJavaScript(
-      `(async function(){function instant(y){try{document.documentElement.style.scrollBehavior='auto';if(document.body)document.body.style.scrollBehavior='auto'}catch(e){}try{window.scrollTo({left:0,top:y,behavior:'instant'})}catch(e){window.scrollTo(0,y)}try{document.documentElement.scrollTop=y;if(document.body)document.body.scrollTop=y}catch(e){}}var vh=window.innerHeight||1000;var H=function(){return Math.max(document.documentElement.scrollHeight,document.body?document.body.scrollHeight:0)};for(var y=0;y<H();y+=vh){instant(y);await new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r)})});await new Promise(function(r){setTimeout(r,120)});}instant(0);await new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(function(){setTimeout(r,200)})})});return true;})()`,
+      `(async function(){function instant(y){try{document.documentElement.style.scrollBehavior='auto';if(document.body)document.body.style.scrollBehavior='auto'}catch(e){}try{window.scrollTo({left:0,top:y,behavior:'instant'})}catch(e){window.scrollTo(0,y)}try{document.documentElement.scrollTop=y;if(document.body)document.body.scrollTop=y}catch(e){}}function contentH(){var de=document.documentElement,body=document.body;var h=Math.max(window.innerHeight||0,de?de.scrollHeight||0:0,body?body.scrollHeight||0:0);try{var sy=window.scrollY||0;var nodes=body?body.querySelectorAll('*'):[];var limit=Math.min(nodes.length,10000);for(var i=0;i<limit;i++){var r=nodes[i].getBoundingClientRect();if(!r||(r.width<=0&&r.height<=0))continue;var b=r.bottom+sy;if(b>h)h=b;}}catch(e){}return Math.ceil(Math.max(1,h))}var vh=window.innerHeight||1000;var H=contentH;for(var y=0;y<H();y+=vh){instant(y);await new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r)})});await new Promise(function(r){setTimeout(r,120)});}instant(0);await new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(function(){setTimeout(r,200)})})});return true;})()`,
       true,
     );
     // Wait for any fonts / images / CSS bg images that loaded during the prewarm.
     await waitForPrintableContent(window);
   } catch {
     // Best-effort — capture proceeds even if the pre-pass fails.
+  }
+}
+
+/** Content height that includes absolute children (scrollHeight alone clips them). */
+async function measurePageContentHeight(window: BrowserWindow): Promise<number> {
+  try {
+    const measured = (await window.webContents.executeJavaScript(
+      `(function(){var de=document.documentElement,body=document.body;var h=Math.max(window.innerHeight||0,de?de.clientHeight||0:0,de?de.scrollHeight||0:0,body?body.scrollHeight||0:0,body?body.offsetHeight||0:0);try{var sy=window.scrollY||window.pageYOffset||0;var nodes=body?body.querySelectorAll('*'):[];var limit=Math.min(nodes.length,10000);for(var i=0;i<limit;i++){var r=nodes[i].getBoundingClientRect();if(!r||(r.width<=0&&r.height<=0))continue;var b=r.bottom+sy;if(b>h)h=b;}}catch(e){}return Math.ceil(Math.max(1,h));})()`,
+      true,
+    )) as number;
+    return Number.isFinite(measured) ? measured : 0;
+  } catch {
+    return 0;
   }
 }
 

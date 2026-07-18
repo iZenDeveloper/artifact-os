@@ -3,28 +3,28 @@
     "beta": {
       "channel": "beta",
       "storagePrefix": "beta",
-      "productName": "Open Design Beta"
+      "productName": "Artifact OS Beta"
     },
     "betas": {
       "channel": "betas",
       "storagePrefix": "betas",
-      "productName": "Open Design Betas",
+      "productName": "Artifact OS Betas",
       "publicOrigin": "https://s3.nexu.space/od-releases"
     },
     "prerelease": {
       "channel": "prerelease",
       "storagePrefix": "prerelease",
-      "productName": "Open Design Prerelease"
+      "productName": "Artifact OS Prerelease"
     },
     "preview": {
       "channel": "preview",
       "storagePrefix": "preview",
-      "productName": "Open Design Preview"
+      "productName": "Artifact OS Preview"
     },
     "stable": {
       "channel": "stable",
       "storagePrefix": "stable",
-      "productName": "Open Design"
+      "productName": "Artifact OS"
     }
   }
 }

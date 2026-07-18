@@ -1,13 +1,13 @@
-# Vertical Content OS - High-Level Architecture
+# Artifact OS - High-Level Architecture
 
 ## 1. Tổng quan kiến trúc
 
-Vertical Content OS được xây dựng dựa trên việc **fork và mở rộng Open Design**, kết hợp với **OmniRoute** làm lớp Gateway.
+Artifact OS được xây dựng dựa trên việc **fork và mở rộng Open Design**, kết hợp với **OmniRoute** làm lớp Gateway.
 
 Kiến trúc tổng thể tuân theo nguyên tắc **tách biệt rõ ràng** giữa các lớp:
 
 - **Gateway Layer**: Xử lý model routing, provider management, governance.
-- **Vertical Content Layer**: Xử lý logic tạo nội dung chuyên biệt theo ngành.
+- **Artifact OS content layer**: Xử lý logic tạo nội dung chuyên biệt theo ngành.
 - **Presentation Layer**: Giao diện và workflow cho người dùng.
 
 ## 2. Sơ đồ kiến trúc tổng thể
@@ -31,7 +31,7 @@ Kiến trúc tổng thể tuân theo nguyên tắc **tách biệt rõ ràng** gi
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              VERTICAL CONTENT OS LAYER                      │
+│              ARTIFACT OS LAYER                      │
 │  (Fork từ Open Design + Custom Extensions)                  │
 │                                                             │
 │  ┌──────────────────────┐    ┌──────────────────────────┐  │
@@ -64,7 +64,7 @@ Kiến trúc tổng thể tuân theo nguyên tắc **tách biệt rõ ràng** gi
 
 **Công nghệ:** Fork từ OmniRoute (TypeScript, Node.js)
 
-### 3.2 Vertical Content Layer (Open Design-based)
+### 3.2 Artifact OS content layer (Open Design-based)
 
 Đây là lớp cốt lõi của dự án.
 

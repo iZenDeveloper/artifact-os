@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Content Pro · PMF Fail · Regression</title>
+  <style>
+    :root {
+      --canvas: #fafaf8; --surface: #fff; --muted: #f2f1ee; --border: #e6e4df;
+      --ink: #1a1a1a; --sec: #5c5c5c; --ter: #8a8a8a; --accent: #1f4b99; --soft: #e8eef8;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: var(--canvas); color: var(--ink); line-height: 1.55; }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { font-family: "Source Serif 4", Georgia, serif; font-size: 1.75rem; margin: 0 0 8px; }
+    h2 { font-size: 1.15rem; margin: 28px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    h3 { font-size: 0.95rem; margin: 16px 0 8px; color: var(--accent); }
+    .badge { display: inline-block; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); padding: 3px 8px; border-radius: 999px; margin-right: 6px; }
+    .sub { color: var(--sec); margin: 0 0 20px; font-size: 0.95rem; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-bottom: 12px; }
+    .muted { color: var(--sec); font-size: 0.9rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: var(--muted); }
+    pre, .copy { background: var(--muted); border-radius: 8px; padding: 12px 14px; font-size: 0.88rem; white-space: pre-wrap; margin: 8px 0; }
+    .strong { font-weight: 600; }
+    .fail { color: #8a8a8a; text-decoration: line-through; }
+    .pass { color: var(--ink); font-weight: 600; }
+    .score { display: flex; gap: 12px; flex-wrap: wrap; }
+    .score .card { flex: 1; min-width: 140px; text-align: center; }
+    .score b { font-size: 1.6rem; color: var(--accent); display: block; }
+    ul { margin: 6px 0; padding-left: 1.2rem; }
+    .peak { background: var(--soft); border-left: 3px solid var(--accent); padding: 12px 14px; border-radius: 0 8px 8px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <span class="badge">Content Pro v2.2</span>
+    <span class="badge">MVP: text · visual direction · script</span>
+    <span class="badge">Regression · reg-business-pmf-fail</span>
+    <h1>Startup PMF Fail Pack</h1>
+    <p class="sub">Brand: <strong>personal-minimal</strong> · Niche: Business · Language: vi · Not a rendered video — production-ready script &amp; direction</p>
+
+    <div class="score">
+      <div class="card"><b>9.15</b>Craft (calibrated)</div>
+      <div class="card"><b>9.1</b>Marketing</div>
+      <div class="card"><b>SHIP</b>P1–P3 polish</div>
+    </div>
+
+    <h2>1. Strategy</h2>
+    <div class="card">
+      <p><strong>original_content_summary:</strong> Product “đẹp”, activity content/traffic cao, nhưng không chốt PMF — pipeline ảo, founder burn time, close rate đứng yên.</p>
+      <ul>
+        <li><strong>Objective:</strong> authority</li>
+        <li><strong>Funnel:</strong> consideration</li>
+        <li><strong>Persona:</strong> Founder B2B SaaS 0–1, SEA/VN (Assumed: yes)</li>
+        <li><strong>Pains:</strong> (1) nhầm activity = traction (2) ICP mơ hồ (3) offer không stage-match</li>
+        <li><strong>Desire:</strong> biết dấu hiệu fake PMF trước khi đốt thêm 3 tháng</li>
+        <li><strong>Offer:</strong> keyword <strong>FAKEPMF</strong> → checklist 5 dấu hiệu fake PMF (PDF 1 trang)</li>
+        <li><strong>Platforms:</strong> XHS → TikTok → LinkedIn → Threads → Email</li>
+      </ul>
+    </div>
+
+    <h2>2. Hook lab</h2>
+    <table>
+      <tr><th>#</th><th>Framework</th><th>Weak</th><th>Strong (ship)</th></tr>
+      <tr><td>1</td><td>paradox</td><td class="fail">5 tips để đạt PMF</td><td class="pass" primary>Pipeline đầy lead — close rate vẫn = 0. <strong>PRIMARY</strong></td></tr>
+      <tr><td>2</td><td>almost_loss</td><td class="fail">Founder hay burnout</td><td class="pass">Bạn không thiếu traffic — bạn đang <strong>trả hóa đơn 40h/tuần</strong> cho pipeline giả.</td></tr>
+      <tr><td>3</td><td>pas_problem</td><td class="fail">Làm content marketing thế nào</td><td class="pass">Content “đủ hay” vẫn chết vì message <strong>không khớp stage</strong> buyer.</td></tr>
+    </table>
+
+    <h2>3. Spine + personal stakes</h2>
+    <div class="card">
+      <p><strong>Core:</strong> Activity ≠ PMF. <strong>Stakes:</strong> founder time + runway + uy tín trước investor. <strong>Turn:</strong> pipeline “đầy” nhưng không ai trả tiền vì ICP/offer/stage sai. <strong>Insight:</strong> Fake PMF đắt hơn no-PMF vì nó <em>cảm giác</em> như đang win. <strong>Portable:</strong> Đo decision-stage proof trước khi scale content volume.</p>
+    </div>
+
+    <h2>4. XHS · type: carousel</h2>
+    <div class="card">
+      <table>
+        <tr><th>Card</th><th>On-image (≤12 từ)</th><th>Notes</th></tr>
+        <tr><td>C1</td><td>Pipeline đầy. Close = 0.</td><td>Primary hook</td></tr>
+        <tr><td>C2</td><td>Activity ≠ traction</td><td>Personal bill: 40h/tuần</td></tr>
+        <tr><td>C3</td><td>3 dấu hiệu fake PMF</td><td>Proof list</td></tr>
+        <tr><td>C4</td><td>ICP mơ = demo ảo</td><td>Scene</td></tr>
+        <tr><td>C5</td><td>Stage sai = copy vô dụng</td><td>Twist</td></tr>
+        <tr><td>C6</td><td>Comment FAKEPMF</td><td>Offer CTA</td></tr>
+      </table>
+      <h3>Ready-to-post · XHS</h3>
+      <div class="copy">Pipeline đầy lead — close rate vẫn 0.
+
+Bạn không lười content. Bạn đang trả hóa đơn 40h/tuần cho pipeline giả.
+
+3 dấu hiệu fake PMF (trong carousel).
+
+Comment FAKEPMF — nhận checklist 5 dấu hiệu (PDF 1 trang).
+
+#PMF #Startup #B2BSaaS #Founder #ContentStrategy #SEA</div>
+      <p class="muted">Alt: Cover text “Pipeline đầy. Close = 0.” trên nền paper. Best time (VN): T3–T5 20:00–22:00 · guidance.</p>
+    </div>
+
+    <h2>5. TikTok · type: short_video_script</h2>
+    <div class="card">
+      <p class="muted"><strong>Not a rendered video</strong> — production-ready script &amp; direction · rendered_video: false</p>
+      <p><strong>Hook (0–3s spoken):</strong> “Pipeline đầy. Close rate… vẫn bằng không.”</p>
+      <p><strong>Script (spoken, ~20s):</strong></p>
+      <div class="copy">0–3s: Pipeline đầy. Close rate vẫn bằng không.
+3–8s: Tuần trước tôi đếm: 40 giờ content… cho lead không trả tiền.
+8–14s PEAK: Màn hình CRM: 120 open — filter “paid” = 0. Freeze.
+14–18s: Fake PMF đắt hơn no-PMF. Vì nó cảm giác như win.
+18–22s: Comment FAKEPMF — checklist 5 dấu hiệu, 1 trang.</div>
+      <h3>Visual direction</h3>
+      <table>
+        <tr><th>t</th><th>Shot</th><th>Camera / talent</th><th>On-screen</th><th>Energy</th><th>Peak?</th></tr>
+        <tr><td>0–3s</td><td>Close-up founder, flat light</td><td>Eye-level, slight push-in</td><td>PIPELINE ĐẦY · CLOSE = 0</td><td>10</td><td></td></tr>
+        <tr><td>3–8s</td><td>Calendar week blocked “content”</td><td>Top-down desk</td><td>40h / tuần</td><td>7</td><td></td></tr>
+        <tr><td>8–14s</td><td>CRM UI: 120 open → paid column 0</td><td>Screen record + freeze last frame</td><td>PAID: 0</td><td>10</td><td>YES</td></tr>
+        <tr><td>14–18s</td><td>Cut back to face, quieter</td><td>Static</td><td>Fake PMF &gt; No PMF cost</td><td>6</td><td></td></tr>
+        <tr><td>18–22s</td><td>Hold keyword card</td><td>Hands + card</td><td>FAKEPMF</td><td>7</td><td></td></tr>
+      </table>
+      <div class="peak"><strong>Peak frame (non-substitutable):</strong> Screen-record CRM — column “Open” = 120, column “Paid/Won” = <strong>0</strong>, cursor freezes on zero; red underline under 0. Cannot swap into generic “startup hustle” montage.</div>
+      <h3>Ready-to-post · TikTok</h3>
+      <div class="copy">Caption: Pipeline đầy ≠ PMF. Comment FAKEPMF — checklist 5 dấu hiệu.
+#startup #pmf #b2b #founder</div>
+      <p class="muted">Best time (VN): 12:00–13:00 hoặc 19:00–21:00 · guidance.</p>
+    </div>
+
+    <h2>6. LinkedIn · type: text_post</h2>
+    <div class="card">
+      <div class="copy">Pipeline đầy lead. Close rate vẫn bằng không.
+
+Tuần rồi tôi ngồi với một founder SEA: 40 giờ content, CRM “xanh”, không một đồng paid.
+
+Vấn đề không phải volume.
+Vấn đề là activity đang giả làm traction.
+
+Ba dấu hiệu tôi hay thấy:
+1) ICP đổi mỗi sprint
+2) Demo nhiều, retention không đo
+3) Message awareness đăng ở stage decision
+
+Fake PMF đắt hơn no-PMF — vì nó cho phép bạn burn runway với cảm giác đang win.
+
+Bạn đang scale cái gì: pipeline, hay proof?
+
+— Soft offer: Comment FAKEPMF — gửi checklist 5 dấu hiệu (1 trang).</div>
+      <p class="muted">Hashtags: #PMF #B2B #Startups · Best time: T3–T4 8:00–9:00 · guidance.</p>
+      <p><strong>Variant B hook:</strong> “Bạn không thiếu lead. Bạn thiếu người trả tiền — và content đang che việc đó.”</p>
+    </div>
+
+    <h2>7. Threads</h2>
+    <div class="card">
+      <ol>
+        <li>Pipeline đầy. Close = 0. Đó không phải “gần PMF”.</li>
+        <li>Activity content 40h/tuần có thể là hóa đơn, không phải traction.</li>
+        <li>Fake PMF = cảm giác win + burn thật.</li>
+        <li>Đo paid/won trước khi scale post volume.</li>
+        <li>Comment FAKEPMF — checklist 5 dấu hiệu.</li>
+      </ol>
+    </div>
+
+    <h2>8. Email</h2>
+    <div class="card">
+      <p><strong>Subjects:</strong> (1) Pipeline đầy, close = 0 (2) Hóa đơn 40h cho lead ảo (3) Fake PMF đắt hơn no-PMF (paradox) (4) Checklist 5 dấu hiệu</p>
+      <p><strong>Preheader:</strong> Trước khi scale content tuần sau…</p>
+      <div class="copy">Body (~160 từ): Mở bằng paradox pipeline/close → scene 40h → 3 proof bullets → insight fake PMF → CTA duy nhất: reply FAKEPMF nhận PDF 1 trang.</div>
+    </div>
+
+    <h2>9. CTA offer matrix</h2>
+    <table>
+      <tr><th>Platform</th><th>Keyword</th><th>Deliverable</th></tr>
+      <tr><td>All primary</td><td>FAKEPMF</td><td>Checklist 5 dấu hiệu fake PMF (PDF)</td></tr>
+    </table>
+
+    <h2>10. Marketing scorecard + Pre-ship QA</h2>
+    <div class="card">
+      <ul>
+        <li>Hook 9.2 · Persona 9.1 · Funnel 9.0 · Offer 9.2 · Platform-native 9.0 · Ready 9.2 · Scope OK</li>
+        <li>P1 caption tight ✓ · P2 peak CRM freeze ✓ · P3 hook lab 3 pairs ✓ · Voice personal-minimal ✓</li>
+        <li>Stranger line: “Pipeline đầy. Close = 0.”</li>
+      </ul>
+    </div>
+
+    <h2>Regression score card</h2>
+    <div class="card">
+      <pre>Regression brief id: reg-business-pmf-fail
+Niche: Business
+Brand: personal-minimal
+Craft (calibrated): 9.15 / 10
+Marketing: 9.1 / 10
+Polish: P1 ✓ P2 ✓ P3 ✓ P4 ✓ P5 ✓
+Ship: yes
+One line: "Pipeline đầy. Close = 0."
+Residual: none blocking</pre>
+    </div>
+  </div>
+</body>
+</html>

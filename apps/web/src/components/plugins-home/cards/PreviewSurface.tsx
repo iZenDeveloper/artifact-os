@@ -39,16 +39,17 @@ export function PreviewSurface({ pluginId, pluginTitle, preview, eager = false }
   //  - `visible` (no margin): only DECODE/play while truly on screen, so the
   //    kept-mounted off-screen clips stay paused on their poster instead of all
   //    running simultaneous decodes.
+  // Tight margins cut scroll-time decode/iframe work on Community (was 1500px keep).
   const { ref: nearRef, inView } = useInView<HTMLDivElement>({
-    rootMargin: eager ? '480px' : '120px',
+    rootMargin: eager ? '320px' : '80px',
     once: false,
   });
   const { ref: mediaRef, inView: mediaReady } = useInView<HTMLDivElement>({
-    rootMargin: eager ? '720px' : '360px',
+    rootMargin: eager ? '480px' : '200px',
     once: false,
   });
   const { ref: keepRef, inView: keep } = useInView<HTMLDivElement>({
-    rootMargin: eager ? '1800px' : '1500px',
+    rootMargin: eager ? '720px' : '360px',
     once: false,
   });
   const { ref: visibleRef, inView: visible } = useInView<HTMLDivElement>({

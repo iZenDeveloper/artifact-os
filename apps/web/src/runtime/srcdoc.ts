@@ -598,15 +598,261 @@ function injectSnapshotBridge(doc: string): string {
       if (removals[r].parentNode) removals[r].parentNode.removeChild(removals[r]);
     }
   }
+  // Cap single foreignObject/canvas dimension. Larger documents are tiled via
+  // viewport scrolls (__odCaptureFullPageTiled / paginate) so export does not
+  // hit browser canvas limits or blank multi-megapixel foreignObject paints.
+  var MAX_CAPTURE_EDGE = 8192;
+  var MAX_PAGE_TILES = 80;
+  function raf2(){
+    return new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(function(){ r(); }); }); });
+  }
+  // True content extent — scrollHeight alone under-measures absolute children,
+  // late-expanded blocks, and nested scroll roots (classic incomplete PDF).
+  function measureContentSize(){
+    var de = document.documentElement;
+    var body = document.body;
+    var w = Math.max(
+      window.innerWidth || 0,
+      de ? de.clientWidth || 0 : 0,
+      de ? de.scrollWidth || 0 : 0,
+      body ? body.scrollWidth || 0 : 0,
+      body ? body.offsetWidth || 0 : 0
+    );
+    var h = Math.max(
+      window.innerHeight || 0,
+      de ? de.clientHeight || 0 : 0,
+      de ? de.scrollHeight || 0 : 0,
+      body ? body.scrollHeight || 0 : 0,
+      body ? body.offsetHeight || 0 : 0
+    );
+    try {
+      var sy = window.scrollY || window.pageYOffset || 0;
+      var sx = window.scrollX || window.pageXOffset || 0;
+      var nodes = body ? body.querySelectorAll('*') : [];
+      var limit = Math.min(nodes.length, 10000);
+      for (var i = 0; i < limit; i++){
+        var el = nodes[i];
+        if (!el || !el.getBoundingClientRect) continue;
+        var r = el.getBoundingClientRect();
+        if (!r || (r.width <= 0 && r.height <= 0)) continue;
+        var bottom = r.bottom + sy;
+        var right = r.right + sx;
+        if (bottom > h) h = bottom;
+        if (right > w) w = right;
+      }
+    } catch (_) {}
+    return { w: Math.max(1, Math.ceil(w)), h: Math.max(1, Math.ceil(h)) };
+  }
+  // Expand clipped / nested scroll containers so window scroll can reach full
+  // content (landing pages often put overflow:auto on <main>).
+  // CRITICAL: also force scroll-behavior:auto — pages with smooth scrolling
+  // (html scroll-behavior:smooth) never reach the target before capture
+  // (raf only advances ~10px), so multi-band PDF repeats the first screen.
+  function unlockDocumentScroll(){
+    try {
+      if (!document.querySelector('style[data-od-capture-unlock]')) {
+        var s = document.createElement('style');
+        s.setAttribute('data-od-capture-unlock', '1');
+        s.textContent = 'html,body{overflow:visible!important;height:auto!important;max-height:none!important;' +
+          'scroll-behavior:auto!important;}' +
+          '*,*::before,*::after{scroll-behavior:auto!important;}' +
+          '[data-od-scroll-unlock]{overflow:visible!important;overflow-x:visible!important;overflow-y:visible!important;' +
+          'max-height:none!important;height:auto!important;scroll-behavior:auto!important;}';
+        (document.head || document.documentElement).appendChild(s);
+      }
+      try {
+        document.documentElement.style.scrollBehavior = 'auto';
+        if (document.body) document.body.style.scrollBehavior = 'auto';
+      } catch (_) {}
+      var all = document.body ? document.body.querySelectorAll('*') : [];
+      var n = Math.min(all.length, 5000);
+      for (var i = 0; i < n; i++){
+        var el = all[i];
+        try {
+          var st = window.getComputedStyle(el);
+          if (!st) continue;
+          var oy = st.overflowY;
+          var ox = st.overflowX;
+          var scrollableY = (oy === 'auto' || oy === 'scroll' || oy === 'hidden') && el.scrollHeight > el.clientHeight + 24;
+          var scrollableX = (ox === 'auto' || ox === 'scroll' || ox === 'hidden') && el.scrollWidth > el.clientWidth + 24;
+          if (scrollableY || scrollableX) el.setAttribute('data-od-scroll-unlock', '1');
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+  function currentScrollY(){
+    var de = document.documentElement;
+    var body = document.body;
+    return Math.max(
+      window.scrollY || window.pageYOffset || 0,
+      de ? de.scrollTop || 0 : 0,
+      body ? body.scrollTop || 0 : 0
+    );
+  }
+  // Instant jump — never smooth. Writes window + documentElement + body.
+  function instantScrollTo(x, y){
+    try {
+      document.documentElement.style.scrollBehavior = 'auto';
+      if (document.body) document.body.style.scrollBehavior = 'auto';
+    } catch (_) {}
+    try { window.scrollTo({ left: x, top: y, behavior: 'instant' }); } catch (_) {
+      try { window.scrollTo(x, y); } catch (__){}
+    }
+    try {
+      document.documentElement.scrollTop = y;
+      document.documentElement.scrollLeft = x;
+      if (document.body) {
+        document.body.scrollTop = y;
+        document.body.scrollLeft = x;
+      }
+    } catch (_) {}
+  }
+  // Scroll and wait until the position actually lands (smooth-scroll trap).
+  function scrollToCaptureY(targetY){
+    var viewH = Math.max(1, window.innerHeight || 1);
+    var size = measureContentSize();
+    var maxY = Math.max(0, size.h - viewH);
+    var desired = Math.max(0, Math.min(targetY, maxY));
+    return new Promise(function(resolve){
+      var tries = 0;
+      function attempt(){
+        instantScrollTo(0, desired);
+        tries++;
+        raf2().then(function(){
+          var y = currentScrollY();
+          if (Math.abs(y - desired) <= 2 || tries >= 10) {
+            resolve(Math.round(y));
+            return;
+          }
+          // Force again — some pages fight scroll for a frame or two.
+          setTimeout(attempt, 16);
+        });
+      }
+      attempt();
+    });
+  }
+  // Walk the page once so lazy images / IntersectionObserver / AOS reveal.
+  function prewarmScroll(){
+    unlockDocumentScroll();
+    var vh = Math.max(1, window.innerHeight || 1);
+    var size = measureContentSize();
+    var y = 0;
+    function step(){
+      if (y >= size.h) {
+        return scrollToCaptureY(0).then(function(){ return raf2(); });
+      }
+      var target = y;
+      y += vh;
+      return scrollToCaptureY(target).then(function(){
+        return new Promise(function(r){ setTimeout(r, 40); });
+      }).then(step);
+    }
+    return step().then(function(){
+      // Remeasure after lazy content may have expanded the page.
+      return measureContentSize();
+    });
+  }
   function waitForImages(){
     var imgs = Array.prototype.slice.call(document.images || []);
     return Promise.all(imgs.map(function(img){
-      if (img.complete) return Promise.resolve();
-      return new Promise(function(resolve){
-        img.addEventListener('load', resolve, { once: true });
-        img.addEventListener('error', resolve, { once: true });
+      var p = Promise.resolve();
+      if (!img.complete) {
+        p = new Promise(function(resolve){
+          img.addEventListener('load', resolve, { once: true });
+          img.addEventListener('error', resolve, { once: true });
+        });
+      }
+      return p.then(function(){
+        if (typeof img.decode === 'function') return img.decode().catch(function(){});
       });
     }));
+  }
+  // Chromium often refuses to paint remote <img> inside SVG foreignObject.
+  // Bake same-document images into data: URLs before cloning so export PDF/PNG
+  // keeps product screenshots and hero art (common incomplete-PDF failure).
+  function rasterizeImageToDataUrl(img){
+    return new Promise(function(resolve){
+      try {
+        if (!img || !img.naturalWidth || !img.naturalHeight) { resolve(null); return; }
+        var c = document.createElement('canvas');
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        var ctx = c.getContext('2d');
+        if (!ctx) { resolve(null); return; }
+        ctx.drawImage(img, 0, 0);
+        resolve(c.toDataURL('image/png'));
+      } catch (_) {
+        // Tainted canvas (cross-origin without CORS) — leave original src.
+        resolve(null);
+      }
+    });
+  }
+  function inlineImagesAsDataUrls(){
+    var imgs = Array.prototype.slice.call(document.images || []);
+    return Promise.all(imgs.map(function(img){
+      if (!img || !img.src) return Promise.resolve();
+      if (/^data:/i.test(img.src)) return Promise.resolve();
+      return rasterizeImageToDataUrl(img).then(function(dataUrl){
+        if (!dataUrl) return;
+        try {
+          img.setAttribute('src', dataUrl);
+          img.removeAttribute('srcset');
+          img.removeAttribute('sizes');
+        } catch (_) {}
+      });
+    }));
+  }
+  function waitForFonts(){
+    if (document.fonts && document.fonts.ready) {
+      return document.fonts.ready.catch(function(){});
+    }
+    return Promise.resolve();
+  }
+  function prepareCapture(opts){
+    opts = opts || {};
+    // Full-page only: unlock nested overflow + scroll-prewarm lazy/IO content.
+    // Deck/viewport captures skip the multi-screen walk (too slow per slide).
+    if (opts.full || opts.prewarm) {
+      unlockDocumentScroll();
+      return waitForFonts()
+        .then(function(){ return prewarmScroll(); })
+        .then(waitForImages)
+        .then(inlineImagesAsDataUrls)
+        .then(function(){ return raf2(); });
+    }
+    return waitForFonts()
+      .then(waitForImages)
+      .then(inlineImagesAsDataUrls)
+      .then(function(){ return raf2(); });
+  }
+  // Crop a viewport capture to the band used for the last (overlapping) tile.
+  function cropCaptureBand(img, bandTopCss, bandHCss, viewWCss, viewHCss){
+    try {
+      if (!img || !img.dataUrl) return img;
+      if (bandTopCss <= 0 && bandHCss >= viewHCss - 0.5) return img;
+      var dprX = img.w / Math.max(1, viewWCss);
+      var dprY = img.h / Math.max(1, viewHCss);
+      var sx = 0;
+      var sy = Math.max(0, Math.round(bandTopCss * dprY));
+      var sw = img.w;
+      var sh = Math.max(1, Math.min(img.h - sy, Math.round(bandHCss * dprY)));
+      var c = document.createElement('canvas');
+      c.width = sw;
+      c.height = sh;
+      var ctx = c.getContext('2d');
+      if (!ctx) return img;
+      return new Promise(function(resolve){
+        var im = new Image();
+        im.onload = function(){
+          try {
+            ctx.drawImage(im, sx, sy, sw, sh, 0, 0, sw, sh);
+            resolve({ dataUrl: c.toDataURL('image/png'), w: sw, h: sh });
+          } catch (_) { resolve(img); }
+        };
+        im.onerror = function(){ resolve(img); };
+        im.src = img.dataUrl;
+      });
+    } catch (_) { return Promise.resolve(img); }
   }
   function scrollOffset(){
     var doc = document.documentElement;
@@ -627,57 +873,136 @@ function injectSnapshotBridge(doc: string): string {
       return bg;
     } catch (_) { return '#ffffff'; }
   }
-  // After painting, sample the canvas: a uniform (single-color) bitmap means
-  // the foreignObject rasterizer painted nothing — Chromium frequently refuses
-  // to paint <foreignObject> HTML loaded via <img>. Treating that as an honest
-  // 'empty-render' error (instead of shipping the background-only frame) lets
-  // the host fall back / surface a real failure rather than a silent black PNG.
+  // Detect a paint-less foreignObject raster. Near-white pages (soft bg) must
+  // NOT be treated as blank just because samples share a similar first pixel —
+  // require BOTH low chroma range AND almost no dark/colored pixels.
   function canvasLooksBlank(ctx, cw, ch){
     try {
       var data = ctx.getImageData(0, 0, cw, ch).data;
-      var step = Math.max(4, Math.floor((cw * ch) / 4096)) * 4;
-      var first = null, samples = 0;
+      var step = Math.max(4, Math.floor((cw * ch) / 8192)) * 4;
+      var first = null, samples = 0, different = false;
+      var darkOrColor = 0;
       for (var i = 0; i + 3 < data.length; i += step){
         samples++;
-        if (!first){ first = [data[i], data[i+1], data[i+2], data[i+3]]; continue; }
-        if (Math.abs(data[i]-first[0]) > 6 || Math.abs(data[i+1]-first[1]) > 6 ||
-            Math.abs(data[i+2]-first[2]) > 6 || Math.abs(data[i+3]-first[3]) > 6) return false;
+        var r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+        // Count ink: anything not near-white / transparent.
+        if (a > 8 && (r < 245 || g < 245 || b < 245)) darkOrColor++;
+        if (!first){ first = [r, g, b, a]; continue; }
+        if (Math.abs(r-first[0]) > 12 || Math.abs(g-first[1]) > 12 ||
+            Math.abs(b-first[2]) > 12 || Math.abs(a-first[3]) > 12) different = true;
       }
-      return samples > 8;
+      if (samples <= 8) return false;
+      // Real content usually has both variance and ink; flat FO paint fails both.
+      if (darkOrColor >= Math.max(6, Math.floor(samples * 0.002))) return false;
+      if (different && darkOrColor > 0) return false;
+      return !different;
     } catch (_) { return false; }
   }
+  // Inline computed paint props onto a clone. Keep the set small — dumping
+  // every CSS property (old SNAPSHOT_STYLE_PROPS path) produced blank FO paints
+  // on oklch/tokenized pages (vnexpress AI SEO audit).
+  var FO_STYLE_PROPS = [
+    'color','background-color','background-image','background-size','background-position','background-repeat',
+    'border-top-width','border-right-width','border-bottom-width','border-left-width',
+    'border-top-style','border-right-style','border-bottom-style','border-left-style',
+    'border-top-color','border-right-color','border-bottom-color','border-left-color',
+    'border-radius','box-shadow','opacity','font-size','font-family','font-weight','font-style',
+    'line-height','letter-spacing','text-align','text-decoration','text-transform','white-space',
+    'display','position','top','left','right','bottom','width','height','min-width','min-height',
+    'max-width','padding-top','padding-right','padding-bottom','padding-left',
+    'margin-top','margin-right','margin-bottom','margin-left','gap','row-gap','column-gap',
+    'flex-direction','flex-wrap','align-items','justify-content','grid-template-columns',
+    'grid-template-rows','overflow','overflow-x','overflow-y','z-index','vertical-align','object-fit'
+  ];
+  function inlineFoStyles(originalRoot, cloneRoot){
+    try {
+      var originals = originalRoot.querySelectorAll('*');
+      var clones = cloneRoot.querySelectorAll('*');
+      var count = Math.min(originals.length, clones.length, 8000);
+      for (var i = 0; i < count; i++){
+        var src = originals[i];
+        var dst = clones[i];
+        if (!src || !dst || src.nodeType !== 1) continue;
+        var computed = window.getComputedStyle(src);
+        var style = '';
+        for (var p = 0; p < FO_STYLE_PROPS.length; p++){
+          var prop = FO_STYLE_PROPS[p];
+          var value = computed.getPropertyValue(prop);
+          if (!value || value === 'auto' || value === 'normal' || value === 'none' || value === '0px') continue;
+          if (value === 'rgba(0, 0, 0, 0)' && prop.indexOf('background') === 0) continue;
+          style += prop + ':' + value + ';';
+        }
+        // Always pin color + bg so FO does not inherit SVG defaults.
+        style += 'color:' + computed.color + ';background-color:' + computed.backgroundColor + ';';
+        var prev = dst.getAttribute('style') || '';
+        dst.setAttribute('style', prev + style);
+        // Preserve currentSrc for images.
+        if (src.tagName && src.tagName.toLowerCase() === 'img' && src.currentSrc) {
+          dst.setAttribute('src', src.currentSrc);
+          dst.removeAttribute('srcset');
+        }
+      }
+    } catch (_) {}
+  }
   // Rasterize the current view (or the whole document, when opts.full) via an
-  // SVG <foreignObject>. Returns a Promise so it can be reused by both the
-  // od:snapshot message handler AND the export-capture bridge (image export /
-  // PDF) — the foreignObject path is fast and never blocks on external
-  // image network loads the way a DOM-cloning rasterizer does.
+  // SVG <foreignObject>. Uses XMLSerializer (valid XHTML) — raw body.innerHTML
+  // is not well-formed XML and Chromium paints a blank FO (empty-render).
   function captureSnapshot(opts){
     opts = opts || {};
     return new Promise(function(resolve, reject){
       var w = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1);
       var h = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
-      var dpr = window.devicePixelRatio || 1;
+      var dpr = Math.min(2, window.devicePixelRatio || 1);
       var bgColor = snapshotBackgroundColor();
-      var docW = Math.max(w, document.documentElement.scrollWidth || 0, document.body ? document.body.scrollWidth : 0);
-      var docH = Math.max(h, document.documentElement.scrollHeight || 0, document.body ? document.body.scrollHeight : 0);
+      var extent = measureContentSize();
+      var docW = Math.max(w, extent.w);
+      var docH = Math.max(h, extent.h);
       var full = !!opts.full;
       var capW = full ? docW : w;
       var capH = full ? docH : h;
-      var clone = document.documentElement.cloneNode(true);
-      clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-      inlineSnapshotStyles(document.documentElement, clone);
-      pruneHiddenSnapshotNodes(document.documentElement, clone);
+      if (full && (capW > MAX_CAPTURE_EDGE || capH > MAX_CAPTURE_EDGE)) {
+        reject(new Error('page-too-tall'));
+        return;
+      }
       var scroll = full ? { x: 0, y: 0 } : scrollOffset();
-      var cloneBody = clone.querySelector('body');
-      var rootStyle = clone.getAttribute('style') || '';
-      var bodyStyle = cloneBody ? cloneBody.getAttribute('style') || '' : '';
-      var bodyContent = cloneBody ? cloneBody.innerHTML : clone.innerHTML;
-      var wrapperStyle = rootStyle + bodyStyle +
-        'margin:0;position:relative;left:' + (-scroll.x) + 'px;top:' + (-scroll.y) + 'px;' +
-        'width:' + docW + 'px;height:' + docH + 'px;overflow:visible;';
-      var html = '<div xmlns="http://www.w3.org/1999/xhtml" style="' + escapeAttribute(wrapperStyle) + '">' + bodyContent + '</div>';
+      var foW = full ? docW : w;
+      var foH = full ? docH : h;
+      // Clone body only (not full documentElement) — head/link noise blanked FO.
+      var bodySrc = document.body || document.documentElement;
+      var bodyClone = bodySrc.cloneNode(true);
+      inlineFoStyles(bodySrc, bodyClone);
+      // Remove non-visual nodes from the clone.
+      try {
+        var drop = bodyClone.querySelectorAll('script, style, link, noscript, iframe, object, embed');
+        for (var d = drop.length - 1; d >= 0; d--) {
+          if (drop[d].parentNode) drop[d].parentNode.removeChild(drop[d]);
+        }
+      } catch (_) {}
+      var wrap = document.createElement('div');
+      wrap.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+      wrap.setAttribute('style',
+        'margin:0;padding:0;position:relative;left:' + (-scroll.x) + 'px;top:' + (-scroll.y) + 'px;' +
+        'width:' + docW + 'px;height:' + docH + 'px;overflow:visible;background:' + bgColor + ';' +
+        'font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#111;'
+      );
+      // Move children of body clone into wrapper (bodyClone may be <body>).
+      if (bodyClone.tagName && bodyClone.tagName.toLowerCase() === 'body') {
+        while (bodyClone.firstChild) wrap.appendChild(bodyClone.firstChild);
+      } else {
+        wrap.appendChild(bodyClone);
+      }
+      var html;
+      try {
+        html = new XMLSerializer().serializeToString(wrap);
+      } catch (_) {
+        html = '<div xmlns="http://www.w3.org/1999/xhtml" style="' + escapeAttribute(wrap.getAttribute('style') || '') + '">' +
+          (document.body ? document.body.innerHTML : '') + '</div>';
+      }
+      if (html.indexOf('xmlns=') < 0) {
+        html = html.replace(/<div/i, '<div xmlns="http://www.w3.org/1999/xhtml"');
+      }
       var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + capW + '" height="' + capH + '" viewBox="0 0 ' + capW + ' ' + capH + '">' +
-        '<foreignObject x="0" y="0" width="' + docW + '" height="' + docH + '">' +
+        '<foreignObject x="0" y="0" width="' + foW + '" height="' + foH + '">' +
         html +
         '</foreignObject></svg>';
       var img = new Image();
@@ -689,8 +1014,6 @@ function injectSnapshotBridge(doc: string): string {
           var ctx = canvas.getContext('2d');
           if (!ctx) throw new Error('no 2d context');
           ctx.scale(dpr, dpr);
-          // Opaque base so a transparent (un-painted) raster never flattens to
-          // pure black in clipboards / PNG viewers.
           ctx.fillStyle = bgColor;
           ctx.fillRect(0, 0, capW, capH);
           ctx.drawImage(img, 0, 0, capW, capH);
@@ -707,9 +1030,133 @@ function injectSnapshotBridge(doc: string): string {
       img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
     });
   }
+  // Capture each viewport band top→bottom (desktop-parity). Used for PDF pages
+  // (multi-image) and for stitching a single tall image. Bands crop the last
+  // overlapping viewport so content is neither duplicated nor truncated.
+  function captureViewportBands(){
+    unlockDocumentScroll();
+    var saved = scrollOffset();
+    var viewW = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1);
+    var viewH = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
+    var size = measureContentSize();
+    var docH = Math.max(viewH, size.h);
+    var maxScroll = Math.max(0, docH - viewH);
+    var pages = Math.max(1, Math.ceil(docH / viewH));
+    if (pages > MAX_PAGE_TILES) pages = MAX_PAGE_TILES;
+    var bands = [];
+    var p = 0;
+    function next(){
+      if (p >= pages) {
+        return scrollToCaptureY(saved.y).then(function(){
+          return { bands: bands, docH: docH, viewW: viewW, viewH: viewH };
+        });
+      }
+      var desiredTop = p * viewH;
+      var scrollTarget = Math.min(desiredTop, maxScroll);
+      return scrollToCaptureY(scrollTarget).then(function(actualY){
+        // Remeasure once after first real scroll — sticky/layout may expand.
+        if (p === 1) {
+          var again = measureContentSize();
+          if (again.h > docH) {
+            docH = Math.max(viewH, again.h);
+            maxScroll = Math.max(0, docH - viewH);
+            pages = Math.max(1, Math.min(MAX_PAGE_TILES, Math.ceil(docH / viewH)));
+          }
+        }
+        var bandTop = Math.max(0, Math.round(desiredTop - actualY));
+        // If scroll failed badly (smooth-scroll trap), bandTop can exceed the
+        // viewport — refuse the bad crop and retry with forced jump.
+        if (bandTop >= viewH) {
+          instantScrollTo(0, scrollTarget);
+          actualY = currentScrollY();
+          bandTop = Math.max(0, Math.round(desiredTop - actualY));
+        }
+        var remaining = Math.ceil(docH - desiredTop);
+        var bandH = Math.max(1, Math.min(viewH - bandTop, remaining));
+        // Guard: never emit a near-empty band when more content remains.
+        if (bandH < 8 && remaining > viewH * 0.5) {
+          return Promise.reject(new Error(
+            'scroll-failed: target=' + scrollTarget + ' actual=' + actualY
+          ));
+        }
+        return captureSnapshot({ full: false })
+          .then(function(img){ return cropCaptureBand(img, bandTop, bandH, viewW, viewH); })
+          .then(function(cropped){
+            bands.push(cropped);
+            p++;
+            return next();
+          });
+      });
+    }
+    return next();
+  }
+  // Viewport-tile long pages, then stitch by band height (no overlap).
+  function captureFullPageTiled(){
+    return captureViewportBands().then(function(res){
+      var parts = res.bands || [];
+      if (!parts.length) return Promise.reject(new Error('empty-render'));
+      if (parts.length === 1) return parts[0];
+      var bgColor = snapshotBackgroundColor();
+      return Promise.all(parts.map(function(p){
+        return new Promise(function(resolve, reject){
+          var im = new Image();
+          im.onload = function(){ resolve(im); };
+          im.onerror = function(){ reject(new Error('tile load failed')); };
+          im.src = p.dataUrl;
+        });
+      })).then(function(ims){
+        var stitchW = 1;
+        var stitchH = 0;
+        for (var m = 0; m < ims.length; m++){
+          stitchW = Math.max(stitchW, ims[m].naturalWidth || parts[m].w || 1);
+          stitchH += ims[m].naturalHeight || parts[m].h || 0;
+        }
+        // Cap stitch to canvas limits — caller should prefer multi-page PDF.
+        if (stitchW > MAX_CAPTURE_EDGE || stitchH > MAX_CAPTURE_EDGE) {
+          return Promise.reject(new Error('page-too-tall'));
+        }
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, stitchW);
+        canvas.height = Math.max(1, stitchH);
+        var ctx = canvas.getContext('2d');
+        if (!ctx) return Promise.reject(new Error('no 2d context'));
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        var y = 0;
+        for (var t = 0; t < ims.length; t++){
+          var iw = ims[t].naturalWidth || parts[t].w;
+          var ih = ims[t].naturalHeight || parts[t].h;
+          ctx.drawImage(ims[t], 0, y, iw, ih);
+          y += ih;
+        }
+        return { dataUrl: canvas.toDataURL('image/png'), w: canvas.width, h: canvas.height };
+      });
+    });
+  }
   // Exposed so the export-capture bridge (same document) can reuse this renderer.
   window.__odCaptureSnapshot = function(opts){
-    return waitForImages().then(function(){ return captureSnapshot(opts || {}); });
+    opts = opts || {};
+    return prepareCapture({ full: !!opts.full, prewarm: !!opts.full }).then(function(){
+      if (opts.full) {
+        var viewH = Math.max(1, window.innerHeight || 1);
+        var size = measureContentSize();
+        // Prefer tiling whenever content exceeds one viewport — single full
+        // foreignObject paints blank mid-page / clips tall docs.
+        if (size.h > viewH * 1.05 || size.w > MAX_CAPTURE_EDGE || size.h > MAX_CAPTURE_EDGE) {
+          return captureFullPageTiled();
+        }
+      }
+      return captureSnapshot(opts);
+    });
+  };
+  window.__odCaptureFullPageTiled = function(){
+    return prepareCapture({ full: true, prewarm: true }).then(captureFullPageTiled);
+  };
+  // Multi-page capture for PDF: one image per viewport band (no stitch).
+  window.__odCaptureFullPageBands = function(){
+    return prepareCapture({ full: true, prewarm: true }).then(function(){
+      return captureViewportBands().then(function(res){ return res.bands || []; });
+    });
   };
   window.addEventListener('message', function(ev){
     var data = ev && ev.data;
@@ -751,8 +1198,13 @@ function injectExportCaptureBridge(doc: string): string {
   function settle(){
     var fonts = (document.fonts && document.fonts.ready) ? document.fonts.ready.catch(function(){}) : Promise.resolve();
     var imgs = Promise.all(Array.prototype.slice.call(document.images||[]).map(function(img){
-      if (img.complete) return Promise.resolve();
-      return new Promise(function(r){ img.addEventListener('load', r, {once:true}); img.addEventListener('error', r, {once:true}); });
+      var p = Promise.resolve();
+      if (!img.complete) {
+        p = new Promise(function(r){ img.addEventListener('load', r, {once:true}); img.addEventListener('error', r, {once:true}); });
+      }
+      return p.then(function(){
+        if (typeof img.decode === 'function') return img.decode().catch(function(){});
+      });
     }));
     return Promise.all([fonts, imgs]).then(raf).then(raf);
   }
@@ -773,13 +1225,34 @@ function injectExportCaptureBridge(doc: string): string {
     });
   }
   function captureImage(deck){
-    // Reuse the shared SVG-foreignObject renderer (injectSnapshotBridge). For a
-    // deck the active slide fills the viewport, so a viewport capture IS the
-    // slide; a non-deck page captures the full document.
+    // Deck: active slide fills the viewport → single viewport capture.
+    // Non-deck long pages: use multi-band capture (see capturePageImages).
     if (typeof window.__odCaptureSnapshot !== 'function') {
       return Promise.reject(new Error('snapshot renderer unavailable'));
     }
-    return window.__odCaptureSnapshot({ full: !deck });
+    return window.__odCaptureSnapshot({ full: false }).catch(function(){
+      return settle().then(function(){ return window.__odCaptureSnapshot({ full: false }); });
+    });
+  }
+  // Non-deck PDF/image: one image per viewport band so long pages export as
+  // multi-page PDFs with full content (not a single clipped foreignObject).
+  function capturePageImages(){
+    if (typeof window.__odCaptureFullPageBands === 'function') {
+      return window.__odCaptureFullPageBands().then(function(bands){
+        if (bands && bands.length) return bands;
+        throw new Error('empty-render');
+      }).catch(function(err){
+        // Fall back to stitched full page, then single viewport.
+        if (typeof window.__odCaptureFullPageTiled === 'function') {
+          return window.__odCaptureFullPageTiled().then(function(img){ return [img]; });
+        }
+        return captureImage(false).then(function(img){ return [img]; });
+      });
+    }
+    if (typeof window.__odCaptureSnapshot === 'function') {
+      return window.__odCaptureSnapshot({ full: true }).then(function(img){ return [img]; });
+    }
+    return Promise.reject(new Error('snapshot renderer unavailable'));
   }
   function notes(){
     var el = document.getElementById('speaker-notes');
@@ -806,6 +1279,20 @@ function injectExportCaptureBridge(doc: string): string {
     var single = !!req.single;
     var delay = req.delay || 350;
     Promise.resolve().then(function(){
+      // Long ordinary pages: emit one slide message per viewport band so the
+      // host builds a multi-page PDF covering the full document height.
+      if (!deck && !single) {
+        return settle().then(capturePageImages).then(function(imgs){
+          var total = imgs.length;
+          if (!total) throw new Error('Nothing was captured');
+          for (var i = 0; i < total; i++){
+            var img = imgs[i];
+            if (!img || !img.dataUrl) continue;
+            send({ type:'od:export-capture:slide', id:id, index:i, total:total, dataUrl: img.dataUrl, w: img.w, h: img.h, notes: i===0 ? notes() : '' });
+          }
+          send({ type:'od:export-capture:done', id:id, total: total });
+        });
+      }
       var st = deckState();
       var total = (!single && deck && st.count > 1) ? st.count : 1;
       var notesAll = notes();
@@ -1075,7 +1562,7 @@ function serializeHtmlDocument(doc: Document): string {
  * Auto-annotate structural HTML elements that lack `data-od-id` or
  * `data-screen-label` so that the selection bridge (Picker / Pods /
  * Tweaks) can target them. This fixes imported designs whose HTML was
- * generated outside of Open Design and therefore carries no OD-specific
+ * generated outside of Artifact OS and therefore carries no OD-specific
  * annotations.
  */
 function annotateMissingOdIds(doc: string): string {

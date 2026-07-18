@@ -81,10 +81,15 @@ describe('HomeHero scenario cards', () => {
     expect(deck.textContent).toContain('Presentations & pitch decks');
   });
 
-  it('leads the create rail with Website clone, then the slide deck', () => {
+  it('leads the create rail with content-creator outcomes, then design surfaces', () => {
     const ordered = orderedCreateChips();
-    expect(ordered[0]?.id).toBe('web-clone');
-    expect(ordered[1]?.id).toBe('deck');
+    expect(ordered[0]?.id).toBe('content-pack');
+    expect(ordered[1]?.id).toBe('hook-engine');
+    expect(ordered.map((c) => c.id)).toContain('carousel');
+    expect(ordered.map((c) => c.id)).toContain('repurpose');
+    expect(ordered.map((c) => c.id)).toContain('threads');
+    expect(ordered.map((c) => c.id)).toContain('deck');
+    expect(ordered.map((c) => c.id)).toContain('prototype');
   });
 
   it('adds the finer-grained scenarios as create cards routed to a scenario plugin', () => {

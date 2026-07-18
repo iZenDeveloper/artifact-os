@@ -20,6 +20,18 @@ import {
   printHostPdf,
 } from '@open-design/host';
 
+// Client Package (agency captions + brand zip) — re-export public API.
+export {
+  buildClientPackageEntries,
+  exportClientPackageZip,
+  extractCaptionsFromHtml,
+  extractNotesFromHtml,
+  inferPlatformFromHeading,
+  type ClientPackageCaption,
+  type ClientPackageInput,
+  type ClientPackagePlatform,
+} from './client-package';
+
 // Re-exported so app components can gate desktop-only export paths without
 // importing the host package directly.
 export { isOpenDesignHostAvailable } from '@open-design/host';
@@ -141,7 +153,7 @@ export function buildDesignManifestContent(opts: {
   files?: string[];
   kind?: 'html' | 'react';
 }): string {
-  const title = opts.title || 'Open Design artifact';
+  const title = opts.title || 'Artifact OS artifact';
   const requestedEntryFile = opts.entryFile || 'index.html';
   const { files, htmlFiles, screenHtmlFiles, cssFiles, jsFiles, assetFiles, entryFile } = designFileMap(requestedEntryFile, opts.files);
   const screenFiles = screenHtmlFiles.length > 0 ? screenHtmlFiles : [entryFile];
@@ -232,7 +244,7 @@ export function buildDesignHandoffContent(opts: {
   files?: string[];
   kind?: 'html' | 'react';
 }): string {
-  const title = opts.title || 'Open Design artifact';
+  const title = opts.title || 'Artifact OS artifact';
   const requestedEntryFile = opts.entryFile || 'index.html';
   const { files, htmlFiles, cssFiles, jsFiles, assetFiles, entryFile } = designFileMap(requestedEntryFile, opts.files);
   const accentLikelyBrandLed =
@@ -255,7 +267,7 @@ This archive is the source of truth for turning the design into production code.
 - Build production UI from the exported design, not a loose reinterpretation.
 - Preserve typography scale, spacing rhythm, color tokens, border radii, shadows, motion timing, and component states.
 - Replace static placeholders only when the target app has real data or functional equivalents.
-- Keep generated product UI free of Open Design chrome, preview labels, or design-process annotations.
+- Keep generated product UI free of Artifact OS chrome, preview labels, or design-process annotations.
 - Treat this handoff as a visual contract: if implementation choices conflict, match the exported pixels and behavior first, then refactor internals.
 
 ## Source map
@@ -286,7 +298,7 @@ For responsive web exports, treat these as a modern breakpoint system for one ad
 - Preserve real copy, labels, and data shown in the export. Do not replace specific text with generic marketing filler.
 - Preserve interactive affordances: hover, focus, pressed, disabled, loading, validation, copy/share, tab/accordion, modal/sheet, and keyboard states where present.
 - Preserve accessibility semantics when converting: headings stay hierarchical, controls remain buttons/links/inputs, focus states stay visible.
-- Do not keep prototype-only annotations, frame labels, or Open Design chrome in the production UI.
+- Do not keep prototype-only annotations, frame labels, or Artifact OS chrome in the production UI.
 
 ## CJX-ready UX contract
 - Use \`${DESIGN_MANIFEST_FILENAME}\` as the machine-readable map for screens, app modules, OS widgets, landing pages, tokens, interactions, and viewport checks.
@@ -763,6 +775,22 @@ export async function exportProjectAsPdf(opts: {
   title: string;
   versionId?: string;
 }): Promise<ProjectPdfExportResult> {
+  // Prefer screenshot (raster) PDF via desktop Chromium when available — vector
+  // printToPDF can drop CJK glyphs and print CSS often blanks images. Only fall
+  // through when the off-screen renderer is genuinely unavailable (501 / offline).
+  const screenshot = await exportProjectScreenshotPdf({
+    projectId: opts.projectId,
+    fileName: opts.filePath,
+    title: opts.title,
+    deck: opts.deck,
+    ...(opts.versionId ? { versionId: opts.versionId } : {}),
+  });
+  if (screenshot.ok) return 'desktop';
+  if (!('unavailable' in screenshot)) {
+    // Semantic renderer failure: still try vector, then client capture.
+    console.warn('[exportProjectAsPdf] screenshot PDF failed:', screenshot.error);
+  }
+
   try {
     const resp = await fetch(`/api/projects/${encodeURIComponent(opts.projectId)}/export/pdf`, {
       body: JSON.stringify({
@@ -1680,15 +1708,17 @@ async function captureArtifactSlides(
   try {
     const win = await waitForIframeWindow(iframe, Math.min(timeoutMs, 15_000));
     // Give the deck bridge time to fit fixed-canvas (transform: scale) layouts
-    // to the iframe before the first capture.
-    await delayMs(opts.deck ? 600 : 150);
+    // to the iframe before the first capture. Non-deck pages need a bit longer
+    // for image decode + data-URL inlining inside prepareCapture.
+    // Non-deck pages prewarm + multi-band capture need longer settle than decks.
+    await delayMs(opts.deck ? 600 : 700);
     await runExportCapture(
       win,
       {
         id: `exp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         mode: opts.mode,
         deck: opts.deck,
-        delay: 350,
+        delay: opts.deck ? 350 : 600,
       },
       (slide, total) => {
         slides.push(slide);
@@ -1751,15 +1781,21 @@ export async function exportArtifactAsPdf(
     deck: opts.deck,
     mode: 'image',
     onProgress: opts.onProgress,
-    timeoutMs: opts.timeoutMs,
+    // Long pages + image inlining need more budget than the default 45s.
+    timeoutMs: opts.timeoutMs ?? (opts.deck ? 90_000 : 120_000),
   });
   const images = slides.filter((s) => s.dataUrl && s.w > 0 && s.h > 0);
-  if (!images.length) throw new Error('Nothing was captured for PDF export');
+  if (!images.length) {
+    throw new Error(
+      'Nothing was captured for PDF export (images may still be loading or blocked). Try Export as Image, or open Desktop for Chromium screenshot PDF.',
+    );
+  }
 
   const { jsPDF } = await import('jspdf');
   const filename = `${safeFilename(title, 'artifact')}.pdf`;
 
-  if (opts.deck) {
+  // Deck, or multi-tile captures: one PDF page per image (preserves aspect).
+  if (opts.deck || images.length > 1) {
     const first = images[0]!;
     const pdf = new jsPDF({
       orientation: first.w >= first.h ? 'landscape' : 'portrait',
@@ -1769,13 +1805,14 @@ export async function exportArtifactAsPdf(
     });
     images.forEach((s, i) => {
       if (i > 0) pdf.addPage([s.w, s.h], s.w >= s.h ? 'landscape' : 'portrait');
-      pdf.addImage(s.dataUrl!, 'PNG', 0, 0, s.w, s.h);
+      pdf.addImage(s.dataUrl!, 'PNG', 0, 0, s.w, s.h, undefined, 'FAST');
     });
     triggerDownload(pdf.output('blob'), filename);
     return;
   }
 
-  // Non-deck: slice the tall full-page capture into A4-proportioned pages.
+  // Single tall capture: slice into A4-proportioned pages without re-encoding
+  // mid-content cuts more than necessary (y-offset trick).
   const img = images[0]!;
   const pageW = img.w;
   const pageH = Math.max(1, Math.round(pageW * Math.SQRT2)); // A4 portrait ≈ 1:1.414
@@ -1783,7 +1820,7 @@ export async function exportArtifactAsPdf(
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [pageW, pageH], compress: true });
   for (let p = 0; p < pages; p++) {
     if (p > 0) pdf.addPage([pageW, pageH], 'portrait');
-    pdf.addImage(img.dataUrl!, 'PNG', 0, -p * pageH, img.w, img.h);
+    pdf.addImage(img.dataUrl!, 'PNG', 0, -p * pageH, img.w, img.h, undefined, 'FAST');
   }
   triggerDownload(pdf.output('blob'), filename);
 }

@@ -92,6 +92,7 @@ import {
   exportAsMd,
   exportAsPdf,
   exportAsZip,
+  exportClientPackageZip,
   exportProjectAsHtml,
   exportProjectAsPdf,
   exportProjectAsPptx,
@@ -224,15 +225,17 @@ export type ManualEditPendingStyleSave = {
   label: string;
   version: number;
 };
-// desktop / tablet / mobile = device chrome; xhs / tiktok / linkedin =
-// Vertical OS Platform Preview (Content Pro canvas ratios).
+// desktop / tablet / mobile = device chrome; xhs / tiktok / linkedin /
+// facebook / youtube = Artifact OS Platform Preview (Content Pro canvas ratios).
 type PreviewViewportId =
   | 'desktop'
   | 'tablet'
   | 'mobile'
   | 'xhs'
   | 'tiktok'
-  | 'linkedin';
+  | 'linkedin'
+  | 'facebook'
+  | 'youtube';
 type PreviewCanvasSize = { width: number; height: number; scrollLeft?: number; scrollTop?: number };
 type CommentPreviewCanvasOptions = {
   boardMode: boolean;
@@ -366,6 +369,22 @@ const PREVIEW_VIEWPORT_PRESETS: PreviewViewportPreset[] = [
     titleKey: 'fileViewer.viewportLinkedinTitle',
     group: 'platform',
   },
+  {
+    id: 'facebook',
+    width: 360,
+    height: 450, // 4:5 · Facebook feed (organic reach)
+    labelKey: 'fileViewer.viewportFacebook',
+    titleKey: 'fileViewer.viewportFacebookTitle',
+    group: 'platform',
+  },
+  {
+    id: 'youtube',
+    width: 560,
+    height: 315, // 16:9 · YouTube thumbnail / landscape
+    labelKey: 'fileViewer.viewportYoutube',
+    titleKey: 'fileViewer.viewportYoutubeTitle',
+    group: 'platform',
+  },
 ];
 
 function previewViewportIcon(viewport: PreviewViewportId): string {
@@ -374,6 +393,8 @@ function previewViewportIcon(viewport: PreviewViewportId): string {
   if (viewport === 'xhs') return 'image-line';
   if (viewport === 'tiktok') return 'video-line';
   if (viewport === 'linkedin') return 'layout-grid-line';
+  if (viewport === 'facebook') return 'facebook-circle-line';
+  if (viewport === 'youtube') return 'youtube-line';
   return 'computer-line';
 }
 
@@ -5993,7 +6014,8 @@ function HtmlViewer({
       | 'markdown'
       | 'template'
       | 'share_link'
-      | 'share_page',
+      | 'share_page'
+      | 'client-package',
     fn: () => Promise<unknown> | unknown,
   ) => {
     const requestId = analytics.newRequestId();
@@ -10268,6 +10290,38 @@ function HtmlViewer({
     }));
   }
 
+  async function triggerClientPackageExport(context?: HtmlVersionExportContext) {
+    const html = context?.content ?? source ?? '';
+    const title = context?.title ?? exportTitle;
+    fireShareExport('client-package', async () => {
+      let brandSlug: string | null = null;
+      try {
+        const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}`);
+        if (resp.ok) {
+          const body = (await resp.json()) as {
+            designSystemId?: string | null;
+            project?: { designSystemId?: string | null };
+          };
+          brandSlug = body.designSystemId ?? body.project?.designSystemId ?? null;
+        }
+      } catch {
+        // Brand is optional — package still ships with captions.
+      }
+      const ok = exportClientPackageZip({
+        title,
+        brandSlug,
+        projectId,
+        sourceHtml: html,
+      });
+      if (!ok) {
+        throw new Error(
+          t('fileViewer.exportClientPackageEmpty') ||
+            'No captions or HTML to package. Open a Content Pro pack first.',
+        );
+      }
+    });
+  }
+
   useEffect(() => {
     const nudgeKey = `${projectId}\n${file.name}`;
     if (!canShare || exportReadyNudgeSeenRef.current.has(nudgeKey)) return;
@@ -10368,7 +10422,7 @@ function HtmlViewer({
     await waitForAnimationFrame();
     // Prefer the daemon's off-screen render (desktop only): viewport-independent
     // and, rendering the artifact alone in a hidden window, it can never capture
-    // Open Design's own UI. `wholeDeck` (Export as image) stitches every slide
+    // Artifact OS's own UI. `wholeDeck` (Export as image) stitches every slide
     // top-to-bottom into one long image — matching the slide count the viewer
     // reports; otherwise (Copy screenshot, Mark/Draw capture) it grabs the
     // CURRENT slide, mirroring what's on screen. An ordinary page is its
@@ -11961,6 +12015,18 @@ function HtmlViewer({
                   >
                     <span className="share-menu-icon"><RemixIcon name="file-zip-line" size={15} /></span>
                     <span>{t('fileViewer.exportZip')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="share-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setDownloadMenuOpen(false);
+                      void triggerClientPackageExport();
+                    }}
+                  >
+                    <span className="share-menu-icon"><RemixIcon name="folder-zip-line" size={15} /></span>
+                    <span>{t('fileViewer.exportClientPackage')}</span>
                   </button>
                   <button
                     type="button"

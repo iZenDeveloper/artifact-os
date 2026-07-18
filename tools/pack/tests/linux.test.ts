@@ -541,7 +541,7 @@ describe("stopPackedLinuxApp", () => {
       },
     };
     const appDir = join(root, "AppDir");
-    const executablePath = join(appDir, "Open Design");
+    const executablePath = join(appDir, "Artifact OS");
     const appRunPath = join(appDir, "AppRun");
     const markerPath = join(runtimeNamespaceRoot, "runtime", "desktop-root.json");
     const stamp = {
@@ -662,7 +662,7 @@ describe("resolveProductionInstallCommand", () => {
 describe("renderDesktopTemplate", () => {
   const template = `[Desktop Entry]
 Type=Application
-Name=Open Design (@@NAMESPACE@@)
+Name=Artifact OS (@@NAMESPACE@@)
 Exec=env -u ELECTRON_RUN_AS_NODE OD_PACKAGED_NAMESPACE=@@NAMESPACE@@ @@EXEC_PATH@@ --appimage-extract-and-run %U
 Icon=@@ICON_PATH@@
 MimeType=x-scheme-handler/od;
@@ -674,7 +674,7 @@ MimeType=x-scheme-handler/od;
       execPath: "/home/u/.local/bin/Open-Design.default.AppImage",
       iconName: "open-design-default",
     });
-    expect(out).toContain("Name=Open Design (default)");
+    expect(out).toContain("Name=Artifact OS (default)");
     expect(out).toContain(
       "Exec=env -u ELECTRON_RUN_AS_NODE OD_PACKAGED_NAMESPACE=default /home/u/.local/bin/Open-Design.default.AppImage --appimage-extract-and-run %U",
     );
@@ -750,7 +750,7 @@ describe("renderLinuxAppImageAppRun", () => {
 
     expect(out).toContain("unset ELECTRON_RUN_AS_NODE");
     expect(out.indexOf("unset ELECTRON_RUN_AS_NODE")).toBeLessThan(out.indexOf('exec "$BIN"'));
-    expect(out).toContain('BIN="$APPDIR/Open Design"');
+    expect(out).toContain('BIN="$APPDIR/Artifact OS"');
   });
 
   it("preserves AppImageLauncher install-only behavior", () => {
@@ -778,7 +778,7 @@ describe("renderLinuxAppImageAppRun", () => {
     const appDir = join(root, "AppDir");
     const appRunPath = join(appDir, "AppRun");
     const observedEnvPath = join(root, "observed-env.txt");
-    const electronPath = join(appDir, "Open Design");
+    const electronPath = join(appDir, "Artifact OS");
 
     try {
       await mkdir(appDir, { recursive: true });
@@ -902,7 +902,7 @@ describe("inspectPackedLinuxApp", () => {
     requestJsonIpcMock.mockReset();
     requestJsonIpcMock
       .mockResolvedValueOnce({ state: "running", url: "od://app/" })
-      .mockResolvedValueOnce({ ok: true, value: "Open Design" })
+      .mockResolvedValueOnce({ ok: true, value: "Artifact OS" })
       .mockResolvedValueOnce({ path: "/tmp/open-design-linux.png" });
 
     const result = await inspectPackedLinuxApp(makeConfig(), {
@@ -911,7 +911,7 @@ describe("inspectPackedLinuxApp", () => {
     });
 
     expect(result).toEqual({
-      eval: { ok: true, value: "Open Design" },
+      eval: { ok: true, value: "Artifact OS" },
       screenshot: { path: "/tmp/open-design-linux.png" },
       status: { state: "running", url: "od://app/" },
     });
@@ -966,7 +966,7 @@ describe("matchesAppImageProcess", () => {
     const ok = matchesAppImageProcess(
       {
         pid: 1234,
-        executable: "/tmp/appimage_extracted_fe548e54/Open Design",
+        executable: "/tmp/appimage_extracted_fe548e54/Artifact OS",
         env: { APPIMAGE: "/tmp/appimage_extracted_fe548e54/AppRun" },
       },
       installPath,
@@ -978,7 +978,7 @@ describe("matchesAppImageProcess", () => {
     const ok = matchesAppImageProcess(
       {
         pid: 1234,
-        executable: "/tmp/appimage_extracted_fe548e54/Open Design",
+        executable: "/tmp/appimage_extracted_fe548e54/Artifact OS",
         env: { APPIMAGE: "/tmp/other/AppRun" },
       },
       installPath,
@@ -990,7 +990,7 @@ describe("matchesAppImageProcess", () => {
     const ok = matchesAppImageProcess(
       {
         pid: 1234,
-        executable: "/tmp/appimage_extracted_fe548e54/Open Design",
+        executable: "/tmp/appimage_extracted_fe548e54/Artifact OS",
         env: { APPIMAGE: installPath },
       },
       installPath,
@@ -1002,7 +1002,7 @@ describe("matchesAppImageProcess", () => {
     const ok = matchesAppImageProcess(
       {
         pid: 1234,
-        executable: "/tmp/appimage_extracted_fe548e54/Open Design",
+        executable: "/tmp/appimage_extracted_fe548e54/Artifact OS",
         env: { APPIMAGE: "/elsewhere/Other.AppImage" },
       },
       installPath,
