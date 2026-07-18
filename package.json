@@ -1,10 +1,10 @@
 {
-  "name": "vertical-content-os",
+  "name": "artifact-os",
   "version": "0.15.1",
   "private": true,
   "packageManager": "pnpm@10.33.2",
   "type": "module",
-  "description": "Artifact OS vertical for marketers: local-first desktop app, premium home launcher, community plugins, brand-aware content workflows.",
+  "description": "Artifact OS — local-first design product for marketers: premium home launcher, community plugins, brand-aware content workflows.",
   "license": "Apache-2.0",
   "bin": {
     "od": "./apps/daemon/bin/od.mjs"

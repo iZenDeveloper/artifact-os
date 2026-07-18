@@ -1,25 +1,25 @@
-<h1 align="center">Artifact OS — Vertical Content OS</h1>
+<h1 align="center">Artifact OS</h1>
 
-> 🎯 **Marketer product surface** on top of Artifact OS: premium Home launcher, workflow format cards, Community gallery, brand-aware authoring, and vertical skills for content marketing.
+> 🎯 **Marketer product surface** for Artifact OS: premium Home launcher, workflow format cards, Community gallery, brand-aware authoring, and vertical skills for content marketing.
 >
-> 📦 **This repo** is the product line at [iZenDeveloper/vertical-content-os](https://github.com/iZenDeveloper/vertical-content-os) (default branch `main`). Upstream engine: [nexu-io/open-design](https://github.com/nexu-io/open-design).
+> 📦 **This repo** is the product line at [iZenDeveloper/artifact-os](https://github.com/iZenDeveloper/artifact-os) (default branch `main`). Upstream engine: [nexu-io/open-design](https://github.com/nexu-io/open-design).
 >
-> ⚡ **Artifact OS Cloud** (upstream) — GPT, Claude, Gemini, DeepSeek inside the app. [Try Cloud](https://open-design.ai/cloud/?utm_source=github&utm_medium=referral&utm_content=vertical_readme)
+> ⚡ **Artifact OS Cloud** (upstream) — GPT, Claude, Gemini, DeepSeek inside the app. [Try Cloud](https://open-design.ai/cloud/?utm_source=github&utm_medium=referral&utm_content=artifact_os_readme)
 
 <p align="center">
   <img src="https://repo-assets.open-design.ai/resources/images/hero.png" alt="Artifact OS hero banner" width="100%" />
 </p>
 
 <p align="center">
-  <a href="https://github.com/iZenDeveloper/vertical-content-os">Source</a> ·
-  <a href="https://github.com/iZenDeveloper/vertical-content-os/commits/main">Commits</a> ·
+  <a href="https://github.com/iZenDeveloper/artifact-os">Source</a> ·
+  <a href="https://github.com/iZenDeveloper/artifact-os/commits/main">Commits</a> ·
   <a href="QUICKSTART.md">Quickstart</a> ·
-  <a href="https://open-design.ai/?utm_source=github&utm_medium=referral&utm_content=vertical_readme">Upstream website</a> ·
+  <a href="https://open-design.ai/?utm_source=github&utm_medium=referral&utm_content=artifact_os_readme">Upstream website</a> ·
   <a href="https://discord.gg/mHAjSMV6gz">Discord</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/iZenDeveloper/vertical-content-os"><img alt="repo" src="https://img.shields.io/badge/github-vertical--content--os-blueviolet?style=flat" /></a>
+  <a href="https://github.com/iZenDeveloper/artifact-os"><img alt="repo" src="https://img.shields.io/badge/github-artifact--os-blueviolet?style=flat" /></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat" /></a>
   <a href="QUICKSTART.md"><img alt="quickstart" src="https://img.shields.io/badge/quickstart-3%20commands-green?style=flat" /></a>
 </p>
