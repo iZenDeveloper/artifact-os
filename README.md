@@ -1,27 +1,26 @@
-<h1 align="center">Artifact OS: The open-source Claude Design alternative</h1>
+<h1 align="center">Artifact OS — Vertical Content OS</h1>
 
-> 🔥 **Artifact OS 0.13.0 — _Stay in Flow_ is here.** Long design sessions used to break on every interruption — a run lost its place, a model picker made you guess, an export needed one more detour. 0.13.0 keeps the session alive: resume Codex / OpenCode / Pi / Artifact OS Cloud runs across turns, pick the right model faster, and hand off screenshot-backed PPTX / PDF without leaving the app. [Download 0.13.0](https://github.com/nexu-io/open-design/releases) · [Release notes](https://github.com/nexu-io/open-design/releases/tag/open-design-v0.13.0)
+> 🎯 **Marketer product surface** on top of Artifact OS: premium Home launcher, workflow format cards, Community gallery, brand-aware authoring, and vertical skills for content marketing.
 >
-> ⚡ **Artifact OS Cloud — the official model service.** One recharge to use GPT, Claude, Gemini, and DeepSeek inside Artifact OS: 20+ flagship models, zero config, billed by real token usage. [Try Artifact OS Cloud](https://open-design.ai/cloud/?utm_source=github&utm_medium=referral&utm_content=readme_try_cloud)
+> 📦 **This repo** is the product line at [iZenDeveloper/vertical-content-os](https://github.com/iZenDeveloper/vertical-content-os) (default branch `main`). Upstream engine: [nexu-io/open-design](https://github.com/nexu-io/open-design).
 >
-> 🏅 **The Artifact OS Fellow program is now open.** If you also believe design should be open — become an Artifact OS Fellow, shape the product alongside the core team, and help more people take part in defining the future of design. Details → [`MAINTAINERS.md`](MAINTAINERS.md) and [Discord](https://discord.gg/mHAjSMV6gz).
+> ⚡ **Artifact OS Cloud** (upstream) — GPT, Claude, Gemini, DeepSeek inside the app. [Try Cloud](https://open-design.ai/cloud/?utm_source=github&utm_medium=referral&utm_content=vertical_readme)
 
 <p align="center">
-  <img src="https://repo-assets.open-design.ai/resources/images/hero.png" alt="Artifact OS hero banner — the headline &quot;The open-source Claude Design alternative&quot; over a classical scene of columns and robed figures on a digital-code backdrop, with stat cards for design systems, plugins, coding agents, and media providers" width="100%" />
+  <img src="https://repo-assets.open-design.ai/resources/images/hero.png" alt="Artifact OS hero banner" width="100%" />
 </p>
 
 <p align="center">
-  <a href="https://open-design.ai/?utm_source=github&utm_medium=referral&utm_content=readme_website">Website</a> ·
-  <a href="https://open-design.ai/?utm_source=github&utm_medium=referral&utm_content=readme_download">Download</a> ·
-  <a href="https://open-design.ai/cloud/?utm_source=github&utm_medium=referral&utm_content=readme_cloud">Artifact OS Cloud</a> ·
-  <a href="https://discord.gg/mHAjSMV6gz">Discord</a> ·
-  <a href="https://x.com/OpenDesignHQ">Follow @OpenDesignHQ</a>
+  <a href="https://github.com/iZenDeveloper/vertical-content-os">Source</a> ·
+  <a href="https://github.com/iZenDeveloper/vertical-content-os/commits/main">Commits</a> ·
+  <a href="QUICKSTART.md">Quickstart</a> ·
+  <a href="https://open-design.ai/?utm_source=github&utm_medium=referral&utm_content=vertical_readme">Upstream website</a> ·
+  <a href="https://discord.gg/mHAjSMV6gz">Discord</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/nexu-io/open-design/releases"><img alt="release" src="https://img.shields.io/github/v/release/nexu-io/open-design?style=flat&color=blueviolet&label=release&include_prereleases&display_name=tag" /></a>
+  <a href="https://github.com/iZenDeveloper/vertical-content-os"><img alt="repo" src="https://img.shields.io/badge/github-vertical--content--os-blueviolet?style=flat" /></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat" /></a>
-  <a href="https://discord.gg/mHAjSMV6gz"><img alt="discord" src="https://img.shields.io/discord/1479002485040480266?style=flat&logo=discord&logoColor=white&label=discord&color=5865F2&cacheSeconds=3600" /></a>
   <a href="QUICKSTART.md"><img alt="quickstart" src="https://img.shields.io/badge/quickstart-3%20commands-green?style=flat" /></a>
 </p>
 
