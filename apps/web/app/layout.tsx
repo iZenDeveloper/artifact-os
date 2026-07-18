@@ -7,7 +7,26 @@ import '../src/index.css';
 import '../src/styles/home/index.css';
 
 export const metadata: Metadata = {
-  title: 'Artifact OS',
+  title: {
+    default: 'Artifact OS',
+    template: '%s · Artifact OS',
+  },
+  applicationName: 'Artifact OS',
+  description:
+    'Artifact OS — local-first design product for marketers. Agents build prototypes, content packs, decks, and brand systems as real files.',
+  openGraph: {
+    title: 'Artifact OS',
+    description:
+      'Local-first design product for marketers. Agents build prototypes, content packs, decks, and brand systems as real files.',
+    siteName: 'Artifact OS',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Artifact OS',
+    description:
+      'Local-first design product for marketers. Agents build prototypes, content packs, decks, and brand systems as real files.',
+  },
   icons: {
     // Theme-aware favicon:
     // - SVG uses prefers-color-scheme (ink / white)
