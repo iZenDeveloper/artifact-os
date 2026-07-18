@@ -19,6 +19,10 @@
   <a href="https://github.com/nexu-io/open-design">Upstream engine</a>
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/product/home.jpg" alt="Artifact OS Home — prompt, brand switch, format cards, and community workflows for marketers" width="100%" />
+</p>
+
 ---
 
 ## Why marketers use Artifact OS
