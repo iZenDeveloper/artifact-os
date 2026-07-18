@@ -1148,6 +1148,13 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   gap: 6px;
   margin-left: auto;
 }
+/* Match composer Send (.composer-send is 12.5px / weight 650). */
+.question-form-foot button,
+.qf-submit-actions button {
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 1;
+}
 
 /* Direction-cards picker — used by the second discovery form when the user
    selects "Pick a direction for me". Each card carries a palette swatch
