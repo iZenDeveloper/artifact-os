@@ -80,15 +80,16 @@ describe('form content language (lang)', () => {
   });
 });
 
-describe('sanitizeQuestionFormJson (error 25)', () => {
-  it('strips JS .replace chains after string literals', () => {
+describe('sanitizeQuestionFormJson (error 25/26)', () => {
+  it('evaluates simple string.replace so lang becomes the target locale', () => {
     const dirty = `{ "lang": "zh-CN".replace("zh-CN","vi"), "questions": [] }`;
     const clean = sanitizeQuestionFormJson(dirty);
-    expect(clean).toBe(`{ "lang": "zh-CN", "questions": [] }`);
+    expect(clean).toBe(`{ "lang": "vi", "questions": [] }`);
     expect(() => JSON.parse(clean)).not.toThrow();
+    expect(JSON.parse(clean).lang).toBe('vi');
   });
 
-  it('parses the production Brand Voice form that used .replace for lang', () => {
+  it('parses the production Brand Voice form and keeps Vietnamese form chrome', () => {
     const body = `{
   "lang": "zh-CN".replace("zh-CN","vi"),
   "description": "Đã prefill theo brief — gửi luôn được, hoặc chỉnh trước khi gửi.",
@@ -112,7 +113,8 @@ describe('sanitizeQuestionFormJson (error 25)', () => {
     expect(segments).toHaveLength(1);
     expect(segments[0]?.kind).toBe('form');
     if (segments[0]?.kind !== 'form') return;
-    expect(segments[0].form.lang).toBe('zh-CN');
+    // Content inference + evaluated replace → vi, not zh-CN chrome (error 26).
+    expect(segments[0].form.lang).toBe('vi');
     expect(segments[0].form.questions).toHaveLength(2);
     expect(segments[0].form.questions[0]?.id).toBe('output');
   });

@@ -3304,6 +3304,8 @@ export const th: Dict = {
   'qf.submitDefault': 'เอาผลทั้งหมดนี้เข้าไป',
   'qf.submitDisabledTitle': 'นำคำลงในกล่องที่จำเป็นให้ครบกันก่อน',
   'qf.submitTitle': 'เอาผลทั้งหมดนี้เข้าไป',
+  'qf.next': 'Next',
+  'qf.back': 'Back',
   'qf.cardSelected': 'เลือกใช้งาน',
   'qf.cardRefs': 'เชื่อมโยงจากตัวของ:',
   'qf.cardSampleText': 'สุนัขจิ้งจอกสีน้ำตาลตัวรวดเร็ว · 0123',

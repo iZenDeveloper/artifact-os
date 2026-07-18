@@ -3304,6 +3304,8 @@ export const fa: Dict = {
   'qf.submitDefault': 'ارسال پاسخ‌ها',
   'qf.submitDisabledTitle': 'ابتدا فیلدهای الزامی را پر کنید',
   'qf.submitTitle': 'ارسال پاسخ‌ها',
+  'qf.next': 'Next',
+  'qf.back': 'Back',
   'qf.cardSelected': 'انتخاب شده',
   'qf.cardRefs': 'مراجع:',
   'qf.cardSampleText': 'روباه قهوه‌ای سریع · ۰۱۲۳',

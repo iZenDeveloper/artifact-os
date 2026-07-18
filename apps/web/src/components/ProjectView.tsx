@@ -8748,13 +8748,17 @@ export function ProjectView({
                   ) : null}
                 </span>
               )}
-              designSystemPicker={(
-                <DesignSystemPicker
-                  designSystems={designSystems}
-                  selectedId={projectDesignSystemId ?? null}
-                  onChange={handleChangeDesignSystemId}
-                />
-              )}
+              designSystemPicker={
+                // Hide empty "Choose brand" chrome when no brand is bound —
+                // users pick a brand from the + menu / toolbox instead (error 26).
+                projectDesignSystemId ? (
+                  <DesignSystemPicker
+                    designSystems={designSystems}
+                    selectedId={projectDesignSystemId}
+                    onChange={handleChangeDesignSystemId}
+                  />
+                ) : null
+              }
             />
           ) : (
             <div className="pane" data-testid="chat-pane-loading">

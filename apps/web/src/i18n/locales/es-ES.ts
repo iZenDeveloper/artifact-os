@@ -3304,6 +3304,8 @@ export const esES: Dict = {
   'qf.submitDefault': 'Enviar respuestas',
   'qf.submitDisabledTitle': 'Rellena primero los campos obligatorios',
   'qf.submitTitle': 'Enviar respuestas',
+  'qf.next': 'Next',
+  'qf.back': 'Back',
   'qf.cardSelected': 'seleccionado',
   'qf.cardRefs': 'Refs:',
   'qf.cardSampleText': 'El veloz murciélago hindú · 0123',

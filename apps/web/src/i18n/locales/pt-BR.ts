@@ -3304,6 +3304,8 @@ export const ptBR: Dict = {
   'qf.submitDefault': 'Enviar respostas',
   'qf.submitDisabledTitle': 'Preencha os campos obrigatórios primeiro',
   'qf.submitTitle': 'Enviar respostas',
+  'qf.next': 'Next',
+  'qf.back': 'Back',
   'qf.cardSelected': 'selecionado',
   'qf.cardRefs': 'Refs:',
   'qf.cardSampleText': 'A rápida raposa marrom · 0123',

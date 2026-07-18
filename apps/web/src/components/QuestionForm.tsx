@@ -123,11 +123,13 @@ export const QuestionFormView = forwardRef<QuestionFormHandle, Props>(function Q
   ref,
 ) {
   const uiT = useT();
-  // Host strings inside the card follow the form's declared content language
-  // (`form.lang`, set by the model alongside the localized labels) so a
-  // Chinese form in an English UI doesn't mix scripts; without a resolvable
-  // tag they follow the app UI locale as before.
-  const t = useMemo(() => tForLanguageTag(form.lang) ?? uiT, [form.lang, uiT]);
+  // Host strings inside the card follow the form content language so a
+  // Chinese form in an English UI doesn't mix scripts. Prefer inferred
+  // content language (question labels) over a mis-declared form.lang.
+  const t = useMemo(() => {
+    const tag = form.lang;
+    return tForLanguageTag(tag) ?? uiT;
+  }, [form.lang, uiT]);
   const initial = useMemo(
     () => buildInitialState(form, submittedAnswers, draftAnswers, visualStyleContext),
     [form, submittedAnswers, draftAnswers, visualStyleContext],
@@ -843,7 +845,7 @@ export const QuestionFormView = forwardRef<QuestionFormHandle, Props>(function Q
                   onClick={handlePreviousQuestion}
                   disabled={submitDisabled || activeQuestionIndex === 0}
                 >
-                  {t('settings.onboardingBack')}
+                  {t('qf.back')}
                 </Button>
                 <Button
                   type="button"
@@ -866,7 +868,7 @@ export const QuestionFormView = forwardRef<QuestionFormHandle, Props>(function Q
                 >
                   {isLastQuestion
                     ? form.submitLabel ?? t('qf.submitDefault')
-                    : t('nextStep.title')}
+                    : t('qf.next')}
                 </Button>
               </span>
             </>

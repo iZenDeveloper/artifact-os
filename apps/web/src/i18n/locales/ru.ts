@@ -3304,6 +3304,8 @@ export const ru: Dict = {
   'qf.submitDefault': 'Отправить ответы',
   'qf.submitDisabledTitle': 'Сначала заполните обязательные поля',
   'qf.submitTitle': 'Отправить ответы',
+  'qf.next': 'Next',
+  'qf.back': 'Back',
   'qf.cardSelected': 'выбрано',
   'qf.cardRefs': 'Ссылки:',
   'qf.cardSampleText': 'Быстрая коричневая лиса · 0123',

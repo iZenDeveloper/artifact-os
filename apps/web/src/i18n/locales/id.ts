@@ -3304,6 +3304,8 @@ export const id: Dict = {
   'qf.submitDefault': 'Kirim jawaban',
   'qf.submitDisabledTitle': 'Lengkapi pertanyaan wajib dulu.',
   'qf.submitTitle': 'Kirim jawaban',
+  'qf.next': 'Next',
+  'qf.back': 'Back',
   'qf.cardSelected': 'Dipilih',
   'qf.cardRefs': 'Referensi',
   'qf.cardSampleText': 'Contoh teks',

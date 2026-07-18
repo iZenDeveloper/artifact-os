@@ -3304,6 +3304,8 @@ export const ja: Dict = {
   'qf.submitDefault': '回答を送信',
   'qf.submitDisabledTitle': '最初に必須フィールドを入力してください',
   'qf.submitTitle': '回答を送信',
+  'qf.next': '次へ',
+  'qf.back': '戻る',
   'qf.cardSelected': '選択済み',
   'qf.cardRefs': '参照:',
   'qf.cardSampleText': 'いろはにほへと · 0123',

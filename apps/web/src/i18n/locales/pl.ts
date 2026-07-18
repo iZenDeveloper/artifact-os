@@ -3304,6 +3304,8 @@ export const pl: Dict = {
   'qf.submitDefault': 'Wyślij odpowiedzi',
   'qf.submitDisabledTitle': 'Najpierw wypełnij wymagane pola',
   'qf.submitTitle': 'Wyślij odpowiedzi',
+  'qf.next': 'Next',
+  'qf.back': 'Back',
   'qf.cardSelected': 'wybrano',
   'qf.cardRefs': 'Ref:',
   'qf.cardSampleText': 'Zażółć gęślą jaźń · 0123',

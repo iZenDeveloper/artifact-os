@@ -3304,6 +3304,8 @@ export const fr: Dict = {
   'qf.submitDefault': 'Envoyer les réponses',
   'qf.submitDisabledTitle': 'Remplissez d\'abord les champs requis',
   'qf.submitTitle': 'Envoyer les réponses',
+  'qf.next': 'Next',
+  'qf.back': 'Back',
   'qf.cardSelected': 'sélectionné',
   'qf.cardRefs': 'Réfs :',
   'qf.cardSampleText': 'Portez ce vieux whisky au juge blond qui fume · 0123',

@@ -3304,6 +3304,8 @@ export const hu: Dict = {
   'qf.submitDefault': 'Válaszok küldése',
   'qf.submitDisabledTitle': 'Előbb töltsd ki a kötelező mezőket',
   'qf.submitTitle': 'Válaszok küldése',
+  'qf.next': 'Next',
+  'qf.back': 'Back',
   'qf.cardSelected': 'kiválasztva',
   'qf.cardRefs': 'Hivatkozások:',
   'qf.cardSampleText': 'Árvíztűrő tükörfúrógép · 0123',

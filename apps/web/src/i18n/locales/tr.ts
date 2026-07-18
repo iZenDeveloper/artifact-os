@@ -3304,6 +3304,8 @@ export const tr: Dict = {
   'qf.submitDefault': 'Cevapları gönder',
   'qf.submitDisabledTitle': 'Önce gerekli alanları doldurun',
   'qf.submitTitle': 'Cevapları gönder',
+  'qf.next': 'Next',
+  'qf.back': 'Back',
   'qf.cardSelected': 'seçildi',
   'qf.cardRefs': 'Referanslar:',
   'qf.cardSampleText': 'Pijamalı hasta yağız şoföre çabucak güvendi · 0123',

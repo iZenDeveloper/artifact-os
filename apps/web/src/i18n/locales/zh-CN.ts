@@ -3532,6 +3532,8 @@ export const zhCN: Dict = {
   "qf.submitDefault": "发送答案",
   "qf.submitDisabledTitle": "请先填写必填项",
   "qf.submitTitle": "发送答案",
+  "qf.next": "下一步",
+  "qf.back": "上一步",
   "qf.cardSelected": "已选",
   "qf.cardRefs": "参考：",
   "qf.cardSampleText": "飞燕环宇 · 0123",

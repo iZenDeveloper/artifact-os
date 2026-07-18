@@ -287,8 +287,16 @@ function parseAttrs(raw: string): Record<string, string> {
  */
 export function sanitizeQuestionFormJson(source: string): string {
   let out = source;
-  // `"literal".method(...)` / `'literal'.method(...)` → `"literal"`
-  // Covers .replace(...), .toLowerCase(), .trim(), chained calls.
+  // Evaluate simple `"base".replace("from","to")` (production error 25/26:
+  // `"lang": "zh-CN".replace("zh-CN","vi")` must become `"lang": "vi"`, not
+  // leave zh-CN and poison form chrome language).
+  out = out.replace(
+    /(["'])((?:\\.|(?!\1)[^\\])*)\1\s*\.\s*replace\s*\(\s*(["'])((?:\\.|(?!\3)[^\\])*)\3\s*,\s*(["'])((?:\\.|(?!\5)[^\\])*)\5\s*\)/g,
+    (_m, _q1: string, base: string, _q2: string, from: string, _q3: string, to: string) =>
+      JSON.stringify(base.split(from).join(to)),
+  );
+  // Remaining `"literal".method(...)` chains → `"literal"`
+  // (.toLowerCase(), .trim(), unknown helpers).
   out = out.replace(
     /(["'])((?:\\.|(?!\1)[^\\])*)\1(\s*(?:\.\s*[A-Za-z_$][\w$]*\s*\((?:[^()]|\([^()]*\))*\))+)/g,
     '$1$2$1',
@@ -296,6 +304,30 @@ export function sanitizeQuestionFormJson(source: string): string {
   // Trailing commas in objects/arrays (also common model drift).
   out = out.replace(/,\s*([}\]])/g, '$1');
   return out;
+}
+
+/**
+ * Infer a BCP-47-ish tag for form chrome from question labels when the model
+ * mis-tagged `lang` (e.g. zh-CN while writing Vietnamese). Prefer content.
+ */
+export function inferFormContentLang(
+  questions: ReadonlyArray<{ label?: string }>,
+  declaredLang?: string | null,
+): string | undefined {
+  const sample = questions.map((q) => q.label ?? '').join('\n');
+  if (!sample.trim()) return declaredLang?.trim() || undefined;
+  // Vietnamese has unique diacritics not used in other Latin scripts.
+  if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(sample)) {
+    return 'vi';
+  }
+  if (/[\u4e00-\u9fff]/.test(sample)) {
+    // Prefer traditional if many traditional-only glyphs appear.
+    if (/[繁體台灣臺與國]/u.test(sample)) return 'zh-TW';
+    return 'zh-CN';
+  }
+  if (/[\u3040-\u30ff]/.test(sample)) return 'ja';
+  if (/[\uac00-\ud7af]/.test(sample)) return 'ko';
+  return declaredLang?.trim() || undefined;
 }
 
 function parseQuestionFormJson(source: string): unknown {
@@ -335,7 +367,11 @@ function tryParseForm(body: string, attrs: Record<string, string>): QuestionForm
     attrs.title ?? (typeof obj.title === 'string' ? obj.title : 'A few quick questions');
   const description = typeof obj.description === 'string' ? obj.description : undefined;
   const submitLabel = typeof obj.submitLabel === 'string' ? obj.submitLabel : undefined;
-  const lang = typeof obj.lang === 'string' && obj.lang.trim().length > 0 ? obj.lang.trim() : undefined;
+  const declaredLang =
+    typeof obj.lang === 'string' && obj.lang.trim().length > 0 ? obj.lang.trim() : undefined;
+  // Content wins over a mis-declared lang tag so buttons/badges match the
+  // question labels (error 26: Vietnamese form with zh-CN chrome).
+  const lang = inferFormContentLang(questions, declaredLang) ?? declaredLang;
   return {
     id,
     title,

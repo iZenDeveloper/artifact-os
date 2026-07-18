@@ -3304,6 +3304,8 @@ export const ko: Dict = {
   'qf.submitDefault': '답변 전송',
   'qf.submitDisabledTitle': '필수 항목을 모두 채워주세요',
   'qf.submitTitle': '답변 전송',
+  'qf.next': '다음',
+  'qf.back': '이전',
   'qf.cardSelected': '선택됨',
   'qf.cardRefs': '참조:',
   'qf.cardSampleText': '다람쥐 헌 쳇바퀴에 타고파 · 0123',

@@ -3337,6 +3337,8 @@ export const en: Dict = {
   'qf.submitDefault': 'Send answers',
   'qf.submitDisabledTitle': 'Fill in the required fields first',
   'qf.submitTitle': 'Send answers',
+  'qf.next': 'Next',
+  'qf.back': 'Back',
   'qf.cardSelected': 'selected',
   'qf.cardRefs': 'Refs:',
   'qf.cardSampleText': 'The quick brown fox · 0123',

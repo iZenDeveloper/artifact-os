@@ -3304,6 +3304,8 @@ export const uk: Dict = {
   'qf.submitDefault': 'Надіслати відповіді',
   'qf.submitDisabledTitle': 'Спочатку заповніть обов\'язкові поля',
   'qf.submitTitle': 'Надіслати відповіді',
+  'qf.next': 'Next',
+  'qf.back': 'Back',
   'qf.cardSelected': 'вибрано',
   'qf.cardRefs': 'Посилання:',
   'qf.cardSampleText': 'Швидка коричнева лисиця · 0123',

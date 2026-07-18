@@ -3304,6 +3304,8 @@ export const ar: Dict = {
   'qf.submitDefault': 'إرسال الإجابات',
   'qf.submitDisabledTitle': 'املأ الحقول المطلوبة أولاً',
   'qf.submitTitle': 'إرسال الإجابات',
+  'qf.next': 'Next',
+  'qf.back': 'Back',
   'qf.cardSelected': 'محدد',
   'qf.cardRefs': 'المراجع:',
   'qf.cardSampleText': 'الثعلب البني السريع · 0123',

@@ -3304,6 +3304,8 @@ export const de: Dict = {
   'qf.submitDefault': 'Antworten senden',
   'qf.submitDisabledTitle': 'Füllen Sie zuerst die erforderlichen Felder aus',
   'qf.submitTitle': 'Antworten senden',
+  'qf.next': 'Next',
+  'qf.back': 'Back',
   'qf.cardSelected': 'ausgewählt',
   'qf.cardRefs': 'Refs:',
   'qf.cardSampleText': 'Franz jagt im komplett verwahrlosten Taxi quer durch Bayern · 0123',

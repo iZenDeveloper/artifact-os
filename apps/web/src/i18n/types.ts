@@ -4094,6 +4094,8 @@ export interface Dict {
   'qf.submitDefault': string;
   'qf.submitDisabledTitle': string;
   'qf.submitTitle': string;
+  'qf.back': string;
+  'qf.next': string;
   'qf.cardSelected': string;
   'qf.cardRefs': string;
   'qf.cardSampleText': string;

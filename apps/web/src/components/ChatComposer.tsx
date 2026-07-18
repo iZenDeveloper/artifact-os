@@ -3174,7 +3174,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
             ) : null}
           </div>
         </div>
-        {projectId ? (
+        {/* Working-directory row only when a folder is already linked —
+            hide the empty "Select working directory" affordance (error 26).
+            Users can still attach a folder via the + menu / slash tools. */}
+        {projectId && workingDir ? (
           <div className="composer-workdir-row">
             <WorkingDirPicker
               placement="up"

@@ -3543,6 +3543,8 @@ export const zhTW: Dict = {
   "qf.submitDefault": "傳送答案",
   "qf.submitDisabledTitle": "請先填寫必填項",
   "qf.submitTitle": "傳送答案",
+  "qf.next": "下一步",
+  "qf.back": "上一步",
   "qf.cardSelected": "已選",
   "qf.cardRefs": "參考：",
   "qf.cardSampleText": "飛燕環宇 · 0123",
