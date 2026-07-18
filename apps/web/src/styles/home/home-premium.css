@@ -797,18 +797,24 @@
   min-height: 34px;
 }
 
-/* Composer foot controls — same corner radius as Template picker (12px) */
+/* Composer foot controls — unified 12px (overrides global button { border-radius: 6px }) */
 .home-hero--premium-stage .plus-menu__trigger,
 .home-hero--premium-stage .home-hero__input-card .plus-menu__trigger,
 .home-hero--premium-stage .home-hero__mode-switcher .session-mode-toggle__trigger,
-.home-hero--premium-stage .home-hero__execution-switcher .inline-switcher__chip {
+.home-hero--premium-stage .home-hero__execution-switcher .inline-switcher__chip,
+.home-hero--premium-stage .home-hero__footer-select-trigger,
+.home-hero--premium-stage .home-hero__template-trigger,
+.home-hero--premium-stage .home-hero__footer-option--select,
+.home-hero--premium-stage .home-hero__ds-row-trigger {
   border-radius: var(--radius-lg, 12px) !important;
 }
 
 /* Dropdown panels match their triggers (error 22) */
 .home-hero--premium-stage .home-hero__mode-switcher .session-mode-toggle__menu,
 .home-hero--premium-stage .home-hero__mode-switcher .session-mode-toggle__popover-card,
-.home-hero--premium-stage .home-hero__execution-switcher .inline-switcher__popover {
+.home-hero--premium-stage .home-hero__execution-switcher .inline-switcher__popover,
+.home-hero--premium-stage .home-hero__footer-select-menu,
+.home-hero--premium-stage .home-hero__template-menu {
   border-radius: var(--radius-lg, 12px) !important;
 }
 
@@ -892,6 +898,8 @@
   gap: 7px;
   min-width: 0;
   max-width: none;
+  /* Explicit: global `button` rule is 6px; keep composer controls at 12px */
+  border-radius: var(--radius-lg, 12px) !important;
 }
 
 /* Kicker muted, value brighter — clear hierarchy on dark glass */
